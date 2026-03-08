@@ -8,9 +8,12 @@ import { parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink,
+  Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink, Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 const METHOD_LABELS: Record<string, { name: string; emoji: string; desc: string }> = {
