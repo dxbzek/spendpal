@@ -81,6 +81,12 @@ const Transactions = () => {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading">Transactions</h1>
           <div className="flex items-center gap-2">
+            {filtered.length > 0 && (
+              <button onClick={() => setShowDeleteAll(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors">
+                <Trash2 size={14} /> Delete All
+              </button>
+            )}
             <button onClick={() => exportTransactionsCsv(filtered, accounts)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
               <Download size={14} /> Export
