@@ -37,7 +37,7 @@ const Goals = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="gradient-primary px-4 pt-12 pb-8 rounded-b-3xl">
+      <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
           <button onClick={() => { setEditGoal(null); setShowAddGoal(true); }}
