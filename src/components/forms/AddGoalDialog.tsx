@@ -78,7 +78,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
             </div>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Target Amount (AED)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Target Amount ({currency})</label>
             <Input type="number" placeholder="10000" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} />
           </div>
           <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || !targetAmount}

@@ -61,7 +61,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
             </Select>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Budget Amount (AED)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
             <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
           <div>

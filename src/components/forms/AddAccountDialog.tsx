@@ -74,7 +74,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           {type === 'credit' && (
             <>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Credit Limit (AED)</label>
+                <label className="text-sm text-muted-foreground mb-1 block">Credit Limit ({currency})</label>
                 <Input type="number" placeholder="20000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
               </div>
               <div>
