@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency } from '@/context/CurrencyContext';
