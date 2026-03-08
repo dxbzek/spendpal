@@ -22,6 +22,8 @@ const Transactions = () => {
   const { openEditSheet } = useEditTransaction();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
