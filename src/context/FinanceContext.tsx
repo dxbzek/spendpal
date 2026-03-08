@@ -285,6 +285,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await fetchAll();
   }, [fetchAll]);
 
+  const bulkRemoveTransactions = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const { error } = await supabase.from('transactions').delete().in('id', ids);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  const bulkRemoveBudgets = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const { error } = await supabase.from('budgets').delete().in('id', ids);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
   // --- GOALS ---
   const addGoal = useCallback(async (goal: Omit<Goal, 'id'>) => {
     if (!user) return;
