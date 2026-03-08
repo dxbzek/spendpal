@@ -27,17 +27,17 @@
     --accent: 152 50% 95%;
     --accent-foreground: 152 62% 30%;
 
-    --destructive: 0 72% 55%;
+    --destructive: 152 50% 28%;
     --destructive-foreground: 0 0% 100%;
 
     --success: 152 62% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 152 45% 55%;
     --warning-foreground: 0 0% 100%;
 
     --income: 152 62% 42%;
-    --expense: 0 72% 55%;
+    --expense: 152 50% 28%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
@@ -46,7 +46,7 @@
     --radius: 1rem;
 
     --gradient-primary: linear-gradient(135deg, hsl(152, 62%, 42%), hsl(168, 55%, 40%));
-    --gradient-goals: linear-gradient(135deg, hsl(270, 60%, 55%), hsl(330, 70%, 55%));
+    --gradient-goals: linear-gradient(135deg, hsl(152, 62%, 42%), hsl(140, 50%, 50%));
     --shadow-card: 0 2px 12px -2px hsl(220 20% 10% / 0.06);
     --shadow-card-hover: 0 8px 24px -4px hsl(220 20% 10% / 0.1);
 
