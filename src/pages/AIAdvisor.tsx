@@ -81,8 +81,11 @@ const AIAdvisor = () => {
   const [activeSimTab, setActiveSimTab] = useState<string>('envelope');
   const [applyingEnvelopes, setApplyingEnvelopes] = useState(false);
 
-  const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthKey = useMemo(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+  const now = useMemo(() => new Date(), []);
 
   // Build financial summary for AI
   const financialData = useMemo(() => {

@@ -26,6 +26,7 @@ const Budgets = () => {
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
 
   const now = new Date();
@@ -69,6 +70,17 @@ const Budgets = () => {
           </div>
         </div>
 
+        {budgets.length === 0 ? (
+          <div className="bg-card rounded-2xl p-8 card-shadow text-center">
+            <div className="text-5xl mb-3">📊</div>
+            <h3 className="font-heading text-base mb-1">No budgets yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">Create your first budget to start tracking your spending limits</p>
+            <button onClick={() => { setEditBudget(null); setShowAddBudget(true); }}
+              className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-2">
+              <Plus size={16} /> Create First Budget
+            </button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {budgets.map(b => {
           const pct = b.amount ? Math.round((b.spent / b.amount) * 100) : 0;
@@ -103,6 +115,7 @@ const Budgets = () => {
           );
         })}
         </div>
+        )}
 
         {/* AI Suggestions */}
         <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/30">
@@ -159,13 +172,16 @@ const Budgets = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={deletingAll}
               onClick={async () => {
+                setDeletingAll(true);
                 for (const b of budgets) { await removeBudget(b.id); }
+                setDeletingAll(false);
                 setShowDeleteAll(false);
               }}
               className="bg-destructive text-destructive-foreground"
             >
-              Delete All
+              {deletingAll ? <><Loader2 size={14} className="animate-spin mr-1" /> Deleting…</> : 'Delete All'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

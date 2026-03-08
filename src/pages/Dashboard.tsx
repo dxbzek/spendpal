@@ -57,16 +57,18 @@ const Dashboard = () => {
   const mask = (val: string) => hidden ? '••••••' : val;
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => {
     if (period === 'all') return transactions;
+    const month = now.getMonth();
+    const year = now.getFullYear();
     return transactions.filter(tx => {
       const d = parseISO(tx.date);
-      if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      return d.getFullYear() === now.getFullYear();
+      if (period === 'month') return d.getMonth() === month && d.getFullYear() === year;
+      return d.getFullYear() === year;
     });
-  }, [transactions, period]);
+  }, [transactions, period, now]);
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
   const income = useMemo(() => filtered.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
@@ -366,15 +368,21 @@ const Dashboard = () => {
             <h2 className="font-heading text-sm">AI Summary</h2>
           </div>
           {summaryText ? (
-            <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
+            <>
+              <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
+              <button onClick={handleGenerateSummary} disabled={aiLoading}
+                className="mt-3 w-full py-2 rounded-xl bg-accent text-accent-foreground text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Regenerating…</> : <><Sparkles size={14} /> Regenerate</>}
+              </button>
+            </>
           ) : (
-            <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
-          )}
-          {!summaryText && (
-            <button onClick={handleGenerateSummary} disabled={aiLoading}
-              className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-              {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
-            </button>
+            <>
+              <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
+              <button onClick={handleGenerateSummary} disabled={aiLoading}
+                className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
+              </button>
+            </>
           )}
         </Card>
 
