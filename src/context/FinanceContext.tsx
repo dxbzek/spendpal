@@ -195,7 +195,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!options?.skipBalanceUpdate) {
       const account = accounts.find(a => a.id === tx.accountId);
       if (account) {
-        const newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
+        const isCreditCard = account.type === 'credit';
+        // Credit cards: expenses increase balance (more debt), income decreases it (payment)
+        // Regular accounts: expenses decrease balance, income increases it
+        let newBalance: number;
+        if (isCreditCard) {
+          newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
+        } else {
+          newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
+        }
         await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
       }
     }
@@ -229,7 +237,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (tx) {
       const account = accounts.find(a => a.id === tx.accountId);
       if (account) {
-        const newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
+        const isCreditCard = account.type === 'credit';
+        let newBalance: number;
+        if (isCreditCard) {
+          // Reverse: income was subtracted, expense was added
+          newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
+        } else {
+          newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
+        }
         await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
       }
     }
