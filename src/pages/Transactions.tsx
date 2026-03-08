@@ -45,10 +45,16 @@ const Transactions = () => {
       <div className="px-4 pt-12 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading">Transactions</h1>
-          <button onClick={() => setShowImport(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
-            <Upload size={14} /> Import CSV
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => exportTransactionsCsv(filtered, accounts)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+              <Download size={14} /> Export
+            </button>
+            <button onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
+              <Upload size={14} /> Import
+            </button>
+          </div>
         </div>
 
         <div className="relative mb-3">
