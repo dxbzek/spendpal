@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -9,8 +9,122 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, ArrowRightLeft, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+const FRANKFURTER_API = 'https://api.frankfurter.app';
+
+const CurrencyConverter = ({ baseCurrency }: { baseCurrency: string }) => {
+  const [amount, setAmount] = useState('1');
+  const [targetCurrency, setTargetCurrency] = useState(baseCurrency === 'USD' ? 'EUR' : 'USD');
+  const [rate, setRate] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [targetSearch, setTargetSearch] = useState('');
+
+  const filteredTarget = targetSearch
+    ? WORLD_CURRENCIES.filter(c =>
+        c.code.toLowerCase().includes(targetSearch.toLowerCase()) ||
+        c.label.toLowerCase().includes(targetSearch.toLowerCase())
+      )
+    : WORLD_CURRENCIES;
+
+  const fetchRate = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${FRANKFURTER_API}/latest?from=${baseCurrency}&to=${targetCurrency}`);
+      if (!res.ok) throw new Error('Failed to fetch rate');
+      const data = await res.json();
+      setRate(data.rates?.[targetCurrency] ?? null);
+    } catch {
+      setRate(null);
+      toast.error('Could not fetch exchange rate. Currency may not be supported.');
+    }
+    setLoading(false);
+  }, [baseCurrency, targetCurrency]);
+
+  useEffect(() => { fetchRate(); }, [fetchRate]);
+
+  const numAmount = parseFloat(amount) || 0;
+  const converted = rate !== null ? (numAmount * rate) : null;
+
+  const baseSymbol = WORLD_CURRENCIES.find(c => c.code === baseCurrency)?.code ?? baseCurrency;
+  const targetSymbol = WORLD_CURRENCIES.find(c => c.code === targetCurrency)?.code ?? targetCurrency;
+
+  return (
+    <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
+      <div className="flex items-center gap-2">
+        <ArrowRightLeft size={18} className="text-primary" />
+        <h2 className="text-sm font-heading">Currency Converter</h2>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Amount ({baseSymbol})</label>
+          <Input
+            type="number"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            placeholder="Enter amount"
+            className="h-12 text-lg font-heading"
+            min="0"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Convert to</label>
+          <Select value={targetCurrency} onValueChange={setTargetCurrency}>
+            <SelectTrigger className="h-12">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-[280px]">
+              <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                <div className="relative">
+                  <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search currencies…"
+                    value={targetSearch}
+                    onChange={e => setTargetSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+              {filteredTarget.map(c => (
+                <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+              ))}
+              {filteredTarget.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-3">No currencies found</p>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Result */}
+        <div className="bg-muted/50 rounded-xl p-4 text-center">
+          {loading ? (
+            <Loader2 size={20} className="animate-spin text-primary mx-auto" />
+          ) : converted !== null ? (
+            <>
+              <p className="text-2xl font-heading text-foreground">
+                {converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {targetSymbol}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                1 {baseSymbol} = {rate?.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 })} {targetSymbol}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Rate unavailable for this pair</p>
+          )}
+        </div>
+
+        <button onClick={fetchRate} disabled={loading}
+          className="w-full flex items-center justify-center gap-2 py-2 text-xs text-primary font-medium hover:bg-accent rounded-lg transition-colors">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh Rate
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const Settings = () => {
   const { user, signOut } = useAuth();
@@ -186,6 +300,9 @@ const Settings = () => {
             {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
           </Button>
         </div>
+
+        {/* Currency Converter */}
+        <CurrencyConverter baseCurrency={currency} />
 
         {/* Sign Out */}
         <button onClick={signOut}
