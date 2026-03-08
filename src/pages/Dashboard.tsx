@@ -22,7 +22,15 @@ const Dashboard = () => {
   const { signOut } = useAuth();
   const { fmt, fmtSigned } = useCurrency();
   const navigate = useNavigate();
-  const [hidden, setHidden] = useState(false);
+  const [hidden, setHidden] = useState(() => localStorage.getItem('balanceHidden') === 'true');
+
+  const toggleHidden = () => {
+    setHidden(prev => {
+      const next = !prev;
+      localStorage.setItem('balanceHidden', String(next));
+      return next;
+    });
+  };
   const [period, setPeriod] = useState<'month' | 'year'>('month');
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
@@ -91,7 +99,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
           <div className="flex items-center gap-2">
-            <button onClick={() => setHidden(!hidden)} className="text-primary-foreground/80">
+            <button onClick={toggleHidden} className="text-primary-foreground/80">
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
             <button onClick={() => navigate('/settings')} className="text-primary-foreground/80">
