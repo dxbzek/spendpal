@@ -175,11 +175,13 @@ export type Database = {
           category_icon: string
           created_at: string
           currency: string
+          current_installment: number | null
           date: string
           id: string
           is_recurring: boolean
           merchant: string
           note: string | null
+          total_installments: number | null
           type: string
           updated_at: string
           user_id: string
@@ -191,11 +193,13 @@ export type Database = {
           category_icon?: string
           created_at?: string
           currency?: string
+          current_installment?: number | null
           date?: string
           id?: string
           is_recurring?: boolean
           merchant: string
           note?: string | null
+          total_installments?: number | null
           type: string
           updated_at?: string
           user_id: string
@@ -207,11 +211,13 @@ export type Database = {
           category_icon?: string
           created_at?: string
           currency?: string
+          current_installment?: number | null
           date?: string
           id?: string
           is_recurring?: boolean
           merchant?: string
           note?: string | null
+          total_installments?: number | null
           type?: string
           updated_at?: string
           user_id?: string
