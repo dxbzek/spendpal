@@ -34,9 +34,15 @@ const Transactions = () => {
     return transactions.filter(tx => {
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase());
       const matchType = filterType === 'all' || tx.type === filterType;
-      return matchSearch && matchType;
+      const matchCategory = filterCategory === 'all' || tx.category === filterCategory;
+      return matchSearch && matchType && matchCategory;
     });
-  }, [transactions, search, filterType]);
+  }, [transactions, search, filterType, filterCategory]);
+
+  const uniqueCategories = useMemo(() => {
+    const cats = [...new Set(transactions.map(tx => tx.category))];
+    return cats.sort();
+  }, [transactions]);
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
