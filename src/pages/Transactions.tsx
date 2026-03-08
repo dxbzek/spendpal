@@ -22,6 +22,8 @@ const Transactions = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [showImport, setShowImport] = useState(false);
   const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isMobile = useIsMobile();
 
   const filtered = useMemo(() => {
@@ -79,6 +81,12 @@ const Transactions = () => {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading">Transactions</h1>
           <div className="flex items-center gap-2">
+            {filtered.length > 0 && (
+              <button onClick={() => setShowDeleteAll(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors">
+                <Trash2 size={14} /> Delete All
+              </button>
+            )}
             <button onClick={() => exportTransactionsCsv(filtered, accounts)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
               <Download size={14} /> Export
@@ -150,6 +158,33 @@ const Transactions = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (deleteTxId) removeTransaction(deleteTxId); setDeleteTxId(null); }}
               className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteAll} onOpenChange={setShowDeleteAll}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Transactions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {filtered.length} {filterType !== 'all' ? filterType : ''} transactions. Account balances will be adjusted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                for (const tx of filtered) {
+                  await removeTransaction(tx.id);
+                }
+                setDeleting(false);
+                setShowDeleteAll(false);
+              }}
+              className="bg-destructive text-destructive-foreground">
+              {deleting ? 'Deleting…' : `Delete ${filtered.length} Transactions`}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
