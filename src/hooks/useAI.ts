@@ -13,6 +13,39 @@ const getAuthHeaders = async () => {
   };
 };
 
+export interface BudgetAnalysis {
+  recommendedMethod: 'envelope' | '50-30-20' | 'zero-based' | 'hybrid';
+  methodReason: string;
+  healthScore: number;
+  healthBreakdown: {
+    savingsRatio: number;
+    expenseStability: number;
+    budgetAdherence: number;
+    debtManagement: number;
+  };
+  insights: Array<{
+    type: 'warning' | 'positive' | 'suggestion';
+    title: string;
+    description: string;
+  }>;
+  suggestedEnvelopes: Array<{
+    category: string;
+    icon: string;
+    amount: number;
+    currentSpending: number;
+  }>;
+  simulation: {
+    envelope: number;
+    fiftyThirtyTwenty: number;
+    zeroBased: number;
+    hybrid: number;
+  };
+  dynamicAdjustments: Array<{
+    action: string;
+    impact: string;
+  }>;
+}
+
 export const useAI = () => {
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState('');
@@ -91,7 +124,6 @@ export const useAI = () => {
       }
 
       const { result } = await resp.json();
-      // Parse JSON from the response
       const jsonMatch = result.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
@@ -136,8 +168,41 @@ export const useAI = () => {
     }
   }, []);
 
-  // Keep backward compat alias
+  const generateBudgetAnalysis = useCallback(async (data: unknown): Promise<BudgetAnalysis | null> => {
+    setLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const resp = await fetch(FUNC_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ type: 'budget-advisor', data }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || 'Failed to generate budget analysis');
+      }
+
+      const { result } = await resp.json();
+      if (typeof result === 'object' && result.recommendedMethod) {
+        return result as BudgetAnalysis;
+      }
+      // Fallback: try parsing string
+      if (typeof result === 'string') {
+        const jsonMatch = result.match(/\{[\s\S]*\}/);
+        if (jsonMatch) return JSON.parse(jsonMatch[0]) as BudgetAnalysis;
+      }
+      throw new Error('Unexpected response format');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      toast.error(msg);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const categorizeCSV = categorizeStatement;
 
-  return { loading, summaryText, generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV };
+  return { loading, summaryText, generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV, generateBudgetAnalysis };
 };

@@ -1,15 +1,16 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus } from 'lucide-react';
+import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS_LEFT = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { path: '/transactions', label: 'Transactions', icon: Receipt },
+  { path: '/transactions', label: 'Txns', icon: Receipt },
 ];
 
 const NAV_ITEMS_RIGHT = [
   { path: '/budgets', label: 'Budgets', icon: PiggyBank },
   { path: '/goals', label: 'Goals', icon: Target },
+  { path: '/advisor', label: 'AI', icon: Brain },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -21,9 +22,9 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
   path: string; label: string; icon: any; active: boolean; onClick: () => void;
 }) => (
   <button onClick={onClick}
-    className="flex flex-col items-center gap-0.5 py-1 px-2 relative min-w-0">
-    <Icon size={20} className={active ? 'text-primary' : 'text-muted-foreground'} />
-    <span className={`text-[9px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+    className="flex flex-col items-center gap-0.5 py-1 px-1.5 relative min-w-0">
+    <Icon size={18} className={active ? 'text-primary' : 'text-muted-foreground'} />
+    <span className={`text-[8px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
       {label}
     </span>
     {active && (
@@ -38,15 +39,15 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-bottom">
-      <div className="flex items-center justify-around max-w-lg mx-auto h-16 px-1">
+      <div className="flex items-center justify-around max-w-lg mx-auto h-16 px-0.5">
         {NAV_ITEMS_LEFT.map(item => (
           <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => navigate(item.path)} />
         ))}
 
         {/* FAB */}
         <button onClick={onAddClick}
-          className="gradient-primary rounded-full w-12 h-12 flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-transform shrink-0">
-          <Plus size={24} className="text-primary-foreground" />
+          className="gradient-primary rounded-full w-11 h-11 flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-transform shrink-0">
+          <Plus size={22} className="text-primary-foreground" />
         </button>
 
         {NAV_ITEMS_RIGHT.map(item => (
