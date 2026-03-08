@@ -42,7 +42,7 @@ const Transactions = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="px-4 pt-12 pb-4">
+      <div className="px-5 pt-12 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading">Transactions</h1>
           <div className="flex items-center gap-2">
@@ -74,7 +74,7 @@ const Transactions = () => {
         </div>
       </div>
 
-      <div className="px-4 pb-4">
+      <div className="px-5 pb-6">
         {grouped.length === 0 ? (
           <div className="text-center py-16">
             <Receipt size={48} className="mx-auto text-muted-foreground/40 mb-3" />
