@@ -1,16 +1,21 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { Search, Receipt, Upload } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const Transactions = () => {
-  const { transactions, accounts } = useFinance();
+  const { transactions, accounts, removeTransaction } = useFinance();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [showImport, setShowImport] = useState(false);
+  const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return transactions.filter(tx => {
@@ -43,14 +48,11 @@ const Transactions = () => {
           </button>
         </div>
 
-        {/* Search */}
         <div className="relative mb-3">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search transactions…" value={search} onChange={e => setSearch(e.target.value)}
-            className="pl-10 bg-card" />
+          <Input placeholder="Search transactions…" value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
         </div>
 
-        {/* Filter chips */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
           {['all', 'expense', 'income', 'transfer'].map(f => (
             <button key={f} onClick={() => setFilterType(f)}
@@ -77,7 +79,7 @@ const Transactions = () => {
                 <p className="text-xs text-muted-foreground font-medium mb-2">{date}</p>
                 <div className="bg-card rounded-2xl card-shadow divide-y divide-border">
                   {txs.map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between p-3.5">
+                    <div key={tx.id} className="flex items-center justify-between p-3.5 group">
                       <div className="flex items-center gap-3">
                         <span className="text-xl">{tx.categoryIcon}</span>
                         <div>
@@ -85,9 +87,15 @@ const Transactions = () => {
                           <p className="text-xs text-muted-foreground">{tx.category} · {getAccountName(tx.accountId)}</p>
                         </div>
                       </div>
-                      <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                        {tx.type === 'income' ? '+' : '-'}د.إ {tx.amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                          {tx.type === 'income' ? '+' : '-'}د.إ {tx.amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}
+                        </p>
+                        <button onClick={() => setDeleteTxId(tx.id)}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -98,6 +106,20 @@ const Transactions = () => {
       </div>
 
       <ImportStatementSheet open={showImport} onOpenChange={setShowImport} />
+
+      <AlertDialog open={!!deleteTxId} onOpenChange={(o) => { if (!o) setDeleteTxId(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteTxId) removeTransaction(deleteTxId); setDeleteTxId(null); }}
+              className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
