@@ -171,7 +171,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [fetchAll]);
 
   // --- TRANSACTIONS ---
-  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>) => {
+  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>, options?: { skipBalanceUpdate?: boolean }) => {
     if (!user) return;
     const { error } = await supabase.from('transactions').insert({
       user_id: user.id,
@@ -187,11 +187,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
     });
     if (error) { toast.error(error.message); return; }
-    // Update account balance
-    const account = accounts.find(a => a.id === tx.accountId);
-    if (account) {
-      const newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
-      await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
+    // Update account balance (skip for imported historical transactions)
+    if (!options?.skipBalanceUpdate) {
+      const account = accounts.find(a => a.id === tx.accountId);
+      if (account) {
+        const newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
+        await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
+      }
     }
     await fetchAll();
   }, [user, accounts, fetchAll]);
