@@ -65,7 +65,8 @@ const Dashboard = () => {
     });
   }, [transactions, period]);
 
-  const income = useMemo(() => filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [filtered]);
+  const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
+  const income = useMemo(() => filtered.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
   const expenses = useMemo(() => filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0), [filtered]);
 
   const categorySpending = useMemo(() => {
@@ -167,7 +168,7 @@ const Dashboard = () => {
         {/* Net Worth & Money Saved */}
         <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
           <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
-          <MoneySavedWidget transactions={transactions} hidden={hidden} mask={mask} />
+          <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
@@ -270,7 +271,7 @@ const Dashboard = () => {
         {transactions.length > 0 && (
           <Card>
             <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
-            <MonthlyTrendChart transactions={transactions} />
+            <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
           </Card>
         )}
 

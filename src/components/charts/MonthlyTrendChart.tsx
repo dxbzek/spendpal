@@ -6,9 +6,10 @@ import type { Transaction } from '@/types/finance';
 
 interface Props {
   transactions: Transaction[];
+  creditAccountIds: Set<string>;
 }
 
-const MonthlyTrendChart = ({ transactions }: Props) => {
+const MonthlyTrendChart = ({ transactions, creditAccountIds }: Props) => {
   const { fmt } = useCurrency();
 
   const data = useMemo(() => {
@@ -16,7 +17,7 @@ const MonthlyTrendChart = ({ transactions }: Props) => {
     transactions.forEach(tx => {
       const month = format(parseISO(tx.date), 'yyyy-MM');
       if (!map[month]) map[month] = { income: 0, expenses: 0 };
-      if (tx.type === 'income') map[month].income += tx.amount;
+      if (tx.type === 'income' && !creditAccountIds.has(tx.accountId)) map[month].income += tx.amount;
       else if (tx.type === 'expense') map[month].expenses += tx.amount;
     });
     return Object.entries(map)
@@ -27,7 +28,7 @@ const MonthlyTrendChart = ({ transactions }: Props) => {
         Income: Math.round(vals.income),
         Expenses: Math.round(vals.expenses),
       }));
-  }, [transactions]);
+  }, [transactions, creditAccountIds]);
 
   if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Not enough data for trends</p>;
 
