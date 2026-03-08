@@ -26,6 +26,7 @@ const Budgets = () => {
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
 
   const now = new Date();
