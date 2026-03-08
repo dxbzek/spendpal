@@ -25,7 +25,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
-  const { accounts, addTransaction, updateTransaction } = useFinance();
+  const { accounts, addTransaction, updateTransaction, removeTransaction } = useFinance();
   const { currency } = useCurrency();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -84,6 +84,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const handleSubmit = async () => {
     if (isTransfer) {
       if (!amount || !accountId || !toAccountId || accountId === toAccountId) return;
+      // If editing, delete the old transaction first
+      if (isEditing) {
+        await removeTransaction(editTransaction.id);
+      }
       // Create two transactions: expense from source, income to destination
       const transferNote = note || `Transfer to ${accounts.find(a => a.id === toAccountId)?.name || 'account'}`;
       const transferNoteIn = note || `Transfer from ${accounts.find(a => a.id === accountId)?.name || 'account'}`;
@@ -165,7 +169,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
         <div className="space-y-5 mt-4">
           <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            {TYPES.filter(t => !(isEditing && t.value === 'transfer')).map(t => (
+            {TYPES.map(t => (
               <button key={t.value} onClick={() => { setType(t.value); if (t.value !== 'transfer') { setCategory(''); setCategoryIcon(''); } }}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
                   type === t.value ? 'bg-card card-shadow text-foreground' : 'text-muted-foreground'
