@@ -402,6 +402,13 @@ const Settings = () => {
         {/* Data Backup & Restore */}
         <DataBackupCard />
 
+        {/* Glossary */}
+        <button onClick={() => navigate('/glossary')}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+          <BookOpen size={16} />
+          Glossary & FAQ
+        </button>
+
         {/* Sign Out */}
         <button onClick={signOut}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-card card-shadow text-muted-foreground font-medium text-sm hover:bg-muted transition-colors">
