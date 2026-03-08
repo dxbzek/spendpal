@@ -120,6 +120,28 @@ const Dashboard = () => {
         <div className="text-center">
           <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
           <p className="text-3xl font-heading text-primary-foreground">{mask(fmt(totalBalance))}</p>
+          {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
+        </div>
+        {/* Secondary currency selector */}
+        <div className="flex justify-center mt-3">
+          <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+            <SelectTrigger className="h-7 w-auto min-w-[100px] max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
+              <SelectValue placeholder="2nd currency" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[240px]">
+              <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                <div className="relative">
+                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
+                    className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+              </div>
+              <SelectItem value="__none__">None</SelectItem>
+              {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
+                <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex justify-center mt-4">
           <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
