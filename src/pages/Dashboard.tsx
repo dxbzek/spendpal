@@ -248,6 +248,7 @@ const Dashboard = () => {
             </div>
           )}
         </Card>
+        )}
 
         {/* Budget overview */}
         <Card>
