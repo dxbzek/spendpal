@@ -78,6 +78,9 @@ const Transactions = () => {
                  </span>
                )}
              </div>
+             {tx.note && (
+               <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">📝 {tx.note}</p>
+             )}
            </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
