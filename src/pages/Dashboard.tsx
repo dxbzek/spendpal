@@ -158,8 +158,18 @@ const Dashboard = () => {
       </div>
 
       <div className="px-5 md:px-6 -mt-4 space-y-4 pb-6">
+        {/* Budget overspending alerts */}
+        <BudgetAlertBanners budgets={budgets} />
+
         {/* Responsive grid wrapper for dashboard widgets */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        {/* Net Worth & Money Saved */}
+        <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
+          <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
+          <MoneySavedWidget transactions={transactions} hidden={hidden} mask={mask} />
+        </div>
+
         <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
           <Card>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
