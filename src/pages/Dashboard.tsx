@@ -57,16 +57,18 @@ const Dashboard = () => {
   const mask = (val: string) => hidden ? '••••••' : val;
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => {
     if (period === 'all') return transactions;
+    const month = now.getMonth();
+    const year = now.getFullYear();
     return transactions.filter(tx => {
       const d = parseISO(tx.date);
-      if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      return d.getFullYear() === now.getFullYear();
+      if (period === 'month') return d.getMonth() === month && d.getFullYear() === year;
+      return d.getFullYear() === year;
     });
-  }, [transactions, period]);
+  }, [transactions, period, now]);
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
   const income = useMemo(() => filtered.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
