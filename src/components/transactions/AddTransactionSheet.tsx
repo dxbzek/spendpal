@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { CATEGORIES, type TransactionType } from '@/types/finance';
+import { CATEGORIES, TRANSFER_CATEGORIES, type TransactionType } from '@/types/finance';
 import { format } from 'date-fns';
 
 interface Props {
@@ -42,14 +42,14 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
 
   const handleSubmit = async () => {
     if (isTransfer) {
-      if (!amount || !accountId || !toAccountId) return;
+      if (!amount || !category || !accountId || !toAccountId) return;
       await addTransaction({
         type,
         amount: parseFloat(amount),
         currency,
-        category: 'Transfer',
-        categoryIcon: '🔁',
-        merchant: 'Transfer',
+        category,
+        categoryIcon,
+        merchant: merchant || category,
         accountId,
         date,
         isRecurring: false,
@@ -203,23 +203,23 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             </div>
           )}
 
-          {/* Category - hidden for transfers */}
-          {!isTransfer && (
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Category</label>
-              <div className="grid grid-cols-5 gap-2">
-                {CATEGORIES.slice(0, 15).map(c => (
-                  <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
-                      category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
-                    }`}>
-                    <span className="text-xl">{c.icon}</span>
-                    <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
-                  </button>
-                ))}
-              </div>
+          {/* Category */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 block">
+              {isTransfer ? 'Transfer Type' : 'Category'}
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {(isTransfer ? TRANSFER_CATEGORIES : CATEGORIES.slice(0, 15)).map(c => (
+                <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
+                    category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                  }`}>
+                  <span className="text-xl">{c.icon}</span>
+                  <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Accounts */}
           <div>
@@ -255,13 +255,13 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
 
-          {/* Merchant - hidden for transfers */}
-          {!isTransfer && (
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Merchant (optional)</label>
-              <Input placeholder="e.g., Starbucks" value={merchant} onChange={e => setMerchant(e.target.value)} />
-            </div>
-          )}
+          {/* Merchant / Recipient */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">
+              {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
+            </label>
+            <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} />
+          </div>
 
           <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
             Add {type.charAt(0).toUpperCase() + type.slice(1)}

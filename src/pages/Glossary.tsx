@@ -71,7 +71,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     term: 'Transfer',
     definition:
-      'Moving money between your own accounts (e.g., from a debit card to a credit card payment). Transfers do not count as income or expenses.',
+      'Moving money between your own accounts or to others. Transfers have their own categories like Card Payment, Family, Gift, Loan, Allowance, Savings, etc. They do not count as income or expenses.',
   },
   {
     term: 'Expense',
