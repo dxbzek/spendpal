@@ -99,6 +99,16 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
   };
 
+  const isDuplicateTransaction = (row: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
+    return transactions.some(t =>
+      t.accountId === accountId &&
+      Math.abs(t.amount) === Math.abs(row.amount) &&
+      t.date === row.date &&
+      t.merchant.toLowerCase().trim() === row.merchant.toLowerCase().trim() &&
+      t.type === row.type
+    );
+  };
+
   const handleParse = async () => {
     if (!statementText || !accountId) {
       toast.error('Please upload a file and select an account');
@@ -106,7 +116,16 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
     const results = await categorizeStatement(statementText);
     if (results.length > 0) {
-      setParsed(results.map((r: Omit<ParsedRow, 'selected'>) => ({ ...r, date: normalizeDate(r.date), selected: true })));
+      const rows = results.map((r: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
+        const normalized = { ...r, date: normalizeDate(r.date) };
+        const isDup = isDuplicateTransaction(normalized);
+        return { ...normalized, selected: !isDup, isDuplicate: isDup };
+      });
+      setParsed(rows);
+      const dupCount = rows.filter((r: ParsedRow) => r.isDuplicate).length;
+      if (dupCount > 0) {
+        toast.warning(`${dupCount} potential duplicate${dupCount > 1 ? 's' : ''} detected and deselected`);
+      }
       setStep('review');
     } else {
       toast.error('Could not parse transactions from the file');
