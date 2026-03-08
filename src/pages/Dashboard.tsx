@@ -220,8 +220,9 @@ const Dashboard = () => {
             <p className="text-sm text-muted-foreground text-center py-4">No categorized expenses</p>
           ) : (
             <div className="space-y-2.5">
-              {categorySpending.slice(0, 5).map(([cat, data]) => {
+              {categorySpending.slice(0, 5).map(([cat, data], idx) => {
                 const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
+                const barColor = CATEGORY_CHART_COLORS[cat] || CATEGORY_CHART_COLORS._default(idx);
                 return (
                   <div key={cat}>
                     <div className="flex items-center justify-between mb-1">
@@ -229,7 +230,7 @@ const Dashboard = () => {
                       <span className="text-sm font-medium">{fmt(data.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full bg-primary" />
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
                     </div>
                   </div>
                 );
