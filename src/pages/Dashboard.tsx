@@ -41,7 +41,7 @@ const Dashboard = () => {
   useBudgetAlerts(budgets);
 
   const mask = (val: string) => hidden ? '••••••' : val;
-  const totalBalance = useMemo(() => accounts.reduce((s, a) => s + a.balance, 0), [accounts]);
+  const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
   const now = new Date();
 
   const filtered = useMemo(() => {
