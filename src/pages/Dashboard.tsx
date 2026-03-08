@@ -108,14 +108,9 @@ const Dashboard = () => {
       <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleHidden} className="text-primary-foreground/80">
-              {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-            <button onClick={() => navigate('/settings')} className="text-primary-foreground/80">
-              <Settings size={20} />
-            </button>
-          </div>
+          <button onClick={toggleHidden} className="text-primary-foreground/80">
+            {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
         </div>
         <div className="text-center">
           <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
