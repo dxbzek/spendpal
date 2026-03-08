@@ -32,6 +32,7 @@ const INSIGHT_COLORS = {
 };
 
 const AIAdvisor = () => {
+  const navigate = useNavigate();
   const { transactions, accounts, budgets, goals, addBudget } = useFinance();
   const { fmt, currency } = useCurrency();
   const { loading, generateBudgetAnalysis } = useAI();
