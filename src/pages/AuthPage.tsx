@@ -101,7 +101,7 @@ const AuthPage = () => {
           </Button>
         </form>
       </div>
-    </div>
+    </main>
   );
 };
 
