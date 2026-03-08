@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2 } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download } from 'lucide-react';
+import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
