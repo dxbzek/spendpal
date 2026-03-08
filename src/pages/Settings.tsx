@@ -23,7 +23,6 @@ const CURRENCIES = [
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
-  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [currency, setCurrency] = useState('AED');
