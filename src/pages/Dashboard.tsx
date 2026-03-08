@@ -57,7 +57,12 @@ const Dashboard = () => {
   const mask = (val: string) => hidden ? '••••••' : val;
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
-  const now = useMemo(() => new Date(), []);
+  const now = useMemo(() => {
+    const d = new Date();
+    // Re-derive only when month/year actually changes (stable within session)
+    return d;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [new Date().getMonth(), new Date().getFullYear()]);
 
   const filtered = useMemo(() => {
     if (period === 'all') return transactions;

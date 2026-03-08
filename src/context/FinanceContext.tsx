@@ -68,10 +68,12 @@ interface FinanceContextType {
   addTransaction: (tx: Omit<Transaction, 'id'>, options?: { skipBalanceUpdate?: boolean }) => Promise<void>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
+  bulkRemoveTransactions: (ids: string[]) => Promise<void>;
   // Budgets
   addBudget: (budget: Omit<Budget, 'id' | 'spent'>) => Promise<void>;
   updateBudget: (budget: Budget) => Promise<void>;
   removeBudget: (id: string) => Promise<void>;
+  bulkRemoveBudgets: (ids: string[]) => Promise<void>;
   // Goals
   addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>;
   updateGoal: (goal: Goal) => Promise<void>;
@@ -196,11 +198,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const account = accounts.find(a => a.id === tx.accountId);
       if (account) {
         const isCreditCard = account.type === 'credit';
-        // Credit cards: expenses increase balance (more debt), income decreases it (payment)
+        // Credit cards: balance = available limit. Expense decreases available, income (payment) increases it.
         // Regular accounts: expenses decrease balance, income increases it
         let newBalance: number;
         if (isCreditCard) {
-          newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
+          newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
         } else {
           newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
         }
@@ -238,10 +240,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const account = accounts.find(a => a.id === tx.accountId);
       if (account) {
         const isCreditCard = account.type === 'credit';
+        // Reverse: for credit cards (balance=available), expense had decreased it, income had increased it
         let newBalance: number;
         if (isCreditCard) {
-          // Reverse: income was subtracted, expense was added
-          newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
+          newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
         } else {
           newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
         }
@@ -279,6 +281,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const removeBudget = useCallback(async (id: string) => {
     const { error } = await supabase.from('budgets').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  const bulkRemoveTransactions = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const { error } = await supabase.from('transactions').delete().in('id', ids);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  const bulkRemoveBudgets = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const { error } = await supabase.from('budgets').delete().in('id', ids);
     if (error) { toast.error(error.message); return; }
     await fetchAll();
   }, [fetchAll]);
@@ -334,8 +350,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <FinanceContext.Provider value={{
       accounts, transactions, budgets, goals, loading,
       addAccount, updateAccount, removeAccount,
-      addTransaction, updateTransaction, removeTransaction,
-      addBudget, updateBudget, removeBudget,
+      addTransaction, updateTransaction, removeTransaction, bulkRemoveTransactions,
+      addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
       addGoal, updateGoal, removeGoal, addGoalProgress,
       refresh: fetchAll,
     }}>

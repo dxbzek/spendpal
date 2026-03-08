@@ -84,8 +84,9 @@ const AIAdvisor = () => {
   const monthKey = useMemo(() => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
-  }, []);
-  const now = useMemo(() => new Date(), []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [new Date().getMonth(), new Date().getFullYear()]);
+  const now = useMemo(() => new Date(), [new Date().getMonth(), new Date().getFullYear()]);
 
   // Build financial summary for AI
   const financialData = useMemo(() => {

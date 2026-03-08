@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const Transactions = () => {
-  const { transactions, accounts, removeTransaction } = useFinance();
+  const { transactions, accounts, removeTransaction, bulkRemoveTransactions } = useFinance();
   const { fmtSigned } = useCurrency();
   const { openEditSheet } = useEditTransaction();
   const [search, setSearch] = useState('');
@@ -295,9 +295,7 @@ const Transactions = () => {
               disabled={deleting}
               onClick={async () => {
                 setDeleting(true);
-                for (const tx of filtered) {
-                  await removeTransaction(tx.id);
-                }
+                await bulkRemoveTransactions(filtered.map(tx => tx.id));
                 setDeleting(false);
                 setShowDeleteAll(false);
               }}
