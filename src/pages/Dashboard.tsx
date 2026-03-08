@@ -261,6 +261,12 @@ const Dashboard = () => {
           </div>
         </Card>
 
+        {/* Credit Utilization Tracker */}
+        <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
+
+        {/* Expenses by Account Type */}
+        <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
+
         {/* Spending Pie Chart - hide when no data */}
         {categorySpending.length > 0 && (
           <Card>
