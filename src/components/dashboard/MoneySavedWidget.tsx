@@ -1,5 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
 import { PiggyBank } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import type { Transaction } from '@/types/finance';
 import { useMemo } from 'react';
 
