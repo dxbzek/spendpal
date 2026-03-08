@@ -168,8 +168,8 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Accounts */}
-        <Card>
+        {/* Accounts - spans full width */}
+        <Card className="md:col-span-2 lg:col-span-3">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Accounts</h2>
             <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
