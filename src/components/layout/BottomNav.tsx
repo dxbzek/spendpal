@@ -46,8 +46,8 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
         {/* FAB - centered */}
         <button onClick={onAddClick}
-          className="gradient-primary rounded-full w-11 h-11 flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-transform shrink-0">
-          <Plus size={22} className="text-primary-foreground" />
+          className="gradient-primary rounded-full w-9 h-9 flex items-center justify-center -mt-4 shadow-lg active:scale-95 transition-transform shrink-0">
+          <Plus size={18} className="text-primary-foreground" />
         </button>
 
         {NAV_ITEMS_RIGHT.map(item => (
