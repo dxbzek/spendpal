@@ -175,8 +175,8 @@ const Dashboard = () => {
                               <div className="text-right">
                                 <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
                                 {a.type === 'credit' && (
-                                  <p className="text-[10px] text-muted-foreground">Available</p>
-                                )}
+                                   <p className="text-[11px] font-medium text-primary/70">Available Limit</p>
+                                 )}
                               </div>
                               <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
                                 <Edit2 size={14} />
