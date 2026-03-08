@@ -203,23 +203,23 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             </div>
           )}
 
-          {/* Category - hidden for transfers */}
-          {!isTransfer && (
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Category</label>
-              <div className="grid grid-cols-5 gap-2">
-                {CATEGORIES.slice(0, 15).map(c => (
-                  <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
-                      category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
-                    }`}>
-                    <span className="text-xl">{c.icon}</span>
-                    <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
-                  </button>
-                ))}
-              </div>
+          {/* Category */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 block">
+              {isTransfer ? 'Transfer Type' : 'Category'}
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {(isTransfer ? TRANSFER_CATEGORIES : CATEGORIES.slice(0, 15)).map(c => (
+                <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
+                    category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                  }`}>
+                  <span className="text-xl">{c.icon}</span>
+                  <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Accounts */}
           <div>
