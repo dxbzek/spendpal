@@ -350,8 +350,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <FinanceContext.Provider value={{
       accounts, transactions, budgets, goals, loading,
       addAccount, updateAccount, removeAccount,
-      addTransaction, updateTransaction, removeTransaction,
-      addBudget, updateBudget, removeBudget,
+      addTransaction, updateTransaction, removeTransaction, bulkRemoveTransactions,
+      addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
       addGoal, updateGoal, removeGoal, addGoalProgress,
       refresh: fetchAll,
     }}>
