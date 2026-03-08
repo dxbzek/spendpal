@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { CATEGORIES, type TransactionType } from '@/types/finance';
+import { useCategories } from '@/hooks/useCategories';
+import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { format } from 'date-fns';
 
