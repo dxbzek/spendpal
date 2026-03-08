@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, LogOut, Trash2, Edit2 } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -91,8 +91,8 @@ const Dashboard = () => {
             <button onClick={() => setHidden(!hidden)} className="text-primary-foreground/80">
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
-            <button onClick={signOut} className="text-primary-foreground/80">
-              <LogOut size={20} />
+            <button onClick={() => navigate('/settings')} className="text-primary-foreground/80">
+              <Settings size={20} />
             </button>
           </div>
         </div>
