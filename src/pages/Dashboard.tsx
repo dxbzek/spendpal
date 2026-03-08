@@ -43,6 +43,7 @@ const Dashboard = () => {
   const now = new Date();
 
   const filtered = useMemo(() => {
+    if (period === 'all') return transactions;
     return transactions.filter(tx => {
       const d = parseISO(tx.date);
       if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
