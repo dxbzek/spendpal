@@ -232,7 +232,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      stream: type === "summary",
+      stream: type === "summary" || type === "monthly-report",
     };
 
     if (useToolCalling) {
