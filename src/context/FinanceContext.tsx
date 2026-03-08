@@ -238,10 +238,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const account = accounts.find(a => a.id === tx.accountId);
       if (account) {
         const isCreditCard = account.type === 'credit';
+        // Reverse: for credit cards (balance=available), expense had decreased it, income had increased it
         let newBalance: number;
         if (isCreditCard) {
-          // Reverse: income was subtracted, expense was added
-          newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
+          newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
         } else {
           newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
         }
