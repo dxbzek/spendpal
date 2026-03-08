@@ -109,7 +109,7 @@ const Transactions = () => {
                   {txs.map(tx => (
                     <div key={tx.id} className="flex items-center justify-between p-3.5 group">
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{tx.categoryIcon}</span>
+                        <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${getCategoryColor(tx.category)}`}>{tx.categoryIcon}</span>
                         <div>
                           <p className="text-sm font-medium">{tx.merchant}</p>
                           <p className="text-xs text-muted-foreground">{tx.category} · {getAccountName(tx.accountId)}</p>
