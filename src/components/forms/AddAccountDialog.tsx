@@ -36,6 +36,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       icon: ACCOUNT_ICONS[type],
       creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
       dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
+      statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
     };
 
     if (isEdit) {
