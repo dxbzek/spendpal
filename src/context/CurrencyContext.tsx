@@ -180,7 +180,7 @@ export const WORLD_CURRENCIES = Object.entries(CURRENCY_MAP).map(([code, { symbo
   label: `${code} (${symbol})`,
 }));
 
-const FRANKFURTER_API = 'https://api.frankfurter.app';
+const EXCHANGE_API = 'https://open.er-api.com/v6/latest';
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -197,36 +197,18 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [user]);
 
-  // Fetch secondary rate — Frankfurter only supports ECB currencies, so use USD as intermediary
+  // Fetch secondary rate using open.er-api.com (supports all currencies including AED)
   const fetchRate = useCallback(async () => {
     if (!secondaryCurrency || secondaryCurrency === currency) {
       setSecondaryRate(secondaryCurrency === currency ? 1 : null);
       return;
     }
     try {
-      // Try direct conversion first
-      let res = await fetch(`${FRANKFURTER_API}/latest?from=${currency}&to=${secondaryCurrency}`);
-      if (res.ok) {
-        const data = await res.json();
-        const rate = data.rates?.[secondaryCurrency];
-        if (rate) { setSecondaryRate(rate); return; }
-      }
-      // Fallback: use USD as intermediary (e.g. AED → USD → target)
-      const [resFrom, resTo] = await Promise.all([
-        fetch(`${FRANKFURTER_API}/latest?from=USD&to=${currency}`),
-        fetch(`${FRANKFURTER_API}/latest?from=USD&to=${secondaryCurrency}`),
-      ]);
-      if (resFrom.ok && resTo.ok) {
-        const dataFrom = await resFrom.json();
-        const dataTo = await resTo.json();
-        const rateFrom = dataFrom.rates?.[currency]; // USD → primary
-        const rateTo = dataTo.rates?.[secondaryCurrency]; // USD → secondary
-        if (rateFrom && rateTo) {
-          setSecondaryRate(rateTo / rateFrom); // primary → secondary
-          return;
-        }
-      }
-      setSecondaryRate(null);
+      const res = await fetch(`${EXCHANGE_API}/${currency}`);
+      if (!res.ok) { setSecondaryRate(null); return; }
+      const data = await res.json();
+      const rate = data.rates?.[secondaryCurrency];
+      setSecondaryRate(rate ?? null);
     } catch {
       setSecondaryRate(null);
     }
