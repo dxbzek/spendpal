@@ -208,24 +208,27 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Spending Pie Chart */}
-        <Card>
-          <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
-          <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
-        </Card>
+        {/* Spending Pie Chart - hide when no data */}
+        {categorySpending.length > 0 && (
+          <Card>
+            <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
+            <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
+          </Card>
+        )}
 
-        {/* Monthly Trend Line Chart */}
-        <Card>
-          <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
-          <MonthlyTrendChart transactions={transactions} />
-        </Card>
+        {/* Monthly Trend Line Chart - hide when no transactions */}
+        {transactions.length > 0 && (
+          <Card>
+            <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
+            <MonthlyTrendChart transactions={transactions} />
+          </Card>
+        )}
 
-        {/* Category spending list */}
-        <Card>
-          <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
-          {categorySpending.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No categorized expenses</p>
-          ) : (
+        {/* Category spending list - hide when no data */}
+        {categorySpending.length > 0 && (
+          <Card>
+            <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
+            {(
             <div className="space-y-2.5">
               {categorySpending.slice(0, 5).map(([cat, data], idx) => {
                 const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
