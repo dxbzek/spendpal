@@ -80,6 +80,10 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
                 <Input type="number" placeholder="20000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
               </div>
               <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Statement Date (day of month)</label>
+                <Input type="number" placeholder="1" min="1" max="31" value={statementDate} onChange={e => setStatementDate(e.target.value)} />
+              </div>
+              <div>
                 <label className="text-sm text-muted-foreground mb-1 block">Due Date (day of month)</label>
                 <Input type="number" placeholder="15" min="1" max="31" value={dueDate} onChange={e => setDueDate(e.target.value)} />
               </div>
