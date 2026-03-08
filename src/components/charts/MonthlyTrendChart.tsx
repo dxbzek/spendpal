@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { useMemo } from 'react';
 import { parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -31,18 +31,23 @@ const MonthlyTrendChart = ({ transactions }: Props) => {
 
   if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Not enough data for trends</p>;
 
-  const fmtAxis = (n: number) => `${(n / 1000).toFixed(1)}k`;
+  const maxVal = Math.max(...data.map(d => Math.max(d.Income, d.Expenses)));
+  const fmtAxis = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+    return String(n);
+  };
 
   return (
-    <ResponsiveContainer width="100%" height={180}>
-      <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -15 }}>
+    <ResponsiveContainer width="100%" height={200}>
+      <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
         <XAxis dataKey="month" tick={{ fontSize: 11 }} className="stroke-muted-foreground" />
-        <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 11 }} className="stroke-muted-foreground" />
+        <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 11 }} className="stroke-muted-foreground" domain={[0, Math.ceil(maxVal * 1.1)]} />
         <Tooltip formatter={(val: number) => fmt(val)}
           contentStyle={{ borderRadius: '0.75rem', fontSize: '0.75rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'hsl(var(--card))' }} />
-        <Line type="monotone" dataKey="Income" stroke="hsl(152, 62%, 42%)" strokeWidth={2.5} dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="Expenses" stroke="hsl(152, 50%, 28%)" strokeWidth={2.5} dot={{ r: 3 }} />
+        <Legend wrapperStyle={{ fontSize: '0.7rem' }} />
+        <Line type="monotone" dataKey="Income" stroke="hsl(152, 62%, 42%)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(152, 62%, 42%)' }} />
+        <Line type="monotone" dataKey="Expenses" stroke="hsl(0, 72%, 51%)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(0, 72%, 51%)' }} />
       </LineChart>
     </ResponsiveContainer>
   );

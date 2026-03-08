@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Goal } from '@/types/finance';
@@ -27,9 +31,19 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
   const { addGoal, updateGoal } = useFinance();
   const { currency } = useCurrency();
   const isEdit = !!editGoal;
-  const [name, setName] = useState(editGoal?.name || '');
-  const [goalType, setGoalType] = useState(editGoal?.type || '');
-  const [targetAmount, setTargetAmount] = useState(editGoal?.targetAmount?.toString() || '');
+  const [name, setName] = useState('');
+  const [goalType, setGoalType] = useState('');
+  const [targetAmount, setTargetAmount] = useState('');
+  const [deadline, setDeadline] = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    if (open) {
+      setName(editGoal?.name || '');
+      setGoalType(editGoal?.type || '');
+      setTargetAmount(editGoal?.targetAmount?.toString() || '');
+      setDeadline(editGoal?.deadline ? new Date(editGoal.deadline) : undefined);
+    }
+  }, [open, editGoal]);
 
   const selected = GOAL_TYPES.find(g => g.name === goalType);
 
@@ -41,6 +55,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
       type: goalType,
       targetAmount: parseFloat(targetAmount),
       savedAmount: editGoal?.savedAmount || 0,
+      deadline: deadline ? format(deadline, 'yyyy-MM-dd') : undefined,
       status: (editGoal?.status || 'active') as 'active' | 'completed' | 'paused',
     };
 
@@ -80,6 +95,25 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Target Amount ({currency})</label>
             <Input type="number" placeholder="10000" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Deadline (optional)</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-full flex items-center justify-between h-10 px-3 rounded-md border border-input bg-background text-sm">
+                  {deadline ? format(deadline, 'MMM d, yyyy') : <span className="text-muted-foreground">Pick a date</span>}
+                  <CalendarIcon size={16} className="text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={deadline} onSelect={setDeadline} disabled={(date) => date < new Date()} initialFocus />
+              </PopoverContent>
+            </Popover>
+            {deadline && (
+              <button onClick={() => setDeadline(undefined)} className="text-xs text-muted-foreground mt-1 hover:text-foreground">
+                Clear deadline
+              </button>
+            )}
           </div>
           <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || !targetAmount}
             className="w-full gradient-primary text-primary-foreground">
