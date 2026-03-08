@@ -35,7 +35,7 @@ serve(async (req) => {
 
     // Payload size limit (100KB)
     const body = await req.text();
-    if (body.length > 102400) {
+    if (body.length > 512000) {
       return new Response(JSON.stringify({ error: "Payload too large" }), {
         status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
