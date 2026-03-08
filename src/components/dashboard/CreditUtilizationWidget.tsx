@@ -1,5 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
 import { CreditCard } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import { motion } from 'framer-motion';
 import type { Account } from '@/types/finance';
 
