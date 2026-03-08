@@ -30,6 +30,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const [category, setCategory] = useState('');
   const [categoryIcon, setCategoryIcon] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [toAccountId, setToAccountId] = useState('');
   const [merchant, setMerchant] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isRecurring, setIsRecurring] = useState(false);
