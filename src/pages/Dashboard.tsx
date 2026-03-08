@@ -211,6 +211,7 @@ const Dashboard = () => {
                             <div className="flex items-center gap-2">
                               <div className="text-right">
                                 <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
+                                {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
                                 {a.type === 'credit' && (
                                    <p className="text-[11px] font-medium text-primary/70">Available Limit</p>
                                  )}
