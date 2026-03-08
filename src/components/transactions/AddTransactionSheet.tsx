@@ -28,6 +28,7 @@ const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
   const { accounts, addTransaction, updateTransaction, removeTransaction } = useFinance();
   const { currency } = useCurrency();
+  const { categories } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
