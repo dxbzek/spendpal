@@ -46,7 +46,7 @@ const Budgets = () => {
         <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
       </div>
 
-      <div className="px-5 space-y-4 pb-6">
+      <div className="px-5 md:px-6 space-y-4 pb-6">
         <div className="bg-card rounded-2xl p-4 card-shadow">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium">{overallPct}% spent</span>
@@ -77,8 +77,8 @@ const Budgets = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 90 ? 'bg-destructive/10 text-expense' : pct > 60 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
-                  <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
-                  <button onClick={() => setDeleteBudgetId(b.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
+                  <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
+                  <button onClick={() => setDeleteBudgetId(b.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
                 </div>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">

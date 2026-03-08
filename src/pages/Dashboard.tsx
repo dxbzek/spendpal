@@ -4,7 +4,7 @@ import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2, Search } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Trash2, Edit2, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -108,14 +108,9 @@ const Dashboard = () => {
       <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleHidden} className="text-primary-foreground/80">
-              {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-            <button onClick={() => navigate('/settings')} className="text-primary-foreground/80">
-              <Settings size={20} />
-            </button>
-          </div>
+          <button onClick={toggleHidden} className="text-primary-foreground/80">
+            {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
         </div>
         <div className="text-center">
           <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
@@ -157,7 +152,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="px-5 -mt-4 space-y-4 pb-6">
+      <div className="px-5 md:px-6 -mt-4 space-y-4 pb-6">
         <div className="grid grid-cols-2 gap-3">
           <Card>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
