@@ -278,22 +278,7 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {recurring.length > 0 && (
-          <Card>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading text-sm">Recurring Expenses</h2>
-              <span className="text-xs font-medium text-expense">{fmt(recurringTotal)}/mo</span>
-            </div>
-            <div className="space-y-2">
-              {recurring.map(r => (
-                <div key={r.id} className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-2"><span className="text-lg">{r.categoryIcon}</span><span className="text-sm">{r.merchant}</span></div>
-                  <span className="text-sm font-medium">{fmt(r.amount)}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
+        <RecurringTracker />
 
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">
