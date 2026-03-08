@@ -31,7 +31,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       name: name.trim(),
       type,
       balance: parseFloat(balance) || 0,
-      currency: 'AED',
+      currency,
       icon: ACCOUNT_ICONS[type],
       creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
       dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
