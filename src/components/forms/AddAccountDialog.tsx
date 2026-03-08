@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,15 +16,26 @@ interface Props {
 const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const { addAccount, updateAccount } = useFinance();
   const { currency } = useCurrency();
-  const [name, setName] = useState(editAccount?.name || '');
-  const [type, setType] = useState<AccountType>(editAccount?.type || 'debit');
-  const [balance, setBalance] = useState(editAccount?.balance?.toString() || '');
-  const [creditLimit, setCreditLimit] = useState(editAccount?.creditLimit?.toString() || '');
-  const [dueDate, setDueDate] = useState(editAccount?.dueDate?.toString() || '');
-  const [statementDate, setStatementDate] = useState(editAccount?.statementDate?.toString() || '');
+  const [name, setName] = useState('');
+  const [type, setType] = useState<AccountType>('debit');
+  const [balance, setBalance] = useState('');
+  const [creditLimit, setCreditLimit] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [statementDate, setStatementDate] = useState('');
 
-  // Reset form when editAccount changes
   const isEdit = !!editAccount;
+
+  // Sync form when editAccount changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      setName(editAccount?.name || '');
+      setType(editAccount?.type || 'debit');
+      setBalance(editAccount?.balance?.toString() || '');
+      setCreditLimit(editAccount?.creditLimit?.toString() || '');
+      setDueDate(editAccount?.dueDate?.toString() || '');
+      setStatementDate(editAccount?.statementDate?.toString() || '');
+    }
+  }, [open, editAccount]);
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -52,42 +63,51 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       <DialogContent className="max-w-sm mx-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Account' : 'Add Account'}</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {isEdit ? 'Update your account details below.' : 'Fill in the details for your new account.'}
+          </p>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Account Name</label>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">Account Name</label>
             <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Type</label>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">Type</label>
             <Select value={type} onValueChange={v => setType(v as AccountType)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="cash">💵 Cash</SelectItem>
                 <SelectItem value="debit">💳 Debit</SelectItem>
-                <SelectItem value="credit">🏦 Credit</SelectItem>
+                <SelectItem value="credit">🏦 Credit Card</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Balance ({currency})</label>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">
+              {type === 'credit' ? 'Outstanding Balance' : 'Balance'} ({currency})
+            </label>
             <Input type="number" placeholder="0.00" value={balance} onChange={e => setBalance(e.target.value)} />
           </div>
           {type === 'credit' && (
-            <>
+            <div className="space-y-4 rounded-xl bg-muted/50 p-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Credit Card Details</p>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Credit Limit ({currency})</label>
-                <Input type="number" placeholder="20000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Credit Limit ({currency})</label>
+                <Input type="number" placeholder="20,000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
               </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Statement Date (day of month)</label>
-                <Input type="number" placeholder="1" min="1" max="31" value={statementDate} onChange={e => setStatementDate(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Statement Day</label>
+                  <Input type="number" placeholder="1" min="1" max="31" value={statementDate} onChange={e => setStatementDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Due Day</label>
+                  <Input type="number" placeholder="15" min="1" max="31" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Due Date (day of month)</label>
-                <Input type="number" placeholder="15" min="1" max="31" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-              </div>
-            </>
+              <p className="text-[11px] text-muted-foreground">Day of month when your statement generates and payment is due.</p>
+            </div>
           )}
           <Button onClick={handleSubmit} disabled={!name.trim()} className="w-full gradient-primary text-primary-foreground">
             {isEdit ? 'Save Changes' : 'Add Account'}

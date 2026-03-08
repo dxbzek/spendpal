@@ -7,7 +7,9 @@ import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
+import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
 import { getCategoryChartColor } from '@/utils/categoryColors';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -20,6 +22,7 @@ const Transactions = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [showImport, setShowImport] = useState(false);
   const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const filtered = useMemo(() => {
     return transactions.filter(tx => {
@@ -40,6 +43,35 @@ const Transactions = () => {
     });
     return Object.entries(map);
   }, [filtered]);
+
+  const renderTxContent = (tx: typeof filtered[0], idx: number) => {
+    const catColor = getCategoryChartColor(tx.category, idx);
+    return (
+      <div className="flex items-center justify-between p-3.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+            style={{ backgroundColor: catColor + '1A', color: catColor }}>
+            {tx.categoryIcon}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{tx.merchant}</p>
+            <p className="text-xs text-muted-foreground truncate">{tx.category} · {getAccountName(tx.accountId)}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
+            {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
+          </p>
+          {!isMobile && (
+            <button onClick={() => setDeleteTxId(tx.id)}
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="animate-fade-in">
@@ -87,33 +119,18 @@ const Transactions = () => {
             {grouped.map(([date, txs]) => (
               <motion.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
                 <p className="text-xs text-muted-foreground font-medium mb-2">{date}</p>
-                <div className="bg-card rounded-2xl card-shadow divide-y divide-border">
-                  {txs.map((tx, idx) => {
-                    const catColor = getCategoryChartColor(tx.category, idx);
-                    return (
-                      <div key={tx.id} className="flex items-center justify-between p-3.5 group">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                            style={{ backgroundColor: catColor + '1A', color: catColor }}>
-                            {tx.categoryIcon}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{tx.merchant}</p>
-                            <p className="text-xs text-muted-foreground truncate">{tx.category} · {getAccountName(tx.accountId)}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
-                            {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
-                          </p>
-                          <button onClick={() => setDeleteTxId(tx.id)}
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                <div className="bg-card rounded-2xl card-shadow overflow-hidden divide-y divide-border">
+                  {txs.map((tx, idx) => (
+                    isMobile ? (
+                      <SwipeableTransaction key={tx.id} onDelete={() => setDeleteTxId(tx.id)}>
+                        {renderTxContent(tx, idx)}
+                      </SwipeableTransaction>
+                    ) : (
+                      <div key={tx.id} className="group">
+                        {renderTxContent(tx, idx)}
                       </div>
-                    );
-                  })}
+                    )
+                  ))}
                 </div>
               </motion.div>
             ))}
@@ -127,7 +144,7 @@ const Transactions = () => {
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>This cannot be undone. The account balance will be adjusted.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
