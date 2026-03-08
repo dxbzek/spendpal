@@ -27,7 +27,7 @@ import {
 
 
 const Dashboard = () => {
-  const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
+  const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
   const { fmt, fmtSigned, currency: userCurrency, fmtSecondary, secondaryCurrency, setSecondaryCurrency } = useCurrency();
   const [secSearch, setSecSearch] = useState('');
