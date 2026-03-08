@@ -155,7 +155,7 @@ const Dashboard = () => {
       <div className="px-5 md:px-6 -mt-4 space-y-4 pb-6">
         {/* Responsive grid wrapper for dashboard widgets */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
           <Card>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-lg font-heading text-income">{mask(fmt(income))}</p>
