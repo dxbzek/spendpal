@@ -83,10 +83,44 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
   const handleSubmit = async () => {
     if (isTransfer) {
-      if (!amount || !category || !accountId || (!isEditing && !toAccountId)) return;
-    } else {
-      if (!amount || !category || !accountId) return;
+      if (!amount || !accountId || !toAccountId || accountId === toAccountId) return;
+      // Create two transactions: expense from source, income to destination
+      const transferNote = note || `Transfer to ${accounts.find(a => a.id === toAccountId)?.name || 'account'}`;
+      const transferNoteIn = note || `Transfer from ${accounts.find(a => a.id === accountId)?.name || 'account'}`;
+      await addTransaction({
+        type: 'expense',
+        amount: parseFloat(amount),
+        currency,
+        category: 'Transfer',
+        categoryIcon: '🔁',
+        merchant: merchant || 'Transfer',
+        accountId,
+        date,
+        note: transferNote,
+        isRecurring: false,
+        totalInstallments: null,
+        currentInstallment: null,
+      });
+      await addTransaction({
+        type: 'income',
+        amount: parseFloat(amount),
+        currency,
+        category: 'Transfer',
+        categoryIcon: '🔁',
+        merchant: merchant || 'Transfer',
+        accountId: toAccountId,
+        date,
+        note: transferNoteIn,
+        isRecurring: false,
+        totalInstallments: null,
+        currentInstallment: null,
+      });
+      resetForm();
+      onOpenChange(false);
+      return;
     }
+
+    if (!amount || !category || !accountId) return;
 
     const txData = {
       type,
@@ -99,8 +133,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       date,
       note: note || null,
       isRecurring: isTransfer ? false : isRecurring,
-      totalInstallments: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(totalInstallments) || 12) : null,
-      currentInstallment: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(currentInstallment) || 1) : null,
+      totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : null,
+      currentInstallment: (hasInstallments && isRecurring) ? (parseInt(currentInstallment) || 1) : null,
     };
 
     if (isEditing) {
