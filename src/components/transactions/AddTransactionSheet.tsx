@@ -139,85 +139,93 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
               className="text-2xl font-heading h-14 text-center" />
           </div>
 
-          {/* Recurring toggle */}
-          <div className="bg-muted/50 rounded-xl p-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Recurring</p>
-                <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
-              </div>
-              <Switch checked={isRecurring} onCheckedChange={(v) => {
-                setIsRecurring(v);
-                if (v) setHasInstallments(true);
-                if (!v) setHasInstallments(false);
-              }} />
-            </div>
-
-            {isRecurring && (
+          {/* Recurring toggle - hidden for transfers */}
+          {!isTransfer && (
+            <div className="bg-muted/50 rounded-xl p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">Installment Plan</p>
-                  <p className="text-xs text-muted-foreground">Track payment progress</p>
+                  <p className="text-sm font-medium">Recurring</p>
+                  <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
                 </div>
-                <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
+                <Switch checked={isRecurring} onCheckedChange={(v) => {
+                  setIsRecurring(v);
+                  if (v) setHasInstallments(true);
+                  if (!v) setHasInstallments(false);
+                }} />
               </div>
-            )}
 
-            {hasInstallments && isRecurring && (
-              <div className="space-y-3 pt-2 border-t border-border">
-                <div className="grid grid-cols-2 gap-3">
+              {isRecurring && (
+                <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
-                    <Select value={totalInstallments} onValueChange={setTotalInstallments}>
-                      <SelectTrigger className="h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {INSTALLMENT_OPTIONS.map(n => (
-                          <SelectItem key={n} value={String(n)}>{n} months</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <p className="text-sm font-medium">Installment Plan</p>
+                    <p className="text-xs text-muted-foreground">Track payment progress</p>
                   </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
-                    <Input type="number" min="1" max={totalInstallments}
-                      value={currentInstallment} onChange={e => setCurrentInstallment(e.target.value)}
-                      className="h-10" />
-                  </div>
+                  <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
                 </div>
-                {amount && (
-                  <div className="bg-primary/5 rounded-lg p-2.5 text-center">
-                    <p className="text-xs text-muted-foreground">Total Cost</p>
-                    <p className="text-sm font-heading text-foreground">
-                      {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Remaining: {((parseInt(totalInstallments) - parseInt(currentInstallment)) * (parseFloat(amount) || 0)).toLocaleString()} {currency}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              )}
 
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">Category</label>
-            <div className="grid grid-cols-5 gap-2">
-              {CATEGORIES.slice(0, 15).map(c => (
-                <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
-                    category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
-                  }`}>
-                  <span className="text-xl">{c.icon}</span>
-                  <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
-                </button>
-              ))}
+              {hasInstallments && isRecurring && (
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
+                      <Select value={totalInstallments} onValueChange={setTotalInstallments}>
+                        <SelectTrigger className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {INSTALLMENT_OPTIONS.map(n => (
+                            <SelectItem key={n} value={String(n)}>{n} months</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
+                      <Input type="number" min="1" max={totalInstallments}
+                        value={currentInstallment} onChange={e => setCurrentInstallment(e.target.value)}
+                        className="h-10" />
+                    </div>
+                  </div>
+                  {amount && (
+                    <div className="bg-primary/5 rounded-lg p-2.5 text-center">
+                      <p className="text-xs text-muted-foreground">Total Cost</p>
+                      <p className="text-sm font-heading text-foreground">
+                        {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Remaining: {((parseInt(totalInstallments) - parseInt(currentInstallment)) * (parseFloat(amount) || 0)).toLocaleString()} {currency}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
+          {/* Category - hidden for transfers */}
+          {!isTransfer && (
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">Category</label>
+              <div className="grid grid-cols-5 gap-2">
+                {CATEGORIES.slice(0, 15).map(c => (
+                  <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
+                      category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                    }`}>
+                    <span className="text-xl">{c.icon}</span>
+                    <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Accounts */}
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Account</label>
+            <label className="text-sm text-muted-foreground mb-1 block">
+              {isTransfer ? 'From Account' : 'Account'}
+            </label>
             <Select value={accountId} onValueChange={setAccountId}>
               <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
               <SelectContent>
@@ -228,15 +236,32 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             </Select>
           </div>
 
+          {isTransfer && (
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">To Account</label>
+              <Select value={toAccountId} onValueChange={setToAccountId}>
+                <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
+                <SelectContent>
+                  {accounts.filter(a => a.id !== accountId).map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Date</label>
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
 
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Merchant (optional)</label>
-            <Input placeholder="e.g., Starbucks" value={merchant} onChange={e => setMerchant(e.target.value)} />
-          </div>
+          {/* Merchant - hidden for transfers */}
+          {!isTransfer && (
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Merchant (optional)</label>
+              <Input placeholder="e.g., Starbucks" value={merchant} onChange={e => setMerchant(e.target.value)} />
+            </div>
+          )}
 
           <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
             Add {type.charAt(0).toUpperCase() + type.slice(1)}
