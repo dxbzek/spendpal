@@ -188,8 +188,9 @@ const Settings = () => {
           </Button>
         </div>
 
-        {/* Currency Converter */}
-        <CurrencyConverter baseCurrency={currency} />
+
+        {/* Secondary Currency */}
+        <SecondaryCurrencyCard />
 
         {/* Sign Out */}
         <button onClick={signOut}

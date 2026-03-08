@@ -167,6 +167,10 @@ interface CurrencyContextType {
   fmt: (n: number) => string;
   fmtSigned: (n: number, type: 'income' | 'expense' | 'transfer') => string;
   setCurrency: (code: string) => void;
+  secondaryCurrency: string | null;
+  setSecondaryCurrency: (code: string | null) => void;
+  fmtSecondary: (n: number) => string | null;
+  secondaryRate: number | null;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | null>(null);
@@ -176,9 +180,15 @@ export const WORLD_CURRENCIES = Object.entries(CURRENCY_MAP).map(([code, { symbo
   label: `${code} (${symbol})`,
 }));
 
+const FRANKFURTER_API = 'https://api.frankfurter.app';
+
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [currency, setCurrencyState] = useState('AED');
+  const [secondaryCurrency, setSecondaryCurrencyState] = useState<string | null>(() => {
+    return localStorage.getItem('secondaryCurrency') || null;
+  });
+  const [secondaryRate, setSecondaryRate] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -187,7 +197,36 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [user]);
 
+  // Fetch secondary rate
+  const fetchRate = useCallback(async () => {
+    if (!secondaryCurrency || secondaryCurrency === currency) {
+      setSecondaryRate(secondaryCurrency === currency ? 1 : null);
+      return;
+    }
+    try {
+      const res = await fetch(`${FRANKFURTER_API}/latest?from=${currency}&to=${secondaryCurrency}`);
+      if (!res.ok) { setSecondaryRate(null); return; }
+      const data = await res.json();
+      setSecondaryRate(data.rates?.[secondaryCurrency] ?? null);
+    } catch {
+      setSecondaryRate(null);
+    }
+  }, [currency, secondaryCurrency]);
+
+  useEffect(() => { fetchRate(); }, [fetchRate]);
+
+  const setSecondaryCurrency = (code: string | null) => {
+    setSecondaryCurrencyState(code);
+    if (code) {
+      localStorage.setItem('secondaryCurrency', code);
+    } else {
+      localStorage.removeItem('secondaryCurrency');
+      setSecondaryRate(null);
+    }
+  };
+
   const info = CURRENCY_MAP[currency] || CURRENCY_MAP.AED;
+  const secondaryInfo = secondaryCurrency ? CURRENCY_MAP[secondaryCurrency] : null;
 
   const fmt = (n: number) => `${info.symbol} ${n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -196,12 +235,21 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return `${prefix}${info.symbol} ${n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const fmtSecondary = (n: number): string | null => {
+    if (!secondaryCurrency || !secondaryInfo || secondaryRate === null) return null;
+    const converted = n * secondaryRate;
+    return `${secondaryInfo.symbol} ${converted.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   const setCurrency = (code: string) => {
     setCurrencyState(code);
   };
 
   return (
-    <CurrencyContext.Provider value={{ currency, symbol: info.symbol, fmt, fmtSigned, setCurrency }}>
+    <CurrencyContext.Provider value={{
+      currency, symbol: info.symbol, fmt, fmtSigned, setCurrency,
+      secondaryCurrency, setSecondaryCurrency, fmtSecondary, secondaryRate,
+    }}>
       {children}
     </CurrencyContext.Provider>
   );
