@@ -30,14 +30,41 @@ const Transactions = () => {
   const [deleting, setDeleting] = useState(false);
   const isMobile = useIsMobile();
 
+  // Merge transfer pairs: match expense+income with same date, amount, category='Transfer'
+  const { mergedTransactions, transferPairs } = useMemo(() => {
+    const pairs = new Map<string, { from: typeof transactions[0]; to: typeof transactions[0] }>();
+    const pairedIds = new Set<string>();
+    
+    // Find transfer pairs
+    const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
+    const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
+    
+    for (const exp of transferExpenses) {
+      const match = transferIncomes.find(inc => 
+        inc.date === exp.date && 
+        inc.amount === exp.amount && 
+        !pairedIds.has(inc.id)
+      );
+      if (match) {
+        pairs.set(exp.id, { from: exp, to: match });
+        pairedIds.add(exp.id);
+        pairedIds.add(match.id);
+      }
+    }
+    
+    // Filter out the "income" side of paired transfers
+    const merged = transactions.filter(tx => !pairedIds.has(tx.id) || pairs.has(tx.id));
+    return { mergedTransactions: merged, transferPairs: pairs };
+  }, [transactions]);
+
   const filtered = useMemo(() => {
-    return transactions.filter(tx => {
+    return mergedTransactions.filter(tx => {
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase());
-      const matchType = filterType === 'all' || tx.type === filterType;
+      const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && tx.category === 'Transfer');
       const matchCategory = filterCategory === 'all' || tx.category === filterCategory;
       return matchSearch && matchType && matchCategory;
     });
-  }, [transactions, search, filterType, filterCategory]);
+  }, [mergedTransactions, search, filterType, filterCategory]);
 
   const uniqueCategories = useMemo(() => {
     const cats = [...new Set(transactions.map(tx => tx.category))];
