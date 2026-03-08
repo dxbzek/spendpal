@@ -5,11 +5,13 @@ import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import AddGoalDialog from '@/components/forms/AddGoalDialog';
 
 const Goals = () => {
   const { goals, addGoalProgress } = useFinance();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
+  const [showAddGoal, setShowAddGoal] = useState(false);
 
   const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
   const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0);
@@ -32,7 +34,8 @@ const Goals = () => {
       <div className="gradient-goals px-5 pt-12 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
-          <button className="bg-primary-foreground/20 rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
+          <button onClick={() => setShowAddGoal(true)}
+            className="bg-primary-foreground/20 rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
             <Plus size={14} /> New Goal
           </button>
         </div>
@@ -122,6 +125,7 @@ const Goals = () => {
       </Dialog>
 
       <div className="h-4" />
+      <AddGoalDialog open={showAddGoal} onOpenChange={setShowAddGoal} />
     </div>
   );
 };

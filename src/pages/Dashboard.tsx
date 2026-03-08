@@ -1,15 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
+import { useAI } from '@/hooks/useAI';
+import AddAccountDialog from '@/components/forms/AddAccountDialog';
 
 const Dashboard = () => {
   const { accounts, transactions, budgets } = useFinance();
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(false);
   const [period, setPeriod] = useState<'month' | 'year'>('month');
+  const [showAddAccount, setShowAddAccount] = useState(false);
+  const { loading: aiLoading, summaryText, generateSummary } = useAI();
 
   const mask = (val: string) => hidden ? '••••••' : val;
 
@@ -42,9 +46,7 @@ const Dashboard = () => {
 
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
 
-  const recurring = useMemo(() => {
-    return transactions.filter(t => t.isRecurring);
-  }, [transactions]);
+  const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
   const recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
 
   const recentTx = transactions.slice(0, 5);
@@ -54,6 +56,16 @@ const Dashboard = () => {
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
     <div className={`bg-card rounded-2xl p-4 card-shadow ${className}`}>{children}</div>
   );
+
+  const handleGenerateSummary = () => {
+    generateSummary({
+      income, expenses,
+      categories: categorySpending.map(([cat, data]) => ({ category: cat, amount: data.total })),
+      totalBalance,
+      budgets: budgets.map(b => ({ category: b.category, budgeted: b.amount, spent: b.spent })),
+      recurring: recurring.map(r => ({ merchant: r.merchant, amount: r.amount })),
+    });
+  };
 
   return (
     <div className="animate-fade-in">
@@ -65,16 +77,12 @@ const Dashboard = () => {
             {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
-
-        {/* Total Balance */}
         <div className="text-center">
           <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
-          <p className={`text-3xl font-heading text-primary-foreground ${totalBalance < 0 ? '' : ''}`}>
+          <p className="text-3xl font-heading text-primary-foreground">
             {mask(`د.إ ${fmt(totalBalance)}`)}
           </p>
         </div>
-
-        {/* Period toggle */}
         <div className="flex justify-center mt-4">
           <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
             {(['month', 'year'] as const).map(p => (
@@ -106,7 +114,7 @@ const Dashboard = () => {
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Accounts</h2>
-            <button className="text-xs text-primary font-medium flex items-center gap-1">
+            <button onClick={() => setShowAddAccount(true)} className="text-xs text-primary font-medium flex items-center gap-1">
               <Plus size={14} /> Add
             </button>
           </div>
@@ -140,15 +148,12 @@ const Dashboard = () => {
                 return (
                   <div key={cat}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm flex items-center gap-2">
-                        <span>{data.icon}</span> {cat}
-                      </span>
+                      <span className="text-sm flex items-center gap-2"><span>{data.icon}</span> {cat}</span>
                       <span className="text-sm font-medium">د.إ {fmt(data.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, ease: 'easeOut' }}
-                        className="h-full rounded-full bg-primary" />
+                        transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
                     </div>
                   </div>
                 );
@@ -230,10 +235,17 @@ const Dashboard = () => {
             <Sparkles size={16} className="text-primary" />
             <h2 className="font-heading text-sm">AI Summary</h2>
           </div>
-          <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
-          <button className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2">
-            <Sparkles size={14} /> Generate Summary
-          </button>
+          {summaryText ? (
+            <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
+          ) : (
+            <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
+          )}
+          {!summaryText && (
+            <button onClick={handleGenerateSummary} disabled={aiLoading}
+              className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+              {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
+            </button>
+          )}
         </Card>
 
         {/* Recent Transactions */}
@@ -267,8 +279,8 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Bottom spacer */}
       <div className="h-4" />
+      <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} />
     </div>
   );
 };
