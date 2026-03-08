@@ -91,8 +91,8 @@ const Dashboard = () => {
             <button onClick={() => setHidden(!hidden)} className="text-primary-foreground/80">
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
-            <button onClick={signOut} className="text-primary-foreground/80">
-              <LogOut size={20} />
+            <button onClick={() => navigate('/settings')} className="text-primary-foreground/80">
+              <Settings size={20} />
             </button>
           </div>
         </div>
