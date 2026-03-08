@@ -73,6 +73,19 @@ export const CATEGORIES = [
   { name: 'Other', icon: '📌' },
 ] as const;
 
+export const TRANSFER_CATEGORIES = [
+  { name: 'Card Payment', icon: '💳' },
+  { name: 'Family', icon: '👨‍👩‍👧' },
+  { name: 'Allowance', icon: '🤝' },
+  { name: 'Gift', icon: '🎁' },
+  { name: 'Loan', icon: '🏦' },
+  { name: 'Repayment', icon: '💸' },
+  { name: 'Savings', icon: '🐖' },
+  { name: 'Investment', icon: '📈' },
+  { name: 'Personal', icon: '👤' },
+  { name: 'Other Transfer', icon: '🔁' },
+] as const;
+
 export const ACCOUNT_ICONS: Record<AccountType, string> = {
   cash: '💵',
   debit: '💳',
