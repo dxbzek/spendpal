@@ -10,6 +10,7 @@ import ImportStatementSheet from '@/components/transactions/ImportStatementSheet
 import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
 import { getCategoryChartColor } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useEditTransaction } from '@/components/layout/AppLayout';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -18,6 +19,7 @@ import {
 const Transactions = () => {
   const { transactions, accounts, removeTransaction } = useFinance();
   const { fmtSigned } = useCurrency();
+  const { openEditSheet } = useEditTransaction();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [showImport, setShowImport] = useState(false);
@@ -50,10 +52,13 @@ const Transactions = () => {
   const renderTxContent = (tx: typeof filtered[0], idx: number) => {
     const catColor = getCategoryChartColor(tx.category, idx);
     return (
-      <div className="flex items-center justify-between p-4">
+      <div
+        className="flex items-center justify-between p-4 cursor-pointer active:bg-muted/50 transition-colors"
+        onClick={() => openEditSheet(tx)}
+      >
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0"
-            style={{ backgroundColor: catColor + '1A', color: catColor }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
+            style={{ backgroundColor: catColor + '1A' }}>
             {tx.categoryIcon}
           </div>
            <div className="min-w-0">
@@ -78,7 +83,7 @@ const Transactions = () => {
             {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
           </p>
           {!isMobile && (
-            <button onClick={() => setDeleteTxId(tx.id)}
+            <button onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
               <Trash2 size={14} />
             </button>
@@ -113,7 +118,7 @@ const Transactions = () => {
 
         <div className="relative mb-3">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search transactions…" value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
+          <Input placeholder="Search transactions..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
         </div>
 
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
@@ -196,7 +201,7 @@ const Transactions = () => {
                 setShowDeleteAll(false);
               }}
               className="bg-destructive text-destructive-foreground">
-              {deleting ? 'Deleting…' : `Delete ${filtered.length} Transactions`}
+              {deleting ? 'Deleting...' : `Delete ${filtered.length} Transactions`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
