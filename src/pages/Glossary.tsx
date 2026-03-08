@@ -16,12 +16,12 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     term: 'Credit Utilization',
     definition:
-      'The percentage of your credit card limit that you've spent. For example, if your limit is 10,000 and you've used 3,000, your utilization is 30%. Keeping it below 30% is generally recommended.',
+      'The percentage of your credit card limit that you have spent. For example, if your limit is 10,000 and you have used 3,000, your utilization is 30%. Keeping it below 30% is generally recommended.',
   },
   {
     term: 'Available Limit',
     definition:
-      'The remaining amount you can still spend on a credit card. It equals Credit Limit minus your outstanding balance (what you've spent).',
+      'The remaining amount you can still spend on a credit card. It equals Credit Limit minus your outstanding balance (what you have spent).',
   },
   {
     term: 'Statement Date',
@@ -31,7 +31,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     term: 'Due Date',
     definition:
-      'The deadline to pay your credit card bill to avoid late fees and interest charges. This is typically 15–25 days after the statement date.',
+      'The deadline to pay your credit card bill to avoid late fees and interest charges. This is typically 15-25 days after the statement date.',
   },
   {
     term: 'Credit Limit',
@@ -46,7 +46,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     term: 'Installment Plan',
     definition:
-      'A payment arrangement where a large purchase is split into equal monthly payments. The app tracks which installment you're on and how much remains.',
+      'A payment arrangement where a large purchase is split into equal monthly payments. The app tracks which installment you are on and how much remains.',
   },
   {
     term: 'Total Installments',
@@ -56,22 +56,22 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     term: 'Current Installment',
     definition:
-      'Which payment number you're currently on in an installment plan. For example, "4 of 12" means you've made 4 out of 12 payments.',
+      'Which payment number you are currently on in an installment plan. For example, "4 of 12" means you have made 4 out of 12 payments.',
   },
   {
     term: 'Budget',
     definition:
-      'A spending limit you set for a specific category (like Groceries or Dining) for a given month. The app tracks how much you've spent versus your budgeted amount.',
+      'A spending limit you set for a specific category (like Groceries or Dining) for a given month. The app tracks how much you have spent versus your budgeted amount.',
   },
   {
     term: 'Goal',
     definition:
-      'A savings target you're working toward, such as an emergency fund or vacation. You can track progress and add contributions over time.',
+      'A savings target you are working toward, such as an emergency fund or vacation. You can track progress and add contributions over time.',
   },
   {
     term: 'Transfer',
     definition:
-      'Moving money between your own accounts (e.g., from a debit card to a credit card payment). Transfers don't count as income or expenses.',
+      'Moving money between your own accounts (e.g., from a debit card to a credit card payment). Transfers do not count as income or expenses.',
   },
   {
     term: 'Expense',
@@ -124,7 +124,6 @@ const Glossary = () => {
 
   return (
     <div className="animate-fade-in pb-24 md:pb-8">
-      {/* Header */}
       <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl mb-6">
         <div className="flex items-center gap-3">
           <BookOpen size={24} className="text-primary-foreground" />
