@@ -1,6 +1,11 @@
 import { useState, useMemo } from 'react';
 import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
+import BudgetAlertBanners from '@/components/dashboard/BudgetAlertBanners';
+import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
+import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
+import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
+import MonthlyReportCard from '@/components/dashboard/MonthlyReportCard';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
@@ -22,7 +27,7 @@ import {
 
 
 const Dashboard = () => {
-  const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
+  const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
   const { fmt, fmtSigned, currency: userCurrency, fmtSecondary, secondaryCurrency, setSecondaryCurrency } = useCurrency();
   const [secSearch, setSecSearch] = useState('');
@@ -153,8 +158,18 @@ const Dashboard = () => {
       </div>
 
       <div className="px-5 md:px-6 -mt-4 space-y-4 pb-6">
+        {/* Budget overspending alerts */}
+        <BudgetAlertBanners budgets={budgets} />
+
         {/* Responsive grid wrapper for dashboard widgets */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        {/* Net Worth & Money Saved */}
+        <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
+          <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
+          <MoneySavedWidget transactions={transactions} hidden={hidden} mask={mask} />
+        </div>
+
         <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
           <Card>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
@@ -321,9 +336,15 @@ const Dashboard = () => {
           </Card>
         )}
 
+        {/* Upcoming Bills */}
+        <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
+
         <div className="md:col-span-2 lg:col-span-3">
           <RecurringTracker />
         </div>
+
+        {/* Monthly AI Report */}
+        <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
 
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">

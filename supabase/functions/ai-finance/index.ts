@@ -73,6 +73,27 @@ Category icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱
 Only return the JSON array, no other text.`;
       userPrompt = `Here are my bank statement transactions:\n${data}`;
 
+    } else if (type === "monthly-report") {
+      systemPrompt = `You are a personal finance analyst for a UAE resident. Generate a comprehensive monthly financial report. Structure it with clear sections using markdown-style headers:
+
+## 📊 Monthly Overview
+Summarize income, expenses, net savings with percentage changes.
+
+## 🏷️ Top Spending Categories
+Rank categories by spending, note any unusual spikes.
+
+## 📋 Budget Performance
+Compare actual spending to budgets. Highlight over/under budget categories.
+
+## 🎯 Goal Progress
+Summarize progress toward savings goals.
+
+## 💡 Key Insights & Recommendations
+3-4 actionable tips based on the data.
+
+Use AED (د.إ) currency. Be specific with numbers. Keep tone professional but friendly.`;
+      userPrompt = `Generate my monthly financial report:\n${JSON.stringify(data)}`;
+
     } else if (type === "budget-advisor") {
       useToolCalling = true;
       systemPrompt = `You are an expert personal finance advisor specializing in budgeting methods. Analyze the user's complete financial picture and provide a comprehensive budget recommendation.
@@ -211,7 +232,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      stream: type === "summary",
+      stream: type === "summary" || type === "monthly-report",
     };
 
     if (useToolCalling) {
@@ -247,7 +268,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       });
     }
 
-    if (type === "summary") {
+    if (type === "summary" || type === "monthly-report") {
       return new Response(response.body, {
         headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
