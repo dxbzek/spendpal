@@ -1,1 +1,4 @@
 project_id = "vffaahwswucumiytanvv"
+
+[functions.ai-finance]
+verify_jwt = false
