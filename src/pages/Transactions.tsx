@@ -35,6 +35,7 @@ const Transactions = () => {
   }, [transactions, search, filterType]);
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
+  const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
 
   const grouped = useMemo(() => {
     const map: Record<string, typeof filtered> = {};
