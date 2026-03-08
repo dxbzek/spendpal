@@ -24,7 +24,11 @@ import {
 const Dashboard = () => {
   const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
-  const { fmt, fmtSigned, currency: userCurrency } = useCurrency();
+  const { fmt, fmtSigned, currency: userCurrency, fmtSecondary, secondaryCurrency, setSecondaryCurrency } = useCurrency();
+  const [secSearch, setSecSearch] = useState('');
+  const filteredSecCurrencies = secSearch
+    ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
+    : WORLD_CURRENCIES;
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(() => localStorage.getItem('balanceHidden') === 'true');
 
