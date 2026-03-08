@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useAI, type BudgetAnalysis } from '@/hooks/useAI';
@@ -6,7 +7,7 @@ import { parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap,
+  Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -31,6 +32,7 @@ const INSIGHT_COLORS = {
 };
 
 const AIAdvisor = () => {
+  const navigate = useNavigate();
   const { transactions, accounts, budgets, goals, addBudget } = useFinance();
   const { fmt, currency } = useCurrency();
   const { loading, generateBudgetAnalysis } = useAI();
@@ -299,7 +301,7 @@ const AIAdvisor = () => {
               {/* Budget Simulation */}
               <div className="bg-card rounded-2xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Budget Method Simulation</h3>
-                <p className="text-xs text-muted-foreground mb-3">Estimated monthly savings with each method</p>
+                <p className="text-xs text-muted-foreground mb-3">Estimated monthly savings with each method — tap to select</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {([
                     { key: 'envelope', label: 'Envelope', value: analysis.simulation.envelope },
@@ -322,6 +324,40 @@ const AIAdvisor = () => {
                     </button>
                   ))}
                 </div>
+                <Button
+                  onClick={async () => {
+                    if (!analysis.suggestedEnvelopes) return;
+                    setApplyingEnvelopes(true);
+                    try {
+                      for (const env of analysis.suggestedEnvelopes) {
+                        const existing = budgets.find(b => b.category === env.category && b.month === monthKey);
+                        if (!existing) {
+                          await addBudget({
+                            category: env.category,
+                            categoryIcon: env.icon,
+                            amount: env.amount,
+                            period: 'monthly',
+                            month: monthKey,
+                          });
+                        }
+                      }
+                      toast.success(`${METHOD_LABELS[activeSimTab]?.name} budgets created!`);
+                      navigate('/budgets');
+                    } catch {
+                      toast.error('Failed to create budgets');
+                    } finally {
+                      setApplyingEnvelopes(false);
+                    }
+                  }}
+                  disabled={applyingEnvelopes}
+                  className="w-full mt-4 gradient-primary text-primary-foreground h-11"
+                >
+                  {applyingEnvelopes ? (
+                    <><Loader2 size={16} className="animate-spin mr-2" /> Creating budgets…</>
+                  ) : (
+                    <><ExternalLink size={16} className="mr-2" /> Apply {METHOD_LABELS[activeSimTab]?.name} & Go to Budgets</>
+                  )}
+                </Button>
               </div>
 
               {/* Dynamic Adjustments */}
