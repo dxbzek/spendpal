@@ -4,35 +4,39 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
-import { CATEGORIES } from '@/types/finance';
+import { CATEGORIES, type Budget } from '@/types/finance';
 import { format } from 'date-fns';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editBudget?: Budget | null;
 }
 
-const AddBudgetDialog = ({ open, onOpenChange }: Props) => {
-  const { addBudget } = useFinance();
-  const [category, setCategory] = useState('');
-  const [amount, setAmount] = useState('');
-  const [period, setPeriod] = useState<'monthly' | 'weekly'>('monthly');
+const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
+  const { addBudget, updateBudget } = useFinance();
+  const isEdit = !!editBudget;
+  const [category, setCategory] = useState(editBudget?.category || '');
+  const [amount, setAmount] = useState(editBudget?.amount?.toString() || '');
+  const [period, setPeriod] = useState<'monthly' | 'weekly'>(editBudget?.period || 'monthly');
 
   const selectedCat = CATEGORIES.find(c => c.name === category);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!category || !amount) return;
-    addBudget({
-      id: `bgt-${Date.now()}`,
+    const data = {
       category,
       categoryIcon: selectedCat?.icon || '📌',
       amount: parseFloat(amount),
-      spent: 0,
       period,
       month: format(new Date(), 'yyyy-MM'),
-    });
-    setCategory('');
-    setAmount('');
+    };
+
+    if (isEdit) {
+      await updateBudget({ ...data, id: editBudget.id, spent: editBudget.spent });
+    } else {
+      await addBudget(data);
+    }
     onOpenChange(false);
   };
 
@@ -40,7 +44,7 @@ const AddBudgetDialog = ({ open, onOpenChange }: Props) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm mx-auto">
         <DialogHeader>
-          <DialogTitle>Add Budget</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Budget' : 'Add Budget'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div>
@@ -69,7 +73,7 @@ const AddBudgetDialog = ({ open, onOpenChange }: Props) => {
             </Select>
           </div>
           <Button onClick={handleSubmit} disabled={!category || !amount} className="w-full gradient-primary text-primary-foreground">
-            Add Budget
+            {isEdit ? 'Save Changes' : 'Add Budget'}
           </Button>
         </div>
       </DialogContent>

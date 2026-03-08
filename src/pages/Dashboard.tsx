@@ -1,25 +1,33 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, LogOut, Trash2, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAI } from '@/hooks/useAI';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
+import type { Account } from '@/types/finance';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const Dashboard = () => {
-  const { accounts, transactions, budgets } = useFinance();
+  const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(false);
   const [period, setPeriod] = useState<'month' | 'year'>('month');
   const [showAddAccount, setShowAddAccount] = useState(false);
+  const [editAccount, setEditAccount] = useState<Account | null>(null);
+  const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
   const { loading: aiLoading, summaryText, generateSummary } = useAI();
 
   const mask = (val: string) => hidden ? '••••••' : val;
-
   const totalBalance = useMemo(() => accounts.reduce((s, a) => s + a.balance, 0), [accounts]);
-
   const now = new Date();
+
   const filtered = useMemo(() => {
     return transactions.filter(tx => {
       const d = parseISO(tx.date);
@@ -43,14 +51,10 @@ const Dashboard = () => {
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
-
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
-
   const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
   const recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
-
   const recentTx = transactions.slice(0, 5);
-
   const fmt = (n: number) => n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -67,21 +71,32 @@ const Dashboard = () => {
     });
   };
 
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary" size={32} />
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
       {/* Header */}
       <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
-          <button onClick={() => setHidden(!hidden)} className="text-primary-foreground/80">
-            {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setHidden(!hidden)} className="text-primary-foreground/80">
+              {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+            <button onClick={signOut} className="text-primary-foreground/80">
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
         <div className="text-center">
           <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
-          <p className="text-3xl font-heading text-primary-foreground">
-            {mask(`د.إ ${fmt(totalBalance)}`)}
-          </p>
+          <p className="text-3xl font-heading text-primary-foreground">{mask(`د.إ ${fmt(totalBalance)}`)}</p>
         </div>
         <div className="flex justify-center mt-4">
           <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
@@ -98,29 +113,22 @@ const Dashboard = () => {
       </div>
 
       <div className="px-4 -mt-4 space-y-4">
-        {/* Income & Expenses */}
         <div className="grid grid-cols-2 gap-3">
-          <Card>
-            <p className="text-xs text-muted-foreground mb-1">Income</p>
-            <p className="text-lg font-heading text-income">{mask(`د.إ ${fmt(income)}`)}</p>
-          </Card>
-          <Card>
-            <p className="text-xs text-muted-foreground mb-1">Expenses</p>
-            <p className="text-lg font-heading text-expense">{mask(`د.إ ${fmt(expenses)}`)}</p>
-          </Card>
+          <Card><p className="text-xs text-muted-foreground mb-1">Income</p><p className="text-lg font-heading text-income">{mask(`د.إ ${fmt(income)}`)}</p></Card>
+          <Card><p className="text-xs text-muted-foreground mb-1">Expenses</p><p className="text-lg font-heading text-expense">{mask(`د.إ ${fmt(expenses)}`)}</p></Card>
         </div>
 
-        {/* Accounts */}
+        {/* Accounts with edit/delete */}
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Accounts</h2>
-            <button onClick={() => setShowAddAccount(true)} className="text-xs text-primary font-medium flex items-center gap-1">
+            <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
               <Plus size={14} /> Add
             </button>
           </div>
           <div className="space-y-3">
             {accounts.map(a => (
-              <div key={a.id} className="flex items-center justify-between">
+              <div key={a.id} className="flex items-center justify-between group">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{a.icon}</span>
                   <div>
@@ -128,15 +136,22 @@ const Dashboard = () => {
                     <p className="text-xs text-muted-foreground capitalize">{a.type}</p>
                   </div>
                 </div>
-                <p className={`font-heading text-sm ${a.balance < 0 ? 'text-expense' : ''}`}>
-                  {mask(`د.إ ${fmt(a.balance)}`)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className={`font-heading text-sm ${a.balance < 0 ? 'text-expense' : ''}`}>{mask(`د.إ ${fmt(a.balance)}`)}</p>
+                  <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
+                    <Edit2 size={14} />
+                  </button>
+                  <button onClick={() => setDeleteAccountId(a.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
+            {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet. Add one to get started!</p>}
           </div>
         </Card>
 
-        {/* Spending by Category */}
+        {/* Category spending */}
         <Card>
           <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
           {categorySpending.length === 0 ? (
@@ -152,8 +167,7 @@ const Dashboard = () => {
                       <span className="text-sm font-medium">د.إ {fmt(data.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full bg-primary" />
                     </div>
                   </div>
                 );
@@ -162,26 +176,21 @@ const Dashboard = () => {
           )}
         </Card>
 
-        {/* Budget Overview */}
+        {/* Budget overview */}
         <Card>
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-heading text-sm">Budget Overview</h2>
-            <button onClick={() => navigate('/budgets')} className="text-xs text-primary font-medium flex items-center gap-0.5">
-              View all <ChevronRight size={14} />
-            </button>
+            <button onClick={() => navigate('/budgets')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-            <span>{budgetPct}% spent</span>
-            <span>د.إ {fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
+            <span>{budgetPct}% spent</span><span>د.إ {fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
           </div>
           <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }}
-              transition={{ duration: 0.6 }}
+            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6 }}
               className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
           </div>
         </Card>
 
-        {/* Credit Card Due Dates */}
         {creditCards.length > 0 && (
           <Card>
             <h2 className="font-heading text-sm mb-3">Credit Card Due Dates</h2>
@@ -193,10 +202,7 @@ const Dashboard = () => {
                 const daysLeft = differenceInDays(dueDate, now);
                 return (
                   <div key={cc.id} className="flex items-center justify-between py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{cc.icon}</span>
-                      <span className="text-sm">{cc.name}</span>
-                    </div>
+                    <div className="flex items-center gap-2"><span className="text-lg">{cc.icon}</span><span className="text-sm">{cc.name}</span></div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">Due {format(dueDate, 'MMM d')}</p>
                       <p className={`text-xs font-medium ${daysLeft <= 7 ? 'text-expense' : 'text-primary'}`}>{daysLeft}d left</p>
@@ -208,7 +214,6 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Recurring Expenses */}
         {recurring.length > 0 && (
           <Card>
             <div className="flex items-center justify-between mb-3">
@@ -218,10 +223,7 @@ const Dashboard = () => {
             <div className="space-y-2">
               {recurring.map(r => (
                 <div key={r.id} className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{r.categoryIcon}</span>
-                    <span className="text-sm">{r.merchant}</span>
-                  </div>
+                  <div className="flex items-center gap-2"><span className="text-lg">{r.categoryIcon}</span><span className="text-sm">{r.merchant}</span></div>
                   <span className="text-sm font-medium">د.إ {fmt(r.amount)}</span>
                 </div>
               ))}
@@ -252,9 +254,7 @@ const Dashboard = () => {
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Recent Transactions</h2>
-            <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">
-              View all <ChevronRight size={14} />
-            </button>
+            <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
           </div>
           {recentTx.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No transactions yet</p>
@@ -280,7 +280,23 @@ const Dashboard = () => {
       </div>
 
       <div className="h-4" />
-      <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} />
+
+      <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteAccountId} onOpenChange={(o) => { if (!o) setDeleteAccountId(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account?</AlertDialogTitle>
+            <AlertDialogDescription>This will also delete all transactions linked to this account. This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteAccountId) removeAccount(deleteAccountId); setDeleteAccountId(null); }}
+              className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

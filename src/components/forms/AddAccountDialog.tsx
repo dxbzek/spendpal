@@ -4,37 +4,42 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
-import { ACCOUNT_ICONS, type AccountType } from '@/types/finance';
+import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editAccount?: Account | null;
 }
 
-const AddAccountDialog = ({ open, onOpenChange }: Props) => {
-  const { addAccount } = useFinance();
-  const [name, setName] = useState('');
-  const [type, setType] = useState<AccountType>('debit');
-  const [balance, setBalance] = useState('');
-  const [creditLimit, setCreditLimit] = useState('');
-  const [dueDate, setDueDate] = useState('');
+const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
+  const { addAccount, updateAccount } = useFinance();
+  const [name, setName] = useState(editAccount?.name || '');
+  const [type, setType] = useState<AccountType>(editAccount?.type || 'debit');
+  const [balance, setBalance] = useState(editAccount?.balance?.toString() || '');
+  const [creditLimit, setCreditLimit] = useState(editAccount?.creditLimit?.toString() || '');
+  const [dueDate, setDueDate] = useState(editAccount?.dueDate?.toString() || '');
 
-  const handleSubmit = () => {
+  // Reset form when editAccount changes
+  const isEdit = !!editAccount;
+
+  const handleSubmit = async () => {
     if (!name.trim()) return;
-    addAccount({
-      id: `acc-${Date.now()}`,
+    const data = {
       name: name.trim(),
       type,
       balance: parseFloat(balance) || 0,
       currency: 'AED',
       icon: ACCOUNT_ICONS[type],
-      ...(type === 'credit' && creditLimit ? { creditLimit: parseFloat(creditLimit) } : {}),
-      ...(type === 'credit' && dueDate ? { dueDate: parseInt(dueDate) } : {}),
-    });
-    setName('');
-    setBalance('');
-    setCreditLimit('');
-    setDueDate('');
+      creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
+      dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
+    };
+
+    if (isEdit) {
+      await updateAccount({ ...data, id: editAccount.id });
+    } else {
+      await addAccount(data);
+    }
     onOpenChange(false);
   };
 
@@ -42,7 +47,7 @@ const AddAccountDialog = ({ open, onOpenChange }: Props) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm mx-auto">
         <DialogHeader>
-          <DialogTitle>Add Account</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Account' : 'Add Account'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div>
@@ -77,7 +82,7 @@ const AddAccountDialog = ({ open, onOpenChange }: Props) => {
             </>
           )}
           <Button onClick={handleSubmit} disabled={!name.trim()} className="w-full gradient-primary text-primary-foreground">
-            Add Account
+            {isEdit ? 'Save Changes' : 'Add Account'}
           </Button>
         </div>
       </DialogContent>
