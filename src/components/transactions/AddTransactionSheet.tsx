@@ -21,6 +21,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 
 const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, addTransaction } = useFinance();
+  const { currency } = useCurrency();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
