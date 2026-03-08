@@ -85,9 +85,10 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-1.5 block">
-              {type === 'credit' ? 'Outstanding Balance' : 'Balance'} ({currency})
+              {type === 'credit' ? 'Available Limit' : 'Balance'} ({currency})
             </label>
             <Input type="number" placeholder="0.00" value={balance} onChange={e => setBalance(e.target.value)} />
+            {type === 'credit' && <p className="text-[11px] text-muted-foreground mt-1">How much credit is currently available to spend.</p>}
           </div>
           {type === 'credit' && (
             <div className="space-y-4 rounded-xl bg-muted/50 p-3">

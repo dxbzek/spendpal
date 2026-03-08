@@ -161,6 +161,33 @@ const Transactions = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={showDeleteAll} onOpenChange={setShowDeleteAll}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Transactions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {filtered.length} {filterType !== 'all' ? filterType : ''} transactions. Account balances will be adjusted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                for (const tx of filtered) {
+                  await removeTransaction(tx.id);
+                }
+                setDeleting(false);
+                setShowDeleteAll(false);
+              }}
+              className="bg-destructive text-destructive-foreground">
+              {deleting ? 'Deleting…' : `Delete ${filtered.length} Transactions`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

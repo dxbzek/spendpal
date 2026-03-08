@@ -152,7 +152,8 @@ const Dashboard = () => {
                   <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
                   <div className="space-y-3">
                     {group.map(a => {
-                      const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((Math.abs(a.balance) / a.creditLimit) * 100), 100) : 0;
+                      const spent = a.type === 'credit' && a.creditLimit ? a.creditLimit - a.balance : 0;
+                      const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((spent / a.creditLimit) * 100), 100) : 0;
                       const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-amber-500' : 'bg-primary';
                       return (
                         <div key={a.id} className="group">
@@ -171,7 +172,12 @@ const Dashboard = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <p className={`font-heading text-sm ${a.balance < 0 ? 'text-expense' : ''}`}>{mask(fmt(a.balance))}</p>
+                              <div className="text-right">
+                                <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
+                                {a.type === 'credit' && (
+                                  <p className="text-[10px] text-muted-foreground">Available</p>
+                                )}
+                              </div>
                               <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
                                 <Edit2 size={14} />
                               </button>
@@ -184,7 +190,7 @@ const Dashboard = () => {
                             <div className="mt-1.5 ml-11">
                               <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                                 <span>{utilization}% used</span>
-                                <span>{fmt(Math.abs(a.balance))} / {fmt(a.creditLimit)}</span>
+                                <span>{fmt(spent)} / {fmt(a.creditLimit)}</span>
                               </div>
                               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                                 <div className={`h-full rounded-full transition-all ${utilizationColor}`} style={{ width: `${utilization}%` }} />
