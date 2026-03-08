@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import {
@@ -401,6 +401,13 @@ const Settings = () => {
 
         {/* Data Backup & Restore */}
         <DataBackupCard />
+
+        {/* Glossary */}
+        <button onClick={() => navigate('/glossary')}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+          <BookOpen size={16} />
+          Glossary & FAQ
+        </button>
 
         {/* Sign Out */}
         <button onClick={signOut}

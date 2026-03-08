@@ -15,6 +15,7 @@ import Goals from "@/pages/Goals";
 import AIAdvisor from "@/pages/AIAdvisor";
 import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
+import Glossary from "@/pages/Glossary";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="/goals" element={<Goals />} />
                 <Route path="/advisor" element={<AIAdvisor />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/glossary" element={<Glossary />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -217,7 +217,7 @@ const Dashboard = () => {
                                 <p className="text-sm font-medium">{a.name}</p>
                                 {a.type === 'credit' && (
                                   <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                                    {a.statementDate && <span>Stmt: {a.statementDate}th</span>}
+                                    {a.statementDate && a.statementDate > 0 && <span>Stmt: {a.statementDate}th</span>}
                                     {a.dueDate && <span>Due: {a.dueDate}th</span>}
                                     {a.creditLimit && <span>Limit: {fmt(a.creditLimit)}</span>}
                                   </div>
