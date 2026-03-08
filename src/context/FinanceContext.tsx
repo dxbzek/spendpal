@@ -215,10 +215,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [fetchAll]);
 
   const removeTransaction = useCallback(async (id: string) => {
+    // Find the transaction to reverse its balance impact
+    const tx = transactions.find(t => t.id === id);
     const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) { toast.error(error.message); return; }
+    // Reverse balance adjustment
+    if (tx) {
+      const account = accounts.find(a => a.id === tx.accountId);
+      if (account) {
+        const newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
+        await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
+      }
+    }
     await fetchAll();
-  }, [fetchAll]);
+  }, [transactions, accounts, fetchAll]);
 
   // --- BUDGETS ---
   const addBudget = useCallback(async (budget: Omit<Budget, 'id' | 'spent'>) => {

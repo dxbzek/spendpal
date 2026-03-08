@@ -118,7 +118,10 @@ const Goals = () => {
 
       <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) setProgressGoalId(null); }}>
         <DialogContent className="max-w-sm mx-auto">
-          <DialogHeader><DialogTitle>Add Progress</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add Progress</DialogTitle>
+            <p className="text-sm text-muted-foreground">Enter the amount to add to your goal.</p>
+          </DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Amount</label>

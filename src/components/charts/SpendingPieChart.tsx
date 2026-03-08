@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
 
@@ -13,14 +13,14 @@ const SpendingPieChart = ({ data }: Props) => {
 
   return (
     <div className="flex items-center gap-4">
-      <ResponsiveContainer width={140} height={140}>
-        <PieChart>
+      <div style={{ width: 140, height: 140 }}>
+        <PieChart width={140} height={140}>
           <Pie data={data} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={3} dataKey="value" strokeWidth={0}>
             {data.map((entry, i) => <Cell key={i} fill={CATEGORY_CHART_COLORS[entry.name] || CATEGORY_CHART_COLORS._default(i)} />)}
           </Pie>
           <Tooltip formatter={(val: number) => fmt(val)} contentStyle={{ borderRadius: '0.75rem', fontSize: '0.75rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
         </PieChart>
-      </ResponsiveContainer>
+      </div>
       <div className="flex-1 space-y-1.5 overflow-hidden">
         {data.slice(0, 5).map((item, i) => (
           <div key={item.name} className="flex items-center justify-between text-xs">

@@ -103,7 +103,7 @@ const Transactions = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                          <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
                             {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
                           </p>
                           <button onClick={() => setDeleteTxId(tx.id)}
