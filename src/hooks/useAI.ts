@@ -109,12 +109,10 @@ export const useAI = () => {
   const categorizeCSV = useCallback(async (csvText: string) => {
     setLoading(true);
     try {
+      const headers = await getAuthHeaders();
       const resp = await fetch(FUNC_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         body: JSON.stringify({ type: 'categorize-csv', data: csvText }),
       });
 
