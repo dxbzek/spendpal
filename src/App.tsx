@@ -15,6 +15,7 @@ import Goals from "@/pages/Goals";
 import AIAdvisor from "@/pages/AIAdvisor";
 import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
+import Glossary from "@/pages/Glossary";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
