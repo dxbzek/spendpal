@@ -1,6 +1,11 @@
 import { useState, useMemo } from 'react';
 import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
+import BudgetAlertBanners from '@/components/dashboard/BudgetAlertBanners';
+import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
+import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
+import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
+import MonthlyReportCard from '@/components/dashboard/MonthlyReportCard';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
