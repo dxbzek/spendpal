@@ -97,6 +97,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       merchant: merchant || category,
       accountId,
       date,
+      note: note || null,
       isRecurring: isTransfer ? false : isRecurring,
       totalInstallments: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(totalInstallments) || 12) : null,
       currentInstallment: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(currentInstallment) || 1) : null,
