@@ -19,7 +19,7 @@ interface BudgetSuggestion {
 }
 
 const Budgets = () => {
-  const { budgets, transactions, removeBudget } = useFinance();
+  const { budgets, transactions, removeBudget, bulkRemoveBudgets } = useFinance();
   const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
   const [showAddBudget, setShowAddBudget] = useState(false);
