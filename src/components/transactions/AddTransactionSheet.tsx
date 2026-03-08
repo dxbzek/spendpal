@@ -76,6 +76,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     setHasInstallments(false);
     setTotalInstallments('12');
     setCurrentInstallment('1');
+    setNote('');
   };
 
   const isTransfer = type === 'transfer';
