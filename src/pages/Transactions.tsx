@@ -12,6 +12,25 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+const CATEGORY_COLORS: Record<string, string> = {
+  'Food & Dining': 'bg-orange-100 text-orange-600',
+  'Shopping': 'bg-pink-100 text-pink-600',
+  'Transport': 'bg-blue-100 text-blue-600',
+  'Entertainment': 'bg-purple-100 text-purple-600',
+  'Bills & Utilities': 'bg-yellow-100 text-yellow-700',
+  'Health': 'bg-red-100 text-red-600',
+  'Education': 'bg-indigo-100 text-indigo-600',
+  'Travel': 'bg-cyan-100 text-cyan-600',
+  'Groceries': 'bg-lime-100 text-lime-700',
+  'Salary': 'bg-emerald-100 text-emerald-600',
+  'Transfer': 'bg-slate-100 text-slate-600',
+};
+const DEFAULT_CATEGORY_COLOR = 'bg-muted text-muted-foreground';
+
+const getCategoryColor = (category: string) => {
+  return CATEGORY_COLORS[category] || DEFAULT_CATEGORY_COLOR;
+};
+
 const Transactions = () => {
   const { transactions, accounts, removeTransaction } = useFinance();
   const { fmtSigned } = useCurrency();
