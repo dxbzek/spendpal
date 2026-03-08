@@ -180,7 +180,7 @@ export const WORLD_CURRENCIES = Object.entries(CURRENCY_MAP).map(([code, { symbo
   label: `${code} (${symbol})`,
 }));
 
-const FRANKFURTER_API = 'https://api.frankfurter.app';
+const EXCHANGE_API = 'https://open.er-api.com/v6/latest';
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
