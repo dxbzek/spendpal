@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORIES, type Budget } from '@/types/finance';
 import { format } from 'date-fns';
 
