@@ -38,17 +38,31 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
 
+  const isTransfer = type === 'transfer';
+
   const handleSubmit = async () => {
-    if (!amount || !category || !accountId) return;
-
-    if (hasInstallments && isRecurring) {
-      const total = parseInt(totalInstallments) || 12;
-      const current = parseInt(currentInstallment) || 1;
-      const perInstallment = parseFloat(amount);
-
+    if (isTransfer) {
+      if (!amount || !accountId || !toAccountId) return;
       await addTransaction({
         type,
-        amount: perInstallment,
+        amount: parseFloat(amount),
+        currency,
+        category: 'Transfer',
+        categoryIcon: '🔁',
+        merchant: 'Transfer',
+        accountId,
+        date,
+        isRecurring: false,
+        totalInstallments: null,
+        currentInstallment: null,
+      });
+    } else if (hasInstallments && isRecurring) {
+      if (!amount || !category || !accountId) return;
+      const total = parseInt(totalInstallments) || 12;
+      const current = parseInt(currentInstallment) || 1;
+      await addTransaction({
+        type,
+        amount: parseFloat(amount),
         currency,
         category,
         categoryIcon,
@@ -60,6 +74,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
         currentInstallment: current,
       });
     } else {
+      if (!amount || !category || !accountId) return;
       await addTransaction({
         type,
         amount: parseFloat(amount),
@@ -80,6 +95,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
     setCategory('');
     setCategoryIcon('');
     setMerchant('');
+    setToAccountId('');
     setIsRecurring(false);
     setHasInstallments(false);
     setTotalInstallments('12');
