@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, ArrowRightLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const FRANKFURTER_API = 'https://api.frankfurter.app';
