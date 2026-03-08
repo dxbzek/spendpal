@@ -27,17 +27,17 @@
     --accent: 152 50% 95%;
     --accent-foreground: 152 62% 30%;
 
-    --destructive: 0 72% 55%;
+    --destructive: 152 50% 28%;
     --destructive-foreground: 0 0% 100%;
 
     --success: 152 62% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 152 45% 55%;
     --warning-foreground: 0 0% 100%;
 
     --income: 152 62% 42%;
-    --expense: 0 72% 55%;
+    --expense: 152 50% 28%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
