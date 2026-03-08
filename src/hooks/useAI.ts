@@ -106,14 +106,14 @@ export const useAI = () => {
     }
   }, []);
 
-  const categorizeCSV = useCallback(async (csvText: string) => {
+  const categorizeStatement = useCallback(async (text: string) => {
     setLoading(true);
     try {
       const headers = await getAuthHeaders();
       const resp = await fetch(FUNC_URL, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ type: 'categorize-csv', data: csvText }),
+        body: JSON.stringify({ type: 'categorize-csv', data: text }),
       });
 
       if (!resp.ok) {
@@ -136,5 +136,8 @@ export const useAI = () => {
     }
   }, []);
 
-  return { loading, summaryText, generateSummary, generateBudgetSuggestions, categorizeCSV };
+  // Keep backward compat alias
+  const categorizeCSV = categorizeStatement;
+
+  return { loading, summaryText, generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV };
 };

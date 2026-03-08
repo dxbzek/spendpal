@@ -62,7 +62,7 @@ Return your response as a JSON array of objects with: category, suggestedAmount,
 Use AED amounts. Only return the JSON array, no other text.`;
       userPrompt = `Here is my spending data:\n${JSON.stringify(data)}`;
     } else if (type === "categorize-csv") {
-      systemPrompt = `You are a transaction categorizer. Given CSV transaction data, categorize each transaction into one of these categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
+      systemPrompt = `You are a transaction categorizer. Given bank statement data (CSV, PDF text, or tabular text), categorize each transaction into one of these categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
 Also determine if each is an expense or income.
 Return a JSON array of objects with: merchant, amount, date, category, categoryIcon, type (expense/income).
 Category icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
