@@ -35,7 +35,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
     await addTransaction({
       type,
       amount: parseFloat(amount),
-      currency: 'AED',
+      currency,
       category,
       categoryIcon,
       merchant: merchant || category,
