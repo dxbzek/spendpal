@@ -116,7 +116,7 @@ const Goals = () => {
           })
           }
           </div>
-      </div>
+        )}
 
       <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) setProgressGoalId(null); }}>
         <DialogContent className="max-w-sm mx-auto">

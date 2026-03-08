@@ -370,6 +370,7 @@ const Dashboard = () => {
           </Card>
         )}
         </div>{/* end grid */}
+      </div>
 
       <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />
 
