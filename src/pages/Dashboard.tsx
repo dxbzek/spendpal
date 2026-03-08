@@ -175,13 +175,13 @@ const Dashboard = () => {
                               <div className="text-right">
                                 <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
                                 {a.type === 'credit' && (
-                                  <p className="text-[10px] text-muted-foreground">Available</p>
-                                )}
+                                   <p className="text-[11px] font-medium text-primary/70">Available Limit</p>
+                                 )}
                               </div>
-                              <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
+                              <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
                                 <Edit2 size={14} />
                               </button>
-                              <button onClick={() => setDeleteAccountId(a.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
+                              <button onClick={() => setDeleteAccountId(a.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -208,24 +208,26 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Spending Pie Chart */}
-        <Card>
-          <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
-          <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
-        </Card>
+        {/* Spending Pie Chart - hide when no data */}
+        {categorySpending.length > 0 && (
+          <Card>
+            <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
+            <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
+          </Card>
+        )}
 
-        {/* Monthly Trend Line Chart */}
-        <Card>
-          <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
-          <MonthlyTrendChart transactions={transactions} />
-        </Card>
+        {/* Monthly Trend Line Chart - hide when no transactions */}
+        {transactions.length > 0 && (
+          <Card>
+            <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
+            <MonthlyTrendChart transactions={transactions} />
+          </Card>
+        )}
 
-        {/* Category spending list */}
-        <Card>
-          <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
-          {categorySpending.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No categorized expenses</p>
-          ) : (
+        {/* Category spending list - hide when no data */}
+        {categorySpending.length > 0 && (
+          <Card>
+            <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
             <div className="space-y-2.5">
               {categorySpending.slice(0, 5).map(([cat, data], idx) => {
                 const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
@@ -243,8 +245,8 @@ const Dashboard = () => {
                 );
               })}
             </div>
-          )}
         </Card>
+        )}
 
         {/* Budget overview */}
         <Card>
@@ -305,15 +307,13 @@ const Dashboard = () => {
           )}
         </Card>
 
-        {/* Recent Transactions */}
-        <Card>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading text-sm">Recent Transactions</h2>
-            <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
-          </div>
-          {recentTx.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions yet</p>
-          ) : (
+        {/* Recent Transactions - hide when empty */}
+        {recentTx.length > 0 && (
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-heading text-sm">Recent Transactions</h2>
+              <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+            </div>
             <div className="space-y-3">
               {recentTx.map(tx => (
                 <div key={tx.id} className="flex items-center justify-between">
@@ -330,8 +330,8 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
-          )}
-        </Card>
+          </Card>
+        )}
       </div>
 
       <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />
