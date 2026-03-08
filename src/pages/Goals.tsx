@@ -95,8 +95,8 @@ const Goals = () => {
                         {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d left`}
                       </span>
                     )}
-                    <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={16} /></button>
-                    <button onClick={() => setDeleteGoalId(goal.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={16} /></button>
+                    <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={16} /></button>
+                    <button onClick={() => setDeleteGoalId(goal.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={16} /></button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
