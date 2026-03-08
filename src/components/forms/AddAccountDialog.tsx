@@ -15,6 +15,7 @@ interface Props {
 
 const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const { addAccount, updateAccount } = useFinance();
+  const { currency } = useCurrency();
   const [name, setName] = useState(editAccount?.name || '');
   const [type, setType] = useState<AccountType>(editAccount?.type || 'debit');
   const [balance, setBalance] = useState(editAccount?.balance?.toString() || '');
