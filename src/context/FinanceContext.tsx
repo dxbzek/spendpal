@@ -1,119 +1,306 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 import type { Account, Transaction, Budget, Goal } from '@/types/finance';
 
-interface FinanceState {
+// Map DB rows to app types
+const mapAccount = (row: any): Account => ({
+  id: row.id,
+  name: row.name,
+  type: row.type,
+  balance: Number(row.balance),
+  currency: row.currency,
+  icon: row.icon,
+  creditLimit: row.credit_limit ? Number(row.credit_limit) : undefined,
+  dueDate: row.due_date ?? undefined,
+  statementDate: row.statement_date ?? undefined,
+});
+
+const mapTransaction = (row: any): Transaction => ({
+  id: row.id,
+  type: row.type,
+  amount: Number(row.amount),
+  currency: row.currency,
+  category: row.category,
+  categoryIcon: row.category_icon,
+  merchant: row.merchant,
+  accountId: row.account_id,
+  date: row.date,
+  note: row.note ?? undefined,
+  isRecurring: row.is_recurring,
+});
+
+const mapBudget = (row: any): Budget => ({
+  id: row.id,
+  category: row.category,
+  categoryIcon: row.category_icon,
+  amount: Number(row.amount),
+  spent: 0, // computed from transactions
+  period: row.period as 'monthly' | 'weekly',
+  month: row.month,
+});
+
+const mapGoal = (row: any): Goal => ({
+  id: row.id,
+  name: row.name,
+  icon: row.icon,
+  type: row.type,
+  targetAmount: Number(row.target_amount),
+  savedAmount: Number(row.saved_amount),
+  deadline: row.deadline ?? undefined,
+  status: row.status as 'active' | 'completed' | 'paused',
+});
+
+interface FinanceContextType {
   accounts: Account[];
   transactions: Transaction[];
   budgets: Budget[];
   goals: Goal[];
-}
-
-interface FinanceContextType extends FinanceState {
-  addAccount: (account: Account) => void;
-  removeAccount: (id: string) => void;
-  addTransaction: (transaction: Transaction) => void;
-  removeTransaction: (id: string) => void;
-  addBudget: (budget: Budget) => void;
-  updateBudget: (budget: Budget) => void;
-  removeBudget: (id: string) => void;
-  addGoal: (goal: Goal) => void;
-  updateGoal: (goal: Goal) => void;
-  removeGoal: (id: string) => void;
-  addGoalProgress: (goalId: string, amount: number) => void;
+  loading: boolean;
+  // Accounts
+  addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
+  updateAccount: (account: Account) => Promise<void>;
+  removeAccount: (id: string) => Promise<void>;
+  // Transactions
+  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
+  updateTransaction: (tx: Transaction) => Promise<void>;
+  removeTransaction: (id: string) => Promise<void>;
+  // Budgets
+  addBudget: (budget: Omit<Budget, 'id' | 'spent'>) => Promise<void>;
+  updateBudget: (budget: Budget) => Promise<void>;
+  removeBudget: (id: string) => Promise<void>;
+  // Goals
+  addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>;
+  updateGoal: (goal: Goal) => Promise<void>;
+  removeGoal: (id: string) => Promise<void>;
+  addGoalProgress: (goalId: string, amount: number) => Promise<void>;
+  // Refresh
+  refresh: () => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | null>(null);
 
-const STORAGE_KEY = 'spendpal_data';
-
-const loadData = (): FinanceState => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { accounts: [], transactions: [], budgets: [], goals: [] };
-};
-
-const saveData = (state: FinanceState) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-};
-
-// Sample data for demo
-const SAMPLE_DATA: FinanceState = {
-  accounts: [
-    { id: 'acc-1', name: 'Cash Wallet', type: 'cash', balance: 1250, currency: 'AED', icon: '💵' },
-    { id: 'acc-2', name: 'Emirates NBD', type: 'debit', balance: 8420.50, currency: 'AED', icon: '💳' },
-    { id: 'acc-3', name: 'Share Platinum Visa', type: 'credit', balance: -4896.22, currency: 'AED', icon: '🏦', creditLimit: 20000, dueDate: 6 },
-  ],
-  transactions: [
-    { id: 'tx-1', type: 'expense', amount: 45, currency: 'AED', category: 'Coffee', categoryIcon: '☕', merchant: 'Starbucks', accountId: 'acc-2', date: '2026-03-07' },
-    { id: 'tx-2', type: 'expense', amount: 320, currency: 'AED', category: 'Groceries', categoryIcon: '🛒', merchant: 'Carrefour', accountId: 'acc-2', date: '2026-03-06' },
-    { id: 'tx-3', type: 'income', amount: 12000, currency: 'AED', category: 'Salary', categoryIcon: '💰', merchant: 'Employer', accountId: 'acc-2', date: '2026-03-01' },
-    { id: 'tx-4', type: 'expense', amount: 150, currency: 'AED', category: 'Dining', categoryIcon: '🍽️', merchant: 'Zuma Dubai', accountId: 'acc-3', date: '2026-03-05' },
-    { id: 'tx-5', type: 'expense', amount: 89, currency: 'AED', category: 'Telecom', categoryIcon: '📱', merchant: 'DU', accountId: 'acc-2', date: '2026-03-04', isRecurring: true },
-    { id: 'tx-6', type: 'expense', amount: 52, currency: 'AED', category: 'Subscriptions', categoryIcon: '🔄', merchant: 'Apple Subscriptions', accountId: 'acc-3', date: '2026-03-03', isRecurring: true },
-    { id: 'tx-7', type: 'expense', amount: 1300, currency: 'AED', category: 'Rent', categoryIcon: '🏠', merchant: 'Landlord', accountId: 'acc-2', date: '2026-03-01', isRecurring: true },
-    { id: 'tx-8', type: 'expense', amount: 200, currency: 'AED', category: 'Transport', categoryIcon: '🚗', merchant: 'RTA Salik', accountId: 'acc-2', date: '2026-03-02' },
-  ],
-  budgets: [
-    { id: 'bgt-1', category: 'Rent', categoryIcon: '🏠', amount: 2500, spent: 1300, period: 'monthly', month: '2026-03' },
-    { id: 'bgt-2', category: 'Dining', categoryIcon: '🍽️', amount: 1500, spent: 150, period: 'monthly', month: '2026-03' },
-    { id: 'bgt-3', category: 'Groceries', categoryIcon: '🛒', amount: 2000, spent: 320, period: 'monthly', month: '2026-03' },
-    { id: 'bgt-4', category: 'Transport', categoryIcon: '🚗', amount: 800, spent: 200, period: 'monthly', month: '2026-03' },
-  ],
-  goals: [
-    { id: 'goal-1', name: 'Emergency Fund', icon: '🛡️', type: 'Emergency', targetAmount: 10000, savedAmount: 0, status: 'active' },
-    { id: 'goal-2', name: 'Vacation to Maldives', icon: '🏝️', type: 'Vacation', targetAmount: 8000, savedAmount: 2400, status: 'active' },
-  ],
-};
-
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<FinanceState>(() => {
-    const saved = loadData();
-    if (saved.accounts.length === 0) return SAMPLE_DATA;
-    return saved;
-  });
+  const { user } = useAuth();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { saveData(state); }, [state]);
+  const fetchAll = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const [accRes, txRes, bgtRes, goalRes] = await Promise.all([
+        supabase.from('accounts').select('*').order('created_at'),
+        supabase.from('transactions').select('*').order('date', { ascending: false }),
+        supabase.from('budgets').select('*').order('created_at'),
+        supabase.from('goals').select('*').order('created_at'),
+      ]);
 
-  const addAccount = useCallback((account: Account) => setState(s => ({ ...s, accounts: [...s.accounts, account] })), []);
-  const removeAccount = useCallback((id: string) => setState(s => ({ ...s, accounts: s.accounts.filter(a => a.id !== id) })), []);
+      if (accRes.data) setAccounts(accRes.data.map(mapAccount));
+      if (txRes.data) {
+        const txs = txRes.data.map(mapTransaction);
+        setTransactions(txs);
 
-  const addTransaction = useCallback((tx: Transaction) => setState(s => {
-    const accounts = s.accounts.map(a => {
-      if (a.id === tx.accountId) {
-        return { ...a, balance: tx.type === 'income' ? a.balance + tx.amount : a.balance - tx.amount };
+        // Compute budget spent from transactions
+        if (bgtRes.data) {
+          const now = new Date();
+          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const monthTxs = txs.filter(t => t.type === 'expense' && t.date.startsWith(currentMonth));
+          const spentByCategory: Record<string, number> = {};
+          monthTxs.forEach(t => {
+            spentByCategory[t.category] = (spentByCategory[t.category] || 0) + t.amount;
+          });
+          setBudgets(bgtRes.data.map(row => ({
+            ...mapBudget(row),
+            spent: spentByCategory[row.category] || 0,
+          })));
+        }
+      } else if (bgtRes.data) {
+        setBudgets(bgtRes.data.map(mapBudget));
       }
-      return a;
+      if (goalRes.data) setGoals(goalRes.data.map(mapGoal));
+    } catch (err) {
+      console.error('Failed to fetch data', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // --- ACCOUNTS ---
+  const addAccount = useCallback(async (account: Omit<Account, 'id'>) => {
+    if (!user) return;
+    const { error } = await supabase.from('accounts').insert({
+      user_id: user.id,
+      name: account.name,
+      type: account.type,
+      balance: account.balance,
+      currency: account.currency,
+      icon: account.icon,
+      credit_limit: account.creditLimit ?? null,
+      due_date: account.dueDate ?? null,
     });
-    // Update budget spent
-    const budgets = s.budgets.map(b => {
-      if (b.category === tx.category && tx.type === 'expense') {
-        return { ...b, spent: b.spent + tx.amount };
-      }
-      return b;
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [user, fetchAll]);
+
+  const updateAccount = useCallback(async (account: Account) => {
+    const { error } = await supabase.from('accounts').update({
+      name: account.name,
+      type: account.type,
+      balance: account.balance,
+      icon: account.icon,
+      credit_limit: account.creditLimit ?? null,
+      due_date: account.dueDate ?? null,
+    }).eq('id', account.id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  const removeAccount = useCallback(async (id: string) => {
+    const { error } = await supabase.from('accounts').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  // --- TRANSACTIONS ---
+  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>) => {
+    if (!user) return;
+    const { error } = await supabase.from('transactions').insert({
+      user_id: user.id,
+      account_id: tx.accountId,
+      type: tx.type,
+      amount: tx.amount,
+      currency: tx.currency,
+      category: tx.category,
+      category_icon: tx.categoryIcon,
+      merchant: tx.merchant,
+      date: tx.date,
+      note: tx.note ?? null,
+      is_recurring: tx.isRecurring ?? false,
     });
-    return { ...s, transactions: [tx, ...s.transactions], accounts, budgets };
-  }), []);
+    if (error) { toast.error(error.message); return; }
+    // Update account balance
+    const account = accounts.find(a => a.id === tx.accountId);
+    if (account) {
+      const newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
+      await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
+    }
+    await fetchAll();
+  }, [user, accounts, fetchAll]);
 
-  const removeTransaction = useCallback((id: string) => setState(s => ({ ...s, transactions: s.transactions.filter(t => t.id !== id) })), []);
+  const updateTransaction = useCallback(async (tx: Transaction) => {
+    const { error } = await supabase.from('transactions').update({
+      account_id: tx.accountId,
+      type: tx.type,
+      amount: tx.amount,
+      category: tx.category,
+      category_icon: tx.categoryIcon,
+      merchant: tx.merchant,
+      date: tx.date,
+      note: tx.note ?? null,
+      is_recurring: tx.isRecurring ?? false,
+    }).eq('id', tx.id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
 
-  const addBudget = useCallback((budget: Budget) => setState(s => ({ ...s, budgets: [...s.budgets, budget] })), []);
-  const updateBudget = useCallback((budget: Budget) => setState(s => ({ ...s, budgets: s.budgets.map(b => b.id === budget.id ? budget : b) })), []);
-  const removeBudget = useCallback((id: string) => setState(s => ({ ...s, budgets: s.budgets.filter(b => b.id !== id) })), []);
+  const removeTransaction = useCallback(async (id: string) => {
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
 
-  const addGoal = useCallback((goal: Goal) => setState(s => ({ ...s, goals: [...s.goals, goal] })), []);
-  const updateGoal = useCallback((goal: Goal) => setState(s => ({ ...s, goals: s.goals.map(g => g.id === goal.id ? goal : g) })), []);
-  const removeGoal = useCallback((id: string) => setState(s => ({ ...s, goals: s.goals.filter(g => g.id !== id) })), []);
-  const addGoalProgress = useCallback((goalId: string, amount: number) => setState(s => ({
-    ...s,
-    goals: s.goals.map(g => g.id === goalId ? { ...g, savedAmount: g.savedAmount + amount } : g),
-  })), []);
+  // --- BUDGETS ---
+  const addBudget = useCallback(async (budget: Omit<Budget, 'id' | 'spent'>) => {
+    if (!user) return;
+    const { error } = await supabase.from('budgets').insert({
+      user_id: user.id,
+      category: budget.category,
+      category_icon: budget.categoryIcon,
+      amount: budget.amount,
+      period: budget.period,
+      month: budget.month,
+    });
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [user, fetchAll]);
+
+  const updateBudget = useCallback(async (budget: Budget) => {
+    const { error } = await supabase.from('budgets').update({
+      category: budget.category,
+      category_icon: budget.categoryIcon,
+      amount: budget.amount,
+      period: budget.period,
+    }).eq('id', budget.id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  const removeBudget = useCallback(async (id: string) => {
+    const { error } = await supabase.from('budgets').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  // --- GOALS ---
+  const addGoal = useCallback(async (goal: Omit<Goal, 'id'>) => {
+    if (!user) return;
+    const { error } = await supabase.from('goals').insert({
+      user_id: user.id,
+      name: goal.name,
+      icon: goal.icon,
+      type: goal.type,
+      target_amount: goal.targetAmount,
+      saved_amount: goal.savedAmount,
+      status: goal.status,
+    });
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [user, fetchAll]);
+
+  const updateGoal = useCallback(async (goal: Goal) => {
+    const { error } = await supabase.from('goals').update({
+      name: goal.name,
+      icon: goal.icon,
+      type: goal.type,
+      target_amount: goal.targetAmount,
+      saved_amount: goal.savedAmount,
+      status: goal.status,
+    }).eq('id', goal.id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  const removeGoal = useCallback(async (id: string) => {
+    const { error } = await supabase.from('goals').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [fetchAll]);
+
+  const addGoalProgress = useCallback(async (goalId: string, amount: number) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const { error } = await supabase.from('goals').update({
+      saved_amount: goal.savedAmount + amount,
+    }).eq('id', goalId);
+    if (error) { toast.error(error.message); return; }
+    await fetchAll();
+  }, [goals, fetchAll]);
 
   return (
     <FinanceContext.Provider value={{
-      ...state, addAccount, removeAccount, addTransaction, removeTransaction,
-      addBudget, updateBudget, removeBudget, addGoal, updateGoal, removeGoal, addGoalProgress,
+      accounts, transactions, budgets, goals, loading,
+      addAccount, updateAccount, removeAccount,
+      addTransaction, updateTransaction, removeTransaction,
+      addBudget, updateBudget, removeBudget,
+      addGoal, updateGoal, removeGoal, addGoalProgress,
+      refresh: fetchAll,
     }}>
       {children}
     </FinanceContext.Provider>

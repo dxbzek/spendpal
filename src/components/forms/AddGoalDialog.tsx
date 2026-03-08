@@ -3,10 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/context/FinanceContext';
+import type { Goal } from '@/types/finance';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editGoal?: Goal | null;
 }
 
 const GOAL_TYPES = [
@@ -20,28 +22,31 @@ const GOAL_TYPES = [
   { name: 'Other', icon: '🎯' },
 ];
 
-const AddGoalDialog = ({ open, onOpenChange }: Props) => {
-  const { addGoal } = useFinance();
-  const [name, setName] = useState('');
-  const [goalType, setGoalType] = useState('');
-  const [targetAmount, setTargetAmount] = useState('');
+const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
+  const { addGoal, updateGoal } = useFinance();
+  const isEdit = !!editGoal;
+  const [name, setName] = useState(editGoal?.name || '');
+  const [goalType, setGoalType] = useState(editGoal?.type || '');
+  const [targetAmount, setTargetAmount] = useState(editGoal?.targetAmount?.toString() || '');
 
   const selected = GOAL_TYPES.find(g => g.name === goalType);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim() || !goalType || !targetAmount) return;
-    addGoal({
-      id: `goal-${Date.now()}`,
+    const data = {
       name: name.trim(),
       icon: selected?.icon || '🎯',
       type: goalType,
       targetAmount: parseFloat(targetAmount),
-      savedAmount: 0,
-      status: 'active',
-    });
-    setName('');
-    setGoalType('');
-    setTargetAmount('');
+      savedAmount: editGoal?.savedAmount || 0,
+      status: (editGoal?.status || 'active') as 'active' | 'completed' | 'paused',
+    };
+
+    if (isEdit) {
+      await updateGoal({ ...data, id: editGoal.id });
+    } else {
+      await addGoal(data);
+    }
     onOpenChange(false);
   };
 
@@ -49,7 +54,7 @@ const AddGoalDialog = ({ open, onOpenChange }: Props) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm mx-auto">
         <DialogHeader>
-          <DialogTitle>New Goal</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Goal' : 'New Goal'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div>
@@ -76,7 +81,7 @@ const AddGoalDialog = ({ open, onOpenChange }: Props) => {
           </div>
           <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || !targetAmount}
             className="w-full gradient-primary text-primary-foreground">
-            Create Goal
+            {isEdit ? 'Save Changes' : 'Create Goal'}
           </Button>
         </div>
       </DialogContent>

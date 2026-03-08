@@ -28,10 +28,9 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const [merchant, setMerchant] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!amount || !category || !accountId) return;
-    addTransaction({
-      id: `tx-${Date.now()}`,
+    await addTransaction({
       type,
       amount: parseFloat(amount),
       currency: 'AED',
@@ -41,7 +40,6 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
       accountId,
       date,
     });
-    // Reset
     setAmount('');
     setCategory('');
     setCategoryIcon('');
@@ -62,7 +60,6 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
         </SheetHeader>
 
         <div className="space-y-5 mt-4">
-          {/* Type tabs */}
           <div className="flex gap-1 p-1 bg-muted rounded-lg">
             {TYPES.map(t => (
               <button key={t.value} onClick={() => setType(t.value)}
@@ -74,14 +71,12 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             ))}
           </div>
 
-          {/* Amount */}
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Amount (AED)</label>
             <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
               className="text-2xl font-heading h-14 text-center" />
           </div>
 
-          {/* Quick categories */}
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">Category</label>
             <div className="grid grid-cols-5 gap-2">
@@ -97,7 +92,6 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             </div>
           </div>
 
-          {/* Account */}
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Account</label>
             <Select value={accountId} onValueChange={setAccountId}>
@@ -110,13 +104,11 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             </Select>
           </div>
 
-          {/* Date */}
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Date</label>
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
 
-          {/* Merchant */}
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Merchant (optional)</label>
             <Input placeholder="e.g., Starbucks" value={merchant} onChange={e => setMerchant(e.target.value)} />
