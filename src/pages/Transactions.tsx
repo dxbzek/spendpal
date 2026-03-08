@@ -74,7 +74,7 @@ const Transactions = () => {
            <div className="min-w-0">
              <p className="text-sm font-medium truncate">{tx.merchant}</p>
              <div className="flex items-center gap-1.5">
-               <p className="text-xs text-muted-foreground truncate">{tx.category} · {getAccountName(tx.accountId)}</p>
+               <p className="text-xs text-muted-foreground truncate">{getAccountName(tx.accountId)}</p>
                {tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
                    💳 Card Credit

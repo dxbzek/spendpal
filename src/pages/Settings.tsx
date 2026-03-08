@@ -397,6 +397,9 @@ const Settings = () => {
         </div>
 
 
+        {/* Categories */}
+        <CategoryManager />
+
         {/* Secondary Currency */}
         <SecondaryCurrencyCard />
 
