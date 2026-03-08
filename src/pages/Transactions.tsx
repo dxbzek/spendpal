@@ -74,7 +74,7 @@ const Transactions = () => {
         </div>
       </div>
 
-      <div className="px-4 pb-4">
+      <div className="px-5 pb-6">
         {grouped.length === 0 ? (
           <div className="text-center py-16">
             <Receipt size={48} className="mx-auto text-muted-foreground/40 mb-3" />

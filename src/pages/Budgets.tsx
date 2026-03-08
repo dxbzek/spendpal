@@ -46,7 +46,7 @@ const Budgets = () => {
         <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
       </div>
 
-      <div className="px-4 space-y-4 pb-4">
+      <div className="px-5 space-y-4 pb-6">
         <div className="bg-card rounded-2xl p-4 card-shadow">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium">{overallPct}% spent</span>

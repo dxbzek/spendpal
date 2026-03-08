@@ -117,7 +117,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="px-4 -mt-4 space-y-4 pb-4">
+      <div className="px-5 -mt-4 space-y-4 pb-6">
         <div className="grid grid-cols-2 gap-3">
           <Card><p className="text-xs text-muted-foreground mb-1">Income</p><p className="text-lg font-heading text-income">{mask(fmt(income))}</p></Card>
           <Card><p className="text-xs text-muted-foreground mb-1">Expenses</p><p className="text-lg font-heading text-expense">{mask(fmt(expenses))}</p></Card>
