@@ -44,6 +44,18 @@ async function extractExcelText(file: File): Promise<string> {
   return XLSX.utils.sheet_to_csv(firstSheet);
 }
 
+function normalizeDate(d: string): string {
+  // Already ISO: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmy = d.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+  // MM/DD/YYYY fallback
+  const mdy = d.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  return d;
+}
+
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, addTransaction } = useFinance();
   const { loading, categorizeStatement } = useAI();
@@ -88,7 +100,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
     const results = await categorizeStatement(statementText);
     if (results.length > 0) {
-      setParsed(results.map((r: Omit<ParsedRow, 'selected'>) => ({ ...r, selected: true })));
+      setParsed(results.map((r: Omit<ParsedRow, 'selected'>) => ({ ...r, date: normalizeDate(r.date), selected: true })));
       setStep('review');
     } else {
       toast.error('Could not parse transactions from the file');

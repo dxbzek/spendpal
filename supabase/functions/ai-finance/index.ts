@@ -64,7 +64,7 @@ Use AED amounts. Only return the JSON array, no other text.`;
     } else if (type === "categorize-csv") {
       systemPrompt = `You are a transaction categorizer. Given bank statement data (CSV, PDF text, or tabular text), categorize each transaction into one of these categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
 Also determine if each is an expense or income.
-Return a JSON array of objects with: merchant, amount, date, category, categoryIcon, type (expense/income).
+Return a JSON array of objects with: merchant, amount, date (MUST be YYYY-MM-DD format), category, categoryIcon, type (expense/income). Dates MUST always be in YYYY-MM-DD ISO format, never DD/MM/YYYY or MM/DD/YYYY.
 Category icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
 Only return the JSON array, no other text.`;
       userPrompt = `Here are my bank statement transactions:\n${data}`;
