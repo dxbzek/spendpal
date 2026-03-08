@@ -1,14 +1,14 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain } from 'lucide-react';
+import { LayoutDashboard, Receipt, PiggyBank, Target, Brain, Settings, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS_LEFT = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { path: '/transactions', label: 'Txns', icon: Receipt },
+  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
 ];
 
 const NAV_ITEMS_RIGHT = [
-  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
   { path: '/goals', label: 'Goals', icon: Target },
   { path: '/advisor', label: 'AI', icon: Brain },
   { path: '/settings', label: 'Settings', icon: Settings },
@@ -44,7 +44,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => navigate(item.path)} />
         ))}
 
-        {/* FAB */}
+        {/* FAB - centered */}
         <button onClick={onAddClick}
           className="gradient-primary rounded-full w-11 h-11 flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-transform shrink-0">
           <Plus size={22} className="text-primary-foreground" />

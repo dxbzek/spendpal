@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,13 @@ import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORIES, TRANSFER_CATEGORIES, type TransactionType } from '@/types/finance';
+import type { Transaction } from '@/types/finance';
 import { format } from 'date-fns';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editTransaction?: Transaction | null;
 }
 
 const TYPES: { value: TransactionType; label: string }[] = [
@@ -22,8 +24,8 @@ const TYPES: { value: TransactionType; label: string }[] = [
 
 const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
-const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
-  const { accounts, addTransaction } = useFinance();
+const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
+  const { accounts, addTransaction, updateTransaction } = useFinance();
   const { currency } = useCurrency();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -38,68 +40,72 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
 
-  const isTransfer = type === 'transfer';
+  const isEditing = !!editTransaction;
 
-  const handleSubmit = async () => {
-    if (isTransfer) {
-      if (!amount || !category || !accountId || !toAccountId) return;
-      await addTransaction({
-        type,
-        amount: parseFloat(amount),
-        currency,
-        category,
-        categoryIcon,
-        merchant: merchant || category,
-        accountId,
-        date,
-        isRecurring: false,
-        totalInstallments: null,
-        currentInstallment: null,
-      });
-    } else if (hasInstallments && isRecurring) {
-      if (!amount || !category || !accountId) return;
-      const total = parseInt(totalInstallments) || 12;
-      const current = parseInt(currentInstallment) || 1;
-      await addTransaction({
-        type,
-        amount: parseFloat(amount),
-        currency,
-        category,
-        categoryIcon,
-        merchant: merchant || category,
-        accountId,
-        date,
-        isRecurring: true,
-        totalInstallments: total,
-        currentInstallment: current,
-      });
-    } else {
-      if (!amount || !category || !accountId) return;
-      await addTransaction({
-        type,
-        amount: parseFloat(amount),
-        currency,
-        category,
-        categoryIcon,
-        merchant: merchant || category,
-        accountId,
-        date,
-        isRecurring,
-        totalInstallments: null,
-        currentInstallment: null,
-      });
+  // Populate form when editing
+  useEffect(() => {
+    if (editTransaction && open) {
+      setType(editTransaction.type as TransactionType);
+      setAmount(String(editTransaction.amount));
+      setCategory(editTransaction.category);
+      setCategoryIcon(editTransaction.categoryIcon);
+      setAccountId(editTransaction.accountId);
+      setMerchant(editTransaction.merchant || '');
+      setDate(editTransaction.date);
+      setIsRecurring(editTransaction.isRecurring || false);
+      setHasInstallments(!!(editTransaction.totalInstallments && editTransaction.currentInstallment));
+      setTotalInstallments(String(editTransaction.totalInstallments || 12));
+      setCurrentInstallment(String(editTransaction.currentInstallment || 1));
+      setToAccountId('');
+    } else if (!open) {
+      resetForm();
     }
+  }, [editTransaction, open]);
 
-    // Reset
+  const resetForm = () => {
+    setType('expense');
     setAmount('');
     setCategory('');
     setCategoryIcon('');
     setMerchant('');
+    setAccountId('');
     setToAccountId('');
     setIsRecurring(false);
     setHasInstallments(false);
     setTotalInstallments('12');
     setCurrentInstallment('1');
+  };
+
+  const isTransfer = type === 'transfer';
+
+  const handleSubmit = async () => {
+    if (isTransfer) {
+      if (!amount || !category || !accountId || (!isEditing && !toAccountId)) return;
+    } else {
+      if (!amount || !category || !accountId) return;
+    }
+
+    const txData = {
+      type,
+      amount: parseFloat(amount),
+      currency,
+      category,
+      categoryIcon,
+      merchant: merchant || category,
+      accountId,
+      date,
+      isRecurring: isTransfer ? false : isRecurring,
+      totalInstallments: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(totalInstallments) || 12) : null,
+      currentInstallment: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(currentInstallment) || 1) : null,
+    };
+
+    if (isEditing) {
+      await updateTransaction({ ...txData, id: editTransaction.id });
+    } else {
+      await addTransaction(txData);
+    }
+
+    resetForm();
     onOpenChange(false);
   };
 
@@ -116,13 +122,13 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto md:max-w-lg md:mx-auto md:left-1/2 md:-translate-x-1/2 md:right-auto">
         <SheetHeader>
-          <SheetTitle className="text-lg">Add Transaction</SheetTitle>
+          <SheetTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
         </SheetHeader>
 
         <div className="space-y-5 mt-4">
           <div className="flex gap-1 p-1 bg-muted rounded-lg">
             {TYPES.map(t => (
-              <button key={t.value} onClick={() => setType(t.value)}
+              <button key={t.value} onClick={() => { setType(t.value); setCategory(''); setCategoryIcon(''); }}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
                   type === t.value ? 'bg-card card-shadow text-foreground' : 'text-muted-foreground'
                 }`}>
@@ -236,7 +242,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             </Select>
           </div>
 
-          {isTransfer && (
+          {isTransfer && !isEditing && (
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">To Account</label>
               <Select value={toAccountId} onValueChange={setToAccountId}>
@@ -264,7 +270,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
           </div>
 
           <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
-            Add {type.charAt(0).toUpperCase() + type.slice(1)}
+            {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
           </Button>
         </div>
       </SheetContent>
