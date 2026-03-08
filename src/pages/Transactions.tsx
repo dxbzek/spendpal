@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
+const { accounts, transactions, removeTransaction, bulkRemoveTransactions } = useFinance();
 import { useCurrency } from '@/context/CurrencyContext';
 import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet } from 'lucide-react';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
