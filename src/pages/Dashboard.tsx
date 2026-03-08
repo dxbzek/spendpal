@@ -7,6 +7,8 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAI } from '@/hooks/useAI';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
+import SpendingPieChart from '@/components/charts/SpendingPieChart';
+import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
 import type { Account } from '@/types/finance';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -151,7 +153,19 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Category spending */}
+        {/* Spending Pie Chart */}
+        <Card>
+          <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
+          <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
+        </Card>
+
+        {/* Monthly Trend Line Chart */}
+        <Card>
+          <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
+          <MonthlyTrendChart transactions={transactions} />
+        </Card>
+
+        {/* Category spending list */}
         <Card>
           <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
           {categorySpending.length === 0 ? (
