@@ -23,6 +23,7 @@ interface ParsedRow {
   categoryIcon: string;
   type: 'expense' | 'income';
   selected: boolean;
+  isDuplicate?: boolean;
 }
 
 async function extractPdfText(file: File): Promise<string> {
