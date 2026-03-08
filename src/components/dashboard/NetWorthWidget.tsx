@@ -1,5 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
-import { TrendingUp, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import type { Account } from '@/types/finance';
 
 interface Props {
@@ -23,6 +24,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
       <div className="flex items-center gap-2 mb-3">
         <Wallet size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Net Worth</h2>
+        <GlossaryLink term="Net Worth" />
       </div>
       <p className={`text-2xl font-heading ${netWorth >= 0 ? 'text-income' : 'text-expense'}`}>
         {mask(fmt(netWorth))}

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { PieChart } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import { motion } from 'framer-motion';
 import type { Account, Transaction } from '@/types/finance';
 
@@ -42,6 +43,7 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden, mask }: Pr
       <div className="flex items-center gap-2 mb-3">
         <PieChart size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Expenses by Account Type</h2>
+        <GlossaryLink term="Expense" />
       </div>
 
       <div className="space-y-3">

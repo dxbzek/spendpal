@@ -1,5 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
 import { PiggyBank } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import type { Transaction } from '@/types/finance';
 import { useMemo } from 'react';
 
@@ -28,6 +29,7 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden, mask }: Prop
       <div className="flex items-center gap-2 mb-3">
         <PiggyBank size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Saved This Month</h2>
+        <GlossaryLink term="Saved This Month" />
       </div>
       <p className={`text-2xl font-heading ${saved >= 0 ? 'text-income' : 'text-expense'}`}>
         {mask(fmt(saved))}

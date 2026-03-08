@@ -1,5 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
 import { CreditCard } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import { motion } from 'framer-motion';
 import type { Account } from '@/types/finance';
 
@@ -26,6 +27,7 @@ const CreditUtilizationWidget = ({ accounts, hidden, mask }: Props) => {
       <div className="flex items-center gap-2 mb-3">
         <CreditCard size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Credit Utilization</h2>
+        <GlossaryLink term="Credit Utilization" />
       </div>
 
       {/* Overall */}

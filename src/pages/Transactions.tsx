@@ -50,9 +50,9 @@ const Transactions = () => {
   const renderTxContent = (tx: typeof filtered[0], idx: number) => {
     const catColor = getCategoryChartColor(tx.category, idx);
     return (
-      <div className="flex items-center justify-between p-3.5">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+      <div className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0"
             style={{ backgroundColor: catColor + '1A', color: catColor }}>
             {tx.categoryIcon}
           </div>
@@ -128,7 +128,7 @@ const Transactions = () => {
         </div>
       </div>
 
-      <div className="px-5 pb-6">
+      <div className="px-5 pb-24 md:pb-6">
         {grouped.length === 0 ? (
           <div className="text-center py-16">
             <Receipt size={48} className="mx-auto text-muted-foreground/40 mb-3" />
