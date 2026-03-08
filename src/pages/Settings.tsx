@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CURRENCIES = [
