@@ -168,7 +168,7 @@ const Dashboard = () => {
         {/* Net Worth & Money Saved */}
         <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
           <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
-          <MoneySavedWidget transactions={transactions} hidden={hidden} mask={mask} />
+          <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
