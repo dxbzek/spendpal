@@ -309,15 +309,13 @@ const Dashboard = () => {
           )}
         </Card>
 
-        {/* Recent Transactions */}
-        <Card>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading text-sm">Recent Transactions</h2>
-            <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
-          </div>
-          {recentTx.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions yet</p>
-          ) : (
+        {/* Recent Transactions - hide when empty */}
+        {recentTx.length > 0 && (
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-heading text-sm">Recent Transactions</h2>
+              <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+            </div>
             <div className="space-y-3">
               {recentTx.map(tx => (
                 <div key={tx.id} className="flex items-center justify-between">
@@ -334,8 +332,8 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
-          )}
-        </Card>
+          </Card>
+        )}
       </div>
 
       <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />

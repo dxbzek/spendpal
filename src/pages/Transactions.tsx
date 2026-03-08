@@ -78,24 +78,24 @@ const Transactions = () => {
   return (
     <div className="animate-fade-in">
       <div className="px-5 pt-12 pb-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-heading">Transactions</h1>
-          <div className="flex items-center gap-2">
-            {filtered.length > 0 && (
-              <button onClick={() => setShowDeleteAll(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors">
-                <Trash2 size={14} /> Delete All
-              </button>
-            )}
-            <button onClick={() => exportTransactionsCsv(filtered, accounts)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
-              <Download size={14} /> Export
+        </div>
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          {filtered.length > 0 && (
+            <button onClick={() => setShowDeleteAll(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors">
+              <Trash2 size={14} /> <span className="hidden sm:inline">Delete All</span><span className="sm:hidden">Delete</span>
             </button>
-            <button onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
-              <Upload size={14} /> Import
-            </button>
-          </div>
+          )}
+          <button onClick={() => exportTransactionsCsv(filtered, accounts)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+            <Download size={14} /> <span className="hidden sm:inline">Export</span>
+          </button>
+          <button onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
+            <Upload size={14} /> <span className="hidden sm:inline">Import</span>
+          </button>
         </div>
 
         <div className="relative mb-3">
