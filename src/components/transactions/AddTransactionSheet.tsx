@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { CATEGORIES, TRANSFER_CATEGORIES, type TransactionType } from '@/types/finance';
+import { CATEGORIES, type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { format } from 'date-fns';
 
@@ -83,10 +83,44 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
   const handleSubmit = async () => {
     if (isTransfer) {
-      if (!amount || !category || !accountId || (!isEditing && !toAccountId)) return;
-    } else {
-      if (!amount || !category || !accountId) return;
+      if (!amount || !accountId || !toAccountId || accountId === toAccountId) return;
+      // Create two transactions: expense from source, income to destination
+      const transferNote = note || `Transfer to ${accounts.find(a => a.id === toAccountId)?.name || 'account'}`;
+      const transferNoteIn = note || `Transfer from ${accounts.find(a => a.id === accountId)?.name || 'account'}`;
+      await addTransaction({
+        type: 'expense',
+        amount: parseFloat(amount),
+        currency,
+        category: 'Transfer',
+        categoryIcon: '🔁',
+        merchant: merchant || 'Transfer',
+        accountId,
+        date,
+        note: transferNote,
+        isRecurring: false,
+        totalInstallments: null,
+        currentInstallment: null,
+      });
+      await addTransaction({
+        type: 'income',
+        amount: parseFloat(amount),
+        currency,
+        category: 'Transfer',
+        categoryIcon: '🔁',
+        merchant: merchant || 'Transfer',
+        accountId: toAccountId,
+        date,
+        note: transferNoteIn,
+        isRecurring: false,
+        totalInstallments: null,
+        currentInstallment: null,
+      });
+      resetForm();
+      onOpenChange(false);
+      return;
     }
+
+    if (!amount || !category || !accountId) return;
 
     const txData = {
       type,
@@ -99,8 +133,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       date,
       note: note || null,
       isRecurring: isTransfer ? false : isRecurring,
-      totalInstallments: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(totalInstallments) || 12) : null,
-      currentInstallment: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(currentInstallment) || 1) : null,
+      totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : null,
+      currentInstallment: (hasInstallments && isRecurring) ? (parseInt(currentInstallment) || 1) : null,
     };
 
     if (isEditing) {
@@ -131,8 +165,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
         <div className="space-y-5 mt-4">
           <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            {TYPES.map(t => (
-              <button key={t.value} onClick={() => { setType(t.value); setCategory(''); setCategoryIcon(''); }}
+            {TYPES.filter(t => !(isEditing && t.value === 'transfer')).map(t => (
+              <button key={t.value} onClick={() => { setType(t.value); if (t.value !== 'transfer') { setCategory(''); setCategoryIcon(''); } }}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
                   type === t.value ? 'bg-card card-shadow text-foreground' : 'text-muted-foreground'
                 }`}>
@@ -213,23 +247,23 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
             </div>
           )}
 
-          {/* Category */}
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">
-              {isTransfer ? 'Transfer Type' : 'Category'}
-            </label>
-            <div className="grid grid-cols-5 gap-2">
-              {(isTransfer ? TRANSFER_CATEGORIES : CATEGORIES.slice(0, 15)).map(c => (
-                <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
-                    category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
-                  }`}>
-                  <span className="text-xl">{c.icon}</span>
-                  <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
-                </button>
-              ))}
+          {/* Category - hidden for transfers */}
+          {!isTransfer && (
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">Category</label>
+              <div className="grid grid-cols-5 gap-2">
+                {CATEGORIES.slice(0, 15).map(c => (
+                  <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
+                      category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                    }`}>
+                    <span className="text-xl">{c.icon}</span>
+                    <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Accounts */}
           <div>
@@ -246,7 +280,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
             </Select>
           </div>
 
-          {isTransfer && !isEditing && (
+          {isTransfer && (
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">To Account</label>
               <Select value={toAccountId} onValueChange={setToAccountId}>
