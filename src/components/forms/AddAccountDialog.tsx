@@ -21,6 +21,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const [balance, setBalance] = useState(editAccount?.balance?.toString() || '');
   const [creditLimit, setCreditLimit] = useState(editAccount?.creditLimit?.toString() || '');
   const [dueDate, setDueDate] = useState(editAccount?.dueDate?.toString() || '');
+  const [statementDate, setStatementDate] = useState(editAccount?.statementDate?.toString() || '');
 
   // Reset form when editAccount changes
   const isEdit = !!editAccount;
