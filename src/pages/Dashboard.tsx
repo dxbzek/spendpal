@@ -228,7 +228,6 @@ const Dashboard = () => {
         {categorySpending.length > 0 && (
           <Card>
             <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
-            {
             <div className="space-y-2.5">
               {categorySpending.slice(0, 5).map(([cat, data], idx) => {
                 const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
@@ -246,7 +245,6 @@ const Dashboard = () => {
                 );
               })}
             </div>
-          )}
         </Card>
         )}
 
