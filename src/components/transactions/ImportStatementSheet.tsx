@@ -22,36 +22,76 @@ interface ParsedRow {
   selected: boolean;
 }
 
+async function extractPdfText(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item: any) => item.str).join(' '));
+  }
+  return pages.join('\n');
+}
+
+async function extractExcelText(file: File): Promise<string> {
+  const XLSX = await import('xlsx');
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  return XLSX.utils.sheet_to_csv(firstSheet);
+}
+
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, addTransaction } = useFinance();
-  const { loading, categorizeCSV } = useAI();
+  const { loading, categorizeStatement } = useAI();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [csvText, setCsvText] = useState('');
+  const [statementText, setStatementText] = useState('');
   const [fileName, setFileName] = useState('');
+  const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [accountId, setAccountId] = useState('');
   const [step, setStep] = useState<'upload' | 'review'>('upload');
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => setCsvText(ev.target?.result as string || '');
-    reader.readAsText(file);
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+    setParsing(true);
+    try {
+      let text = '';
+      if (ext === 'pdf') {
+        text = await extractPdfText(file);
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        text = await extractExcelText(file);
+      } else {
+        text = await file.text();
+      }
+      setStatementText(text);
+    } catch (err) {
+      console.error('File parse error:', err);
+      toast.error('Failed to read file. Please try a different format.');
+      setFileName('');
+    } finally {
+      setParsing(false);
+    }
   };
 
   const handleParse = async () => {
-    if (!csvText || !accountId) {
+    if (!statementText || !accountId) {
       toast.error('Please upload a file and select an account');
       return;
     }
-    const results = await categorizeCSV(csvText);
+    const results = await categorizeStatement(statementText);
     if (results.length > 0) {
       setParsed(results.map((r: Omit<ParsedRow, 'selected'>) => ({ ...r, selected: true })));
       setStep('review');
     } else {
-      toast.error('Could not parse transactions from the CSV');
+      toast.error('Could not parse transactions from the file');
     }
   };
 
@@ -77,12 +117,12 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
 
     toast.success(`Imported ${selected.length} transactions`);
-    setCsvText(''); setFileName(''); setParsed([]); setStep('upload');
+    setStatementText(''); setFileName(''); setParsed([]); setStep('upload');
     onOpenChange(false);
   };
 
   const handleClose = (open: boolean) => {
-    if (!open) { setStep('upload'); setParsed([]); setCsvText(''); setFileName(''); }
+    if (!open) { setStep('upload'); setParsed([]); setStatementText(''); setFileName(''); }
     onOpenChange(open);
   };
 
@@ -96,13 +136,15 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
         {step === 'upload' && (
           <div className="space-y-5 mt-4">
             <div>
-              <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFile} className="hidden" />
+              <input ref={fileRef} type="file" accept=".csv,.txt,.pdf,.xlsx,.xls" onChange={handleFile} className="hidden" />
               <button onClick={() => fileRef.current?.click()}
                 className="w-full py-8 rounded-2xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
-                {fileName ? (
+                {parsing ? (
+                  <><Loader2 size={32} className="text-primary animate-spin" /><span className="text-sm text-muted-foreground">Reading file…</span></>
+                ) : fileName ? (
                   <><FileText size={32} className="text-primary" /><span className="text-sm font-medium">{fileName}</span><span className="text-xs text-muted-foreground">Click to change file</span></>
                 ) : (
-                  <><Upload size={32} className="text-muted-foreground" /><span className="text-sm text-muted-foreground">Upload CSV bank statement</span></>
+                  <><Upload size={32} className="text-muted-foreground" /><span className="text-sm text-muted-foreground">Upload CSV, PDF, or Excel statement</span></>
                 )}
               </button>
             </div>
@@ -115,7 +157,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleParse} disabled={!csvText || !accountId || loading}
+            <Button onClick={handleParse} disabled={!statementText || !accountId || loading || parsing}
               className="w-full h-12 text-base gradient-primary text-primary-foreground">
               {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing with AI…</> : 'Parse & Categorize'}
             </Button>
