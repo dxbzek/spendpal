@@ -24,9 +24,7 @@ const DesktopSidebar = ({ onAddClick }: DesktopSidebarProps) => {
     <aside className="w-56 shrink-0 border-r border-border bg-card h-screen sticky top-0 flex flex-col">
       {/* Brand */}
       <div className="px-5 py-6 flex items-center gap-3">
-        <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center">
-          <span className="text-lg">💰</span>
-        </div>
+        <img src={logo} alt="SpendPal" className="w-9 h-9 rounded-xl object-cover" />
         <span className="font-heading text-lg">SpendPal</span>
       </div>
 
