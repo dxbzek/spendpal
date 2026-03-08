@@ -39,7 +39,7 @@ const MonthlyTrendChart = ({ transactions }: Props) => {
         <Tooltip formatter={(val: number) => `د.إ ${val.toLocaleString('en-AE')}`}
           contentStyle={{ borderRadius: '0.75rem', fontSize: '0.75rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
         <Line type="monotone" dataKey="Income" stroke="hsl(152, 62%, 42%)" strokeWidth={2.5} dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="Expenses" stroke="hsl(0, 72%, 55%)" strokeWidth={2.5} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="Expenses" stroke="hsl(152, 50%, 28%)" strokeWidth={2.5} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   );

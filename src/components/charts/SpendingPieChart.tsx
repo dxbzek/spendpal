@@ -2,13 +2,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const COLORS = [
   'hsl(152, 62%, 42%)',
-  'hsl(38, 92%, 50%)',
-  'hsl(270, 60%, 55%)',
-  'hsl(200, 70%, 50%)',
-  'hsl(0, 72%, 55%)',
-  'hsl(330, 70%, 55%)',
-  'hsl(168, 55%, 40%)',
-  'hsl(60, 70%, 45%)',
+  'hsl(140, 50%, 50%)',
+  'hsl(165, 55%, 38%)',
+  'hsl(148, 40%, 55%)',
+  'hsl(155, 60%, 30%)',
+  'hsl(160, 45%, 65%)',
+  'hsl(145, 50%, 45%)',
+  'hsl(168, 40%, 75%)',
 ];
 
 interface Props {
