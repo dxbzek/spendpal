@@ -94,6 +94,7 @@ const Budgets = () => {
             </div>
           );
         })}
+        </div>
 
         {/* AI Suggestions */}
         <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/30">

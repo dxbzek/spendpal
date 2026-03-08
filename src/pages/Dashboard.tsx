@@ -321,7 +321,9 @@ const Dashboard = () => {
           </Card>
         )}
 
-        <RecurringTracker />
+        <div className="md:col-span-2 lg:col-span-3">
+          <RecurringTracker />
+        </div>
 
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">
@@ -342,9 +344,9 @@ const Dashboard = () => {
           )}
         </Card>
 
-        {/* Recent Transactions - hide when empty */}
+        {/* Recent Transactions - spans full */}
         {recentTx.length > 0 && (
-          <Card>
+          <Card className="md:col-span-2 lg:col-span-3">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Recent Transactions</h2>
               <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -367,7 +369,7 @@ const Dashboard = () => {
             </div>
           </Card>
         )}
-      </div>
+        </div>{/* end grid */}
 
       <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />
 

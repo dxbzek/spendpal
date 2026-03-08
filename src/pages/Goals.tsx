@@ -114,7 +114,8 @@ const Goals = () => {
               </div>
             );
           })
-        )}
+          }
+          </div>
       </div>
 
       <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) setProgressGoalId(null); }}>
