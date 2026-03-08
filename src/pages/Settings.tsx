@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useCurrency } from '@/context/CurrencyContext';
+import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
+import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,21 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const CURRENCIES = [
-  { code: 'AED', label: 'AED (د.إ)' },
-  { code: 'USD', label: 'USD ($)' },
-  { code: 'EUR', label: 'EUR (€)' },
-  { code: 'GBP', label: 'GBP (£)' },
-  { code: 'INR', label: 'INR (₹)' },
-  { code: 'SAR', label: 'SAR (﷼)' },
-];
 
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [currency, setCurrency] = useState('AED');
@@ -30,6 +23,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -42,6 +36,13 @@ const Settings = () => {
       setLoading(false);
     });
   }, [user]);
+
+  const filteredCurrencies = currencySearch
+    ? WORLD_CURRENCIES.filter(c =>
+        c.code.toLowerCase().includes(currencySearch.toLowerCase()) ||
+        c.label.toLowerCase().includes(currencySearch.toLowerCase())
+      )
+    : WORLD_CURRENCIES;
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,6 +133,20 @@ const Settings = () => {
 
       {/* Form */}
       <div className="space-y-5">
+        {/* Appearance */}
+        <div className="bg-card rounded-2xl p-5 card-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? <Moon size={18} className="text-primary" /> : <Sun size={18} className="text-primary" />}
+              <div>
+                <p className="text-sm font-medium">Dark Mode</p>
+                <p className="text-xs text-muted-foreground">Switch between light and dark theme</p>
+              </div>
+            </div>
+            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+          </div>
+        </div>
+
         <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Display Name</label>
@@ -144,10 +159,25 @@ const Settings = () => {
               <SelectTrigger className="h-12">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                {CURRENCIES.map(c => (
+              <SelectContent className="max-h-[280px]">
+                <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search currencies…"
+                      value={currencySearch}
+                      onChange={e => setCurrencySearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+                {filteredCurrencies.map(c => (
                   <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
                 ))}
+                {filteredCurrencies.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-3">No currencies found</p>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -156,7 +186,6 @@ const Settings = () => {
             {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
           </Button>
         </div>
-
 
         {/* Sign Out */}
         <button onClick={signOut}
