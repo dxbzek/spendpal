@@ -8,6 +8,7 @@ import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
 import MonthlyReportCard from '@/components/dashboard/MonthlyReportCard';
 import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWidget';
 import ExpenseByAccountTypeWidget from '@/components/dashboard/ExpenseByAccountTypeWidget';
+import MonthlyComparisonWidget from '@/components/dashboard/MonthlyComparisonWidget';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
@@ -266,6 +267,9 @@ const Dashboard = () => {
 
         {/* Expenses by Account Type */}
         <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
+
+        {/* Monthly Comparison */}
+        <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
 
         {/* Spending Pie Chart - hide when no data */}
         {categorySpending.length > 0 && (
