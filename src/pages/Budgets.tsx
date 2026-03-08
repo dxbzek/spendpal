@@ -175,7 +175,7 @@ const Budgets = () => {
               disabled={deletingAll}
               onClick={async () => {
                 setDeletingAll(true);
-                for (const b of budgets) { await removeBudget(b.id); }
+                await bulkRemoveBudgets(budgets.map(b => b.id));
                 setDeletingAll(false);
                 setShowDeleteAll(false);
               }}
