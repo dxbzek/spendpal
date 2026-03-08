@@ -148,32 +148,49 @@ const Dashboard = () => {
                 <div key={accountType}>
                   <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
                   <div className="space-y-3">
-                    {group.map(a => (
-                      <div key={a.id} className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{a.icon}</span>
-                          <div>
-                            <p className="text-sm font-medium">{a.name}</p>
-                            {a.type === 'credit' && (
-                              <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                                {a.statementDate && <span>Stmt: {a.statementDate}th</span>}
-                                {a.dueDate && <span>Due: {a.dueDate}th</span>}
-                                {a.creditLimit && <span>Limit: {fmt(a.creditLimit)}</span>}
+                    {group.map(a => {
+                      const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((Math.abs(a.balance) / a.creditLimit) * 100), 100) : 0;
+                      const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-amber-500' : 'bg-primary';
+                      return (
+                        <div key={a.id} className="group">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{a.icon}</span>
+                              <div>
+                                <p className="text-sm font-medium">{a.name}</p>
+                                {a.type === 'credit' && (
+                                  <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                                    {a.statementDate && <span>Stmt: {a.statementDate}th</span>}
+                                    {a.dueDate && <span>Due: {a.dueDate}th</span>}
+                                    {a.creditLimit && <span>Limit: {fmt(a.creditLimit)}</span>}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <p className={`font-heading text-sm ${a.balance < 0 ? 'text-expense' : ''}`}>{mask(fmt(a.balance))}</p>
+                              <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
+                                <Edit2 size={14} />
+                              </button>
+                              <button onClick={() => setDeleteAccountId(a.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
+                          {a.type === 'credit' && a.creditLimit && (
+                            <div className="mt-1.5 ml-11">
+                              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                                <span>{utilization}% used</span>
+                                <span>{fmt(Math.abs(a.balance))} / {fmt(a.creditLimit)}</span>
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full rounded-full transition-all ${utilizationColor}`} style={{ width: `${utilization}%` }} />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <p className={`font-heading text-sm ${a.balance < 0 ? 'text-expense' : ''}`}>{mask(fmt(a.balance))}</p>
-                          <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => setDeleteAccountId(a.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
