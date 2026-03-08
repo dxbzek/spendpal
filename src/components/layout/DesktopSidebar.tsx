@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import logo from '@/assets/logo.png';
 import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain } from 'lucide-react';
 import { motion } from 'framer-motion';
 
