@@ -6,6 +6,8 @@ import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
 import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
 import MonthlyReportCard from '@/components/dashboard/MonthlyReportCard';
+import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWidget';
+import ExpenseByAccountTypeWidget from '@/components/dashboard/ExpenseByAccountTypeWidget';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
@@ -258,6 +260,12 @@ const Dashboard = () => {
             {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet. Add one to get started!</p>}
           </div>
         </Card>
+
+        {/* Credit Utilization Tracker */}
+        <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
+
+        {/* Expenses by Account Type */}
+        <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
 
         {/* Spending Pie Chart - hide when no data */}
         {categorySpending.length > 0 && (
