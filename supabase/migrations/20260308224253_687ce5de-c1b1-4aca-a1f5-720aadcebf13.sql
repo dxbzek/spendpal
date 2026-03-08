@@ -1,0 +1,1 @@
+UPDATE accounts SET balance = 146.65 WHERE id = '54bafc3f-2a0e-4cb5-91de-50885de07c40';
