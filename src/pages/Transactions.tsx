@@ -134,7 +134,7 @@ const Transactions = () => {
           <Input placeholder="Search transactions..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
         </div>
 
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
           {['all', 'expense', 'income', 'transfer'].map(f => (
             <button key={f} onClick={() => setFilterType(f)}
               className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
@@ -143,8 +143,34 @@ const Transactions = () => {
               {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
+          <button onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
+              filterCategory !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            }`}>
+            <Filter size={12} />
+            {filterCategory !== 'all' ? filterCategory : 'Category'}
+          </button>
         </div>
-      </div>
+
+        {showCategoryFilter && (
+          <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 flex-wrap">
+            <button onClick={() => { setFilterCategory('all'); setShowCategoryFilter(false); }}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                filterCategory === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
+              }`}>
+              All Categories
+            </button>
+            {uniqueCategories.map(cat => (
+              <button key={cat} onClick={() => { setFilterCategory(cat); setShowCategoryFilter(false); }}
+                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                  filterCategory === cat ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
+                }`}>
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+        </div>
 
       <div className="px-5 pb-24 md:pb-6">
         {grouped.length === 0 ? (
