@@ -68,7 +68,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             </Select>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Balance (AED)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Balance ({currency})</label>
             <Input type="number" placeholder="0.00" value={balance} onChange={e => setBalance(e.target.value)} />
           </div>
           {type === 'credit' && (
