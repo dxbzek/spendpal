@@ -153,7 +153,19 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Category spending */}
+        {/* Spending Pie Chart */}
+        <Card>
+          <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
+          <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
+        </Card>
+
+        {/* Monthly Trend Line Chart */}
+        <Card>
+          <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
+          <MonthlyTrendChart transactions={transactions} />
+        </Card>
+
+        {/* Category spending list */}
         <Card>
           <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
           {categorySpending.length === 0 ? (
