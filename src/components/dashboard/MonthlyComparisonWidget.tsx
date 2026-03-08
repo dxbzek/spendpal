@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import { startOfMonth, subMonths, format, parseISO, isWithinInterval, endOfMonth } from 'date-fns';
 import type { Account, Transaction } from '@/types/finance';
 
