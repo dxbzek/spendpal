@@ -1,13 +1,11 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2, ArrowRightLeft, RefreshCw, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -22,101 +20,15 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const FRANKFURTER_API = 'https://api.frankfurter.app';
-
-const QuickConverter = ({ baseCurrency }: { baseCurrency: string }) => {
-  const [amount, setAmount] = useState('1');
-  const [targetCurrency, setTargetCurrency] = useState(baseCurrency === 'USD' ? 'EUR' : 'USD');
-  const [rate, setRate] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [targetSearch, setTargetSearch] = useState('');
-
-  const filteredTarget = targetSearch
-    ? WORLD_CURRENCIES.filter(c =>
-        c.code.toLowerCase().includes(targetSearch.toLowerCase()) ||
-        c.label.toLowerCase().includes(targetSearch.toLowerCase())
-      )
-    : WORLD_CURRENCIES;
-
-  const fetchRate = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${FRANKFURTER_API}/latest?from=${baseCurrency}&to=${targetCurrency}`);
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
-      setRate(data.rates?.[targetCurrency] ?? null);
-    } catch {
-      setRate(null);
-    }
-    setLoading(false);
-  }, [baseCurrency, targetCurrency]);
-
-  useEffect(() => { fetchRate(); }, [fetchRate]);
-
-  const numAmount = parseFloat(amount) || 0;
-  const converted = rate !== null ? (numAmount * rate) : null;
-
-  return (
-    <div className="bg-card rounded-2xl p-4 card-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <ArrowRightLeft size={16} className="text-primary" />
-          <h2 className="font-heading text-sm">Currency Converter</h2>
-        </div>
-        <button onClick={fetchRate} disabled={loading} className="text-xs text-primary flex items-center gap-1">
-          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
-
-      <div className="flex items-center gap-2 mb-3">
-        <Input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-          className="h-10 text-sm font-heading flex-1" min="0" placeholder="Amount" />
-        <span className="text-xs font-medium text-muted-foreground shrink-0">{baseCurrency}</span>
-        <span className="text-muted-foreground">→</span>
-        <Select value={targetCurrency} onValueChange={setTargetCurrency}>
-          <SelectTrigger className="h-10 w-28">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="max-h-[240px]">
-            <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
-              <div className="relative">
-                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input type="text" placeholder="Search…" value={targetSearch}
-                  onChange={e => setTargetSearch(e.target.value)}
-                  className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
-              </div>
-            </div>
-            {filteredTarget.map(c => (
-              <SelectItem key={c.code} value={c.code}>{c.code} - {c.label.split('(')[0].trim()}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="bg-muted/50 rounded-xl p-3 text-center">
-        {loading ? (
-          <Loader2 size={16} className="animate-spin text-primary mx-auto" />
-        ) : converted !== null ? (
-          <>
-            <p className="text-xl font-heading text-foreground">
-              {converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {targetCurrency}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              1 {baseCurrency} = {rate?.toLocaleString(undefined, { minimumFractionDigits: 4 })} {targetCurrency}
-            </p>
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">Rate unavailable</p>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const Dashboard = () => {
   const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
-  const { fmt, fmtSigned, currency: userCurrency } = useCurrency();
+  const { fmt, fmtSigned, currency: userCurrency, fmtSecondary, secondaryCurrency, setSecondaryCurrency } = useCurrency();
+  const [secSearch, setSecSearch] = useState('');
+  const filteredSecCurrencies = secSearch
+    ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
+    : WORLD_CURRENCIES;
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(() => localStorage.getItem('balanceHidden') === 'true');
 
@@ -135,6 +47,7 @@ const Dashboard = () => {
   useBudgetAlerts(budgets);
 
   const mask = (val: string) => hidden ? '••••••' : val;
+  const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
   const now = new Date();
 
@@ -207,6 +120,28 @@ const Dashboard = () => {
         <div className="text-center">
           <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
           <p className="text-3xl font-heading text-primary-foreground">{mask(fmt(totalBalance))}</p>
+          {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
+        </div>
+        {/* Secondary currency selector */}
+        <div className="flex justify-center mt-3">
+          <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+            <SelectTrigger className="h-7 w-auto min-w-[100px] max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
+              <SelectValue placeholder="2nd currency" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[240px]">
+              <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                <div className="relative">
+                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
+                    className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+              </div>
+              <SelectItem value="__none__">None</SelectItem>
+              {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
+                <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex justify-center mt-4">
           <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
@@ -224,8 +159,16 @@ const Dashboard = () => {
 
       <div className="px-5 -mt-4 space-y-4 pb-6">
         <div className="grid grid-cols-2 gap-3">
-          <Card><p className="text-xs text-muted-foreground mb-1">Income</p><p className="text-lg font-heading text-income">{mask(fmt(income))}</p></Card>
-          <Card><p className="text-xs text-muted-foreground mb-1">Expenses</p><p className="text-lg font-heading text-expense">{mask(fmt(expenses))}</p></Card>
+          <Card>
+            <p className="text-xs text-muted-foreground mb-1">Income</p>
+            <p className="text-lg font-heading text-income">{mask(fmt(income))}</p>
+            {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
+          </Card>
+          <Card>
+            <p className="text-xs text-muted-foreground mb-1">Expenses</p>
+            <p className="text-lg font-heading text-expense">{mask(fmt(expenses))}</p>
+            {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
+          </Card>
         </div>
 
         {/* Accounts */}
@@ -268,6 +211,7 @@ const Dashboard = () => {
                             <div className="flex items-center gap-2">
                               <div className="text-right">
                                 <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
+                                {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
                                 {a.type === 'credit' && (
                                    <p className="text-[11px] font-medium text-primary/70">Available Limit</p>
                                  )}
@@ -381,9 +325,6 @@ const Dashboard = () => {
         )}
 
         <RecurringTracker />
-
-        {/* Currency Converter */}
-        <QuickConverter baseCurrency={userCurrency} />
 
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">
