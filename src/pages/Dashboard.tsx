@@ -114,12 +114,12 @@ const Dashboard = () => {
         </div>
         <div className="flex justify-center mt-4">
           <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
-            {(['month', 'year'] as const).map(p => (
+            {(['all', 'month', 'year'] as const).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
                 className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
                   period === p ? 'bg-primary-foreground/20 text-primary-foreground' : 'text-primary-foreground/60'
                 }`}>
-                This {p === 'month' ? 'Month' : 'Year'}
+                {p === 'all' ? 'All Time' : p === 'month' ? 'This Month' : 'This Year'}
               </button>
             ))}
           </div>

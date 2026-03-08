@@ -159,19 +159,6 @@ const Settings = () => {
           </Button>
         </div>
 
-        {/* Appearance */}
-        <div className="bg-card rounded-2xl p-5 card-shadow">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Moon size={18} className="text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Dark Mode</p>
-                <p className="text-xs text-muted-foreground">Switch to dark theme</p>
-              </div>
-            </div>
-            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-          </div>
-        </div>
 
         {/* Sign Out */}
         <button onClick={signOut}
