@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,6 +15,7 @@ import {
 
 const Goals = () => {
   const { goals, addGoalProgress, removeGoal } = useFinance();
+  const { fmt } = useCurrency();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -23,7 +25,6 @@ const Goals = () => {
   const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
   const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0);
   const overallPct = totalTarget ? Math.round((totalSaved / totalTarget) * 100) : 0;
-  const fmt = (n: number) => n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const handleAddProgress = async () => {
     if (!progressGoalId || !progressAmount) return;
@@ -36,7 +37,7 @@ const Goals = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="gradient-goals px-5 pt-12 pb-8 rounded-b-3xl">
+      <div className="gradient-primary px-4 pt-12 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
           <button onClick={() => { setEditGoal(null); setShowAddGoal(true); }}
@@ -47,7 +48,7 @@ const Goals = () => {
         <div className="bg-primary-foreground/10 rounded-2xl p-4 backdrop-blur-sm">
           <p className="text-primary-foreground/70 text-xs mb-1">Total Progress</p>
           <p className="text-2xl font-heading text-primary-foreground mb-2">
-            {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of د.إ {fmt(totalTarget)}</span>
+            {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {fmt(totalTarget)}</span>
           </p>
           <div className="h-2.5 bg-primary-foreground/20 rounded-full overflow-hidden">
             <motion.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8 }} className="h-full rounded-full bg-primary-foreground" />
@@ -55,7 +56,7 @@ const Goals = () => {
         </div>
       </div>
 
-      <div className="px-4 -mt-4 space-y-4">
+      <div className="px-4 -mt-4 space-y-4 pb-4">
         <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide pt-2">Active Goals</h2>
 
         {activeGoals.length === 0 ? (
@@ -80,13 +81,13 @@ const Goals = () => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                  <span>د.إ {fmt(goal.savedAmount)}</span><span>د.إ {fmt(goal.targetAmount)}</span>
+                  <span>{fmt(goal.savedAmount)}</span><span>{fmt(goal.targetAmount)}</span>
                 </div>
                 <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full gradient-goals" />
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full gradient-primary" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">د.إ {fmt(remaining)} remaining</p>
+                  <p className="text-xs text-muted-foreground">{fmt(remaining)} remaining</p>
                   <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); }}
                     className="px-3 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">Add Progress</button>
                 </div>
@@ -101,7 +102,7 @@ const Goals = () => {
           <DialogHeader><DialogTitle>Add Progress</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Amount (AED)</label>
+              <label className="text-sm text-muted-foreground mb-1 block">Amount</label>
               <Input type="number" placeholder="0.00" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} className="text-lg h-12" />
             </div>
             <Button onClick={handleAddProgress} className="w-full gradient-primary text-primary-foreground">Save Progress</Button>
@@ -109,7 +110,6 @@ const Goals = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="h-4" />
       <AddGoalDialog open={showAddGoal} onOpenChange={setShowAddGoal} editGoal={editGoal} />
 
       <AlertDialog open={!!deleteGoalId} onOpenChange={(o) => { if (!o) setDeleteGoalId(null); }}>

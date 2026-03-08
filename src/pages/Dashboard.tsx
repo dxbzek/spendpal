@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -18,6 +19,7 @@ import {
 const Dashboard = () => {
   const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
+  const { fmt, fmtSigned } = useCurrency();
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(false);
   const [period, setPeriod] = useState<'month' | 'year'>('month');
@@ -57,7 +59,6 @@ const Dashboard = () => {
   const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
   const recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
   const recentTx = transactions.slice(0, 5);
-  const fmt = (n: number) => n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
     <div className={`bg-card rounded-2xl p-4 card-shadow ${className}`}>{children}</div>
@@ -98,7 +99,7 @@ const Dashboard = () => {
         </div>
         <div className="text-center">
           <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
-          <p className="text-3xl font-heading text-primary-foreground">{mask(`د.إ ${fmt(totalBalance)}`)}</p>
+          <p className="text-3xl font-heading text-primary-foreground">{mask(fmt(totalBalance))}</p>
         </div>
         <div className="flex justify-center mt-4">
           <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
@@ -114,13 +115,13 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="px-4 -mt-4 space-y-4">
+      <div className="px-4 -mt-4 space-y-4 pb-4">
         <div className="grid grid-cols-2 gap-3">
-          <Card><p className="text-xs text-muted-foreground mb-1">Income</p><p className="text-lg font-heading text-income">{mask(`د.إ ${fmt(income)}`)}</p></Card>
-          <Card><p className="text-xs text-muted-foreground mb-1">Expenses</p><p className="text-lg font-heading text-expense">{mask(`د.إ ${fmt(expenses)}`)}</p></Card>
+          <Card><p className="text-xs text-muted-foreground mb-1">Income</p><p className="text-lg font-heading text-income">{mask(fmt(income))}</p></Card>
+          <Card><p className="text-xs text-muted-foreground mb-1">Expenses</p><p className="text-lg font-heading text-expense">{mask(fmt(expenses))}</p></Card>
         </div>
 
-        {/* Accounts with edit/delete */}
+        {/* Accounts */}
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Accounts</h2>
@@ -139,7 +140,7 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <p className={`font-heading text-sm ${a.balance < 0 ? 'text-expense' : ''}`}>{mask(`د.إ ${fmt(a.balance)}`)}</p>
+                  <p className={`font-heading text-sm ${a.balance < 0 ? 'text-expense' : ''}`}>{mask(fmt(a.balance))}</p>
                   <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
                     <Edit2 size={14} />
                   </button>
@@ -178,7 +179,7 @@ const Dashboard = () => {
                   <div key={cat}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm flex items-center gap-2"><span>{data.icon}</span> {cat}</span>
-                      <span className="text-sm font-medium">د.إ {fmt(data.total)}</span>
+                      <span className="text-sm font-medium">{fmt(data.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full bg-primary" />
@@ -197,7 +198,7 @@ const Dashboard = () => {
             <button onClick={() => navigate('/budgets')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-            <span>{budgetPct}% spent</span><span>د.إ {fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
+            <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
           </div>
           <div className="h-3 bg-muted rounded-full overflow-hidden">
             <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6 }}
@@ -232,13 +233,13 @@ const Dashboard = () => {
           <Card>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Recurring Expenses</h2>
-              <span className="text-xs font-medium text-expense">د.إ {fmt(recurringTotal)}/mo</span>
+              <span className="text-xs font-medium text-expense">{fmt(recurringTotal)}/mo</span>
             </div>
             <div className="space-y-2">
               {recurring.map(r => (
                 <div key={r.id} className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2"><span className="text-lg">{r.categoryIcon}</span><span className="text-sm">{r.merchant}</span></div>
-                  <span className="text-sm font-medium">د.إ {fmt(r.amount)}</span>
+                  <span className="text-sm font-medium">{fmt(r.amount)}</span>
                 </div>
               ))}
             </div>
@@ -284,7 +285,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                    {tx.type === 'income' ? '+' : '-'}د.إ {tx.amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}
+                    {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
                   </p>
                 </div>
               ))}
@@ -293,11 +294,8 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="h-4" />
-
       <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />
 
-      {/* Delete confirmation */}
       <AlertDialog open={!!deleteAccountId} onOpenChange={(o) => { if (!o) setDeleteAccountId(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
