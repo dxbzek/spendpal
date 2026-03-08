@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CURRENCIES = [
@@ -24,7 +23,6 @@ const CURRENCIES = [
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
-  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [currency, setCurrency] = useState('AED');
@@ -159,19 +157,6 @@ const Settings = () => {
           </Button>
         </div>
 
-        {/* Appearance */}
-        <div className="bg-card rounded-2xl p-5 card-shadow">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Moon size={18} className="text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Dark Mode</p>
-                <p className="text-xs text-muted-foreground">Switch to dark theme</p>
-              </div>
-            </div>
-            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-          </div>
-        </div>
 
         {/* Sign Out */}
         <button onClick={signOut}
