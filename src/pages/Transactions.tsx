@@ -95,12 +95,10 @@ const Transactions = () => {
           <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
             {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
           </p>
-          {!isMobile && (
-            <button onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
-              <Trash2 size={14} />
-            </button>
-          )}
+          <button onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
+            className="text-muted-foreground hover:text-destructive transition-colors p-1">
+            <Trash2 size={14} />
+          </button>
         </div>
       </div>
     );
