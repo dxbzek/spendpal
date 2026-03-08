@@ -35,6 +35,7 @@ const Transactions = () => {
   }, [transactions, search, filterType]);
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
+  const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
 
   const grouped = useMemo(() => {
     const map: Record<string, typeof filtered> = {};
@@ -59,6 +60,11 @@ const Transactions = () => {
              <p className="text-sm font-medium truncate">{tx.merchant}</p>
              <div className="flex items-center gap-1.5">
                <p className="text-xs text-muted-foreground truncate">{tx.category} · {getAccountName(tx.accountId)}</p>
+               {tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
+                 <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
+                   💳 Card Credit
+                 </span>
+               )}
                {tx.totalInstallments && tx.currentInstallment && (
                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
                    {tx.currentInstallment}/{tx.totalInstallments}
