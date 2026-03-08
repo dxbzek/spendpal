@@ -57,6 +57,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       setHasInstallments(!!(editTransaction.totalInstallments && editTransaction.currentInstallment));
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
       setCurrentInstallment(String(editTransaction.currentInstallment || 1));
+      setNote(editTransaction.note || '');
       setToAccountId('');
     } else if (!open) {
       resetForm();
