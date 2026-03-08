@@ -116,7 +116,7 @@ const QuickConverter = ({ baseCurrency }: { baseCurrency: string }) => {
 const Dashboard = () => {
   const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
-  const { fmt, fmtSigned } = useCurrency();
+  const { fmt, fmtSigned, currency: userCurrency } = useCurrency();
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(() => localStorage.getItem('balanceHidden') === 'true');
 
