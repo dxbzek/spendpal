@@ -99,7 +99,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
           <div className="flex items-center gap-2">
-            <button onClick={() => setHidden(!hidden)} className="text-primary-foreground/80">
+            <button onClick={toggleHidden} className="text-primary-foreground/80">
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
             <button onClick={() => navigate('/settings')} className="text-primary-foreground/80">
