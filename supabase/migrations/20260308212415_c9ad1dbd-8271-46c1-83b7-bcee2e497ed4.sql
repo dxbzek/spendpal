@@ -1,0 +1,1 @@
+UPDATE transactions SET category_icon = SUBSTRING(category_icon FROM 1 FOR 2) WHERE LENGTH(category_icon) > 4;

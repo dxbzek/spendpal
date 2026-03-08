@@ -389,7 +389,7 @@ const Dashboard = () => {
               {recentTx.map(tx => (
                 <div key={tx.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{tx.categoryIcon}</span>
+                    <span className="text-xl">{tx.categoryIcon.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u)?.[0] || tx.categoryIcon.charAt(0)}</span>
                     <div>
                       <p className="text-sm font-medium">{tx.merchant}</p>
                       <p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>

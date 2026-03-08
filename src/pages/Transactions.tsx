@@ -51,15 +51,20 @@ const Transactions = () => {
 
   const renderTxContent = (tx: typeof filtered[0], idx: number) => {
     const catColor = getCategoryChartColor(tx.category, idx);
+    // Extract only emoji from categoryIcon (DB may store "🔁 Transfer" instead of just "🔁")
+    const emojiOnly = (str: string) => {
+      const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
+      return match ? match[0] : str.charAt(0);
+    };
     return (
       <div
         className="flex items-center justify-between p-4 cursor-pointer active:bg-muted/50 transition-colors"
         onClick={() => openEditSheet(tx)}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 overflow-hidden"
             style={{ backgroundColor: catColor + '1A' }}>
-            {tx.categoryIcon}
+            {emojiOnly(tx.categoryIcon)}
           </div>
            <div className="min-w-0">
              <p className="text-sm font-medium truncate">{tx.merchant}</p>
