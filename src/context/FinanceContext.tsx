@@ -187,6 +187,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       date: tx.date,
       note: tx.note ?? null,
       is_recurring: tx.isRecurring ?? false,
+      total_installments: tx.totalInstallments ?? null,
+      current_installment: tx.currentInstallment ?? null,
     });
     if (error) { toast.error(error.message); return; }
     // Update account balance (skip for imported historical transactions)
