@@ -131,6 +131,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
               </div>
               <Switch checked={isRecurring} onCheckedChange={(v) => {
                 setIsRecurring(v);
+                if (v) setHasInstallments(true);
                 if (!v) setHasInstallments(false);
               }} />
             </div>
