@@ -133,7 +133,7 @@ const Transactions = () => {
         </div>
 
         <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-          {['all', 'expense', 'income', 'transfer'].map(f => (
+          {['all', 'expense', 'income'].map(f => (
             <button key={f} onClick={() => setFilterType(f)}
               className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                 filterType === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
