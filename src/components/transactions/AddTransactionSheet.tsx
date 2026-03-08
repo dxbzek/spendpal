@@ -255,13 +255,13 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
 
-          {/* Merchant - hidden for transfers */}
-          {!isTransfer && (
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Merchant (optional)</label>
-              <Input placeholder="e.g., Starbucks" value={merchant} onChange={e => setMerchant(e.target.value)} />
-            </div>
-          )}
+          {/* Merchant / Recipient */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">
+              {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
+            </label>
+            <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} />
+          </div>
 
           <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
             Add {type.charAt(0).toUpperCase() + type.slice(1)}
