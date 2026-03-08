@@ -68,10 +68,12 @@ interface FinanceContextType {
   addTransaction: (tx: Omit<Transaction, 'id'>, options?: { skipBalanceUpdate?: boolean }) => Promise<void>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
+  bulkRemoveTransactions: (ids: string[]) => Promise<void>;
   // Budgets
   addBudget: (budget: Omit<Budget, 'id' | 'spent'>) => Promise<void>;
   updateBudget: (budget: Budget) => Promise<void>;
   removeBudget: (id: string) => Promise<void>;
+  bulkRemoveBudgets: (ids: string[]) => Promise<void>;
   // Goals
   addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>;
   updateGoal: (goal: Goal) => Promise<void>;
