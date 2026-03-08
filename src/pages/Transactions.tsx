@@ -62,10 +62,7 @@ const Transactions = () => {
         onClick={() => openEditSheet(tx)}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 overflow-hidden"
-            style={{ backgroundColor: catColor + '1A' }}>
-            {emojiOnly(tx.categoryIcon)}
-          </div>
+          <span className="text-2xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
            <div className="min-w-0">
              <p className="text-sm font-medium truncate">{tx.merchant}</p>
              <div className="flex items-center gap-1.5">

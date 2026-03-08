@@ -39,6 +39,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const [hasInstallments, setHasInstallments] = useState(false);
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
+  const [note, setNote] = useState('');
 
   const isEditing = !!editTransaction;
 
