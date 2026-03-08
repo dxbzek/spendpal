@@ -25,6 +25,7 @@ const GOAL_TYPES = [
 
 const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
   const { addGoal, updateGoal } = useFinance();
+  const { currency } = useCurrency();
   const isEdit = !!editGoal;
   const [name, setName] = useState(editGoal?.name || '');
   const [goalType, setGoalType] = useState(editGoal?.type || '');
