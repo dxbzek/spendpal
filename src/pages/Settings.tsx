@@ -13,6 +13,46 @@ import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 
 
+const SecondaryCurrencyCard = () => {
+  const { secondaryCurrency, setSecondaryCurrency, currency } = useCurrency();
+  const [searchVal, setSearchVal] = useState('');
+
+  const filtered = searchVal
+    ? WORLD_CURRENCIES.filter(c =>
+        c.code.toLowerCase().includes(searchVal.toLowerCase()) ||
+        c.label.toLowerCase().includes(searchVal.toLowerCase())
+      )
+    : WORLD_CURRENCIES;
+
+  return (
+    <div className="bg-card rounded-2xl p-5 card-shadow space-y-3">
+      <div>
+        <p className="text-sm font-medium mb-1">Secondary Currency</p>
+        <p className="text-xs text-muted-foreground mb-3">Show converted values alongside your primary currency</p>
+        <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+          <SelectTrigger className="h-12">
+            <SelectValue placeholder="None" />
+          </SelectTrigger>
+          <SelectContent className="max-h-[280px]">
+            <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input type="text" placeholder="Search currencies…" value={searchVal}
+                  onChange={e => setSearchVal(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+              </div>
+            </div>
+            <SelectItem value="__none__">None (disabled)</SelectItem>
+            {filtered.filter(c => c.code !== currency).map(c => (
+              <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+};
+
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
