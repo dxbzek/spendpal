@@ -187,6 +187,9 @@ const Settings = () => {
           </Button>
         </div>
 
+        {/* Currency Converter */}
+        <CurrencyConverter baseCurrency={currency} />
+
         {/* Sign Out */}
         <button onClick={signOut}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-card card-shadow text-muted-foreground font-medium text-sm hover:bg-muted transition-colors">
