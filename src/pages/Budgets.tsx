@@ -1,11 +1,22 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { Sparkles, Plus } from 'lucide-react';
+import { Sparkles, Plus, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth } from 'date-fns';
+import { useAI } from '@/hooks/useAI';
+import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
+
+interface BudgetSuggestion {
+  category: string;
+  suggestedAmount: number;
+  reasoning: string;
+}
 
 const Budgets = () => {
-  const { budgets } = useFinance();
+  const { budgets, transactions } = useFinance();
+  const { loading: aiLoading, generateBudgetSuggestions } = useAI();
+  const [showAddBudget, setShowAddBudget] = useState(false);
+  const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
 
   const now = new Date();
   const daysLeft = differenceInDays(endOfMonth(now), now);
@@ -14,6 +25,14 @@ const Budgets = () => {
   const overallPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
 
   const fmt = (n: number) => n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const handleGenerateSuggestions = async () => {
+    const spendingData = transactions
+      .filter(t => t.type === 'expense')
+      .map(t => ({ category: t.category, amount: t.amount, date: t.date }));
+    const result = await generateBudgetSuggestions(spendingData);
+    if (result.length > 0) setSuggestions(result);
+  };
 
   return (
     <div className="animate-fade-in">
@@ -91,19 +110,39 @@ const Budgets = () => {
             <Sparkles size={16} className="text-primary" />
             <h2 className="font-heading text-sm">AI Budget Suggestions</h2>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">Get AI-recommended budget amounts based on your spending</p>
-          <button className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2">
-            <Sparkles size={14} /> Generate Suggestions
-          </button>
+
+          {suggestions.length > 0 ? (
+            <div className="space-y-2.5">
+              {suggestions.map((s, i) => (
+                <div key={i} className="p-3 bg-accent/50 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">{s.category}</span>
+                    <span className="text-sm font-heading text-primary">د.إ {fmt(s.suggestedAmount)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{s.reasoning}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-3">Get AI-recommended budget amounts based on your spending</p>
+              <button onClick={handleGenerateSuggestions} disabled={aiLoading}
+                className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Analyzing…</> : <><Sparkles size={14} /> Generate Suggestions</>}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Add Budget */}
-        <button className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-colors">
+        <button onClick={() => setShowAddBudget(true)}
+          className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-colors">
           <Plus size={18} /> Add Budget
         </button>
       </div>
 
       <div className="h-4" />
+      <AddBudgetDialog open={showAddBudget} onOpenChange={setShowAddBudget} />
     </div>
   );
 };
