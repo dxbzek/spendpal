@@ -27,17 +27,17 @@
     --accent: 152 50% 95%;
     --accent-foreground: 152 62% 30%;
 
-    --destructive: 152 50% 28%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --success: 152 62% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 152 45% 55%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
     --income: 152 62% 42%;
-    --expense: 152 50% 28%;
+    --expense: 0 72% 51%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
@@ -82,17 +82,17 @@
     --accent: 152 30% 18%;
     --accent-foreground: 152 50% 70%;
 
-    --destructive: 152 40% 35%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --success: 152 62% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 152 35% 45%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
     --income: 152 62% 50%;
-    --expense: 152 40% 35%;
+    --expense: 0 62% 55%;
 
     --border: 155 8% 20%;
     --input: 155 8% 20%;
