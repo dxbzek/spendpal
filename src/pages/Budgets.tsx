@@ -41,7 +41,7 @@ const Budgets = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="px-4 pt-12 pb-4">
+      <div className="px-5 pt-12 pb-4">
         <h1 className="text-2xl font-heading mb-1">Budgets</h1>
         <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
       </div>
