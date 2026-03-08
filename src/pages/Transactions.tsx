@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Search, Receipt, Upload, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import {
 
 const Transactions = () => {
   const { transactions, accounts, removeTransaction } = useFinance();
+  const { fmtSigned } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [showImport, setShowImport] = useState(false);
@@ -39,7 +41,7 @@ const Transactions = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="px-5 pt-12 pb-4">
+      <div className="px-4 pt-12 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading">Transactions</h1>
           <button onClick={() => setShowImport(true)}
@@ -65,7 +67,7 @@ const Transactions = () => {
         </div>
       </div>
 
-      <div className="px-5">
+      <div className="px-4 pb-4">
         {grouped.length === 0 ? (
           <div className="text-center py-16">
             <Receipt size={48} className="mx-auto text-muted-foreground/40 mb-3" />
@@ -89,7 +91,7 @@ const Transactions = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                          {tx.type === 'income' ? '+' : '-'}د.إ {tx.amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}
+                          {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
                         </p>
                         <button onClick={() => setDeleteTxId(tx.id)}
                           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">

@@ -1,25 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useCurrency } from '@/context/CurrencyContext';
+import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CURRENCIES = [
-  { code: 'AED', label: 'AED (د.إ)', symbol: 'د.إ' },
-  { code: 'USD', label: 'USD ($)', symbol: '$' },
-  { code: 'EUR', label: 'EUR (€)', symbol: '€' },
-  { code: 'GBP', label: 'GBP (£)', symbol: '£' },
-  { code: 'INR', label: 'INR (₹)', symbol: '₹' },
-  { code: 'SAR', label: 'SAR (﷼)', symbol: '﷼' },
+  { code: 'AED', label: 'AED (د.إ)' },
+  { code: 'USD', label: 'USD ($)' },
+  { code: 'EUR', label: 'EUR (€)' },
+  { code: 'GBP', label: 'GBP (£)' },
+  { code: 'INR', label: 'INR (₹)' },
+  { code: 'SAR', label: 'SAR (﷼)' },
 ];
 
 const Settings = () => {
   const { user, signOut } = useAuth();
+  const { setCurrency: setGlobalCurrency } = useCurrency();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [currency, setCurrency] = useState('AED');
@@ -81,8 +86,12 @@ const Settings = () => {
       currency,
     }).eq('user_id', user.id);
 
-    if (error) toast.error('Failed to save: ' + error.message);
-    else toast.success('Profile updated!');
+    if (error) {
+      toast.error('Failed to save: ' + error.message);
+    } else {
+      setGlobalCurrency(currency);
+      toast.success('Profile updated!');
+    }
     setSaving(false);
   };
 
@@ -97,7 +106,7 @@ const Settings = () => {
   }
 
   return (
-    <div className="px-5 pt-6 pb-8 space-y-6">
+    <div className="px-4 pt-6 pb-8 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
@@ -148,6 +157,20 @@ const Settings = () => {
           <Button onClick={handleSave} disabled={saving} className="w-full h-12 gradient-primary text-primary-foreground">
             {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
           </Button>
+        </div>
+
+        {/* Appearance */}
+        <div className="bg-card rounded-2xl p-5 card-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Moon size={18} className="text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Dark Mode</p>
+                <p className="text-xs text-muted-foreground">Switch to dark theme</p>
+              </div>
+            </div>
+            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+          </div>
         </div>
 
         {/* Sign Out */}

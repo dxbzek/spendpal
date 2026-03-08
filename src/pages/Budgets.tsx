@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Sparkles, Plus, Loader2, Edit2, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth } from 'date-fns';
@@ -19,6 +20,7 @@ interface BudgetSuggestion {
 
 const Budgets = () => {
   const { budgets, transactions, removeBudget } = useFinance();
+  const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
@@ -30,7 +32,6 @@ const Budgets = () => {
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const overallPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
-  const fmt = (n: number) => n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const handleGenerateSuggestions = async () => {
     const spendingData = transactions.filter(t => t.type === 'expense').map(t => ({ category: t.category, amount: t.amount, date: t.date }));
@@ -40,19 +41,19 @@ const Budgets = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="px-5 pt-12 pb-4">
+      <div className="px-4 pt-12 pb-4">
         <h1 className="text-2xl font-heading mb-1">Budgets</h1>
         <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
       </div>
 
-      <div className="px-4 space-y-4">
+      <div className="px-4 space-y-4 pb-4">
         <div className="bg-card rounded-2xl p-4 card-shadow">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium">{overallPct}% spent</span>
             <span className="text-xs text-muted-foreground">{daysLeft} days left</span>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>د.إ {fmt(totalSpent)}</span><span>د.إ {fmt(totalBudgeted)}</span>
+            <span>{fmt(totalSpent)}</span><span>{fmt(totalBudgeted)}</span>
           </div>
           <div className="h-3 bg-muted rounded-full overflow-hidden">
             <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(overallPct, 100)}%` }} transition={{ duration: 0.6 }}
@@ -85,9 +86,9 @@ const Budgets = () => {
                   className={`h-full rounded-full ${pct > 90 ? 'bg-expense' : pct > 60 ? 'bg-warning' : 'bg-primary'}`} />
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">د.إ {fmt(b.spent)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Remaining</p><p className={`text-sm font-medium ${remaining < 0 ? 'text-expense' : ''}`}>د.إ {fmt(remaining)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Daily left</p><p className="text-sm font-medium">د.إ {fmt(dailyLeft)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{fmt(b.spent)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Remaining</p><p className={`text-sm font-medium ${remaining < 0 ? 'text-expense' : ''}`}>{fmt(remaining)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Daily left</p><p className="text-sm font-medium">{fmt(dailyLeft)}</p></div>
               </div>
             </div>
           );
@@ -102,7 +103,7 @@ const Budgets = () => {
                 <div key={i} className="p-3 bg-accent/50 rounded-xl">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">{s.category}</span>
-                    <span className="text-sm font-heading text-primary">د.إ {fmt(s.suggestedAmount)}</span>
+                    <span className="text-sm font-heading text-primary">{fmt(s.suggestedAmount)}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{s.reasoning}</p>
                 </div>
@@ -125,7 +126,6 @@ const Budgets = () => {
         </button>
       </div>
 
-      <div className="h-4" />
       <AddBudgetDialog open={showAddBudget} onOpenChange={setShowAddBudget} editBudget={editBudget} />
 
       <AlertDialog open={!!deleteBudgetId} onOpenChange={(o) => { if (!o) setDeleteBudgetId(null); }}>
