@@ -1,10 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
-import { useCurrency } from '@/context/CurrencyContext';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2 } from 'lucide-react';
+import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
+import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2, ArrowRightLeft, RefreshCw, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -19,10 +22,101 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+const FRANKFURTER_API = 'https://api.frankfurter.app';
+
+const QuickConverter = ({ baseCurrency }: { baseCurrency: string }) => {
+  const [amount, setAmount] = useState('1');
+  const [targetCurrency, setTargetCurrency] = useState(baseCurrency === 'USD' ? 'EUR' : 'USD');
+  const [rate, setRate] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [targetSearch, setTargetSearch] = useState('');
+
+  const filteredTarget = targetSearch
+    ? WORLD_CURRENCIES.filter(c =>
+        c.code.toLowerCase().includes(targetSearch.toLowerCase()) ||
+        c.label.toLowerCase().includes(targetSearch.toLowerCase())
+      )
+    : WORLD_CURRENCIES;
+
+  const fetchRate = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${FRANKFURTER_API}/latest?from=${baseCurrency}&to=${targetCurrency}`);
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setRate(data.rates?.[targetCurrency] ?? null);
+    } catch {
+      setRate(null);
+    }
+    setLoading(false);
+  }, [baseCurrency, targetCurrency]);
+
+  useEffect(() => { fetchRate(); }, [fetchRate]);
+
+  const numAmount = parseFloat(amount) || 0;
+  const converted = rate !== null ? (numAmount * rate) : null;
+
+  return (
+    <div className="bg-card rounded-2xl p-4 card-shadow">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <ArrowRightLeft size={16} className="text-primary" />
+          <h2 className="font-heading text-sm">Currency Converter</h2>
+        </div>
+        <button onClick={fetchRate} disabled={loading} className="text-xs text-primary flex items-center gap-1">
+          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-3">
+        <Input type="number" value={amount} onChange={e => setAmount(e.target.value)}
+          className="h-10 text-sm font-heading flex-1" min="0" placeholder="Amount" />
+        <span className="text-xs font-medium text-muted-foreground shrink-0">{baseCurrency}</span>
+        <span className="text-muted-foreground">→</span>
+        <Select value={targetCurrency} onValueChange={setTargetCurrency}>
+          <SelectTrigger className="h-10 w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-[240px]">
+            <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+              <div className="relative">
+                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input type="text" placeholder="Search…" value={targetSearch}
+                  onChange={e => setTargetSearch(e.target.value)}
+                  className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+              </div>
+            </div>
+            {filteredTarget.map(c => (
+              <SelectItem key={c.code} value={c.code}>{c.code} - {c.label.split('(')[0].trim()}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="bg-muted/50 rounded-xl p-3 text-center">
+        {loading ? (
+          <Loader2 size={16} className="animate-spin text-primary mx-auto" />
+        ) : converted !== null ? (
+          <>
+            <p className="text-xl font-heading text-foreground">
+              {converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {targetCurrency}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              1 {baseCurrency} = {rate?.toLocaleString(undefined, { minimumFractionDigits: 4 })} {targetCurrency}
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">Rate unavailable</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { accounts, transactions, budgets, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
-  const { fmt, fmtSigned } = useCurrency();
+  const { fmt, fmtSigned, currency: userCurrency } = useCurrency();
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(() => localStorage.getItem('balanceHidden') === 'true');
 
@@ -287,6 +381,9 @@ const Dashboard = () => {
         )}
 
         <RecurringTracker />
+
+        {/* Currency Converter */}
+        <QuickConverter baseCurrency={userCurrency} />
 
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">

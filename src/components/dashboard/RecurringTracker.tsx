@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { getCategoryChartColor } from '@/utils/categoryColors';
-import { CalendarClock, TrendingUp } from 'lucide-react';
+import { CalendarClock } from 'lucide-react';
 import { parseISO, addMonths, format } from 'date-fns';
+import { motion } from 'framer-motion';
 
 const RecurringTracker = () => {
   const { transactions } = useFinance();
@@ -56,26 +57,65 @@ const RecurringTracker = () => {
       </div>
 
       {/* Items grouped by category */}
-      <div className="space-y-2">
+      <div className="space-y-1">
         {byCategory.map(([cat, data], catIdx) => {
           const catColor = getCategoryChartColor(cat, catIdx);
           return (
             <div key={cat}>
-              {data.items.map(item => (
-                <div key={item.id} className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
-                      style={{ backgroundColor: catColor + '1A', color: catColor }}>
-                      {item.categoryIcon}
+              {data.items.map(item => {
+                const hasInstallments = item.totalInstallments && item.currentInstallment;
+                const paidPct = hasInstallments
+                  ? Math.round((item.currentInstallment! / item.totalInstallments!) * 100)
+                  : null;
+                const remaining = hasInstallments
+                  ? (item.totalInstallments! - item.currentInstallment!) * item.amount
+                  : null;
+
+                return (
+                  <div key={item.id} className="py-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
+                          style={{ backgroundColor: catColor + '1A', color: catColor }}>
+                          {item.categoryIcon}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{item.merchant}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[11px] text-muted-foreground">Next: {getNextDate(item.date)}</p>
+                            {hasInstallments && (
+                              <span className="text-[11px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                                {item.currentInstallment}/{item.totalInstallments}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-heading">{fmt(item.amount)}</span>
+                        {hasInstallments && (
+                          <p className="text-[10px] text-muted-foreground">{fmt(remaining!)} left</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{item.merchant}</p>
-                      <p className="text-[11px] text-muted-foreground">Next: {getNextDate(item.date)}</p>
-                    </div>
+
+                    {/* Installment progress bar */}
+                    {hasInstallments && (
+                      <div className="mt-1.5 ml-11">
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${paidPct}%` }}
+                            transition={{ duration: 0.6 }}
+                            className="h-full rounded-full bg-primary"
+                          />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{paidPct}% paid</p>
+                      </div>
+                    )}
                   </div>
-                  <span className="text-sm font-heading shrink-0">{fmt(item.amount)}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           );
         })}

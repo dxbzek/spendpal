@@ -29,6 +29,8 @@ const mapTransaction = (row: any): Transaction => ({
   date: row.date,
   note: row.note ?? undefined,
   isRecurring: row.is_recurring,
+  totalInstallments: row.total_installments ?? null,
+  currentInstallment: row.current_installment ?? null,
 });
 
 const mapBudget = (row: any): Budget => ({
@@ -185,6 +187,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       date: tx.date,
       note: tx.note ?? null,
       is_recurring: tx.isRecurring ?? false,
+      total_installments: tx.totalInstallments ?? null,
+      current_installment: tx.currentInstallment ?? null,
     });
     if (error) { toast.error(error.message); return; }
     // Update account balance (skip for imported historical transactions)
@@ -209,6 +213,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       date: tx.date,
       note: tx.note ?? null,
       is_recurring: tx.isRecurring ?? false,
+      total_installments: tx.totalInstallments ?? null,
+      current_installment: tx.currentInstallment ?? null,
     }).eq('id', tx.id);
     if (error) { toast.error(error.message); return; }
     await fetchAll();

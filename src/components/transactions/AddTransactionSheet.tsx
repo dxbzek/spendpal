@@ -3,6 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORIES, type TransactionType } from '@/types/finance';
@@ -19,6 +20,8 @@ const TYPES: { value: TransactionType; label: string }[] = [
   { value: 'transfer', label: 'Transfer' },
 ];
 
+const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
+
 const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, addTransaction } = useFinance();
   const { currency } = useCurrency();
@@ -29,23 +32,57 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const [accountId, setAccountId] = useState('');
   const [merchant, setMerchant] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [hasInstallments, setHasInstallments] = useState(false);
+  const [totalInstallments, setTotalInstallments] = useState('12');
+  const [currentInstallment, setCurrentInstallment] = useState('1');
 
   const handleSubmit = async () => {
     if (!amount || !category || !accountId) return;
-    await addTransaction({
-      type,
-      amount: parseFloat(amount),
-      currency,
-      category,
-      categoryIcon,
-      merchant: merchant || category,
-      accountId,
-      date,
-    });
+
+    if (hasInstallments && isRecurring) {
+      const total = parseInt(totalInstallments) || 12;
+      const current = parseInt(currentInstallment) || 1;
+      const perInstallment = parseFloat(amount);
+
+      await addTransaction({
+        type,
+        amount: perInstallment,
+        currency,
+        category,
+        categoryIcon,
+        merchant: merchant || category,
+        accountId,
+        date,
+        isRecurring: true,
+        totalInstallments: total,
+        currentInstallment: current,
+      });
+    } else {
+      await addTransaction({
+        type,
+        amount: parseFloat(amount),
+        currency,
+        category,
+        categoryIcon,
+        merchant: merchant || category,
+        accountId,
+        date,
+        isRecurring,
+        totalInstallments: null,
+        currentInstallment: null,
+      });
+    }
+
+    // Reset
     setAmount('');
     setCategory('');
     setCategoryIcon('');
     setMerchant('');
+    setIsRecurring(false);
+    setHasInstallments(false);
+    setTotalInstallments('12');
+    setCurrentInstallment('1');
     onOpenChange(false);
   };
 
@@ -53,6 +90,10 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
     setCategory(name);
     setCategoryIcon(icon);
   };
+
+  const totalAmount = hasInstallments
+    ? (parseFloat(amount) || 0) * (parseInt(totalInstallments) || 0)
+    : parseFloat(amount) || 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -74,9 +115,72 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
           </div>
 
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Amount ({currency})</label>
+            <label className="text-sm text-muted-foreground mb-1 block">
+              {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
+            </label>
             <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
               className="text-2xl font-heading h-14 text-center" />
+          </div>
+
+          {/* Recurring toggle */}
+          <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Recurring</p>
+                <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
+              </div>
+              <Switch checked={isRecurring} onCheckedChange={(v) => {
+                setIsRecurring(v);
+                if (!v) setHasInstallments(false);
+              }} />
+            </div>
+
+            {isRecurring && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Installment Plan</p>
+                  <p className="text-xs text-muted-foreground">Track payment progress</p>
+                </div>
+                <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
+              </div>
+            )}
+
+            {hasInstallments && isRecurring && (
+              <div className="space-y-3 pt-2 border-t border-border">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
+                    <Select value={totalInstallments} onValueChange={setTotalInstallments}>
+                      <SelectTrigger className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INSTALLMENT_OPTIONS.map(n => (
+                          <SelectItem key={n} value={String(n)}>{n} months</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
+                    <Input type="number" min="1" max={totalInstallments}
+                      value={currentInstallment} onChange={e => setCurrentInstallment(e.target.value)}
+                      className="h-10" />
+                  </div>
+                </div>
+                {amount && (
+                  <div className="bg-primary/5 rounded-lg p-2.5 text-center">
+                    <p className="text-xs text-muted-foreground">Total Cost</p>
+                    <p className="text-sm font-heading text-foreground">
+                      {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Remaining: {((parseInt(totalInstallments) - parseInt(currentInstallment)) * (parseFloat(amount) || 0)).toLocaleString()} {currency}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>

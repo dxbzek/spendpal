@@ -55,10 +55,17 @@ const Transactions = () => {
             style={{ backgroundColor: catColor + '1A', color: catColor }}>
             {tx.categoryIcon}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{tx.merchant}</p>
-            <p className="text-xs text-muted-foreground truncate">{tx.category} · {getAccountName(tx.accountId)}</p>
-          </div>
+           <div className="min-w-0">
+             <p className="text-sm font-medium truncate">{tx.merchant}</p>
+             <div className="flex items-center gap-1.5">
+               <p className="text-xs text-muted-foreground truncate">{tx.category} · {getAccountName(tx.accountId)}</p>
+               {tx.totalInstallments && tx.currentInstallment && (
+                 <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+                   {tx.currentInstallment}/{tx.totalInstallments}
+                 </span>
+               )}
+             </div>
+           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
