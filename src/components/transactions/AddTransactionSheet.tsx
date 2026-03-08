@@ -42,14 +42,14 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
 
   const handleSubmit = async () => {
     if (isTransfer) {
-      if (!amount || !accountId || !toAccountId) return;
+      if (!amount || !category || !accountId || !toAccountId) return;
       await addTransaction({
         type,
         amount: parseFloat(amount),
         currency,
-        category: 'Transfer',
-        categoryIcon: '🔁',
-        merchant: 'Transfer',
+        category,
+        categoryIcon,
+        merchant: merchant || category,
         accountId,
         date,
         isRecurring: false,
