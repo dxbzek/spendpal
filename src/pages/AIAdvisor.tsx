@@ -8,17 +8,57 @@ import { parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink,
+  Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink, Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
-const METHOD_LABELS: Record<string, { name: string; emoji: string; desc: string }> = {
-  'envelope': { name: 'Envelope Budgeting', emoji: '✉️', desc: 'Fixed cash limits per spending category' },
-  '50-30-20': { name: '50/30/20 Rule', emoji: '📊', desc: '50% needs, 30% wants, 20% savings' },
-  'zero-based': { name: 'Zero-Based Budgeting', emoji: '🎯', desc: 'Every dollar gets assigned a purpose' },
-  'hybrid': { name: 'Hybrid Budget', emoji: '🔄', desc: 'Envelopes for variable + traditional for fixed costs' },
+const METHOD_DETAILS: Record<string, {
+  name: string; emoji: string; desc: string;
+  how: string; pros: string[]; cons: string[]; bestFor: string; example: string;
+}> = {
+  'envelope': {
+    name: 'Envelope Budgeting', emoji: '✉️',
+    desc: 'Fixed cash limits per spending category',
+    how: 'Divide your income into "envelopes" for each category (groceries, dining, etc.). Once an envelope is empty, you stop spending in that category.',
+    pros: ['Great for controlling overspending', 'Very visual and intuitive', 'Forces prioritization'],
+    cons: ['Less flexible for unexpected expenses', 'Requires discipline to not "borrow" between envelopes'],
+    bestFor: 'People who tend to overspend in specific categories.',
+    example: 'Income: 10,000 → Rent: 3,000 | Groceries: 1,500 | Dining: 800 | Transport: 600 | Fun: 500 | Savings: 3,600',
+  },
+  '50-30-20': {
+    name: '50/30/20 Rule', emoji: '📊',
+    desc: '50% needs, 30% wants, 20% savings',
+    how: 'Split after-tax income into three buckets: 50% for needs (rent, utilities, groceries), 30% for wants (dining, entertainment), and 20% for savings & debt repayment.',
+    pros: ['Simple to understand and start', 'Flexible within each bucket', 'Good balance of saving and living'],
+    cons: ['May not work in high-cost-of-living areas', 'Doesn\'t account for individual priorities'],
+    bestFor: 'Beginners or anyone wanting a simple, balanced framework.',
+    example: 'Income: 10,000 → Needs (50%): 5,000 | Wants (30%): 3,000 | Savings (20%): 2,000',
+  },
+  'zero-based': {
+    name: 'Zero-Based Budgeting', emoji: '🎯',
+    desc: 'Every dollar gets assigned a purpose',
+    how: 'Allocate every single unit of income to a specific category until your budget equals zero. Income minus all allocations = 0.',
+    pros: ['Maximum control over every dollar', 'Reveals wasteful spending quickly', 'Great for debt payoff goals'],
+    cons: ['Time-consuming to set up each month', 'Requires tracking every expense'],
+    bestFor: 'Detail-oriented people or those aggressively paying off debt.',
+    example: 'Income: 10,000 → Rent: 3,000 | Food: 1,200 | Transport: 500 | Insurance: 400 | Debt: 2,000 | Savings: 1,500 | Fun: 900 | Misc: 500 = 0 remaining',
+  },
+  'hybrid': {
+    name: 'Hybrid Budget', emoji: '🔄',
+    desc: 'Envelopes for variable + traditional for fixed costs',
+    how: 'Use fixed allocations for predictable bills (rent, subscriptions) and envelope-style limits for variable spending (food, entertainment). Combines structure with flexibility.',
+    pros: ['Best of both worlds', 'Fixed costs are automated', 'Variable costs stay controlled'],
+    cons: ['Slightly more complex to set up', 'Need to categorize expenses as fixed vs. variable'],
+    bestFor: 'People with stable income who want structure without rigidity.',
+    example: 'Fixed: Rent 3,000 + Utilities 500 + Insurance 400 = auto-paid | Variable envelopes: Food 1,500 | Transport 600 | Fun 800 | Savings: remainder',
+  },
 };
+
+const METHOD_LABELS = METHOD_DETAILS;
 
 const INSIGHT_ICONS = {
   warning: <AlertTriangle size={16} className="text-warning" />,
@@ -309,28 +349,81 @@ const AIAdvisor = () => {
                     { key: '50-30-20', label: '50/30/20', value: analysis.simulation.fiftyThirtyTwenty },
                     { key: 'zero-based', label: 'Zero-Based', value: analysis.simulation.zeroBased },
                     { key: 'hybrid', label: 'Hybrid', value: analysis.simulation.hybrid },
-                  ] as const).map(sim => (
-                    <Tooltip key={sim.key}>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => setActiveSimTab(sim.key)}
-                          className={`p-3 rounded-xl text-center transition-all ${
-                            activeSimTab === sim.key ? 'bg-primary/10 border-2 border-primary' : 'bg-muted/30 border-2 border-transparent'
-                          } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card' : ''}`}>
-                          <p className="text-xs text-muted-foreground mb-1">{sim.label}</p>
-                          <p className={`text-sm font-heading ${sim.value > 0 ? 'text-income' : 'text-expense'}`}>
-                            {sim.value > 0 ? '+' : ''}{fmt(sim.value)}
-                          </p>
-                          {sim.key === analysis.recommendedMethod && (
-                            <span className="text-[9px] text-primary font-medium">★ Recommended</span>
-                          )}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs max-w-[200px]">
-                        {METHOD_LABELS[sim.key]?.desc}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
+                  ] as const).map(sim => {
+                    const detail = METHOD_DETAILS[sim.key];
+                    return (
+                      <div key={sim.key} className="relative">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => setActiveSimTab(sim.key)}
+                              className={`w-full p-3 rounded-xl text-center transition-all ${
+                                activeSimTab === sim.key ? 'bg-primary/10 border-2 border-primary' : 'bg-muted/30 border-2 border-transparent'
+                              } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card' : ''}`}>
+                              <p className="text-xs text-muted-foreground mb-1">{sim.label}</p>
+                              <p className={`text-sm font-heading ${sim.value > 0 ? 'text-income' : 'text-expense'}`}>
+                                {sim.value > 0 ? '+' : ''}{fmt(sim.value)}
+                              </p>
+                              {sim.key === analysis.recommendedMethod && (
+                                <span className="text-[9px] text-primary font-medium">★ Recommended</span>
+                              )}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs max-w-[200px]">
+                            {detail?.desc}
+                          </TooltipContent>
+                        </Tooltip>
+                        {detail && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors" onClick={e => e.stopPropagation()}>
+                                <Info size={12} />
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-lg">
+                                  <span>{detail.emoji}</span> {detail.name}
+                                </DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4 text-sm">
+                                <div>
+                                  <h4 className="font-heading text-xs text-muted-foreground uppercase tracking-wider mb-1">How it works</h4>
+                                  <p className="text-foreground/80">{detail.how}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="bg-income/5 border border-income/20 rounded-xl p-3">
+                                    <h4 className="font-heading text-xs text-income mb-2">✅ Pros</h4>
+                                    <ul className="space-y-1">
+                                      {detail.pros.map((p, i) => (
+                                        <li key={i} className="text-xs text-foreground/70">• {p}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  <div className="bg-expense/5 border border-expense/20 rounded-xl p-3">
+                                    <h4 className="font-heading text-xs text-expense mb-2">⚠️ Cons</h4>
+                                    <ul className="space-y-1">
+                                      {detail.cons.map((c, i) => (
+                                        <li key={i} className="text-xs text-foreground/70">• {c}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
+                                  <h4 className="font-heading text-xs text-primary mb-1">🎯 Best for</h4>
+                                  <p className="text-xs text-foreground/70">{detail.bestFor}</p>
+                                </div>
+                                <div className="bg-muted/50 rounded-xl p-3">
+                                  <h4 className="font-heading text-xs text-muted-foreground mb-1">📝 Example</h4>
+                                  <p className="text-xs text-foreground/70">{detail.example}</p>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <Button
                   onClick={async () => {
