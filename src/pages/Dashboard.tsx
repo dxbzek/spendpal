@@ -382,6 +382,9 @@ const Dashboard = () => {
 
         <RecurringTracker />
 
+        {/* Currency Converter */}
+        <QuickConverter baseCurrency={userCurrency} />
+
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">
           <div className="flex items-center gap-2 mb-2">
