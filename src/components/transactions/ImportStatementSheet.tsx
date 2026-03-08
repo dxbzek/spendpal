@@ -231,8 +231,15 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
             <div className="space-y-4 mt-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">{parsed.filter(r => r.selected).length} of {parsed.length} selected</p>
-                <button onClick={() => setParsed(p => p.map(r => ({ ...r, selected: !p.every(x => x.selected) })))}
-                  className="text-xs text-primary font-medium">Toggle All</button>
+                <div className="flex items-center gap-2">
+                  {parsed.some(r => r.isDuplicate) && (
+                    <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">
+                      {parsed.filter(r => r.isDuplicate).length} duplicates
+                    </Badge>
+                  )}
+                  <button onClick={() => setParsed(p => p.map(r => ({ ...r, selected: !p.every(x => x.selected) })))}
+                    className="text-xs text-primary font-medium">Toggle All</button>
+                </div>
               </div>
               <div className="space-y-2 max-h-[40vh] overflow-y-auto">
                 {parsed.map((row, idx) => (
