@@ -29,6 +29,8 @@ const mapTransaction = (row: any): Transaction => ({
   date: row.date,
   note: row.note ?? undefined,
   isRecurring: row.is_recurring,
+  totalInstallments: row.total_installments ?? null,
+  currentInstallment: row.current_installment ?? null,
 });
 
 const mapBudget = (row: any): Budget => ({
