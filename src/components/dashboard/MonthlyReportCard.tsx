@@ -109,7 +109,16 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
         <h2 className="font-heading text-sm">Monthly AI Report</h2>
       </div>
       {report ? (
-        <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">{report}</div>
+        <>
+          <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">{report}</div>
+          <button
+            onClick={generateReport}
+            disabled={loading}
+            className="mt-3 w-full py-2 rounded-xl bg-accent text-accent-foreground text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {loading ? <><Loader2 size={14} className="animate-spin" /> Regenerating…</> : <><FileText size={14} /> Regenerate Report</>}
+          </button>
+        </>
       ) : (
         <>
           <p className="text-sm text-muted-foreground mb-3">AI-generated spending trends, category analysis, and goal progress</p>

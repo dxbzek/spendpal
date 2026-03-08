@@ -160,13 +160,16 @@ const Budgets = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={deletingAll}
               onClick={async () => {
+                setDeletingAll(true);
                 for (const b of budgets) { await removeBudget(b.id); }
+                setDeletingAll(false);
                 setShowDeleteAll(false);
               }}
               className="bg-destructive text-destructive-foreground"
             >
-              Delete All
+              {deletingAll ? <><Loader2 size={14} className="animate-spin mr-1" /> Deleting…</> : 'Delete All'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

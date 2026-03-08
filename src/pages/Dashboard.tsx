@@ -368,15 +368,21 @@ const Dashboard = () => {
             <h2 className="font-heading text-sm">AI Summary</h2>
           </div>
           {summaryText ? (
-            <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
+            <>
+              <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
+              <button onClick={handleGenerateSummary} disabled={aiLoading}
+                className="mt-3 w-full py-2 rounded-xl bg-accent text-accent-foreground text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Regenerating…</> : <><Sparkles size={14} /> Regenerate</>}
+              </button>
+            </>
           ) : (
-            <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
-          )}
-          {!summaryText && (
-            <button onClick={handleGenerateSummary} disabled={aiLoading}
-              className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-              {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
-            </button>
+            <>
+              <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
+              <button onClick={handleGenerateSummary} disabled={aiLoading}
+                className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
+              </button>
+            </>
           )}
         </Card>
 
