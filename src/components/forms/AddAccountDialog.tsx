@@ -60,57 +60,53 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Account' : 'Add Account'}</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {isEdit ? 'Update your account details below.' : 'Fill in the details for your new account.'}
-          </p>
+      <DialogContent className="max-w-xs mx-auto p-4">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-base">{isEdit ? 'Edit Account' : 'Add Account'}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 mt-2">
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">Account Name</label>
-            <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} />
+        <div className="space-y-3">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+              <Select value={type} onValueChange={v => setType(v as AccountType)}>
+                <SelectTrigger className="h-9 text-sm w-[110px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">💵 Cash</SelectItem>
+                  <SelectItem value="debit">💳 Debit</SelectItem>
+                  <SelectItem value="credit">🏦 Credit</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">Type</label>
-            <Select value={type} onValueChange={v => setType(v as AccountType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">💵 Cash</SelectItem>
-                <SelectItem value="debit">💳 Debit</SelectItem>
-                <SelectItem value="credit">🏦 Credit Card</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
+            <label className="text-xs text-muted-foreground mb-1 block">
               {type === 'credit' ? 'Available Limit' : 'Balance'} ({currency})
             </label>
-            <Input type="number" placeholder="0.00" value={balance} onChange={e => setBalance(e.target.value)} />
-            {type === 'credit' && <p className="text-[11px] text-muted-foreground mt-1">How much credit is currently available to spend.</p>}
+            <Input type="number" placeholder="0.00" value={balance} onChange={e => setBalance(e.target.value)} className="h-9 text-sm" />
           </div>
           {type === 'credit' && (
-            <div className="space-y-4 rounded-xl bg-muted/50 p-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Credit Card Details</p>
+            <div className="space-y-2.5 rounded-lg bg-muted/50 p-2.5">
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Credit Limit ({currency})</label>
-                <Input type="number" placeholder="20,000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
+                <label className="text-xs text-muted-foreground mb-1 block">Credit Limit ({currency})</label>
+                <Input type="number" placeholder="20,000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} className="h-9 text-sm" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Statement Day</label>
-                  <Input type="number" placeholder="1" min="1" max="31" value={statementDate} onChange={e => setStatementDate(e.target.value)} />
+                  <label className="text-xs text-muted-foreground mb-1 block">Statement Day</label>
+                  <Input type="number" placeholder="1" min="1" max="31" value={statementDate} onChange={e => setStatementDate(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Due Day</label>
-                  <Input type="number" placeholder="15" min="1" max="31" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                  <label className="text-xs text-muted-foreground mb-1 block">Due Day</label>
+                  <Input type="number" placeholder="15" min="1" max="31" value={dueDate} onChange={e => setDueDate(e.target.value)} className="h-9 text-sm" />
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">Day of month when your statement generates and payment is due.</p>
             </div>
           )}
-          <Button onClick={handleSubmit} disabled={!name.trim()} className="w-full gradient-primary text-primary-foreground">
+          <Button onClick={handleSubmit} disabled={!name.trim()} className="w-full h-9 text-sm gradient-primary text-primary-foreground">
             {isEdit ? 'Save Changes' : 'Add Account'}
           </Button>
         </div>
