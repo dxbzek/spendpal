@@ -165,8 +165,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
         <div className="space-y-5 mt-4">
           <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            {TYPES.map(t => (
-              <button key={t.value} onClick={() => { setType(t.value); setCategory(''); setCategoryIcon(''); }}
+            {TYPES.filter(t => !(isEditing && t.value === 'transfer')).map(t => (
+              <button key={t.value} onClick={() => { setType(t.value); if (t.value !== 'transfer') { setCategory(''); setCategoryIcon(''); } }}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
                   type === t.value ? 'bg-card card-shadow text-foreground' : 'text-muted-foreground'
                 }`}>
