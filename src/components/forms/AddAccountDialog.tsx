@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
 
 interface Props {
