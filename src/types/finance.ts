@@ -25,6 +25,8 @@ export interface Transaction {
   date: string; // ISO
   note?: string;
   isRecurring?: boolean;
+  totalInstallments?: number | null;
+  currentInstallment?: number | null;
 }
 
 export interface Budget {
