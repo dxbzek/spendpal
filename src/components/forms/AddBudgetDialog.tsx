@@ -16,6 +16,7 @@ interface Props {
 
 const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const { addBudget, updateBudget } = useFinance();
+  const { currency } = useCurrency();
   const isEdit = !!editBudget;
   const [category, setCategory] = useState(editBudget?.category || '');
   const [amount, setAmount] = useState(editBudget?.amount?.toString() || '');
