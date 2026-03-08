@@ -88,7 +88,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
     const results = await categorizeStatement(statementText);
     if (results.length > 0) {
-      setParsed(results.map((r: Omit<ParsedRow, 'selected'>) => ({ ...r, selected: true })));
+      setParsed(results.map((r: Omit<ParsedRow, 'selected'>) => ({ ...r, date: normalizeDate(r.date), selected: true })));
       setStep('review');
     } else {
       toast.error('Could not parse transactions from the file');
