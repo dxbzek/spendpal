@@ -252,12 +252,25 @@ const Transactions = () => {
       <AlertDialog open={!!deleteTxId} onOpenChange={(o) => { if (!o) setDeleteTxId(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone. The account balance will be adjusted.</AlertDialogDescription>
+            <AlertDialogTitle>Delete {deleteTxId && transferPairs.has(deleteTxId) ? 'Transfer' : 'Transaction'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTxId && transferPairs.has(deleteTxId) 
+                ? 'This will delete both sides of the transfer. Account balances will be adjusted.'
+                : 'This cannot be undone. The account balance will be adjusted.'}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteTxId) removeTransaction(deleteTxId); setDeleteTxId(null); }}
+            <AlertDialogAction onClick={async () => { 
+              if (deleteTxId) {
+                const pair = transferPairs.get(deleteTxId);
+                if (pair) {
+                  await removeTransaction(pair.to.id);
+                }
+                await removeTransaction(deleteTxId);
+              }
+              setDeleteTxId(null); 
+            }}
               className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
