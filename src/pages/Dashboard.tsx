@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAI } from '@/hooks/useAI';
+import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import SpendingPieChart from '@/components/charts/SpendingPieChart';
 import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
