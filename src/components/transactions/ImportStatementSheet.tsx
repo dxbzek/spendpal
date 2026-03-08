@@ -250,7 +250,10 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     </div>
                     <span className="text-lg">{row.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{row.merchant}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium truncate">{row.merchant}</p>
+                        {row.isDuplicate && <Badge variant="outline" className="text-[10px] px-1 py-0 border-destructive text-destructive">Dup</Badge>}
+                      </div>
                       <p className="text-xs text-muted-foreground">{row.category} · {row.date}</p>
                     </div>
                     <p className={`text-sm font-heading ${row.type === 'income' ? 'text-income' : 'text-expense'}`}>
