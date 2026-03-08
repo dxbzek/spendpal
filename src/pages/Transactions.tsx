@@ -295,9 +295,7 @@ const Transactions = () => {
               disabled={deleting}
               onClick={async () => {
                 setDeleting(true);
-                for (const tx of filtered) {
-                  await removeTransaction(tx.id);
-                }
+                await bulkRemoveTransactions(filtered.map(tx => tx.id));
                 setDeleting(false);
                 setShowDeleteAll(false);
               }}
