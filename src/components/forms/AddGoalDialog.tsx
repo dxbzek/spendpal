@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import type { Goal } from '@/types/finance';
 
 interface Props {
@@ -24,6 +25,7 @@ const GOAL_TYPES = [
 
 const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
   const { addGoal, updateGoal } = useFinance();
+  const { currency } = useCurrency();
   const isEdit = !!editGoal;
   const [name, setName] = useState(editGoal?.name || '');
   const [goalType, setGoalType] = useState(editGoal?.type || '');
@@ -76,7 +78,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
             </div>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Target Amount (AED)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Target Amount ({currency})</label>
             <Input type="number" placeholder="10000" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} />
           </div>
           <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || !targetAmount}

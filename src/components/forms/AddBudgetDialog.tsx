@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORIES, type Budget } from '@/types/finance';
 import { format } from 'date-fns';
 
@@ -15,6 +16,7 @@ interface Props {
 
 const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const { addBudget, updateBudget } = useFinance();
+  const { currency } = useCurrency();
   const isEdit = !!editBudget;
   const [category, setCategory] = useState(editBudget?.category || '');
   const [amount, setAmount] = useState(editBudget?.amount?.toString() || '');
@@ -59,7 +61,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
             </Select>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Budget Amount (AED)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
             <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
           <div>

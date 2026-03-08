@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORIES, type TransactionType } from '@/types/finance';
 import { format } from 'date-fns';
 
@@ -20,6 +21,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 
 const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, addTransaction } = useFinance();
+  const { currency } = useCurrency();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -33,7 +35,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
     await addTransaction({
       type,
       amount: parseFloat(amount),
-      currency: 'AED',
+      currency,
       category,
       categoryIcon,
       merchant: merchant || category,
@@ -72,7 +74,7 @@ const AddTransactionSheet = ({ open, onOpenChange }: Props) => {
           </div>
 
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Amount (AED)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Amount ({currency})</label>
             <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
               className="text-2xl font-heading h-14 text-center" />
           </div>

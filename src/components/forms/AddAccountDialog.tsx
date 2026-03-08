@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const { addAccount, updateAccount } = useFinance();
+  const { currency } = useCurrency();
   const [name, setName] = useState(editAccount?.name || '');
   const [type, setType] = useState<AccountType>(editAccount?.type || 'debit');
   const [balance, setBalance] = useState(editAccount?.balance?.toString() || '');
@@ -29,7 +31,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       name: name.trim(),
       type,
       balance: parseFloat(balance) || 0,
-      currency: 'AED',
+      currency,
       icon: ACCOUNT_ICONS[type],
       creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
       dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
@@ -66,13 +68,13 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             </Select>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Balance (AED)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Balance ({currency})</label>
             <Input type="number" placeholder="0.00" value={balance} onChange={e => setBalance(e.target.value)} />
           </div>
           {type === 'credit' && (
             <>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Credit Limit (AED)</label>
+                <label className="text-sm text-muted-foreground mb-1 block">Credit Limit ({currency})</label>
                 <Input type="number" placeholder="20000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
               </div>
               <div>
