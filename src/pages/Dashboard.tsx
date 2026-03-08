@@ -6,6 +6,8 @@ import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
 import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
 import MonthlyReportCard from '@/components/dashboard/MonthlyReportCard';
+import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWidget';
+import ExpenseByAccountTypeWidget from '@/components/dashboard/ExpenseByAccountTypeWidget';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
