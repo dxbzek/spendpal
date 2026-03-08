@@ -9,9 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 
 const SecondaryCurrencyCard = () => {
@@ -57,6 +61,8 @@ const DataBackupCard = () => {
   const { accounts, transactions, budgets, goals, refresh } = useFinance();
   const { user } = useAuth();
   const [restoring, setRestoring] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -78,13 +84,21 @@ const DataBackupCard = () => {
     toast.success('Backup downloaded!');
   };
 
-  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    setPendingFile(file);
+    setShowConfirm(true);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!pendingFile || !user) return;
+    setShowConfirm(false);
 
     try {
       setRestoring(true);
-      const text = await file.text();
+      const text = await pendingFile.text();
       const data = JSON.parse(text);
 
       if (!data.version || !data.accounts || !data.transactions) {
@@ -92,58 +106,40 @@ const DataBackupCard = () => {
         return;
       }
 
-      // Delete existing data first (order matters for FK constraints)
       await supabase.from('transactions').delete().eq('user_id', user.id);
       await supabase.from('budgets').delete().eq('user_id', user.id);
       await supabase.from('goals').delete().eq('user_id', user.id);
       await supabase.from('accounts').delete().eq('user_id', user.id);
 
-      // Insert accounts
       if (data.accounts?.length) {
         const { error } = await supabase.from('accounts').insert(
           data.accounts.map((a: any) => ({
-            user_id: user.id,
-            name: a.name,
-            type: a.type,
-            balance: a.balance,
-            currency: a.currency,
-            icon: a.icon,
-            credit_limit: a.creditLimit ?? null,
-            due_date: a.dueDate ?? null,
-            statement_date: a.statementDate ?? null,
+            user_id: user.id, name: a.name, type: a.type, balance: a.balance,
+            currency: a.currency, icon: a.icon, credit_limit: a.creditLimit ?? null,
+            due_date: a.dueDate ?? null, statement_date: a.statementDate ?? null,
           }))
         );
         if (error) throw error;
       }
 
-      // Re-fetch to get new account IDs, then map old→new by name+type
       const { data: newAccounts } = await supabase.from('accounts').select('*').eq('user_id', user.id);
       const accountMap: Record<string, string> = {};
       if (newAccounts) {
-        data.accounts.forEach((old: any, i: number) => {
+        data.accounts.forEach((old: any) => {
           const match = newAccounts.find((n: any) => n.name === old.name && n.type === old.type);
           if (match) accountMap[old.id] = match.id;
         });
       }
 
-      // Insert transactions with mapped account IDs
       if (data.transactions?.length) {
         const mapped = data.transactions
           .filter((t: any) => accountMap[t.accountId])
           .map((t: any) => ({
-            user_id: user.id,
-            account_id: accountMap[t.accountId],
-            type: t.type,
-            amount: t.amount,
-            currency: t.currency,
-            category: t.category,
-            category_icon: t.categoryIcon,
-            merchant: t.merchant,
-            date: t.date,
-            note: t.note ?? null,
-            is_recurring: t.isRecurring ?? false,
-            total_installments: t.totalInstallments ?? null,
-            current_installment: t.currentInstallment ?? null,
+            user_id: user.id, account_id: accountMap[t.accountId], type: t.type,
+            amount: t.amount, currency: t.currency, category: t.category,
+            category_icon: t.categoryIcon, merchant: t.merchant, date: t.date,
+            note: t.note ?? null, is_recurring: t.isRecurring ?? false,
+            total_installments: t.totalInstallments ?? null, current_installment: t.currentInstallment ?? null,
           }));
         if (mapped.length) {
           const { error } = await supabase.from('transactions').insert(mapped);
@@ -151,33 +147,22 @@ const DataBackupCard = () => {
         }
       }
 
-      // Insert budgets
       if (data.budgets?.length) {
         const { error } = await supabase.from('budgets').insert(
           data.budgets.map((b: any) => ({
-            user_id: user.id,
-            category: b.category,
-            category_icon: b.categoryIcon,
-            amount: b.amount,
-            period: b.period,
-            month: b.month,
+            user_id: user.id, category: b.category, category_icon: b.categoryIcon,
+            amount: b.amount, period: b.period, month: b.month,
           }))
         );
         if (error) throw error;
       }
 
-      // Insert goals
       if (data.goals?.length) {
         const { error } = await supabase.from('goals').insert(
           data.goals.map((g: any) => ({
-            user_id: user.id,
-            name: g.name,
-            icon: g.icon,
-            type: g.type,
-            target_amount: g.targetAmount,
-            saved_amount: g.savedAmount,
-            deadline: g.deadline ?? null,
-            status: g.status,
+            user_id: user.id, name: g.name, icon: g.icon, type: g.type,
+            target_amount: g.targetAmount, saved_amount: g.savedAmount,
+            deadline: g.deadline ?? null, status: g.status,
           }))
         );
         if (error) throw error;
@@ -190,26 +175,48 @@ const DataBackupCard = () => {
       toast.error('Restore failed: ' + (err.message || 'Unknown error'));
     } finally {
       setRestoring(false);
-      if (fileRef.current) fileRef.current.value = '';
+      setPendingFile(null);
     }
   };
 
   return (
-    <div className="bg-card rounded-2xl p-5 card-shadow space-y-3">
-      <p className="text-sm font-medium">Data Backup & Restore</p>
-      <p className="text-xs text-muted-foreground">Export all your data as JSON or restore from a previous backup.</p>
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1 h-11 gap-2" onClick={handleExport}>
-          <Download size={16} /> Export
-        </Button>
-        <Button variant="outline" className="flex-1 h-11 gap-2" disabled={restoring}
-          onClick={() => fileRef.current?.click()}>
-          {restoring ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-          {restoring ? 'Restoring…' : 'Import'}
-        </Button>
-        <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleRestore} />
+    <>
+      <div className="bg-card rounded-2xl p-5 card-shadow space-y-3">
+        <p className="text-sm font-medium">Data Backup & Restore</p>
+        <p className="text-xs text-muted-foreground">Export all your data as JSON or restore from a previous backup.</p>
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1 h-11 gap-2" onClick={handleExport}>
+            <Download size={16} /> Export
+          </Button>
+          <Button variant="outline" className="flex-1 h-11 gap-2" disabled={restoring}
+            onClick={() => fileRef.current?.click()}>
+            {restoring ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+            {restoring ? 'Restoring…' : 'Import'}
+          </Button>
+          <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFileSelected} />
+        </div>
       </div>
-    </div>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={20} className="text-destructive" />
+              <AlertDialogTitle>Restore Backup?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription>
+              This will permanently delete all your current accounts, transactions, budgets, and goals, then replace them with the data from <span className="font-medium text-foreground">{pendingFile?.name}</span>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRestore} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Yes, Replace All Data
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
