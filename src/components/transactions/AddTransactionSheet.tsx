@@ -39,6 +39,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const [hasInstallments, setHasInstallments] = useState(false);
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
+  const [note, setNote] = useState('');
 
   const isEditing = !!editTransaction;
 
@@ -56,6 +57,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       setHasInstallments(!!(editTransaction.totalInstallments && editTransaction.currentInstallment));
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
       setCurrentInstallment(String(editTransaction.currentInstallment || 1));
+      setNote(editTransaction.note || '');
       setToAccountId('');
     } else if (!open) {
       resetForm();
@@ -74,6 +76,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     setHasInstallments(false);
     setTotalInstallments('12');
     setCurrentInstallment('1');
+    setNote('');
   };
 
   const isTransfer = type === 'transfer';
@@ -94,6 +97,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       merchant: merchant || category,
       accountId,
       date,
+      note: note || null,
       isRecurring: isTransfer ? false : isRecurring,
       totalInstallments: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(totalInstallments) || 12) : null,
       currentInstallment: (hasInstallments && isRecurring && !isTransfer) ? (parseInt(currentInstallment) || 1) : null,
@@ -267,6 +271,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
               {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
             </label>
             <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
+            <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} />
           </div>
 
           <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
