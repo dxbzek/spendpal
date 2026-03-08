@@ -197,17 +197,36 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [user]);
 
-  // Fetch secondary rate
+  // Fetch secondary rate — Frankfurter only supports ECB currencies, so use USD as intermediary
   const fetchRate = useCallback(async () => {
     if (!secondaryCurrency || secondaryCurrency === currency) {
       setSecondaryRate(secondaryCurrency === currency ? 1 : null);
       return;
     }
     try {
-      const res = await fetch(`${FRANKFURTER_API}/latest?from=${currency}&to=${secondaryCurrency}`);
-      if (!res.ok) { setSecondaryRate(null); return; }
-      const data = await res.json();
-      setSecondaryRate(data.rates?.[secondaryCurrency] ?? null);
+      // Try direct conversion first
+      let res = await fetch(`${FRANKFURTER_API}/latest?from=${currency}&to=${secondaryCurrency}`);
+      if (res.ok) {
+        const data = await res.json();
+        const rate = data.rates?.[secondaryCurrency];
+        if (rate) { setSecondaryRate(rate); return; }
+      }
+      // Fallback: use USD as intermediary (e.g. AED → USD → target)
+      const [resFrom, resTo] = await Promise.all([
+        fetch(`${FRANKFURTER_API}/latest?from=USD&to=${currency}`),
+        fetch(`${FRANKFURTER_API}/latest?from=USD&to=${secondaryCurrency}`),
+      ]);
+      if (resFrom.ok && resTo.ok) {
+        const dataFrom = await resFrom.json();
+        const dataTo = await resTo.json();
+        const rateFrom = dataFrom.rates?.[currency]; // USD → primary
+        const rateTo = dataTo.rates?.[secondaryCurrency]; // USD → secondary
+        if (rateFrom && rateTo) {
+          setSecondaryRate(rateTo / rateFrom); // primary → secondary
+          return;
+        }
+      }
+      setSecondaryRate(null);
     } catch {
       setSecondaryRate(null);
     }
