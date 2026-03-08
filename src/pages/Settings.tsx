@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useFinance } from '@/context/FinanceContext';
 
 
 const SecondaryCurrencyCard = () => {
