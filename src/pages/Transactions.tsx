@@ -86,11 +86,16 @@ const Transactions = () => {
 
   const renderTxContent = (tx: typeof filtered[0], idx: number) => {
     const catColor = getCategoryChartColor(tx.category, idx);
-    // Extract only emoji from categoryIcon (DB may store "🔁 Transfer" instead of just "🔁")
     const emojiOnly = (str: string) => {
       const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
       return match ? match[0] : str.charAt(0);
     };
+    
+    const pair = transferPairs.get(tx.id);
+    const isLinkedTransfer = !!pair;
+    const fromAccountName = isLinkedTransfer ? getAccountName(pair.from.accountId) : '';
+    const toAccountName = isLinkedTransfer ? getAccountName(pair.to.accountId) : '';
+    
     return (
       <div
         className="flex items-center justify-between p-4 cursor-pointer active:bg-muted/50 transition-colors"
@@ -99,10 +104,18 @@ const Transactions = () => {
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span className="text-2xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
            <div className="min-w-0">
-             <p className="text-sm font-medium truncate">{tx.merchant}</p>
+             <p className="text-sm font-medium truncate">
+               {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
+             </p>
              <div className="flex items-center gap-1.5">
-               <p className="text-xs text-muted-foreground truncate">{getAccountName(tx.accountId)}</p>
-               {tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
+               {isLinkedTransfer ? (
+                 <p className="text-xs text-muted-foreground truncate">
+                   {fromAccountName} → {toAccountName}
+                 </p>
+               ) : (
+                 <p className="text-xs text-muted-foreground truncate">{getAccountName(tx.accountId)}</p>
+               )}
+               {!isLinkedTransfer && tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
                    💳 Card Credit
                  </span>
@@ -113,15 +126,21 @@ const Transactions = () => {
                  </span>
                )}
              </div>
-             {tx.note && (
+             {tx.note && !isLinkedTransfer && (
                <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">📝 {tx.note}</p>
              )}
            </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
-            {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
-          </p>
+          {isLinkedTransfer ? (
+            <p className="text-sm font-heading text-muted-foreground">
+              {fmtSigned(tx.amount, 'expense')}
+            </p>
+          ) : (
+            <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
+              {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
+            </p>
+          )}
           <button onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
             className="text-muted-foreground hover:text-destructive transition-colors p-1">
             <Trash2 size={14} />
