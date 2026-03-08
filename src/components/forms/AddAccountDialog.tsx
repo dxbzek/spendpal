@@ -21,6 +21,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const [balance, setBalance] = useState(editAccount?.balance?.toString() || '');
   const [creditLimit, setCreditLimit] = useState(editAccount?.creditLimit?.toString() || '');
   const [dueDate, setDueDate] = useState(editAccount?.dueDate?.toString() || '');
+  const [statementDate, setStatementDate] = useState(editAccount?.statementDate?.toString() || '');
 
   // Reset form when editAccount changes
   const isEdit = !!editAccount;
@@ -35,6 +36,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       icon: ACCOUNT_ICONS[type],
       creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
       dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
+      statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
     };
 
     if (isEdit) {
@@ -76,6 +78,10 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">Credit Limit ({currency})</label>
                 <Input type="number" placeholder="20000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Statement Date (day of month)</label>
+                <Input type="number" placeholder="1" min="1" max="31" value={statementDate} onChange={e => setStatementDate(e.target.value)} />
               </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">Due Date (day of month)</label>

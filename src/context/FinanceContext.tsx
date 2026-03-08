@@ -144,6 +144,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       icon: account.icon,
       credit_limit: account.creditLimit ?? null,
       due_date: account.dueDate ?? null,
+      statement_date: account.statementDate ?? null,
     });
     if (error) { toast.error(error.message); return; }
     await fetchAll();
@@ -157,6 +158,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       icon: account.icon,
       credit_limit: account.creditLimit ?? null,
       due_date: account.dueDate ?? null,
+      statement_date: account.statementDate ?? null,
     }).eq('id', account.id);
     if (error) { toast.error(error.message); return; }
     await fetchAll();
