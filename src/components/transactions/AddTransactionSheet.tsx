@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { CATEGORIES, type TransactionType } from '@/types/finance';
+import { useCategories } from '@/hooks/useCategories';
+import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { format } from 'date-fns';
 
@@ -27,6 +28,7 @@ const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
   const { accounts, addTransaction, updateTransaction, removeTransaction } = useFinance();
   const { currency } = useCurrency();
+  const { categories } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -256,7 +258,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
             <div>
               <label className="text-sm text-muted-foreground mb-2 block">Category</label>
               <div className="grid grid-cols-5 gap-2">
-                {CATEGORIES.map(c => (
+                {categories.map(c => (
                   <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
                     title={c.name}
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
