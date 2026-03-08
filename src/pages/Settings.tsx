@@ -401,7 +401,6 @@ const Settings = () => {
           <LogOut size={16} />
           Sign Out
         </button>
-        </button>
       </div>
     </div>
   );
