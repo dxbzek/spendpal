@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAI } from '@/hooks/useAI';
+import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import SpendingPieChart from '@/components/charts/SpendingPieChart';
 import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
   const { loading: aiLoading, summaryText, generateSummary } = useAI();
+  useBudgetAlerts(budgets);
 
   const mask = (val: string) => hidden ? '••••••' : val;
   const totalBalance = useMemo(() => accounts.reduce((s, a) => s + a.balance, 0), [accounts]);

@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2 } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download } from 'lucide-react';
+import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,10 +45,16 @@ const Transactions = () => {
       <div className="px-4 pt-12 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-heading">Transactions</h1>
-          <button onClick={() => setShowImport(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
-            <Upload size={14} /> Import CSV
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => exportTransactionsCsv(filtered, accounts)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+              <Download size={14} /> Export
+            </button>
+            <button onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
+              <Upload size={14} /> Import
+            </button>
+          </div>
         </div>
 
         <div className="relative mb-3">
