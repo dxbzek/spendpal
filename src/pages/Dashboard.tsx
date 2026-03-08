@@ -268,6 +268,9 @@ const Dashboard = () => {
         {/* Expenses by Account Type */}
         <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
 
+        {/* Monthly Comparison */}
+        <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
+
         {/* Spending Pie Chart - hide when no data */}
         {categorySpending.length > 0 && (
           <Card>
