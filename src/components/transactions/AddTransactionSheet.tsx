@@ -258,6 +258,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
               <div className="grid grid-cols-5 gap-2">
                 {CATEGORIES.map(c => (
                   <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
+                    title={c.name}
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
                       category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
                     }`}>
