@@ -153,7 +153,9 @@ const Dashboard = () => {
       </div>
 
       <div className="px-5 md:px-6 -mt-4 space-y-4 pb-6">
-        <div className="grid grid-cols-2 gap-3">
+        {/* Responsive grid wrapper for dashboard widgets */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
           <Card>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-lg font-heading text-income">{mask(fmt(income))}</p>
@@ -166,8 +168,8 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Accounts */}
-        <Card>
+        {/* Accounts - spans full width */}
+        <Card className="md:col-span-2 lg:col-span-3">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Accounts</h2>
             <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
@@ -319,7 +321,9 @@ const Dashboard = () => {
           </Card>
         )}
 
-        <RecurringTracker />
+        <div className="md:col-span-2 lg:col-span-3">
+          <RecurringTracker />
+        </div>
 
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">
@@ -340,9 +344,9 @@ const Dashboard = () => {
           )}
         </Card>
 
-        {/* Recent Transactions - hide when empty */}
+        {/* Recent Transactions - spans full */}
         {recentTx.length > 0 && (
-          <Card>
+          <Card className="md:col-span-2 lg:col-span-3">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Recent Transactions</h2>
               <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -365,6 +369,7 @@ const Dashboard = () => {
             </div>
           </Card>
         )}
+        </div>{/* end grid */}
       </div>
 
       <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />

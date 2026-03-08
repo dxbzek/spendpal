@@ -72,7 +72,8 @@ const Goals = () => {
             <p className="text-xs text-muted-foreground/70 mt-1">Create a goal to start saving</p>
           </div>
         ) : (
-          activeGoals.map(goal => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {activeGoals.map(goal => {
             const pct = goal.targetAmount ? Math.round((goal.savedAmount / goal.targetAmount) * 100) : 0;
             const remaining = goal.targetAmount - goal.savedAmount;
             const daysLeft = getDaysRemaining(goal.deadline);
@@ -113,6 +114,8 @@ const Goals = () => {
               </div>
             );
           })
+          }
+          </div>
         )}
       </div>
 
