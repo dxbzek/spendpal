@@ -61,6 +61,7 @@ const Budgets = () => {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {budgets.map(b => {
           const pct = b.amount ? Math.round((b.spent / b.amount) * 100) : 0;
           const remaining = b.amount - b.spent;
