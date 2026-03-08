@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -309,19 +310,26 @@ const AIAdvisor = () => {
                     { key: 'zero-based', label: 'Zero-Based', value: analysis.simulation.zeroBased },
                     { key: 'hybrid', label: 'Hybrid', value: analysis.simulation.hybrid },
                   ] as const).map(sim => (
-                    <button key={sim.key}
-                      onClick={() => setActiveSimTab(sim.key)}
-                      className={`p-3 rounded-xl text-center transition-all ${
-                        activeSimTab === sim.key ? 'bg-primary/10 border-2 border-primary' : 'bg-muted/30 border-2 border-transparent'
-                      } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card' : ''}`}>
-                      <p className="text-xs text-muted-foreground mb-1">{sim.label}</p>
-                      <p className={`text-sm font-heading ${sim.value > 0 ? 'text-income' : 'text-expense'}`}>
-                        {sim.value > 0 ? '+' : ''}{fmt(sim.value)}
-                      </p>
-                      {sim.key === analysis.recommendedMethod && (
-                        <span className="text-[9px] text-primary font-medium">★ Recommended</span>
-                      )}
-                    </button>
+                    <Tooltip key={sim.key}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setActiveSimTab(sim.key)}
+                          className={`p-3 rounded-xl text-center transition-all ${
+                            activeSimTab === sim.key ? 'bg-primary/10 border-2 border-primary' : 'bg-muted/30 border-2 border-transparent'
+                          } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card' : ''}`}>
+                          <p className="text-xs text-muted-foreground mb-1">{sim.label}</p>
+                          <p className={`text-sm font-heading ${sim.value > 0 ? 'text-income' : 'text-expense'}`}>
+                            {sim.value > 0 ? '+' : ''}{fmt(sim.value)}
+                          </p>
+                          {sim.key === analysis.recommendedMethod && (
+                            <span className="text-[9px] text-primary font-medium">★ Recommended</span>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs max-w-[200px]">
+                        {METHOD_LABELS[sim.key]?.desc}
+                      </TooltipContent>
+                    </Tooltip>
                   ))}
                 </div>
                 <Button
