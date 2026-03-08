@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2, Download, Filter } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet } from 'lucide-react';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -22,8 +22,8 @@ const Transactions = () => {
   const { openEditSheet } = useEditTransaction();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [filterAccount, setFilterAccount] = useState<string>('all');
+  const [showAccountFilter, setShowAccountFilter] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
@@ -35,7 +35,6 @@ const Transactions = () => {
     const pairs = new Map<string, { from: typeof transactions[0]; to: typeof transactions[0] }>();
     const pairedIds = new Set<string>();
     
-    // Find transfer pairs
     const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
     const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
     
@@ -52,7 +51,6 @@ const Transactions = () => {
       }
     }
     
-    // Filter out the "income" side of paired transfers
     const merged = transactions.filter(tx => !pairedIds.has(tx.id) || pairs.has(tx.id));
     return { mergedTransactions: merged, transferPairs: pairs };
   }, [transactions]);
@@ -60,16 +58,23 @@ const Transactions = () => {
   const filtered = useMemo(() => {
     return mergedTransactions.filter(tx => {
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase());
-      const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && tx.category === 'Transfer');
-      const matchCategory = filterCategory === 'all' || tx.category === filterCategory;
-      return matchSearch && matchType && matchCategory;
+      const isTransferEntry = tx.category === 'Transfer';
+      const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && isTransferEntry);
+      
+      // Account filter: for linked transfers, match if either from or to account matches
+      let matchAccount = filterAccount === 'all';
+      if (!matchAccount) {
+        const pair = transferPairs.get(tx.id);
+        if (pair) {
+          matchAccount = pair.from.accountId === filterAccount || pair.to.accountId === filterAccount;
+        } else {
+          matchAccount = tx.accountId === filterAccount;
+        }
+      }
+      
+      return matchSearch && matchType && matchAccount;
     });
-  }, [mergedTransactions, search, filterType, filterCategory]);
-
-  const uniqueCategories = useMemo(() => {
-    const cats = [...new Set(transactions.map(tx => tx.category))];
-    return cats.sort();
-  }, [transactions]);
+  }, [mergedTransactions, search, filterType, filterAccount, transferPairs]);
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
@@ -187,29 +192,29 @@ const Transactions = () => {
               {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
-          <button onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+          <button onClick={() => setShowAccountFilter(!showAccountFilter)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
-              filterCategory !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              filterAccount !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}>
-            <Filter size={12} />
-            {filterCategory !== 'all' ? filterCategory : 'Category'}
+            <Wallet size={12} />
+            {filterAccount !== 'all' ? getAccountName(filterAccount) : 'Account'}
           </button>
         </div>
 
-        {showCategoryFilter && (
+        {showAccountFilter && (
           <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 flex-wrap">
-            <button onClick={() => { setFilterCategory('all'); setShowCategoryFilter(false); }}
+            <button onClick={() => { setFilterAccount('all'); setShowAccountFilter(false); }}
               className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
-                filterCategory === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
+                filterAccount === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
               }`}>
-              All Categories
+              All Accounts
             </button>
-            {uniqueCategories.map(cat => (
-              <button key={cat} onClick={() => { setFilterCategory(cat); setShowCategoryFilter(false); }}
+            {accounts.map(acc => (
+              <button key={acc.id} onClick={() => { setFilterAccount(acc.id); setShowAccountFilter(false); }}
                 className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
-                  filterCategory === cat ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
+                  filterAccount === acc.id ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
                 }`}>
-                {cat}
+                {acc.icon} {acc.name}
               </button>
             ))}
           </div>

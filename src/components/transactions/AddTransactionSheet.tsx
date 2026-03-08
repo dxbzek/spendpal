@@ -10,6 +10,10 @@ import { useCategories } from '@/hooks/useCategories';
 import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { format } from 'date-fns';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Props {
   open: boolean;
@@ -26,7 +30,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
-  const { accounts, addTransaction, updateTransaction, removeTransaction } = useFinance();
+  const { accounts, transactions, addTransaction, updateTransaction, removeTransaction } = useFinance();
   const { currency } = useCurrency();
   const { categories } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
@@ -42,10 +46,14 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
   const [note, setNote] = useState('');
+  
+  // Duplicate detection state
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateMatch, setDuplicateMatch] = useState<Transaction | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState<(() => Promise<void>) | null>(null);
 
   const isEditing = !!editTransaction;
 
-  // Populate form when editing
   useEffect(() => {
     if (editTransaction && open) {
       setType(editTransaction.type as TransactionType);
@@ -79,18 +87,31 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     setTotalInstallments('12');
     setCurrentInstallment('1');
     setNote('');
+    setShowDuplicateWarning(false);
+    setDuplicateMatch(null);
+    setPendingSubmit(null);
   };
 
   const isTransfer = type === 'transfer';
 
-  const handleSubmit = async () => {
+  // Check for duplicate: same amount, merchant, date, accountId, type
+  const findDuplicate = (txAmount: number, txMerchant: string, txDate: string, txAccountId: string, txType: string): Transaction | null => {
+    return transactions.find(existing => 
+      existing.amount === txAmount &&
+      existing.merchant.toLowerCase() === txMerchant.toLowerCase() &&
+      existing.date === txDate &&
+      existing.accountId === txAccountId &&
+      existing.type === txType &&
+      (isEditing ? existing.id !== editTransaction.id : true)
+    ) || null;
+  };
+
+  const executeSubmit = async () => {
     if (isTransfer) {
       if (!amount || !accountId || !toAccountId || accountId === toAccountId) return;
-      // If editing, delete the old transaction first
       if (isEditing) {
         await removeTransaction(editTransaction.id);
       }
-      // Create two transactions: expense from source, income to destination
       const transferNote = note || `Transfer to ${accounts.find(a => a.id === toAccountId)?.name || 'account'}`;
       const transferNoteIn = note || `Transfer from ${accounts.find(a => a.id === accountId)?.name || 'account'}`;
       await addTransaction({
@@ -153,6 +174,28 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     onOpenChange(false);
   };
 
+  const handleSubmit = async () => {
+    // Skip duplicate check when editing
+    if (!isEditing) {
+      const txAmount = parseFloat(amount);
+      const txMerchant = isTransfer ? (merchant || 'Transfer') : (merchant || category);
+      const txType = isTransfer ? 'expense' : type;
+      const txAccountIdCheck = accountId;
+      
+      if (txAmount && txMerchant && date && txAccountIdCheck) {
+        const dup = findDuplicate(txAmount, txMerchant, date, txAccountIdCheck, txType);
+        if (dup) {
+          setDuplicateMatch(dup);
+          setPendingSubmit(() => executeSubmit);
+          setShowDuplicateWarning(true);
+          return;
+        }
+      }
+    }
+    
+    await executeSubmit();
+  };
+
   const selectCategory = (name: string, icon: string) => {
     setCategory(name);
     setCategoryIcon(icon);
@@ -162,169 +205,206 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     ? (parseFloat(amount) || 0) * (parseInt(totalInstallments) || 0)
     : parseFloat(amount) || 0;
 
+  const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto md:max-w-lg md:mx-auto md:left-1/2 md:-translate-x-1/2 md:right-auto">
-        <SheetHeader>
-          <SheetTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto md:max-w-lg md:mx-auto md:left-1/2 md:-translate-x-1/2 md:right-auto">
+          <SheetHeader>
+            <SheetTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
+          </SheetHeader>
 
-        <div className="space-y-5 mt-4">
-          <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            {TYPES.map(t => (
-              <button key={t.value} onClick={() => { setType(t.value); if (t.value !== 'transfer') { setCategory(''); setCategoryIcon(''); } }}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
-                  type === t.value ? 'bg-card card-shadow text-foreground' : 'text-muted-foreground'
-                }`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <div className="space-y-5 mt-4">
+            <div className="flex gap-1 p-1 bg-muted rounded-lg">
+              {TYPES.map(t => (
+                <button key={t.value} onClick={() => { setType(t.value); if (t.value !== 'transfer') { setCategory(''); setCategoryIcon(''); } }}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                    type === t.value ? 'bg-card card-shadow text-foreground' : 'text-muted-foreground'
+                  }`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">
-              {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
-            </label>
-            <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
-              className="text-2xl font-heading h-14 text-center" />
-          </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">
+                {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
+              </label>
+              <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
+                className="text-2xl font-heading h-14 text-center" />
+            </div>
 
-          {/* Recurring toggle - hidden for transfers */}
-          {!isTransfer && (
-            <div className="bg-muted/50 rounded-xl p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Recurring</p>
-                  <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
-                </div>
-                <Switch checked={isRecurring} onCheckedChange={(v) => {
-                  setIsRecurring(v);
-                  if (v) setHasInstallments(true);
-                  if (!v) setHasInstallments(false);
-                }} />
-              </div>
-
-              {isRecurring && (
+            {/* Recurring toggle - hidden for transfers */}
+            {!isTransfer && (
+              <div className="bg-muted/50 rounded-xl p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">Installment Plan</p>
-                    <p className="text-xs text-muted-foreground">Track payment progress</p>
+                    <p className="text-sm font-medium">Recurring</p>
+                    <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
                   </div>
-                  <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
+                  <Switch checked={isRecurring} onCheckedChange={(v) => {
+                    setIsRecurring(v);
+                    if (v) setHasInstallments(true);
+                    if (!v) setHasInstallments(false);
+                  }} />
                 </div>
-              )}
 
-              {hasInstallments && isRecurring && (
-                <div className="space-y-3 pt-2 border-t border-border">
-                  <div className="grid grid-cols-2 gap-3">
+                {isRecurring && (
+                  <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
-                      <Select value={totalInstallments} onValueChange={setTotalInstallments}>
-                        <SelectTrigger className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {INSTALLMENT_OPTIONS.map(n => (
-                            <SelectItem key={n} value={String(n)}>{n} months</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <p className="text-sm font-medium">Installment Plan</p>
+                      <p className="text-xs text-muted-foreground">Track payment progress</p>
                     </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
-                      <Input type="number" min="1" max={totalInstallments}
-                        value={currentInstallment} onChange={e => setCurrentInstallment(e.target.value)}
-                        className="h-10" />
-                    </div>
+                    <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
                   </div>
-                  {amount && (
-                    <div className="bg-primary/5 rounded-lg p-2.5 text-center">
-                      <p className="text-xs text-muted-foreground">Total Cost</p>
-                      <p className="text-sm font-heading text-foreground">
-                        {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Remaining: {((parseInt(totalInstallments) - parseInt(currentInstallment)) * (parseFloat(amount) || 0)).toLocaleString()} {currency}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                )}
 
-          {/* Category - hidden for transfers */}
-          {!isTransfer && (
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Category</label>
-              <div className="grid grid-cols-5 gap-2">
-                {categories.map(c => (
-                  <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
-                    title={c.name}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
-                      category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
-                    }`}>
-                    <span className="text-xl">{c.icon}</span>
-                    <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
-                  </button>
-                ))}
+                {hasInstallments && isRecurring && (
+                  <div className="space-y-3 pt-2 border-t border-border">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
+                        <Select value={totalInstallments} onValueChange={setTotalInstallments}>
+                          <SelectTrigger className="h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {INSTALLMENT_OPTIONS.map(n => (
+                              <SelectItem key={n} value={String(n)}>{n} months</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
+                        <Input type="number" min="1" max={totalInstallments}
+                          value={currentInstallment} onChange={e => setCurrentInstallment(e.target.value)}
+                          className="h-10" />
+                      </div>
+                    </div>
+                    {amount && (
+                      <div className="bg-primary/5 rounded-lg p-2.5 text-center">
+                        <p className="text-xs text-muted-foreground">Total Cost</p>
+                        <p className="text-sm font-heading text-foreground">
+                          {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Remaining: {((parseInt(totalInstallments) - parseInt(currentInstallment)) * (parseFloat(amount) || 0)).toLocaleString()} {currency}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Accounts */}
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">
-              {isTransfer ? 'From Account' : 'Account'}
-            </label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
-              <SelectContent>
-                {accounts.map(a => (
-                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            {/* Category - hidden for transfers */}
+            {!isTransfer && (
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Category</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {categories.map(c => (
+                    <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
+                      title={c.name}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
+                        category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                      }`}>
+                      <span className="text-xl">{c.icon}</span>
+                      <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          {isTransfer && (
+            {/* Accounts */}
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">To Account</label>
-              <Select value={toAccountId} onValueChange={setToAccountId}>
-                <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
+              <label className="text-sm text-muted-foreground mb-1 block">
+                {isTransfer ? 'From Account' : 'Account'}
+              </label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
                 <SelectContent>
-                  {accounts.filter(a => a.id !== accountId).map(a => (
+                  {accounts.map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
 
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Date</label>
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            {isTransfer && (
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">To Account</label>
+                <Select value={toAccountId} onValueChange={setToAccountId}>
+                  <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
+                  <SelectContent>
+                    {accounts.filter(a => a.id !== accountId).map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Date</label>
+              <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            </div>
+
+            {/* Merchant / Recipient */}
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">
+                {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
+              </label>
+              <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
+              <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} />
+            </div>
+
+            <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
+              {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+            </Button>
           </div>
+        </SheetContent>
+      </Sheet>
 
-          {/* Merchant / Recipient */}
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">
-              {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
-            </label>
-            <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} />
-          </div>
-
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
-            <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} />
-          </div>
-
-          <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
-            {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+      {/* Duplicate transaction warning */}
+      <AlertDialog open={showDuplicateWarning} onOpenChange={(o) => { if (!o) { setShowDuplicateWarning(false); setPendingSubmit(null); setDuplicateMatch(null); } }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Possible Duplicate</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>A similar transaction already exists:</p>
+                {duplicateMatch && (
+                  <div className="bg-muted rounded-lg p-3 text-sm space-y-1">
+                    <p className="font-medium text-foreground">{duplicateMatch.merchant}</p>
+                    <p>{duplicateMatch.amount} {duplicateMatch.currency} • {duplicateMatch.date}</p>
+                    <p className="text-muted-foreground">{getAccountName(duplicateMatch.accountId)} • {duplicateMatch.category}</p>
+                  </div>
+                )}
+                <p>Do you still want to add this transaction?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              setShowDuplicateWarning(false);
+              if (pendingSubmit) await pendingSubmit();
+              setPendingSubmit(null);
+              setDuplicateMatch(null);
+            }}>
+              Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
