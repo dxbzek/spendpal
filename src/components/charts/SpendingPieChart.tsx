@@ -26,7 +26,7 @@ const SpendingPieChart = ({ data }: Props) => {
           <div key={item.name} className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 truncate">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_CHART_COLORS[item.name] || CATEGORY_CHART_COLORS._default(i) }} />
-              <span className="truncate">{item.icon} {item.name}</span>
+              <span className="truncate">{item.name}</span>
             </div>
             <span className="font-medium shrink-0 ml-2">{fmt(item.value)}</span>
           </div>

@@ -226,7 +226,7 @@ const Dashboard = () => {
                 return (
                   <div key={cat}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm flex items-center gap-2"><span>{data.icon}</span> {cat}</span>
+                      <span className="text-sm flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: barColor }} /> {cat}</span>
                       <span className="text-sm font-medium">{fmt(data.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
