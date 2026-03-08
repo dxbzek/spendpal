@@ -22,6 +22,8 @@ const Transactions = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [showImport, setShowImport] = useState(false);
   const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isMobile = useIsMobile();
 
   const filtered = useMemo(() => {
