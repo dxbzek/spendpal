@@ -336,9 +336,15 @@ const Dashboard = () => {
           </Card>
         )}
 
+        {/* Upcoming Bills */}
+        <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
+
         <div className="md:col-span-2 lg:col-span-3">
           <RecurringTracker />
         </div>
+
+        {/* Monthly AI Report */}
+        <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
 
         {/* AI Summary */}
         <Card className="border border-dashed border-primary/30">

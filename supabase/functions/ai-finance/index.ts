@@ -268,7 +268,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       });
     }
 
-    if (type === "summary") {
+    if (type === "summary" || type === "monthly-report") {
       return new Response(response.body, {
         headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
