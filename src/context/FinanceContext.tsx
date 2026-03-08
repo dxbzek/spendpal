@@ -262,6 +262,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       type: goal.type,
       target_amount: goal.targetAmount,
       saved_amount: goal.savedAmount,
+      deadline: goal.deadline ?? null,
       status: goal.status,
     });
     if (error) { toast.error(error.message); return; }
