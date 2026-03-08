@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useFinance } from '@/context/FinanceContext';
 import { useAI } from '@/hooks/useAI';
 import { Upload, FileText, Loader2, Check } from 'lucide-react';
@@ -22,6 +23,7 @@ interface ParsedRow {
   categoryIcon: string;
   type: 'expense' | 'income';
   selected: boolean;
+  isDuplicate?: boolean;
 }
 
 async function extractPdfText(file: File): Promise<string> {
@@ -59,7 +61,7 @@ function normalizeDate(d: string): string {
 }
 
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
-  const { accounts, addTransaction, updateAccount } = useFinance();
+  const { accounts, transactions, addTransaction, updateAccount } = useFinance();
   const { loading, categorizeStatement } = useAI();
   const fileRef = useRef<HTMLInputElement>(null);
   const [statementText, setStatementText] = useState('');
@@ -97,6 +99,16 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
   };
 
+  const isDuplicateTransaction = (row: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
+    return transactions.some(t =>
+      t.accountId === accountId &&
+      Math.abs(t.amount) === Math.abs(row.amount) &&
+      t.date === row.date &&
+      t.merchant.toLowerCase().trim() === row.merchant.toLowerCase().trim() &&
+      t.type === row.type
+    );
+  };
+
   const handleParse = async () => {
     if (!statementText || !accountId) {
       toast.error('Please upload a file and select an account');
@@ -104,7 +116,16 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
     const results = await categorizeStatement(statementText);
     if (results.length > 0) {
-      setParsed(results.map((r: Omit<ParsedRow, 'selected'>) => ({ ...r, date: normalizeDate(r.date), selected: true })));
+      const rows = results.map((r: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
+        const normalized = { ...r, date: normalizeDate(r.date) };
+        const isDup = isDuplicateTransaction(normalized);
+        return { ...normalized, selected: !isDup, isDuplicate: isDup };
+      });
+      setParsed(rows);
+      const dupCount = rows.filter((r: ParsedRow) => r.isDuplicate).length;
+      if (dupCount > 0) {
+        toast.warning(`${dupCount} potential duplicate${dupCount > 1 ? 's' : ''} detected and deselected`);
+      }
       setStep('review');
     } else {
       toast.error('Could not parse transactions from the file');
@@ -210,8 +231,15 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
             <div className="space-y-4 mt-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">{parsed.filter(r => r.selected).length} of {parsed.length} selected</p>
-                <button onClick={() => setParsed(p => p.map(r => ({ ...r, selected: !p.every(x => x.selected) })))}
-                  className="text-xs text-primary font-medium">Toggle All</button>
+                <div className="flex items-center gap-2">
+                  {parsed.some(r => r.isDuplicate) && (
+                    <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">
+                      {parsed.filter(r => r.isDuplicate).length} duplicates
+                    </Badge>
+                  )}
+                  <button onClick={() => setParsed(p => p.map(r => ({ ...r, selected: !p.every(x => x.selected) })))}
+                    className="text-xs text-primary font-medium">Toggle All</button>
+                </div>
               </div>
               <div className="space-y-2 max-h-[40vh] overflow-y-auto">
                 {parsed.map((row, idx) => (
@@ -222,7 +250,10 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     </div>
                     <span className="text-lg">{row.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{row.merchant}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium truncate">{row.merchant}</p>
+                        {row.isDuplicate && <Badge variant="outline" className="text-[10px] px-1 py-0 border-destructive text-destructive">Dup</Badge>}
+                      </div>
                       <p className="text-xs text-muted-foreground">{row.category} · {row.date}</p>
                     </div>
                     <p className={`text-sm font-heading ${row.type === 'income' ? 'text-income' : 'text-expense'}`}>
