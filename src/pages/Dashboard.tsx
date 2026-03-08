@@ -271,7 +271,7 @@ const Dashboard = () => {
         {transactions.length > 0 && (
           <Card>
             <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
-            <MonthlyTrendChart transactions={transactions} />
+            <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
           </Card>
         )}
 

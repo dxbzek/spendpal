@@ -5,22 +5,23 @@ import { useMemo } from 'react';
 
 interface Props {
   transactions: Transaction[];
+  creditAccountIds: Set<string>;
   hidden: boolean;
   mask: (val: string) => string;
 }
 
-const MoneySavedWidget = ({ transactions, hidden, mask }: Props) => {
+const MoneySavedWidget = ({ transactions, creditAccountIds, hidden, mask }: Props) => {
   const { fmt } = useCurrency();
 
   const { income, expenses, saved, pct } = useMemo(() => {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const monthTx = transactions.filter(t => t.date.startsWith(currentMonth));
-    const inc = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const inc = monthTx.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
     const exp = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const sav = inc - exp;
     return { income: inc, expenses: exp, saved: sav, pct: inc > 0 ? Math.round((sav / inc) * 100) : 0 };
-  }, [transactions]);
+  }, [transactions, creditAccountIds]);
 
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow">
