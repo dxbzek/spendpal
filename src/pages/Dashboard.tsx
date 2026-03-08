@@ -159,8 +159,16 @@ const Dashboard = () => {
 
       <div className="px-5 -mt-4 space-y-4 pb-6">
         <div className="grid grid-cols-2 gap-3">
-          <Card><p className="text-xs text-muted-foreground mb-1">Income</p><p className="text-lg font-heading text-income">{mask(fmt(income))}</p></Card>
-          <Card><p className="text-xs text-muted-foreground mb-1">Expenses</p><p className="text-lg font-heading text-expense">{mask(fmt(expenses))}</p></Card>
+          <Card>
+            <p className="text-xs text-muted-foreground mb-1">Income</p>
+            <p className="text-lg font-heading text-income">{mask(fmt(income))}</p>
+            {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
+          </Card>
+          <Card>
+            <p className="text-xs text-muted-foreground mb-1">Expenses</p>
+            <p className="text-lg font-heading text-expense">{mask(fmt(expenses))}</p>
+            {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
+          </Card>
         </div>
 
         {/* Accounts */}
