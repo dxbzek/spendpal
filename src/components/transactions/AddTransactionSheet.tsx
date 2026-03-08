@@ -84,6 +84,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const handleSubmit = async () => {
     if (isTransfer) {
       if (!amount || !accountId || !toAccountId || accountId === toAccountId) return;
+      // If editing, delete the old transaction first
+      if (isEditing) {
+        await removeTransaction(editTransaction.id);
+      }
       // Create two transactions: expense from source, income to destination
       const transferNote = note || `Transfer to ${accounts.find(a => a.id === toAccountId)?.name || 'account'}`;
       const transferNoteIn = note || `Transfer from ${accounts.find(a => a.id === accountId)?.name || 'account'}`;
