@@ -7,6 +7,8 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAI } from '@/hooks/useAI';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
+import SpendingPieChart from '@/components/charts/SpendingPieChart';
+import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
 import type { Account } from '@/types/finance';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
