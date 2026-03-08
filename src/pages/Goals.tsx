@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, CalendarClock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { differenceInDays, parseISO } from 'date-fns';
 import AddGoalDialog from '@/components/forms/AddGoalDialog';
 import type { Goal } from '@/types/finance';
 import {
@@ -34,6 +35,12 @@ const Goals = () => {
   };
 
   const activeGoals = goals.filter(g => g.status === 'active');
+
+  const getDaysRemaining = (deadline?: string) => {
+    if (!deadline) return null;
+    const days = differenceInDays(parseISO(deadline), new Date());
+    return days;
+  };
 
   return (
     <div className="animate-fade-in">
@@ -68,14 +75,26 @@ const Goals = () => {
           activeGoals.map(goal => {
             const pct = goal.targetAmount ? Math.round((goal.savedAmount / goal.targetAmount) * 100) : 0;
             const remaining = goal.targetAmount - goal.savedAmount;
+            const daysLeft = getDaysRemaining(goal.deadline);
             return (
               <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow group">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{goal.icon}</span>
-                    <div><p className="text-sm font-medium">{goal.name}</p><p className="text-xs text-muted-foreground">{goal.type}</p></div>
+                    <div>
+                      <p className="text-sm font-medium">{goal.name}</p>
+                      <p className="text-xs text-muted-foreground">{goal.type}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    {daysLeft !== null && (
+                      <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full mr-1 ${
+                        daysLeft <= 7 ? 'bg-red-100 text-red-600' : daysLeft <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-accent text-accent-foreground'
+                      }`}>
+                        <CalendarClock size={12} />
+                        {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d left`}
+                      </span>
+                    )}
                     <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={16} /></button>
                     <button onClick={() => setDeleteGoalId(goal.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={16} /></button>
                   </div>
