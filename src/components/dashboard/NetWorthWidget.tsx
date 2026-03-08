@@ -1,5 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
-import { TrendingUp, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import type { Account } from '@/types/finance';
 
 interface Props {
