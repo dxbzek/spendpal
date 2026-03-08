@@ -12,6 +12,7 @@ import Dashboard from "@/pages/Dashboard";
 import Transactions from "@/pages/Transactions";
 import Budgets from "@/pages/Budgets";
 import Goals from "@/pages/Goals";
+import AIAdvisor from "@/pages/AIAdvisor";
 import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
