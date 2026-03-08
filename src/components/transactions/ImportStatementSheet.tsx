@@ -61,7 +61,7 @@ function normalizeDate(d: string): string {
 }
 
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
-  const { accounts, addTransaction, updateAccount } = useFinance();
+  const { accounts, transactions, addTransaction, updateAccount } = useFinance();
   const { loading, categorizeStatement } = useAI();
   const fileRef = useRef<HTMLInputElement>(null);
   const [statementText, setStatementText] = useState('');
