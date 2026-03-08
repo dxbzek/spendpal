@@ -4,7 +4,7 @@ import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Settings, Trash2, Edit2, Search } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Trash2, Edit2, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';

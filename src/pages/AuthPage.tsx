@@ -76,7 +76,7 @@ const AuthPage = () => {
           Continue with Google
         </Button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 my-4">
           <Separator className="flex-1" />
           <span className="text-xs text-muted-foreground">or</span>
           <Separator className="flex-1" />
