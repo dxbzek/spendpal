@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -219,16 +220,17 @@ const Dashboard = () => {
             <p className="text-sm text-muted-foreground text-center py-4">No categorized expenses</p>
           ) : (
             <div className="space-y-2.5">
-              {categorySpending.slice(0, 5).map(([cat, data]) => {
+              {categorySpending.slice(0, 5).map(([cat, data], idx) => {
                 const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
+                const barColor = CATEGORY_CHART_COLORS[cat] || CATEGORY_CHART_COLORS._default(idx);
                 return (
                   <div key={cat}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm flex items-center gap-2"><span>{data.icon}</span> {cat}</span>
+                      <span className="text-sm flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: barColor }} /> {cat}</span>
                       <span className="text-sm font-medium">{fmt(data.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full bg-primary" />
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
                     </div>
                   </div>
                 );
