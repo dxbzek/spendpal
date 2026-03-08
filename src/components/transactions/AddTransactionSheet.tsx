@@ -258,7 +258,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
             <div>
               <label className="text-sm text-muted-foreground mb-2 block">Category</label>
               <div className="grid grid-cols-5 gap-2">
-                {CATEGORIES.map(c => (
+                {categories.map(c => (
                   <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
                     title={c.name}
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
