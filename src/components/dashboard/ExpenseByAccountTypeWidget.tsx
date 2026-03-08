@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { PieChart } from 'lucide-react';
+import GlossaryLink from '@/components/GlossaryLink';
 import { motion } from 'framer-motion';
 import type { Account, Transaction } from '@/types/finance';
 

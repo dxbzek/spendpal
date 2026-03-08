@@ -83,6 +83,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden, mask }: Props
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Month vs Month</h2>
+        <GlossaryLink term="Month vs Month" />
       </div>
 
       {/* Header row */}
