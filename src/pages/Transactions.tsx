@@ -30,14 +30,41 @@ const Transactions = () => {
   const [deleting, setDeleting] = useState(false);
   const isMobile = useIsMobile();
 
+  // Merge transfer pairs: match expense+income with same date, amount, category='Transfer'
+  const { mergedTransactions, transferPairs } = useMemo(() => {
+    const pairs = new Map<string, { from: typeof transactions[0]; to: typeof transactions[0] }>();
+    const pairedIds = new Set<string>();
+    
+    // Find transfer pairs
+    const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
+    const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
+    
+    for (const exp of transferExpenses) {
+      const match = transferIncomes.find(inc => 
+        inc.date === exp.date && 
+        inc.amount === exp.amount && 
+        !pairedIds.has(inc.id)
+      );
+      if (match) {
+        pairs.set(exp.id, { from: exp, to: match });
+        pairedIds.add(exp.id);
+        pairedIds.add(match.id);
+      }
+    }
+    
+    // Filter out the "income" side of paired transfers
+    const merged = transactions.filter(tx => !pairedIds.has(tx.id) || pairs.has(tx.id));
+    return { mergedTransactions: merged, transferPairs: pairs };
+  }, [transactions]);
+
   const filtered = useMemo(() => {
-    return transactions.filter(tx => {
+    return mergedTransactions.filter(tx => {
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase());
-      const matchType = filterType === 'all' || tx.type === filterType;
+      const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && tx.category === 'Transfer');
       const matchCategory = filterCategory === 'all' || tx.category === filterCategory;
       return matchSearch && matchType && matchCategory;
     });
-  }, [transactions, search, filterType, filterCategory]);
+  }, [mergedTransactions, search, filterType, filterCategory]);
 
   const uniqueCategories = useMemo(() => {
     const cats = [...new Set(transactions.map(tx => tx.category))];
@@ -59,11 +86,16 @@ const Transactions = () => {
 
   const renderTxContent = (tx: typeof filtered[0], idx: number) => {
     const catColor = getCategoryChartColor(tx.category, idx);
-    // Extract only emoji from categoryIcon (DB may store "🔁 Transfer" instead of just "🔁")
     const emojiOnly = (str: string) => {
       const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
       return match ? match[0] : str.charAt(0);
     };
+    
+    const pair = transferPairs.get(tx.id);
+    const isLinkedTransfer = !!pair;
+    const fromAccountName = isLinkedTransfer ? getAccountName(pair.from.accountId) : '';
+    const toAccountName = isLinkedTransfer ? getAccountName(pair.to.accountId) : '';
+    
     return (
       <div
         className="flex items-center justify-between p-4 cursor-pointer active:bg-muted/50 transition-colors"
@@ -72,10 +104,18 @@ const Transactions = () => {
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span className="text-2xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
            <div className="min-w-0">
-             <p className="text-sm font-medium truncate">{tx.merchant}</p>
+             <p className="text-sm font-medium truncate">
+               {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
+             </p>
              <div className="flex items-center gap-1.5">
-               <p className="text-xs text-muted-foreground truncate">{getAccountName(tx.accountId)}</p>
-               {tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
+               {isLinkedTransfer ? (
+                 <p className="text-xs text-muted-foreground truncate">
+                   {fromAccountName} → {toAccountName}
+                 </p>
+               ) : (
+                 <p className="text-xs text-muted-foreground truncate">{getAccountName(tx.accountId)}</p>
+               )}
+               {!isLinkedTransfer && tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
                    💳 Card Credit
                  </span>
@@ -86,15 +126,21 @@ const Transactions = () => {
                  </span>
                )}
              </div>
-             {tx.note && (
+             {tx.note && !isLinkedTransfer && (
                <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">📝 {tx.note}</p>
              )}
            </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
-            {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
-          </p>
+          {isLinkedTransfer ? (
+            <p className="text-sm font-heading text-muted-foreground">
+              {fmtSigned(tx.amount, 'expense')}
+            </p>
+          ) : (
+            <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
+              {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
+            </p>
+          )}
           <button onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
             className="text-muted-foreground hover:text-destructive transition-colors p-1">
             <Trash2 size={14} />
@@ -133,7 +179,7 @@ const Transactions = () => {
         </div>
 
         <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-          {['all', 'expense', 'income'].map(f => (
+          {['all', 'expense', 'income', 'transfer'].map(f => (
             <button key={f} onClick={() => setFilterType(f)}
               className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                 filterType === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
@@ -206,12 +252,25 @@ const Transactions = () => {
       <AlertDialog open={!!deleteTxId} onOpenChange={(o) => { if (!o) setDeleteTxId(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone. The account balance will be adjusted.</AlertDialogDescription>
+            <AlertDialogTitle>Delete {deleteTxId && transferPairs.has(deleteTxId) ? 'Transfer' : 'Transaction'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTxId && transferPairs.has(deleteTxId) 
+                ? 'This will delete both sides of the transfer. Account balances will be adjusted.'
+                : 'This cannot be undone. The account balance will be adjusted.'}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteTxId) removeTransaction(deleteTxId); setDeleteTxId(null); }}
+            <AlertDialogAction onClick={async () => { 
+              if (deleteTxId) {
+                const pair = transferPairs.get(deleteTxId);
+                if (pair) {
+                  await removeTransaction(pair.to.id);
+                }
+                await removeTransaction(deleteTxId);
+              }
+              setDeleteTxId(null); 
+            }}
               className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
