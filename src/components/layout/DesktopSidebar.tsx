@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus } from 'lucide-react';
+import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { path: '/transactions', label: 'Transactions', icon: Receipt },
   { path: '/budgets', label: 'Budgets', icon: PiggyBank },
   { path: '/goals', label: 'Goals', icon: Target },
+  { path: '/advisor', label: 'AI Advisor', icon: Brain },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
