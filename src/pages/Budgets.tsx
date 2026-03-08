@@ -25,6 +25,7 @@ const Budgets = () => {
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
 
   const now = new Date();
@@ -41,9 +42,16 @@ const Budgets = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="px-5 pt-12 pb-4">
-        <h1 className="text-2xl font-heading mb-1">Budgets</h1>
-        <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
+      <div className="px-5 pt-12 pb-4 flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-heading mb-1">Budgets</h1>
+          <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
+        </div>
+        {budgets.length > 0 && (
+          <button onClick={() => setShowDeleteAll(true)} className="text-xs text-destructive font-medium flex items-center gap-1 hover:underline">
+            <Trash2 size={12} /> Delete All
+          </button>
+        )}
       </div>
 
       <div className="px-5 md:px-6 space-y-4 pb-6">
@@ -136,6 +144,29 @@ const Budgets = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (deleteBudgetId) removeBudget(deleteBudgetId); setDeleteBudgetId(null); }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteAll} onOpenChange={setShowDeleteAll}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Budgets?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete all {budgets.length} budgets. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                for (const b of budgets) { await removeBudget(b.id); }
+                setShowDeleteAll(false);
+              }}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Delete All
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

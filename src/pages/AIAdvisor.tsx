@@ -350,12 +350,12 @@ const AIAdvisor = () => {
                     }
                   }}
                   disabled={applyingEnvelopes}
-                  className="w-full mt-4 gradient-primary text-primary-foreground h-11"
+                  className="w-full mt-4 gradient-primary text-primary-foreground h-11 text-sm"
                 >
                   {applyingEnvelopes ? (
-                    <><Loader2 size={16} className="animate-spin mr-2" /> Creating budgets…</>
+                    <><Loader2 size={16} className="animate-spin mr-2 shrink-0" /> Creating…</>
                   ) : (
-                    <><ExternalLink size={16} className="mr-2" /> Apply {METHOD_LABELS[activeSimTab]?.name} & Go to Budgets</>
+                    <><ExternalLink size={16} className="mr-2 shrink-0" /> <span className="truncate">Apply & Go to Budgets</span></>
                   )}
                 </Button>
               </div>
