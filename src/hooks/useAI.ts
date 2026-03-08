@@ -1,7 +1,17 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const FUNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`;
+
+const getAuthHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Please sign in to use AI features');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session.access_token}`,
+  };
+};
 
 export const useAI = () => {
   const [loading, setLoading] = useState(false);
@@ -11,12 +21,10 @@ export const useAI = () => {
     setLoading(true);
     setSummaryText('');
     try {
+      const headers = await getAuthHeaders();
       const resp = await fetch(FUNC_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         body: JSON.stringify({ type: 'summary', data }),
       });
 
@@ -70,12 +78,10 @@ export const useAI = () => {
   const generateBudgetSuggestions = useCallback(async (data: unknown) => {
     setLoading(true);
     try {
+      const headers = await getAuthHeaders();
       const resp = await fetch(FUNC_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         body: JSON.stringify({ type: 'budget-suggestions', data }),
       });
 
@@ -103,12 +109,10 @@ export const useAI = () => {
   const categorizeCSV = useCallback(async (csvText: string) => {
     setLoading(true);
     try {
+      const headers = await getAuthHeaders();
       const resp = await fetch(FUNC_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         body: JSON.stringify({ type: 'categorize-csv', data: csvText }),
       });
 
