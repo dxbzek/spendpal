@@ -66,8 +66,8 @@ const Goals = () => {
       </div>
 
       {/* Content */}
-      <div className="px-5 md:px-8 -mt-4 pb-6 max-w-4xl mx-auto">
-        <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide pt-2 mb-4">Active Goals</h2>
+      <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto">
+        <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide mb-4">Active Goals</h2>
 
         {activeGoals.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-2xl card-shadow">
