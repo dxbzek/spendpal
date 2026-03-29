@@ -91,6 +91,36 @@ const Dashboard = () => {
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [filtered]);
 
+  const thisMonthIncome = useMemo(() => {
+    const month = now.getMonth(), year = now.getFullYear();
+    return transactions
+      .filter(tx => { const d = parseISO(tx.date); return tx.type === 'income' && !creditAccountIds.has(tx.accountId) && d.getMonth() === month && d.getFullYear() === year; })
+      .reduce((s, t) => s + t.amount, 0);
+  }, [transactions, now, creditAccountIds]);
+  const thisMonthExpenses = useMemo(() => {
+    const month = now.getMonth(), year = now.getFullYear();
+    return transactions
+      .filter(tx => { const d = parseISO(tx.date); return tx.type === 'expense' && d.getMonth() === month && d.getFullYear() === year; })
+      .reduce((s, t) => s + t.amount, 0);
+  }, [transactions, now]);
+  const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
+
+  const healthScore = useMemo(() => {
+    // Savings rate (0-30)
+    const sr = savingsRate ?? 0;
+    const savingsScore = sr >= 20 ? 30 : sr >= 10 ? 20 : sr >= 0 ? 10 : 0;
+    // Budget adherence (0-30): fraction of budgets not over limit
+    const onTrack = budgets.length ? budgets.filter(b => b.spent <= b.amount).length / budgets.length : 1;
+    const budgetScore = Math.round(onTrack * 30);
+    // Debt / credit utilization (0-20)
+    const creditAccs = accounts.filter(a => a.type === 'credit' && a.creditLimit);
+    const avgUtil = creditAccs.length ? creditAccs.reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / creditAccs.length : 0;
+    const debtScore = creditAccs.length === 0 ? 20 : avgUtil < 0.3 ? 20 : avgUtil < 0.5 ? 14 : avgUtil < 0.75 ? 8 : 3;
+    // Net worth positive (0-20)
+    const nwScore = totalBalance > 0 ? Math.min(20, Math.round((totalBalance / Math.max(thisMonthExpenses || 1, 1)) * 2)) : 0;
+    return Math.min(100, savingsScore + budgetScore + debtScore + nwScore);
+  }, [savingsRate, budgets, accounts, totalBalance, thisMonthExpenses]);
+
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
@@ -217,6 +247,72 @@ const Dashboard = () => {
           <p className="text-xs text-muted-foreground mb-1">Expenses</p>
           <p className="text-financial-medium text-expense">{mask(fmt(expenses))}</p>
           {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
+        </Card>
+
+        {/* Savings Rate */}
+        {savingsRate !== null && (
+          <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-primary">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Savings Rate — This Month</p>
+                <p className={`text-financial-medium ${savingsRate >= 20 ? 'text-income' : savingsRate >= 0 ? 'text-warning' : 'text-expense'}`}>
+                  {hidden ? '••' : `${savingsRate}%`}
+                </p>
+              </div>
+              <div className="text-right text-xs text-muted-foreground">
+                <p>Saved: {mask(fmt(thisMonthIncome - thisMonthExpenses))}</p>
+                <p className="text-[11px]">{savingsRate >= 20 ? '🎯 On track' : savingsRate >= 10 ? '📈 Getting there' : savingsRate < 0 ? '⚠️ Overspending' : '💡 Room to save'}</p>
+              </div>
+            </div>
+            {!hidden && (
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${savingsRate >= 20 ? 'bg-income' : savingsRate >= 0 ? 'bg-warning' : 'bg-expense'}`}
+                  style={{ width: `${Math.max(0, Math.min(savingsRate, 100))}%` }}
+                />
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Financial Health Score */}
+        <Card className="col-span-2 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-heading text-sm">Financial Health</h2>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              healthScore >= 75 ? 'bg-income/10 text-income' : healthScore >= 50 ? 'bg-warning/10 text-warning' : 'bg-expense/10 text-expense'
+            }`}>
+              {healthScore >= 75 ? 'Good' : healthScore >= 50 ? 'Fair' : 'Needs Work'}
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="relative w-20 h-20 shrink-0">
+              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+                <circle cx="40" cy="40" r="32" fill="none"
+                  stroke={healthScore >= 75 ? 'hsl(var(--income))' : healthScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--expense))'}
+                  strokeWidth="6"
+                  strokeDasharray={`${(healthScore / 100) * 201} 201`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xl font-heading">{hidden ? '—' : healthScore}</span>
+              </div>
+            </div>
+            <div className="space-y-1.5 flex-1 text-xs">
+              {[
+                { label: 'Savings rate', val: savingsRate !== null ? `${savingsRate}%` : 'No data', ok: (savingsRate ?? -1) >= 10 },
+                { label: 'Budget adherence', val: budgets.length ? `${budgets.filter(b => b.spent <= b.amount).length}/${budgets.length} on track` : 'No budgets', ok: budgets.length === 0 || budgets.every(b => b.spent <= b.amount) },
+                { label: 'Credit utilization', val: accounts.some(a => a.type === 'credit') ? `${Math.round(accounts.filter(a => a.type === 'credit' && a.creditLimit).reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / Math.max(accounts.filter(a => a.type === 'credit' && a.creditLimit).length, 1) * 100)}%` : 'No credit', ok: true },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <span className={`font-medium ${item.ok ? 'text-income' : 'text-warning'}`}>{hidden ? '••' : item.val}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
 
         {/* Accounts - spans full width */}

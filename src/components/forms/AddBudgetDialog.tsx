@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORIES, type Budget } from '@/types/finance';
-import { format } from 'date-fns';
+import { format, subMonths, getMonth, getYear, parseISO } from 'date-fns';
 
 interface Props {
   open: boolean;
@@ -15,22 +16,81 @@ interface Props {
   editBudget?: Budget | null;
 }
 
+const ROLLOVER_KEY = 'spendpal_rollover_cats';
+
+function getRolloverCats(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(ROLLOVER_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function setRolloverCats(cats: Set<string>) {
+  localStorage.setItem(ROLLOVER_KEY, JSON.stringify([...cats]));
+}
+
 const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
-  const { addBudget, updateBudget } = useFinance();
-  const { currency } = useCurrency();
+  const { addBudget, updateBudget, budgets, transactions } = useFinance();
+  const { currency, fmt } = useCurrency();
   const isEdit = !!editBudget;
   const [category, setCategory] = useState(editBudget?.category || '');
   const [amount, setAmount] = useState(editBudget?.amount?.toString() || '');
   const [period, setPeriod] = useState<'monthly' | 'weekly'>(editBudget?.period || 'monthly');
+  const [rollover, setRollover] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const selectedCat = CATEGORIES.find(c => c.name === category);
-  const [submitting, setSubmitting] = useState(false);
+
+  // Last month's unspent for this category
+  const lastMonthUnspent = useMemo(() => {
+    if (!category || isEdit) return null;
+    const prev = subMonths(new Date(), 1);
+    const pm = getMonth(prev), py = getYear(prev);
+    const prevMonth = format(prev, 'yyyy-MM');
+
+    // Find last month's budget for this category
+    const prevBudget = budgets.find(b => b.category === category && b.month === prevMonth);
+    if (prevBudget) {
+      const unspent = prevBudget.amount - prevBudget.spent;
+      return unspent > 0 ? unspent : null;
+    }
+
+    // Fall back to spending-based calculation
+    const spent = transactions
+      .filter(t => {
+        const d = parseISO(t.date);
+        return t.type === 'expense' && t.category === category && getMonth(d) === pm && getYear(d) === py;
+      })
+      .reduce((s, t) => s + t.amount, 0);
+
+    return spent > 0 ? null : null; // Only show rollover if there was a budget
+  }, [category, budgets, transactions, isEdit]);
+
+  // When category changes, load rollover preference
+  useEffect(() => {
+    if (!category) return;
+    const saved = getRolloverCats();
+    setRollover(saved.has(category));
+  }, [category]);
+
+  // When rollover toggles, update amount
+  useEffect(() => {
+    if (!rollover || !lastMonthUnspent || !amount) return;
+    const base = parseFloat(amount) || 0;
+    if (!isEdit && lastMonthUnspent > 0) {
+      setAmount((base + lastMonthUnspent).toFixed(2));
+    }
+  }, [rollover]);
 
   const handleSubmit = async () => {
     if (!category || !amount || submitting) return;
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) return;
     setSubmitting(true);
+
+    // Save rollover preference
+    const cats = getRolloverCats();
+    if (rollover) cats.add(category);
+    else cats.delete(category);
+    setRolloverCats(cats);
+
     try {
       const data = {
         category,
@@ -82,6 +142,21 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Rollover option */}
+          {!isEdit && lastMonthUnspent && lastMonthUnspent > 0 && (
+            <div className="flex items-center justify-between p-3 bg-accent/50 rounded-xl">
+              <div className="flex items-center gap-2">
+                <RotateCcw size={14} className="text-primary" />
+                <div>
+                  <p className="text-xs font-medium">Roll over {fmt(lastMonthUnspent)}</p>
+                  <p className="text-[11px] text-muted-foreground">Add last month's unspent to this budget</p>
+                </div>
+              </div>
+              <Switch checked={rollover} onCheckedChange={setRollover} />
+            </div>
+          )}
+
           <Button onClick={handleSubmit} disabled={!category || !amount || submitting} className="w-full gradient-primary text-primary-foreground">
             {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Add Budget'}

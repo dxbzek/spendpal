@@ -3,8 +3,10 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { type Account } from '@/types/finance';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
-import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { format, parseISO, addDays } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +36,8 @@ const Accounts = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const netWorth = useMemo(() => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
@@ -55,6 +59,43 @@ const Accounts = () => {
     });
     return stats;
   }, [transactions]);
+
+  // Balance projection: project total assets 30 days forward using recurring transactions
+  const balanceProjection = useMemo(() => {
+    const assetAccs = accounts.filter(a => a.type !== 'credit');
+    if (assetAccs.length === 0) return null;
+    const startBalance = assetAccs.reduce((s, a) => s + a.balance, 0);
+    const recurring = transactions.filter(t => t.isRecurring);
+    const now = new Date();
+    const points: Array<{ day: number; balance: number }> = [{ day: 0, balance: startBalance }];
+    let running = startBalance;
+    for (let d = 1; d <= 30; d++) {
+      const date = addDays(now, d);
+      // Check for recurring transactions due this day of month
+      recurring.forEach(r => {
+        const lastDate = parseISO(r.date);
+        if (lastDate.getDate() === date.getDate()) {
+          if (r.type === 'expense') running -= r.amount;
+          else if (r.type === 'income') running += r.amount;
+        }
+      });
+      points.push({ day: d, balance: running });
+    }
+    // Build SVG path
+    const vals = points.map(p => p.balance);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const range = max - min || 1;
+    const W = 100, H = 36;
+    const pts = points.map(p => {
+      const x = (p.day / 30) * W;
+      const y = H - ((p.balance - min) / range) * H;
+      return `${x},${y}`;
+    }).join(' ');
+    const end = points[points.length - 1].balance;
+    const change = end - startBalance;
+    return { pts, startBalance, endBalance: end, change };
+  }, [accounts, transactions]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -196,9 +237,82 @@ const Accounts = () => {
                     )}
                   </div>
                 )}
+
+                {/* Transactions toggle */}
+                <button
+                  onClick={() => setExpandedId(expandedId === account.id ? null : account.id)}
+                  className="w-full flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-1"><Receipt size={11} /> Recent transactions</span>
+                  {expandedId === account.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </button>
+
+                {/* Inline transactions */}
+                {expandedId === account.id && (() => {
+                  const acctTxs = transactions
+                    .filter(tx => tx.accountId === account.id)
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .slice(0, 10);
+                  return (
+                    <div className="space-y-1.5 pt-1">
+                      {acctTxs.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-2">No transactions yet</p>
+                      ) : (
+                        <>
+                          {acctTxs.map(tx => (
+                            <div key={tx.id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-muted/40">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-base shrink-0">{tx.categoryIcon}</span>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{tx.merchant}</p>
+                                  <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                                </div>
+                              </div>
+                              <span className={`text-xs font-semibold shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                                {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                              </span>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => navigate('/transactions')}
+                            className="w-full text-xs text-primary font-medium text-center py-1 hover:underline"
+                          >
+                            See all transactions →
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Balance Projection */}
+      {balanceProjection && (
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">30-Day Balance Projection</h2>
+            <span className={`text-xs font-semibold ${balanceProjection.change >= 0 ? 'text-income' : 'text-expense'}`}>
+              {balanceProjection.change >= 0 ? '+' : ''}{fmt(balanceProjection.change)}
+            </span>
+          </div>
+          <svg viewBox="0 0 100 36" className="w-full h-12" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="proj-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polyline points={balanceProjection.pts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polygon points={`0,36 ${balanceProjection.pts} 100,36`} fill="url(#proj-grad)" />
+          </svg>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>Today: {fmt(balanceProjection.startBalance)}</span>
+            <span>+30d: {fmt(balanceProjection.endBalance)}</span>
+          </div>
         </div>
       )}
 

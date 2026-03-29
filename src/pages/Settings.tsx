@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2 } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
 import { useNavigate } from 'react-router-dom';
@@ -258,6 +258,93 @@ const DataBackupCard = () => {
   );
 };
 
+const DangerZoneCard = () => {
+  const { accounts, transactions, budgets, goals } = useFinance();
+  const { user } = useAuth();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAll = async () => {
+    if (!user) return;
+    setDeleting(true);
+    try {
+      await Promise.all([
+        supabase.from('transactions').delete().eq('user_id', user.id),
+        supabase.from('budgets').delete().eq('user_id', user.id),
+        supabase.from('goals').delete().eq('user_id', user.id),
+        supabase.from('accounts').delete().eq('user_id', user.id),
+      ]);
+      // Clear localStorage snapshots
+      localStorage.removeItem('spendpal_networth_history');
+      localStorage.removeItem('spendpal_rollover_cats');
+      toast.success('All data deleted');
+      window.location.reload();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error('Delete failed: ' + msg);
+    } finally {
+      setDeleting(false);
+      setShowConfirm(false);
+    }
+  };
+
+  const total = accounts.length + transactions.length + budgets.length + goals.length;
+
+  return (
+    <>
+      <section>
+        <p className="text-[11px] font-semibold text-destructive uppercase tracking-wider mb-3 px-1">Danger Zone</p>
+        <div className="bg-card rounded-2xl p-5 card-shadow border border-destructive/20">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+              <Trash2 size={16} className="text-destructive" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Delete All Data</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Permanently removes all {total} records — accounts, transactions, budgets, and goals.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => setShowConfirm(true)}
+              >
+                <Trash2 size={14} className="mr-1.5" /> Delete Everything
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={20} className="text-destructive" />
+              <AlertDialogTitle>Delete All Data?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription>
+              This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals. This action <span className="font-semibold text-foreground">cannot be undone</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={handleDeleteAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+              Yes, Delete Everything
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};
+
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
@@ -280,7 +367,7 @@ const Settings = () => {
         setAvatarUrl(data.avatar_url);
       }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [user]);
 
   const filteredCurrencies = currencySearch
@@ -487,6 +574,9 @@ const Settings = () => {
             </button>
           </div>
         </section>
+
+        {/* Danger Zone */}
+        <DangerZoneCard />
       </div>
     </div>
   );

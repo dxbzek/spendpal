@@ -73,6 +73,8 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [accountId, setAccountId] = useState('');
   const [step, setStep] = useState<'upload' | 'review'>('upload');
+  const [inputMode, setInputMode] = useState<'file' | 'paste'>('file');
+  const [pasteText, setPasteText] = useState('');
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState('');
 
@@ -113,11 +115,12 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   };
 
   const handleParse = async () => {
-    if (!statementText || !accountId) {
-      toast.error('Please upload a file and select an account');
+    const textToProcess = inputMode === 'paste' ? pasteText : statementText;
+    if (!textToProcess || !accountId) {
+      toast.error(inputMode === 'paste' ? 'Please paste some text and select an account' : 'Please upload a file and select an account');
       return;
     }
-    const results = await categorizeStatement(statementText);
+    const results = await categorizeStatement(textToProcess);
     if (results.length > 0) {
       const rows = results.map((r: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
         const normalized = { ...r, date: normalizeDate(r.date) };
@@ -182,12 +185,12 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   };
 
   const resetAndClose = () => {
-    setStatementText(''); setFileName(''); setParsed([]); setStep('upload');
+    setStatementText(''); setFileName(''); setParsed([]); setStep('upload'); setPasteText('');
     onOpenChange(false);
   };
 
   const handleClose = (open: boolean) => {
-    if (!open) { setStep('upload'); setParsed([]); setStatementText(''); setFileName(''); }
+    if (!open) { setStep('upload'); setParsed([]); setStatementText(''); setFileName(''); setPasteText(''); }
     onOpenChange(open);
   };
 
@@ -201,19 +204,49 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
 
           {step === 'upload' && (
             <div className="space-y-5 mt-4">
-              <div>
-                <input ref={fileRef} type="file" accept=".csv,.txt,.pdf,.xlsx,.xls" onChange={handleFile} className="hidden" />
-                <button onClick={() => fileRef.current?.click()}
-                  className="w-full py-8 rounded-2xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
-                  {parsing ? (
-                    <><Loader2 size={32} className="text-primary animate-spin" /><span className="text-sm text-muted-foreground">Reading file…</span></>
-                  ) : fileName ? (
-                    <><FileText size={32} className="text-primary" /><span className="text-sm font-medium">{fileName}</span><span className="text-xs text-muted-foreground">Click to change file</span></>
-                  ) : (
-                    <><Upload size={32} className="text-muted-foreground" /><span className="text-sm text-muted-foreground">Upload CSV, PDF, or Excel statement</span></>
-                  )}
+              {/* Mode toggle */}
+              <div className="flex p-0.5 bg-muted rounded-xl">
+                <button
+                  onClick={() => setInputMode('file')}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${inputMode === 'file' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Upload File
+                </button>
+                <button
+                  onClick={() => setInputMode('paste')}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${inputMode === 'paste' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Paste Text
                 </button>
               </div>
+
+              {inputMode === 'file' ? (
+                <div>
+                  <input ref={fileRef} type="file" accept=".csv,.txt,.pdf,.xlsx,.xls" onChange={handleFile} className="hidden" />
+                  <button onClick={() => fileRef.current?.click()}
+                    className="w-full py-8 rounded-2xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
+                    {parsing ? (
+                      <><Loader2 size={32} className="text-primary animate-spin" /><span className="text-sm text-muted-foreground">Reading file…</span></>
+                    ) : fileName ? (
+                      <><FileText size={32} className="text-primary" /><span className="text-sm font-medium">{fileName}</span><span className="text-xs text-muted-foreground">Click to change file</span></>
+                    ) : (
+                      <><Upload size={32} className="text-muted-foreground" /><span className="text-sm text-muted-foreground">Upload CSV, PDF, or Excel statement</span></>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1 block">Paste bank statement text</label>
+                  <textarea
+                    value={pasteText}
+                    onChange={e => setPasteText(e.target.value)}
+                    placeholder="Paste CSV rows, copied table text, or any bank statement format…"
+                    rows={7}
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">Import to account</label>
                 <Select value={accountId} onValueChange={setAccountId}>
@@ -223,8 +256,11 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleParse} disabled={!statementText || !accountId || loading || parsing}
-                className="w-full h-12 text-base gradient-primary text-primary-foreground">
+              <Button
+                onClick={handleParse}
+                disabled={(inputMode === 'file' ? !statementText : !pasteText) || !accountId || loading || parsing}
+                className="w-full h-12 text-base gradient-primary text-primary-foreground"
+              >
                 {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing with AI…</> : 'Parse & Categorize'}
               </Button>
             </div>
@@ -260,7 +296,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                       <p className="text-xs text-muted-foreground">{row.category} · {row.date}</p>
                     </div>
                     <p className={`text-sm font-heading ${row.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                      {row.type === 'income' ? '+' : '-'}د.إ {Math.abs(row.amount).toFixed(2)}
+                      {row.type === 'income' ? '+' : '-'}{symbol}{Math.abs(row.amount).toFixed(2)}
                     </p>
                   </button>
                 ))}

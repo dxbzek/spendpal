@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Plus, Edit2, Trash2, CalendarClock } from 'lucide-react';
+import { Plus, Edit2, Trash2, CalendarClock, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, subMonths, getMonth, getYear, format } from 'date-fns';
+
+const LOG_KEY = (id: string) => `spendpal_goal_log_${id}`;
+interface Contribution { amount: number; note: string; date: string; }
+
+function loadLog(id: string): Contribution[] {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY(id)) || '[]'); } catch { return []; }
+}
+function saveLog(id: string, log: Contribution[]) {
+  localStorage.setItem(LOG_KEY(id), JSON.stringify(log.slice(0, 20)));
+}
 import AddGoalDialog from '@/components/forms/AddGoalDialog';
 import type { Goal } from '@/types/finance';
 import {
@@ -15,10 +25,12 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const Goals = () => {
-  const { goals, addGoalProgress, removeGoal } = useFinance();
+  const { goals, transactions, accounts, addGoalProgress, removeGoal } = useFinance();
   const { fmt } = useCurrency();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
+  const [progressNote, setProgressNote] = useState('');
+  const [showLog, setShowLog] = useState<string | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
@@ -27,13 +39,40 @@ const Goals = () => {
   const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0);
   const overallPct = totalTarget ? Math.round((totalSaved / totalTarget) * 100) : 0;
 
+  // Compute avg monthly savings from the last 3 full months
+  const monthlySavingsRate = useMemo(() => {
+    const creditIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
+    const now = new Date();
+    let totalRate = 0;
+    let validMonths = 0;
+    for (let i = 1; i <= 3; i++) {
+      const d = subMonths(now, i);
+      const m = getMonth(d);
+      const y = getYear(d);
+      const monthTx = transactions.filter(tx => {
+        const td = parseISO(tx.date);
+        return getMonth(td) === m && getYear(td) === y;
+      });
+      const inc = monthTx.filter(t => t.type === 'income' && !creditIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
+      const exp = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const savings = inc - exp;
+      if (savings > 0) { totalRate += savings; validMonths++; }
+    }
+    return validMonths > 0 ? totalRate / validMonths : 0;
+  }, [transactions, accounts]);
+
   const handleAddProgress = async () => {
     if (!progressGoalId || !progressAmount) return;
     const amount = parseFloat(progressAmount);
     if (isNaN(amount) || amount <= 0) return;
     await addGoalProgress(progressGoalId, amount);
+    // Save to contribution log
+    const log = loadLog(progressGoalId);
+    log.unshift({ amount, note: progressNote.trim(), date: new Date().toISOString() });
+    saveLog(progressGoalId, log);
     setProgressGoalId(null);
     setProgressAmount('');
+    setProgressNote('');
   };
 
   const activeGoals = goals.filter(g => g.status === 'active');
@@ -41,6 +80,16 @@ const Goals = () => {
   const getDaysRemaining = (deadline?: string) => {
     if (!deadline) return null;
     return differenceInDays(parseISO(deadline), new Date());
+  };
+
+  const getCompletionEstimate = (remaining: number): string | null => {
+    if (remaining <= 0) return null;
+    if (monthlySavingsRate <= 0) return null;
+    const months = remaining / monthlySavingsRate;
+    if (months < 1) return 'Less than a month';
+    if (months < 12) return `~${Math.ceil(months)} month${Math.ceil(months) > 1 ? 's' : ''}`;
+    const years = months / 12;
+    return `~${years.toFixed(1)} year${years >= 2 ? 's' : ''}`;
   };
 
   return (
@@ -63,6 +112,11 @@ const Goals = () => {
             <div className="h-3.5 bg-primary-foreground/20 rounded-full overflow-hidden">
               <motion.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
             </div>
+            {monthlySavingsRate > 0 && (
+              <p className="text-primary-foreground/60 text-[11px] mt-2 flex items-center gap-1">
+                <TrendingUp size={11} /> Avg monthly savings: {fmt(monthlySavingsRate)}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -82,6 +136,7 @@ const Goals = () => {
               const pct = goal.targetAmount ? Math.round((goal.savedAmount / goal.targetAmount) * 100) : 0;
               const remaining = goal.targetAmount - goal.savedAmount;
               const daysLeft = getDaysRemaining(goal.deadline);
+              const estimate = getCompletionEstimate(remaining);
               return (
                 <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
                   <div className="flex items-start justify-between mb-3">
@@ -117,10 +172,48 @@ const Goals = () => {
                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full gradient-primary" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">{fmt(remaining)} remaining</p>
-                    <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); }}
-                      className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add Progress</button>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{fmt(remaining)} remaining</p>
+                      {estimate && (
+                        <p className="text-[11px] text-primary/70 flex items-center gap-0.5 mt-0.5">
+                          <TrendingUp size={10} /> {estimate} at current rate
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowLog(showLog === goal.id ? null : goal.id)}
+                        className="px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium"
+                      >
+                        Log
+                      </button>
+                      <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); }}
+                        className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add Progress</button>
+                    </div>
                   </div>
+                  {showLog === goal.id && (() => {
+                    const log = loadLog(goal.id);
+                    return (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Contribution History</p>
+                        {log.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No contributions yet</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {log.slice(0, 5).map((c, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <div>
+                                  <span className="font-medium text-income">+{fmt(c.amount)}</span>
+                                  {c.note && <span className="text-muted-foreground ml-1.5">· {c.note}</span>}
+                                </div>
+                                <span className="text-muted-foreground">{format(parseISO(c.date), 'MMM d, yyyy')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -138,6 +231,10 @@ const Goals = () => {
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Amount</label>
               <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} className="text-lg h-12" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
+              <Input placeholder="e.g. Monthly savings transfer" value={progressNote} onChange={e => setProgressNote(e.target.value)} className="h-10" />
             </div>
             <Button onClick={handleAddProgress} className="w-full gradient-primary text-primary-foreground">Save Progress</Button>
           </div>

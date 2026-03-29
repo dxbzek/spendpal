@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { format, parseISO, getMonth, getYear } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { RefreshCw, Check, Plus } from 'lucide-react';
+import { RefreshCw, Check, Plus, TrendingDown } from 'lucide-react';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 
 interface RecurringGroup {
@@ -57,6 +57,8 @@ const Recurring = () => {
 
   const dueCount = groups.filter(g => !g.paidThisMonth).length;
   const paidCount = groups.filter(g => g.paidThisMonth).length;
+  const monthlyCommitted = groups.reduce((s, g) => s + g.avgAmount, 0);
+  const dueTotal = groups.filter(g => !g.paidThisMonth).reduce((s, g) => s + g.avgAmount, 0);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-5">
@@ -82,14 +84,26 @@ const Recurring = () => {
 
       {/* Summary pills */}
       {groups.length > 0 && (
-        <div className="flex gap-3">
-          <div className="flex-1 rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-center">
-            <p className="text-2xl font-bold text-destructive">{dueCount}</p>
-            <p className="text-xs text-muted-foreground">Due this month</p>
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1 rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-center">
+              <p className="text-2xl font-bold text-destructive">{dueCount}</p>
+              <p className="text-xs text-muted-foreground">Due this month</p>
+            </div>
+            <div className="flex-1 rounded-xl bg-primary/10 border border-primary/20 p-3 text-center">
+              <p className="text-2xl font-bold text-primary">{paidCount}</p>
+              <p className="text-xs text-muted-foreground">Paid this month</p>
+            </div>
           </div>
-          <div className="flex-1 rounded-xl bg-primary/10 border border-primary/20 p-3 text-center">
-            <p className="text-2xl font-bold text-primary">{paidCount}</p>
-            <p className="text-xs text-muted-foreground">Paid this month</p>
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-card border border-border">
+            <div className="flex items-center gap-2">
+              <TrendingDown size={14} className="text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Monthly committed</span>
+            </div>
+            <div className="text-right">
+              <span className="font-semibold text-sm">{fmt(monthlyCommitted)}</span>
+              {dueTotal > 0 && <p className="text-[11px] text-destructive font-medium">{fmt(dueTotal)} still due</p>}
+            </div>
           </div>
         </div>
       )}

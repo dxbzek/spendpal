@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
-import { format, parseISO, subMonths } from 'date-fns';
+import { format, parseISO, subMonths, getDay } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
 import SpendingPieChart from '@/components/charts/SpendingPieChart';
-import { BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt } from 'lucide-react';
 
 const Reports = () => {
   const { transactions, accounts, budgets } = useFinance();
   const { fmt } = useCurrency();
 
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
+  const [drillCategory, setDrillCategory] = useState<string | null>(null);
 
   const creditAccountIds = useMemo(
     () => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)),
@@ -86,6 +87,27 @@ const Reports = () => {
     [budgets, selectedMonth]
   );
 
+  const incomeBySource = useMemo(() => {
+    const map: Record<string, { value: number; icon: string }> = {};
+    monthTxs.filter(tx => tx.type === 'income' && !creditAccountIds.has(tx.accountId)).forEach(tx => {
+      if (!map[tx.merchant]) map[tx.merchant] = { value: 0, icon: tx.categoryIcon };
+      map[tx.merchant].value += tx.amount;
+    });
+    return Object.entries(map).sort((a, b) => b[1].value - a[1].value);
+  }, [monthTxs, creditAccountIds]);
+
+  const dayOfWeekData = useMemo(() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const totals = new Array(7).fill(0);
+    monthTxs.filter(tx => tx.type === 'expense').forEach(tx => {
+      // getDay: 0=Sun, 1=Mon... convert to Mon=0
+      const d = (getDay(parseISO(tx.date)) + 6) % 7;
+      totals[d] += tx.amount;
+    });
+    const max = Math.max(...totals, 1);
+    return days.map((label, i) => ({ label, total: totals[i], pct: Math.round((totals[i] / max) * 100) }));
+  }, [monthTxs]);
+
   const hasData = categoryData.length > 0 || topMerchants.length > 0;
 
   return (
@@ -144,6 +166,50 @@ const Reports = () => {
         <div className="bg-card rounded-2xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Spending by Category</h2>
           <SpendingPieChart data={categoryData} />
+          <div className="mt-3 space-y-1.5">
+            {categoryData.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setDrillCategory(drillCategory === cat.name ? null : cat.name)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${drillCategory === cat.name ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/60'}`}
+              >
+                <span className="flex items-center gap-2">
+                  <span>{cat.icon}</span>
+                  <span className="font-medium">{cat.name}</span>
+                </span>
+                <span className="font-semibold">{fmt(cat.value)}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Drill-through panel */}
+          {drillCategory && (() => {
+            const catTxs = monthTxs.filter(tx => tx.type === 'expense' && tx.category === drillCategory);
+            return (
+              <div className="mt-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{drillCategory} transactions</p>
+                  <button onClick={() => setDrillCategory(null)} className="text-muted-foreground hover:text-foreground"><X size={14} /></button>
+                </div>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                  {catTxs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">No transactions</p>
+                  ) : catTxs.map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-muted/40">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Receipt size={11} className="text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{tx.merchant}</p>
+                          <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d')}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-expense shrink-0 ml-2">{fmt(tx.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -191,6 +257,51 @@ const Reports = () => {
                   <span className="text-sm truncate">{merchant}</span>
                 </div>
                 <span className="text-sm font-medium shrink-0">{fmt(amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Income by Source */}
+      {incomeBySource.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <h2 className="font-semibold text-sm mb-3">Income by Source</h2>
+          <div className="space-y-2">
+            {incomeBySource.map(([source, data], i) => {
+              const pct = income > 0 ? Math.round((data.value / income) * 100) : 0;
+              return (
+                <div key={source}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <span>{data.icon}</span>
+                      <span className="font-medium">{source}</span>
+                    </span>
+                    <span className="font-semibold text-primary">{fmt(data.value)} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Day of Week Heatmap */}
+      {dayOfWeekData.some(d => d.total > 0) && (
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <h2 className="font-semibold text-sm mb-3">Spending by Day of Week</h2>
+          <div className="flex items-end gap-1.5">
+            {dayOfWeekData.map(({ label, total, pct }) => (
+              <div key={label} className="flex-1 flex flex-col items-center gap-1">
+                <span className="text-[9px] text-muted-foreground leading-none">{total > 0 ? fmt(total) : ''}</span>
+                <div
+                  className={`w-full rounded-t-sm transition-all ${total > 0 ? 'bg-primary' : 'bg-muted'}`}
+                  style={{ height: `${Math.max(pct * 0.52, total > 0 ? 4 : 2)}px` }}
+                />
+                <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
               </div>
             ))}
           </div>

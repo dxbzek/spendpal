@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Receipt, PiggyBank, Wallet, BarChart3, Brain, Settings, Plus } from 'lucide-react';
+import { LayoutDashboard, Receipt, PiggyBank, CreditCard, BarChart3, Settings, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS_LEFT = [
@@ -9,7 +9,7 @@ const NAV_ITEMS_LEFT = [
 ];
 
 const NAV_ITEMS_RIGHT = [
-  { path: '/accounts', label: 'Accounts', icon: Wallet },
+  { path: '/debt', label: 'Debt', icon: CreditCard },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];

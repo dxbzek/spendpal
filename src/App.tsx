@@ -21,6 +21,9 @@ import Glossary from "@/pages/Glossary";
 import Accounts from "@/pages/Accounts";
 import Reports from "@/pages/Reports";
 import Recurring from "@/pages/Recurring";
+import Debt from "@/pages/Debt";
+import Installments from "@/pages/Installments";
+import CalendarView from "@/pages/CalendarView";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +74,9 @@ const App = () => (
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/recurring" element={<Recurring />} />
+                <Route path="/debt" element={<Debt />} />
+                <Route path="/installments" element={<Installments />} />
+                <Route path="/calendar" element={<CalendarView />} />
                 <Route path="/advisor" element={<AIAdvisor />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/glossary" element={<Glossary />} />
