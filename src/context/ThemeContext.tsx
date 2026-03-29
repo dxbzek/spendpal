@@ -11,9 +11,11 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
+    // v2: light-first — only honour an explicit user toggle, not a system-preference default
     const stored = localStorage.getItem('theme');
-    if (stored === 'dark' || stored === 'light') return stored;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const userChose = localStorage.getItem('theme-user-set') === '1';
+    if (userChose && (stored === 'dark' || stored === 'light')) return stored;
+    return 'light';
   });
 
   useEffect(() => {
@@ -23,7 +25,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggle = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  const toggle = () => {
+    localStorage.setItem('theme-user-set', '1');
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>

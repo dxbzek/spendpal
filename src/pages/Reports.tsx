@@ -7,7 +7,7 @@ import SpendingPieChart from '@/components/charts/SpendingPieChart';
 import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt } from 'lucide-react';
 
 const Reports = () => {
-  const { transactions, accounts, budgets } = useFinance();
+  const { transactions, accounts, budgets, loading } = useFinance();
   const { fmt } = useCurrency();
 
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
@@ -110,6 +110,17 @@ const Reports = () => {
 
   const hasData = categoryData.length > 0 || topMerchants.length > 0;
 
+  const drillTxs = useMemo(
+    () => drillCategory ? monthTxs.filter(tx => tx.type === 'expense' && tx.category === drillCategory) : [],
+    [drillCategory, monthTxs]
+  );
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-6">
       {/* Header */}
@@ -184,7 +195,7 @@ const Reports = () => {
 
           {/* Drill-through panel */}
           {drillCategory && (() => {
-            const catTxs = monthTxs.filter(tx => tx.type === 'expense' && tx.category === drillCategory);
+            const catTxs = drillTxs;
             return (
               <div className="mt-3 pt-3 border-t border-border">
                 <div className="flex items-center justify-between mb-2">

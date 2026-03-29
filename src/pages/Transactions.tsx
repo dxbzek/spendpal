@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle } from 'lucide-react';
@@ -26,7 +26,9 @@ const Transactions = () => {
   const { fmtSigned, fmt } = useCurrency();
   const { openEditSheet } = useEditTransaction();
   const { categories: allCategories } = useCategories();
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterAccount, setFilterAccount] = useState<string>('all');
   const [showAccountFilter, setShowAccountFilter] = useState(false);
@@ -43,6 +45,12 @@ const Transactions = () => {
   // Undo delete state
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
   const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Cleanup all pending timers and debounce on unmount
+  useEffect(() => () => {
+    pendingTimers.current.forEach(t => clearTimeout(t));
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+  }, []);
 
   const scheduleDelete = useCallback((ids: string[], label: string) => {
     ids.forEach(id => {
@@ -292,7 +300,11 @@ const Transactions = () => {
 
         <div className="relative mb-3">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search merchant, category, notes…" value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
+          <Input placeholder="Search merchant, category, notes…" value={searchInput} onChange={e => {
+            setSearchInput(e.target.value);
+            if (searchDebounce.current) clearTimeout(searchDebounce.current);
+            searchDebounce.current = setTimeout(() => setSearch(e.target.value), 250);
+          }} className="pl-10 bg-card" />
         </div>
 
         <div className="relative mb-3">

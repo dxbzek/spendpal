@@ -28,38 +28,47 @@ interface DesktopSidebarProps {
 const NavButton = ({ path, label, icon: Icon, active, onClick, collapsed }: {
   path: string; label: string; icon: any; active: boolean; onClick: () => void; collapsed?: boolean;
 }) => {
-  const btn = (
-    <button
-      onClick={onClick}
-      aria-label={collapsed ? label : undefined}
-      aria-current={active ? 'page' : undefined}
-      className={`relative w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-colors ${
-        collapsed ? 'justify-center' : ''
-      } ${
-        active ? 'text-primary bg-accent' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      }`}
-    >
-      <Icon size={19} />
-      {!collapsed && <span>{label}</span>}
-      {active && (
-        <motion.div
-          layoutId="sidebar-indicator"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-primary"
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        />
-      )}
-    </button>
-  );
-
   if (collapsed) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{btn}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            aria-label={label}
+            aria-current={active ? 'page' : undefined}
+            className={`border-0 w-full flex items-center justify-center p-3 rounded-xl text-sm font-medium transition-colors ${
+              active ? 'text-primary bg-accent' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <Icon size={19} />
+          </button>
+        </TooltipTrigger>
         <TooltipContent side="right">{label}</TooltipContent>
       </Tooltip>
     );
   }
-  return btn;
+
+  return (
+    <div className="relative">
+      {active && (
+        <motion.div
+          layoutId="sidebar-indicator"
+          className="absolute -left-3 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-primary"
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        />
+      )}
+      <button
+        onClick={onClick}
+        aria-current={active ? 'page' : undefined}
+        className={`border-0 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+          active ? 'text-primary bg-accent' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        }`}
+      >
+        <Icon size={19} />
+        <span>{label}</span>
+      </button>
+    </div>
+  );
 };
 
 const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
@@ -68,7 +77,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside className={`${collapsed ? 'w-16' : 'w-60'} shrink-0 border-r border-border bg-card h-screen sticky top-0 flex flex-col py-4 transition-all duration-200`}>
+      <aside className={`${collapsed ? 'w-16' : 'w-60'} shrink-0 border-r border-border bg-card h-full flex flex-col py-4 transition-all duration-200 overflow-hidden`}>
         {/* Brand */}
         <div className={`px-4 flex items-center gap-3 mb-2 ${collapsed ? 'justify-center' : ''}`}>
           <img src={logo} alt="SpendPal" className="w-8 h-8 rounded-xl object-cover shrink-0" />
@@ -109,7 +118,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
         </div>
 
         {/* Main Nav Items */}
-        <nav className="flex-1 px-3 space-y-0.5">
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto min-h-0">
           {NAV_ITEMS_MAIN.map(item => (
             <NavButton
               key={item.path}
