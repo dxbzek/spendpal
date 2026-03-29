@@ -20,7 +20,7 @@ export const AccountRowSchema = z.object({
 export const TransactionRowSchema = z.object({
   id: z.string().uuid(),
   type: z.enum(['expense', 'income', 'transfer']),
-  amount: z.union([z.number(), z.string()]).transform(Number),
+  amount: z.union([z.number(), z.string()]).transform(Number).pipe(z.number().positive()),
   currency: z.string().min(1),
   category: z.string().min(1),
   category_icon: z.string(),
@@ -37,7 +37,7 @@ export const BudgetRowSchema = z.object({
   id: z.string().uuid(),
   category: z.string().min(1),
   category_icon: z.string(),
-  amount: z.union([z.number(), z.string()]).transform(Number),
+  amount: z.union([z.number(), z.string()]).transform(Number).pipe(z.number().positive()),
   period: z.enum(['monthly', 'weekly']),
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be YYYY-MM'),
 });
@@ -47,8 +47,8 @@ export const GoalRowSchema = z.object({
   name: z.string().min(1),
   icon: z.string(),
   type: z.string().min(1),
-  target_amount: z.union([z.number(), z.string()]).transform(Number),
-  saved_amount: z.union([z.number(), z.string()]).transform(Number),
+  target_amount: z.union([z.number(), z.string()]).transform(Number).pipe(z.number().positive()),
+  saved_amount: z.union([z.number(), z.string()]).transform(Number).pipe(z.number().min(0)),
   deadline: z.string().nullable().optional().transform(v => v ?? undefined),
   status: z.enum(['active', 'completed', 'paused']),
 });

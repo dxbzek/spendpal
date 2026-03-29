@@ -47,6 +47,15 @@ serve(async (req) => {
     }
 
     const { type, data } = JSON.parse(body);
+
+    const ALLOWED_TYPES = ["summary", "budget-suggestions", "categorize-csv", "monthly-report", "budget-advisor"] as const;
+    type AllowedType = typeof ALLOWED_TYPES[number];
+    if (!ALLOWED_TYPES.includes(type as AllowedType)) {
+      return new Response(JSON.stringify({ error: "Invalid request type" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
@@ -226,10 +235,6 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       ];
       toolChoice = { type: "function", function: { name: "budget_analysis" } };
 
-    } else {
-      return new Response(JSON.stringify({ error: "Invalid request type" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     const requestBody: any = {

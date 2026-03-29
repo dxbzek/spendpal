@@ -408,12 +408,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const addGoalProgress = useCallback(async (goalId: string, amount: number) => {
+    if (amount <= 0) { toast.error('Progress amount must be greater than zero'); return; }
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
     const newSaved = goal.savedAmount + amount;
-    const { error } = await supabase.from('goals').update({ saved_amount: newSaved }).eq('id', goalId);
+    const isNowComplete = newSaved >= goal.targetAmount;
+    const updates: Record<string, unknown> = { saved_amount: newSaved };
+    if (isNowComplete) updates.status = 'completed';
+    const { error } = await supabase.from('goals').update(updates).eq('id', goalId);
     if (error) { toast.error(`Failed to update goal progress: ${error.message}`); return; }
-    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, savedAmount: newSaved } : g));
+    setGoals(prev => prev.map(g =>
+      g.id === goalId ? { ...g, savedAmount: newSaved, status: isNowComplete ? 'completed' : g.status } : g
+    ));
+    if (isNowComplete) toast.success(`🎉 Goal "${goal.name}" completed!`);
   }, [goals]);
 
   return (

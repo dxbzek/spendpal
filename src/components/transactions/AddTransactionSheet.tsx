@@ -363,12 +363,12 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
               <label className="text-sm text-muted-foreground mb-1 block">
                 {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
               </label>
-              <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} />
+              <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} maxLength={100} />
             </div>
 
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
-              <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} />
+              <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
             </div>
 
             <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">

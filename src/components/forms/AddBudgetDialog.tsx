@@ -28,12 +28,14 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
 
   const handleSubmit = async () => {
     if (!category || !amount || submitting) return;
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
     setSubmitting(true);
     try {
       const data = {
         category,
         categoryIcon: selectedCat?.icon || '📌',
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         period,
         month: format(new Date(), 'yyyy-MM'),
       };
@@ -68,7 +70,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
-            <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+            <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Period</label>

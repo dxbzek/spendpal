@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
@@ -41,15 +42,24 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
 
   const handleSubmit = async () => {
     if (!name.trim() || submitting) return;
+    const parsedBalance = parseFloat(balance) || 0;
+    const parsedCreditLimit = type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined;
+    // For non-credit accounts, disallow negative balances
+    if (type !== 'credit' && parsedBalance < 0) { toast.error('Balance cannot be negative'); return; }
+    // For credit accounts, ensure available limit does not exceed credit limit
+    if (type === 'credit' && parsedCreditLimit !== undefined && parsedBalance > parsedCreditLimit) {
+      toast.error('Available limit cannot exceed credit limit');
+      return;
+    }
     setSubmitting(true);
     try {
       const data = {
         name: name.trim(),
         type,
-        balance: parseFloat(balance) || 0,
+        balance: parsedBalance,
         currency,
         icon: ACCOUNT_ICONS[type],
-        creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
+        creditLimit: parsedCreditLimit,
         dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
         statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
       };
@@ -74,7 +84,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" maxLength={50} />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Type</label>
