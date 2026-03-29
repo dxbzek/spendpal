@@ -122,8 +122,8 @@ const Budgets = () => {
           <div className="flex items-center gap-2 mb-2"><Sparkles size={16} className="text-primary" /><h2 className="font-heading text-sm">AI Budget Suggestions</h2></div>
           {suggestions.length > 0 ? (
             <div className="space-y-2.5">
-              {suggestions.map((s, i) => (
-                <div key={i} className="p-3 bg-accent/50 rounded-xl">
+              {suggestions.map((s) => (
+                <div key={s.category} className="p-3 bg-accent/50 rounded-xl">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">{s.category}</span>
                     <span className="text-sm font-heading text-primary">{fmt(s.suggestedAmount)}</span>

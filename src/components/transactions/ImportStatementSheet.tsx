@@ -10,6 +10,7 @@ import { useAI } from '@/hooks/useAI';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Upload, FileText, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 interface Props {
   open: boolean;
@@ -93,7 +94,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       }
       setStatementText(text);
     } catch (err) {
-      console.error('File parse error:', err);
+      logger.error('File parse error', err);
       toast.error('Failed to read file. Please try a different format.');
       setFileName('');
     } finally {

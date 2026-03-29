@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // ─── Raw DB row schemas (what Supabase returns) ───────────────────────────────
 
@@ -66,10 +67,7 @@ export function safeParseRow<T>(
 ): T | null {
   const result = schema.safeParse(row);
   if (!result.success) {
-    // Only log in development
-    if (import.meta.env.DEV) {
-      console.warn(`[SpendPal] Invalid ${label} row:`, result.error.flatten());
-    }
+    logger.warn(`Invalid ${label} row`, result.error.flatten());
     return null;
   }
   return result.data;

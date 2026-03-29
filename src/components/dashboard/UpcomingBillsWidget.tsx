@@ -59,8 +59,8 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
         <h2 className="font-heading text-sm">Upcoming Bills</h2>
       </div>
       <div className="space-y-2.5">
-        {upcomingBills.map((bill, i) => (
-          <div key={i} className="flex items-center justify-between">
+        {upcomingBills.map((bill) => (
+          <div key={`${bill.name}-${bill.dueDate.getTime()}`} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">{bill.icon}</span>
               <div>
