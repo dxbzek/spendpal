@@ -42,7 +42,7 @@ const Goals = () => {
   };
 
   return (
-    <div className="animate-fade-in">
+    <div>
       {/* Header */}
       <div className="gradient-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-3xl">
         <div className="max-w-4xl mx-auto">
@@ -58,8 +58,8 @@ const Goals = () => {
             <p className="text-2xl font-heading text-primary-foreground mb-2">
               {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {fmt(totalTarget)}</span>
             </p>
-            <div className="h-2.5 bg-primary-foreground/20 rounded-full overflow-hidden">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8 }} className="h-full rounded-full bg-primary-foreground" />
+            <div className="h-3.5 bg-primary-foreground/20 rounded-full overflow-hidden">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
             </div>
           </div>
         </div>
@@ -81,12 +81,12 @@ const Goals = () => {
               const remaining = goal.targetAmount - goal.savedAmount;
               const daysLeft = getDaysRemaining(goal.deadline);
               return (
-                <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow group">
+                <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-2xl shrink-0">{goal.icon}</span>
+                      <span className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{goal.name}</p>
+                        <p className="text-sm font-semibold truncate">{goal.name}</p>
                         <p className="text-xs text-muted-foreground">{goal.type}</p>
                       </div>
                     </div>
@@ -103,16 +103,21 @@ const Goals = () => {
                       <button onClick={() => setDeleteGoalId(goal.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span>{fmt(goal.savedAmount)}</span><span>{fmt(goal.targetAmount)}</span>
+                  {/* Prominent percentage */}
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-2xl font-heading text-primary">{pct}%</p>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">{fmt(goal.savedAmount)} saved</p>
+                      <p className="text-xs text-muted-foreground">of {fmt(goal.targetAmount)}</p>
+                    </div>
                   </div>
-                  <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full gradient-primary" />
+                  <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full gradient-primary" />
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">{fmt(remaining)} remaining</p>
                     <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); }}
-                      className="px-3 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">Add Progress</button>
+                      className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add Progress</button>
                   </div>
                 </div>
               );
