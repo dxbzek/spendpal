@@ -23,7 +23,9 @@ export function useIsMobile() {
 }
 
 export function useIsTablet() {
-  const [isTablet, setIsTablet] = React.useState<boolean>(false);
+  const [isTablet, setIsTablet] = React.useState<boolean>(
+    () => typeof window !== "undefined" && window.innerWidth >= TABLET_MIN && window.innerWidth <= TABLET_MAX
+  );
 
   React.useEffect(() => {
     const mql = window.matchMedia(`(min-width: ${TABLET_MIN}px) and (max-width: ${TABLET_MAX}px)`);

@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { extractEmoji } from '@/utils/categoryColors';
 
 const CalendarView = () => {
-  const { transactions } = useFinance();
+  const { transactions, loading } = useFinance();
   const { fmt } = useCurrency();
   const [current, setCurrent] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -60,6 +60,12 @@ const CalendarView = () => {
     if (ratio > 0.15) return 'bg-primary/50';
     return 'bg-primary/25';
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-5">

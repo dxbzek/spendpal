@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -423,15 +423,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (isNowComplete) toast.success(`🎉 Goal "${goal.name}" completed!`);
   }, [goals]);
 
+  const contextValue = useMemo(() => ({
+    accounts, transactions, budgets, goals, loading,
+    addAccount, updateAccount, removeAccount,
+    addTransaction, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
+    addGoal, updateGoal, removeGoal, addGoalProgress,
+    refresh: fetchAll,
+  }), [
+    accounts, transactions, budgets, goals, loading,
+    addAccount, updateAccount, removeAccount,
+    addTransaction, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
+    addGoal, updateGoal, removeGoal, addGoalProgress,
+    fetchAll,
+  ]);
+
   return (
-    <FinanceContext.Provider value={{
-      accounts, transactions, budgets, goals, loading,
-      addAccount, updateAccount, removeAccount,
-      addTransaction, updateTransaction, removeTransaction, bulkRemoveTransactions,
-      addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
-      addGoal, updateGoal, removeGoal, addGoalProgress,
-      refresh: fetchAll,
-    }}>
+    <FinanceContext.Provider value={contextValue}>
       {children}
     </FinanceContext.Provider>
   );

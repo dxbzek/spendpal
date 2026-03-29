@@ -44,7 +44,7 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
   >
     {active && (
       <motion.div
-        layoutId="nav-indicator"
+        layoutId={`nav-indicator-${path}`}
         className="absolute inset-0 rounded-2xl bg-accent"
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       />
@@ -152,7 +152,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           >
             {(showMore || isMoreActive) && (
               <motion.div
-                layoutId="nav-indicator"
+                layoutId="nav-indicator-more"
                 className="absolute inset-0 rounded-2xl bg-accent"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />

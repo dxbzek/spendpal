@@ -91,18 +91,17 @@ const Dashboard = () => {
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [filtered]);
 
-  const thisMonthIncome = useMemo(() => {
+  const [thisMonthIncome, thisMonthExpenses] = useMemo(() => {
     const month = now.getMonth(), year = now.getFullYear();
-    return transactions
-      .filter(tx => { const d = parseISO(tx.date); return tx.type === 'income' && !creditAccountIds.has(tx.accountId) && d.getMonth() === month && d.getFullYear() === year; })
-      .reduce((s, t) => s + t.amount, 0);
+    let inc = 0, exp = 0;
+    for (const tx of transactions) {
+      const d = parseISO(tx.date);
+      if (d.getMonth() !== month || d.getFullYear() !== year) continue;
+      if (tx.type === 'income' && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
+      else if (tx.type === 'expense') exp += tx.amount;
+    }
+    return [inc, exp];
   }, [transactions, now, creditAccountIds]);
-  const thisMonthExpenses = useMemo(() => {
-    const month = now.getMonth(), year = now.getFullYear();
-    return transactions
-      .filter(tx => { const d = parseISO(tx.date); return tx.type === 'expense' && d.getMonth() === month && d.getFullYear() === year; })
-      .reduce((s, t) => s + t.amount, 0);
-  }, [transactions, now]);
   const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
 
   const healthScore = useMemo(() => {
