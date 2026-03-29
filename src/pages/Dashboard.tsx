@@ -2,10 +2,12 @@ import { useState, useMemo } from 'react';
 import { CATEGORY_CHART_COLORS, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import BudgetAlertBanners from '@/components/dashboard/BudgetAlertBanners';
+import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
 import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
 import MonthlyReportCard from '@/components/dashboard/MonthlyReportCard';
+import SpendingForecastWidget from '@/components/dashboard/SpendingForecastWidget';
 import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWidget';
 import ExpenseByAccountTypeWidget from '@/components/dashboard/ExpenseByAccountTypeWidget';
 import MonthlyComparisonWidget from '@/components/dashboard/MonthlyComparisonWidget';
@@ -188,6 +190,8 @@ const Dashboard = () => {
       <div className="px-5 md:px-8 -mt-4 space-y-4 pb-6">
         {/* Budget overspending alerts */}
         <BudgetAlertBanners budgets={budgets} />
+        {/* Recurring transactions not yet logged this month */}
+        <RecurringDueBanner transactions={transactions} />
 
         {/* Responsive grid wrapper for dashboard widgets */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
@@ -410,6 +414,11 @@ const Dashboard = () => {
         {/* Monthly AI Report */}
         <div className="col-span-2 lg:col-span-2">
           <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
+        </div>
+
+        {/* Spending Forecast */}
+        <div className="col-span-2 lg:col-span-1">
+          <SpendingForecastWidget transactions={transactions} />
         </div>
 
         {/* AI Summary */}

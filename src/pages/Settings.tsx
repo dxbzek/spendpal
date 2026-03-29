@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
+import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import {
@@ -458,7 +459,10 @@ const Settings = () => {
         {/* Data */}
         <section>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Data</p>
-          <DataBackupCard />
+          <div className="space-y-3">
+            <MonthlyReportPrint />
+            <DataBackupCard />
+          </div>
         </section>
 
         {/* More */}

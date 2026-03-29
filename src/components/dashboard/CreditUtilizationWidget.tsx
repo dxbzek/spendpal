@@ -19,8 +19,8 @@ const CreditUtilizationWidget = ({ accounts, hidden, mask }: Props) => {
   const totalLimit = creditCards.reduce((s, a) => s + (a.creditLimit || 0), 0);
   const totalUsed = creditCards.reduce((s, a) => s + ((a.creditLimit || 0) - a.balance), 0);
   const overallUtil = totalLimit ? Math.min(Math.round((totalUsed / totalLimit) * 100), 100) : 0;
-  const overallColor = overallUtil > 75 ? 'text-expense' : overallUtil > 50 ? 'text-amber-500' : 'text-primary';
-  const overallBarColor = overallUtil > 75 ? 'bg-expense' : overallUtil > 50 ? 'bg-amber-500' : 'bg-primary';
+  const overallColor = overallUtil > 75 ? 'text-expense' : overallUtil > 50 ? 'text-warning' : 'text-primary';
+  const overallBarColor = overallUtil > 75 ? 'bg-expense' : overallUtil > 50 ? 'bg-warning' : 'bg-primary';
 
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow">
@@ -56,7 +56,7 @@ const CreditUtilizationWidget = ({ accounts, hidden, mask }: Props) => {
           const limit = card.creditLimit || 0;
           const used = limit - card.balance;
           const util = limit ? Math.min(Math.round((used / limit) * 100), 100) : 0;
-          const barColor = util > 75 ? 'bg-expense' : util > 50 ? 'bg-amber-500' : 'bg-primary';
+          const barColor = util > 75 ? 'bg-expense' : util > 50 ? 'bg-warning' : 'bg-primary';
 
           return (
             <div key={card.id}>

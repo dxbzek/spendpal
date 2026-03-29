@@ -44,8 +44,8 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
         <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
           <defs>
             <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(152, 62%, 42%)" stopOpacity={0.15} />
-              <stop offset="95%" stopColor="hsl(152, 62%, 42%)" stopOpacity={0.02} />
+              <stop offset="5%" stopColor="hsl(142, 72%, 36%)" stopOpacity={0.15} />
+              <stop offset="95%" stopColor="hsl(142, 72%, 36%)" stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.1} />
@@ -62,7 +62,7 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
           <Area
             type="monotone"
             dataKey="Income"
-            stroke="hsl(152, 62%, 42%)"
+            stroke="hsl(142, 72%, 36%)"
             strokeWidth={2.5}
             fill="url(#incomeGradient)"
             dot={false}
