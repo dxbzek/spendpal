@@ -55,27 +55,44 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
-        <CalendarClock size={16} className="text-primary" />
+        <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
+          <CalendarClock size={13} className="text-primary" />
+        </div>
         <h2 className="font-heading text-sm">Upcoming Bills</h2>
       </div>
-      <div className="space-y-2.5">
-        {upcomingBills.map((bill, i) => (
-          <div key={i} className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{bill.icon}</span>
-              <div>
-                <p className="text-sm font-medium">{bill.name}</p>
-                <p className="text-xs text-muted-foreground">{format(bill.dueDate, 'MMM d')}</p>
+      <div className="space-y-2">
+        {upcomingBills.map((bill, i) => {
+          const urgent = bill.daysLeft <= 3;
+          const soon = bill.daysLeft <= 7;
+          return (
+            <div
+              key={i}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors ${
+                urgent
+                  ? 'bg-expense/8 border border-expense/20'
+                  : soon
+                    ? 'bg-warning/8 border border-warning/15'
+                    : 'bg-muted/40'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg w-7 text-center">{bill.icon}</span>
+                <div>
+                  <p className="text-sm font-medium leading-tight">{bill.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{format(bill.dueDate, 'MMM d')}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-heading">{fmt(bill.amount)}</p>
+                <p className={`text-[11px] font-semibold ${
+                  urgent ? 'text-expense' : soon ? 'text-warning' : 'text-primary'
+                }`}>
+                  {bill.daysLeft === 0 ? 'Today!' : bill.daysLeft === 1 ? 'Tomorrow' : `${bill.daysLeft}d`}
+                </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-heading">{fmt(bill.amount)}</p>
-              <p className={`text-xs font-medium ${bill.daysLeft <= 7 ? 'text-expense' : 'text-primary'}`}>
-                {bill.daysLeft === 0 ? 'Today' : `${bill.daysLeft}d`}
-              </p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

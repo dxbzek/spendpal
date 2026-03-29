@@ -314,17 +314,17 @@ const Settings = () => {
   }
 
   return (
-    <div className="px-5 md:px-6 pt-12 pb-8 space-y-6">
+    <div className="px-5 md:px-8 pt-12 pb-8 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-8">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
           <ArrowLeft size={20} className="text-foreground" />
         </button>
-        <h1 className="text-xl">Settings</h1>
+        <h1 className="text-2xl font-heading">Settings</h1>
       </div>
 
       {/* Avatar Section */}
-      <div className="flex flex-col items-center gap-3 py-4">
+      <div className="flex flex-col items-center gap-3 pb-8 mb-2">
         <div className="relative">
           <Avatar className="w-24 h-24 border-4 border-card card-shadow">
             <AvatarImage src={avatarUrl ?? undefined} alt={displayName} />
@@ -332,93 +332,121 @@ const Settings = () => {
               {initials}
             </AvatarFallback>
           </Avatar>
-          <label className="absolute bottom-0 right-0 w-8 h-8 rounded-full gradient-primary flex items-center justify-center cursor-pointer shadow-md">
-            {uploading ? <Loader2 size={14} className="animate-spin text-primary-foreground" /> : <Camera size={14} className="text-primary-foreground" />}
+          {/* Larger touch target — 44px */}
+          <label className="absolute bottom-0 right-0 w-11 h-11 rounded-full gradient-primary flex items-center justify-center cursor-pointer shadow-fab active:scale-95 transition-transform">
+            {uploading ? <Loader2 size={16} className="animate-spin text-primary-foreground" /> : <Camera size={16} className="text-primary-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
           </label>
         </div>
-        <p className="text-sm text-muted-foreground">{user?.email}</p>
+        <div className="text-center">
+          <p className="font-semibold text-base">{displayName || 'Your Name'}</p>
+          <p className="text-sm text-muted-foreground">{user?.email}</p>
+        </div>
       </div>
 
-      {/* Form */}
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Appearance */}
-        <div className="bg-card rounded-2xl p-5 card-shadow">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {theme === 'dark' ? <Moon size={18} className="text-primary" /> : <Sun size={18} className="text-primary" />}
-              <div>
-                <p className="text-sm font-medium">Dark Mode</p>
-                <p className="text-xs text-muted-foreground">Switch between light and dark theme</p>
-              </div>
-            </div>
-            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-          </div>
-        </div>
-
-        <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">Display Name</label>
-            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" className="h-12" />
-          </div>
-
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">Preferred Currency</label>
-            <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger className="h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-[280px]">
-                <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
-                  <div className="relative">
-                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Search currencies…"
-                      value={currencySearch}
-                      onChange={e => setCurrencySearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
-                    />
-                  </div>
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Appearance</p>
+          <div className="bg-card rounded-2xl p-5 card-shadow">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                  {theme === 'dark' ? <Moon size={17} className="text-primary" /> : <Sun size={17} className="text-primary" />}
                 </div>
-                {filteredCurrencies.map(c => (
-                  <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
-                ))}
-                {filteredCurrencies.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-3">No currencies found</p>
-                )}
-              </SelectContent>
-            </Select>
+                <div>
+                  <p className="text-sm font-medium">Dark Mode</p>
+                  <p className="text-xs text-muted-foreground">Switch between light and dark theme</p>
+                </div>
+              </div>
+              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+            </div>
           </div>
+        </section>
 
-          <Button onClick={handleSave} disabled={saving} className="w-full h-12 gradient-primary text-primary-foreground">
-            {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
-          </Button>
-        </div>
+        {/* Profile */}
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Profile</p>
+          <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Display Name</label>
+              <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" className="h-12" />
+            </div>
 
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Preferred Currency</label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="h-12">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search currencies…"
+                        value={currencySearch}
+                        onChange={e => setCurrencySearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+                  {filteredCurrencies.map(c => (
+                    <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+                  ))}
+                  {filteredCurrencies.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-3">No currencies found</p>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button onClick={handleSave} disabled={saving} className="w-full h-12 gradient-primary text-primary-foreground">
+              {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
+            </Button>
+          </div>
+        </section>
 
         {/* Categories */}
-        <CategoryManager />
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Categories</p>
+          <CategoryManager />
+        </section>
 
-        {/* Secondary Currency */}
-        <SecondaryCurrencyCard />
+        {/* Currency */}
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Secondary Currency</p>
+          <SecondaryCurrencyCard />
+        </section>
 
-        {/* Data Backup & Restore */}
-        <DataBackupCard />
+        {/* Data */}
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Data</p>
+          <DataBackupCard />
+        </section>
 
-        {/* Glossary */}
-        <button onClick={() => navigate('/glossary')}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
-          <BookOpen size={16} />
-          Glossary & FAQ
-        </button>
+        {/* More */}
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">More</p>
+          <div className="space-y-2">
+            <button onClick={() => navigate('/glossary')}
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                <BookOpen size={15} className="text-primary" />
+              </div>
+              Glossary & FAQ
+            </button>
 
-        {/* Sign Out */}
-        <button onClick={signOut}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-card card-shadow text-muted-foreground font-medium text-sm hover:bg-muted transition-colors">
-          <LogOut size={16} />
-          Sign Out
-        </button>
+            <button onClick={signOut}
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive/10 transition-colors">
+              <div className="w-8 h-8 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                <LogOut size={15} className="text-destructive" />
+              </div>
+              Sign Out
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );

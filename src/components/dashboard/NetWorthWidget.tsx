@@ -20,18 +20,26 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const netWorth = assets - liabilities;
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow">
-      <div className="flex items-center gap-2 mb-3">
-        <Wallet size={16} className="text-primary" />
+    <div className="bg-card rounded-2xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
+          <Wallet size={13} className="text-primary" />
+        </div>
         <h2 className="font-heading text-sm">Net Worth</h2>
         <GlossaryLink term="Net Worth" />
       </div>
-      <p className={`text-2xl font-heading ${netWorth >= 0 ? 'text-income' : 'text-expense'}`}>
+      <p className={`text-financial-large ${netWorth >= 0 ? 'text-income' : 'text-expense'} mt-1`}>
         {mask(fmt(netWorth))}
       </p>
-      <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-        <span>Assets: {mask(fmt(assets))}</span>
-        <span>Liabilities: {mask(fmt(liabilities))}</span>
+      <div className="mt-2 space-y-1">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Assets</span>
+          <span className="font-medium text-income">{mask(fmt(assets))}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Liabilities</span>
+          <span className="font-medium text-expense">{mask(fmt(liabilities))}</span>
+        </div>
       </div>
     </div>
   );
