@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet, CalendarRange, X } from 'lucide-react';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,9 @@ const Transactions = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterAccount, setFilterAccount] = useState<string>('all');
   const [showAccountFilter, setShowAccountFilter] = useState(false);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
@@ -60,7 +63,7 @@ const Transactions = () => {
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase());
       const isTransferEntry = tx.category === 'Transfer';
       const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && isTransferEntry);
-      
+
       // Account filter: for linked transfers, match if either from or to account matches
       let matchAccount = filterAccount === 'all';
       if (!matchAccount) {
@@ -71,10 +74,13 @@ const Transactions = () => {
           matchAccount = tx.accountId === filterAccount;
         }
       }
-      
-      return matchSearch && matchType && matchAccount;
+
+      const matchDateFrom = !dateFrom || tx.date >= dateFrom;
+      const matchDateTo = !dateTo || tx.date <= dateTo;
+
+      return matchSearch && matchType && matchAccount && matchDateFrom && matchDateTo;
     });
-  }, [mergedTransactions, search, filterType, filterAccount, transferPairs]);
+  }, [mergedTransactions, search, filterType, filterAccount, transferPairs, dateFrom, dateTo]);
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
@@ -196,6 +202,13 @@ const Transactions = () => {
               <Wallet size={12} />
               {filterAccount !== 'all' ? getAccountName(filterAccount) : 'Account'}
             </button>
+            <button onClick={() => setShowDateFilter(!showDateFilter)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
+                (dateFrom || dateTo) ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+              <CalendarRange size={12} />
+              {(dateFrom || dateTo) ? 'Dates' : 'Date Range'}
+            </button>
           </div>
           <div className="absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
         </div>
@@ -216,6 +229,37 @@ const Transactions = () => {
                 {acc.icon} {acc.name}
               </button>
             ))}
+          </div>
+        )}
+
+        {showDateFilter && (
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <label className="text-[11px] text-muted-foreground shrink-0">From</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <label className="text-[11px] text-muted-foreground shrink-0">To</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <X size={12} /> Clear
+              </button>
+            )}
           </div>
         )}
         </div>
