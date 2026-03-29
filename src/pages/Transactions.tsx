@@ -216,6 +216,7 @@ const Transactions = () => {
              <p className="text-sm font-medium truncate flex items-center gap-1.5">
                <button
                  className="truncate hover:underline text-left"
+                 aria-label={`View transactions from ${tx.merchant}`}
                  onClick={e => { e.stopPropagation(); setMerchantProfile(tx.merchant); }}
                >
                  {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
@@ -355,7 +356,7 @@ const Transactions = () => {
         )}
 
         {showDateFilter && (
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <label className="text-[11px] text-muted-foreground shrink-0">From</label>
               <input

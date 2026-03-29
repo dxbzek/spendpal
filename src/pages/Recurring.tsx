@@ -132,7 +132,7 @@ const Recurring = () => {
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold truncate">{group.merchant}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {group.category} · last {format(parseISO(group.lastDate), 'd MMM yyyy')}
                   </p>
                 </div>

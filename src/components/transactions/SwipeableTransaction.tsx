@@ -59,6 +59,8 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
       {/* Swipeable content */}
       <motion.div
         drag="x"
+        role="listitem"
+        aria-label={onCategorize ? "Swipe left to delete, right to categorize" : "Swipe left to delete"}
         dragConstraints={{ left: -140, right: onCategorize ? 140 : 0 }}
         dragElastic={0.1}
         onDragStart={() => setDragging(true)}

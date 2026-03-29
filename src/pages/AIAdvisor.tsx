@@ -302,6 +302,20 @@ const AIAdvisor = () => {
           </div>
         )}
 
+        {/* Loading skeleton — shown while first analysis is running */}
+        {loading && !analysis && (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-card rounded-2xl p-5 card-shadow animate-pulse">
+                <div className="h-3 bg-muted rounded w-1/3 mb-3" />
+                <div className="h-4 bg-muted rounded w-2/3 mb-2" />
+                <div className="h-3 bg-muted rounded w-full mb-1.5" />
+                <div className="h-3 bg-muted rounded w-4/5" />
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Results */}
         <AnimatePresence>
           {analysis && (

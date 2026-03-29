@@ -157,7 +157,7 @@ const Dashboard = () => {
         <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
           <div className={`flex items-center ${isMobile ? 'justify-between mb-6' : 'justify-between mb-4'}`}>
             <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
-            <button onClick={toggleHidden} className="text-primary-foreground/80 p-2 -mr-2 rounded-lg" aria-label={hidden ? 'Show balance' : 'Hide balance'} aria-pressed={hidden}>
+            <button onClick={toggleHidden} className="text-primary-foreground/80 p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
