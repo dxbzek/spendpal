@@ -35,8 +35,6 @@ const SpendingPieChart = memo(({ data }: Props) => {
       </div>
     </div>
   );
-};
-
 });
 
 export default SpendingPieChart;

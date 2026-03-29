@@ -52,8 +52,6 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
       </LineChart>
     </ResponsiveContainer>
   );
-};
-
 });
 
 export default MonthlyTrendChart;
