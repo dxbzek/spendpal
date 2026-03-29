@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Sparkles, Plus, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, TrendingDown, History } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { differenceInDays, endOfMonth } from 'date-fns';
+import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
 import { useAI } from '@/hooks/useAI';
 import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
@@ -29,17 +29,48 @@ const Budgets = () => {
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
+  const [tab, setTab] = useState<'this' | 'last'>('this');
 
   const now = new Date();
   const daysLeft = differenceInDays(endOfMonth(now), now);
+  const totalDays = getDaysInMonth(now);
+  const daysElapsed = totalDays - daysLeft;
+
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const overallPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
+
+  // Projected spend at current daily rate
+  const projectedSpend = daysElapsed > 0 ? (totalSpent / daysElapsed) * totalDays : 0;
+  const projectedPct = totalBudgeted ? Math.round((projectedSpend / totalBudgeted) * 100) : 0;
+
+  // Last month's spending per category
+  const lastMonthData = useMemo(() => {
+    const prev = subMonths(now, 1);
+    const pm = getMonth(prev);
+    const py = getYear(prev);
+    const map: Record<string, number> = {};
+    transactions
+      .filter(t => {
+        const d = parseISO(t.date);
+        return t.type === 'expense' && getMonth(d) === pm && getYear(d) === py;
+      })
+      .forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
+    return map;
+  }, [transactions, now]);
+
+  const lastMonthLabel = format(subMonths(now, 1), 'MMMM');
 
   const handleGenerateSuggestions = async () => {
     const spendingData = transactions.filter(t => t.type === 'expense').map(t => ({ category: t.category, amount: t.amount, date: t.date }));
     const result = await generateBudgetSuggestions(spendingData);
     if (result.length > 0) setSuggestions(result);
+  };
+
+  const velocityColor = (pct: number) => {
+    if (pct >= 100) return 'text-expense';
+    if (pct >= 80) return 'text-warning';
+    return 'text-income';
   };
 
   return (
@@ -57,6 +88,7 @@ const Budgets = () => {
       </div>
 
       <div className="px-5 md:px-8 space-y-4 pb-6">
+        {/* Overall progress card */}
         <div className="bg-card rounded-2xl p-4 card-shadow">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-semibold">{overallPct}% spent</span>
@@ -65,11 +97,37 @@ const Budgets = () => {
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>{fmt(totalSpent)}</span><span>{fmt(totalBudgeted)}</span>
           </div>
-          <div className="h-4 bg-muted rounded-full overflow-hidden">
+          <div className="h-4 bg-muted rounded-full overflow-hidden mb-2">
             <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(overallPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
               className={`h-full rounded-full ${overallPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
           </div>
+          {/* Velocity row */}
+          {daysElapsed > 0 && totalBudgeted > 0 && (
+            <div className="flex items-center justify-between text-xs mt-1">
+              <span className="text-muted-foreground flex items-center gap-1">
+                {projectedPct > 100 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                Projected month-end
+              </span>
+              <span className={`font-semibold ${velocityColor(projectedPct)}`}>
+                {fmt(projectedSpend)} ({projectedPct}%)
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Tab: This Month / Last Month */}
+        {budgets.length > 0 && (
+          <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
+            <button onClick={() => setTab('this')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${tab === 'this' ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'}`}>
+              This Month
+            </button>
+            <button onClick={() => setTab('last')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${tab === 'last' ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'}`}>
+              <History size={11} /> {lastMonthLabel}
+            </button>
+          </div>
+        )}
 
         {budgets.length === 0 ? (
           <div className="bg-card rounded-2xl p-8 card-shadow text-center">
@@ -81,45 +139,94 @@ const Budgets = () => {
               <Plus size={16} /> Create First Budget
             </button>
           </div>
+        ) : tab === 'this' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {budgets.map(b => {
+              const pct = b.amount ? Math.round((b.spent / b.amount) * 100) : 0;
+              const remaining = b.amount - b.spent;
+              const dailyLeft = daysLeft > 0 ? remaining / daysLeft : 0;
+              // Velocity for this budget
+              const dailyRate = daysElapsed > 0 ? b.spent / daysElapsed : 0;
+              const projected = dailyRate * totalDays;
+              const projPct = b.amount ? Math.round((projected / b.amount) * 100) : 0;
+              const lastMonthAmt = lastMonthData[b.category];
+              return (
+                <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
+                      <div>
+                        <p className="text-sm font-semibold">{b.category}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{b.period} · {daysLeft}d left</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {pct >= 100 ? (
+                        <Badge variant="destructive" className="text-[10px] px-2 py-0.5">Over Budget</Badge>
+                      ) : (
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
+                      )}
+                      <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
+                      <button onClick={() => setDeleteBudgetId(b.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                      className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center mb-2">
+                    <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{fmt(b.spent)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Remaining</p><p className={`text-sm font-medium ${remaining < 0 ? 'text-expense' : ''}`}>{fmt(remaining)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Daily left</p><p className="text-sm font-medium">{fmt(dailyLeft)}</p></div>
+                  </div>
+                  {/* Velocity + last month */}
+                  {daysElapsed > 0 && (
+                    <div className="flex items-center justify-between pt-2 border-t border-border text-[11px]">
+                      <span className={`flex items-center gap-1 ${velocityColor(projPct)}`}>
+                        {projPct > 100 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                        On pace: {fmt(projected)}
+                      </span>
+                      {lastMonthAmt !== undefined && (
+                        <span className="text-muted-foreground">Last mo: {fmt(lastMonthAmt)}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {budgets.map(b => {
-          const pct = b.amount ? Math.round((b.spent / b.amount) * 100) : 0;
-          const remaining = b.amount - b.spent;
-          const dailyLeft = daysLeft > 0 ? remaining / daysLeft : 0;
-          return (
-            <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
-                  <div>
-                    <p className="text-sm font-semibold">{b.category}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{b.period} · {daysLeft}d left</p>
+          /* Last Month view */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {budgets.map(b => {
+              const lastSpent = lastMonthData[b.category] ?? 0;
+              const pct = b.amount ? Math.round((lastSpent / b.amount) * 100) : 0;
+              const diff = lastSpent - b.spent;
+              return (
+                <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">{b.category}</p>
+                      <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {fmt(b.amount)}</p>
+                    </div>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct >= 100 ? 'bg-destructive/10 text-expense' : pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
+                  </div>
+                  <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
+                    <div style={{ width: `${Math.min(pct, 100)}%` }} className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{fmt(lastSpent)}</span></span>
+                    {b.spent > 0 && (
+                      <span className={diff > 0 ? 'text-expense' : 'text-income'}>
+                        {diff > 0 ? '+' : ''}{fmt(diff)} vs now
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {pct >= 100 ? (
-                    <Badge variant="destructive" className="text-[10px] px-2 py-0.5">Over Budget</Badge>
-                  ) : (
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
-                  )}
-                  <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
-                  <button onClick={() => setDeleteBudgetId(b.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
-                </div>
-              </div>
-              <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
-                  className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{fmt(b.spent)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Remaining</p><p className={`text-sm font-medium ${remaining < 0 ? 'text-expense' : ''}`}>{fmt(remaining)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Daily left</p><p className="text-sm font-medium">{fmt(dailyLeft)}</p></div>
-              </div>
-            </div>
-          );
-        })}
-        </div>
+              );
+            })}
+          </div>
         )}
 
         {/* AI Suggestions */}

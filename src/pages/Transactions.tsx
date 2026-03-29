@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet, CalendarRange, X } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet, CalendarRange, X, AlertTriangle } from 'lucide-react';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInHours } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
@@ -11,10 +11,13 @@ import SwipeableTransaction from '@/components/transactions/SwipeableTransaction
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditTransaction } from '@/context/EditTxContext';
+import { toast } from 'sonner';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+const UNDO_DELAY_MS = 5000;
 
 const Transactions = () => {
   const { transactions, accounts, removeTransaction, bulkRemoveTransactions } = useFinance();
@@ -28,23 +31,78 @@ const Transactions = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showImport, setShowImport] = useState(false);
-  const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const isMobile = useIsMobile();
+
+  // Undo delete state
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
+  const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const scheduleDelete = useCallback((ids: string[], label: string) => {
+    ids.forEach(id => {
+      if (pendingTimers.current.has(id)) clearTimeout(pendingTimers.current.get(id)!);
+    });
+    setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
+
+    const timers = ids.map(id => {
+      const t = setTimeout(async () => {
+        await removeTransaction(id);
+        setPendingDeleteIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+        pendingTimers.current.delete(id);
+      }, UNDO_DELAY_MS);
+      pendingTimers.current.set(id, t);
+      return t;
+    });
+
+    toast(label, {
+      duration: UNDO_DELAY_MS,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          ids.forEach(id => {
+            const t = pendingTimers.current.get(id);
+            if (t) { clearTimeout(t); pendingTimers.current.delete(id); }
+          });
+          setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
+          timers.forEach(clearTimeout);
+        },
+      },
+    });
+  }, [removeTransaction]);
+
+  // Detect duplicates: same merchant + amount + type within 24h
+  const duplicateIds = useMemo(() => {
+    const dupes = new Set<string>();
+    for (let i = 0; i < transactions.length; i++) {
+      for (let j = i + 1; j < transactions.length; j++) {
+        const a = transactions[i], b = transactions[j];
+        if (
+          a.type === b.type &&
+          a.amount === b.amount &&
+          a.merchant.toLowerCase() === b.merchant.toLowerCase() &&
+          Math.abs(differenceInHours(parseISO(a.date), parseISO(b.date))) <= 24
+        ) {
+          dupes.add(a.id);
+          dupes.add(b.id);
+        }
+      }
+    }
+    return dupes;
+  }, [transactions]);
 
   // Merge transfer pairs: match expense+income with same date, amount, category='Transfer'
   const { mergedTransactions, transferPairs } = useMemo(() => {
     const pairs = new Map<string, { from: typeof transactions[0]; to: typeof transactions[0] }>();
     const pairedIds = new Set<string>();
-    
+
     const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
     const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
-    
+
     for (const exp of transferExpenses) {
-      const match = transferIncomes.find(inc => 
-        inc.date === exp.date && 
-        inc.amount === exp.amount && 
+      const match = transferIncomes.find(inc =>
+        inc.date === exp.date &&
+        inc.amount === exp.amount &&
         !pairedIds.has(inc.id)
       );
       if (match) {
@@ -53,18 +111,18 @@ const Transactions = () => {
         pairedIds.add(match.id);
       }
     }
-    
+
     const merged = transactions.filter(tx => !pairedIds.has(tx.id) || pairs.has(tx.id));
     return { mergedTransactions: merged, transferPairs: pairs };
   }, [transactions]);
 
   const filtered = useMemo(() => {
     return mergedTransactions.filter(tx => {
-      const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase());
+      if (pendingDeleteIds.has(tx.id)) return false;
+      const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase()) || (tx.note && tx.note.toLowerCase().includes(search.toLowerCase()));
       const isTransferEntry = tx.category === 'Transfer';
       const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && isTransferEntry);
 
-      // Account filter: for linked transfers, match if either from or to account matches
       let matchAccount = filterAccount === 'all';
       if (!matchAccount) {
         const pair = transferPairs.get(tx.id);
@@ -80,7 +138,7 @@ const Transactions = () => {
 
       return matchSearch && matchType && matchAccount && matchDateFrom && matchDateTo;
     });
-  }, [mergedTransactions, search, filterType, filterAccount, transferPairs, dateFrom, dateTo]);
+  }, [mergedTransactions, search, filterType, filterAccount, transferPairs, dateFrom, dateTo, pendingDeleteIds]);
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
@@ -95,13 +153,25 @@ const Transactions = () => {
     return Object.entries(map);
   }, [filtered]);
 
+  const visibleDupeCount = useMemo(() => filtered.filter(tx => duplicateIds.has(tx.id)).length, [filtered, duplicateIds]);
+
+  const handleDeleteSingle = (txId: string) => {
+    const pair = transferPairs.get(txId);
+    if (pair) {
+      scheduleDelete([txId, pair.to.id], 'Transfer deleted');
+    } else {
+      scheduleDelete([txId], 'Transaction deleted');
+    }
+  };
+
   const renderTxContent = (tx: typeof filtered[0], idx: number) => {
     const catColor = getCategoryChartColor(tx.category, idx);
     const pair = transferPairs.get(tx.id);
     const isLinkedTransfer = !!pair;
     const fromAccountName = isLinkedTransfer ? getAccountName(pair.from.accountId) : '';
     const toAccountName = isLinkedTransfer ? getAccountName(pair.to.accountId) : '';
-    
+    const isDupe = duplicateIds.has(tx.id);
+
     return (
       <div
         className="flex items-center justify-between p-4 cursor-pointer active:bg-muted/50 transition-colors"
@@ -110,8 +180,9 @@ const Transactions = () => {
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span className="text-2xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
            <div className="min-w-0">
-             <p className="text-sm font-medium truncate">
+             <p className="text-sm font-medium truncate flex items-center gap-1.5">
                {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
+               {isDupe && <span title="Possible duplicate"><AlertTriangle size={12} className="text-warning shrink-0" /></span>}
              </p>
              <div className="flex items-center gap-1.5">
                {isLinkedTransfer ? (
@@ -147,7 +218,7 @@ const Transactions = () => {
               {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
             </p>
           )}
-          <button onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
+          <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(tx.id); }}
             className="text-muted-foreground hover:text-destructive transition-colors p-1">
             <Trash2 size={14} />
           </button>
@@ -163,6 +234,15 @@ const Transactions = () => {
           <h1 className="text-2xl font-heading">Transactions</h1>
         </div>
         <p className="text-sm text-muted-foreground mb-4">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</p>
+
+        {/* Duplicate warning banner */}
+        {visibleDupeCount > 0 && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2.5 bg-warning/10 border border-warning/30 rounded-xl text-xs text-warning font-medium">
+            <AlertTriangle size={14} />
+            {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''} detected — review before deleting
+          </div>
+        )}
+
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           {filtered.length > 0 && (
             <button onClick={() => setShowDeleteAll(true)}
@@ -182,7 +262,7 @@ const Transactions = () => {
 
         <div className="relative mb-3">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search transactions..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
+          <Input placeholder="Search merchant, category, notes…" value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
         </div>
 
         <div className="relative mb-3">
@@ -278,7 +358,7 @@ const Transactions = () => {
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
                 <div className="bg-card rounded-2xl card-shadow overflow-hidden divide-y divide-border">
                   {txs.map((tx, idx) => (
-                    <SwipeableTransaction key={tx.id} onDelete={() => setDeleteTxId(tx.id)}>
+                    <SwipeableTransaction key={tx.id} onDelete={() => handleDeleteSingle(tx.id)}>
                       {renderTxContent(tx, idx)}
                     </SwipeableTransaction>
                   ))}
@@ -300,27 +380,30 @@ const Transactions = () => {
             <AnimatePresence>
               {grouped.map(([date, txs]) => (
                 <motion.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  {/* Date group header */}
                   <div className="px-4 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border">
                     {date}
                   </div>
                   {txs.map((tx, idx) => {
                     const pair = transferPairs.get(tx.id);
                     const isLinkedTransfer = !!pair;
+                    const isDupe = duplicateIds.has(tx.id);
                     const emojiOnly = (str: string) => {
                       const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
                       return match ? match[0] : str.charAt(0);
                     };
                     return (
                       <div key={tx.id}
-                        className="grid grid-cols-[150px_1fr_160px_110px_60px] gap-0 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition-colors cursor-pointer group items-center"
+                        className={`grid grid-cols-[150px_1fr_160px_110px_60px] gap-0 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition-colors cursor-pointer group items-center ${isDupe ? 'bg-warning/5' : ''}`}
                         onClick={() => openEditSheet(tx)}
                       >
                         <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</span>
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="text-xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold truncate">{tx.merchant}</p>
+                            <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                              {tx.merchant}
+                              {isDupe && <AlertTriangle size={12} className="text-warning shrink-0" />}
+                            </p>
                             <p className="text-[11px] font-medium text-muted-foreground truncate">{tx.category}</p>
                           </div>
                         </div>
@@ -334,7 +417,7 @@ const Transactions = () => {
                           {isLinkedTransfer ? `${tx.amount}` : `${tx.type === 'income' ? '+' : '-'}${tx.amount}`}
                         </span>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteSingle(tx.id); }}
                           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 ml-auto"
                         >
                           <Trash2 size={14} />
@@ -350,33 +433,6 @@ const Transactions = () => {
       </div>
 
       <ImportStatementSheet open={showImport} onOpenChange={setShowImport} />
-
-      <AlertDialog open={!!deleteTxId} onOpenChange={(o) => { if (!o) setDeleteTxId(null); }}>
-        <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteTxId && transferPairs.has(deleteTxId) ? 'Transfer' : 'Transaction'}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTxId && transferPairs.has(deleteTxId) 
-                ? 'This will delete both sides of the transfer. Account balances will be adjusted.'
-                : 'This cannot be undone. The account balance will be adjusted.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { 
-              if (deleteTxId) {
-                const pair = transferPairs.get(deleteTxId);
-                if (pair) {
-                  await removeTransaction(pair.to.id);
-                }
-                await removeTransaction(deleteTxId);
-              }
-              setDeleteTxId(null); 
-            }}
-              className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={showDeleteAll} onOpenChange={setShowDeleteAll}>
         <AlertDialogContent className="max-w-sm">

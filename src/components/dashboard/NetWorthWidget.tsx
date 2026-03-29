@@ -1,12 +1,27 @@
 import { useCurrency } from '@/context/CurrencyContext';
-import { Wallet } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
 import type { Account } from '@/types/finance';
+import { useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
 
 interface Props {
   accounts: Account[];
   hidden: boolean;
   mask: (val: string) => string;
+}
+
+const STORAGE_KEY = 'spendpal_networth_history';
+const MAX_MONTHS = 7;
+
+function loadHistory(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function saveHistory(history: Record<string, number>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
 }
 
 const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
@@ -19,6 +34,46 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   }, 0);
   const netWorth = assets - liabilities;
 
+  // Persist current month's net worth snapshot
+  useEffect(() => {
+    if (accounts.length === 0) return;
+    const key = format(new Date(), 'yyyy-MM');
+    const history = loadHistory();
+    history[key] = netWorth;
+    // Keep only last MAX_MONTHS entries
+    const sorted = Object.keys(history).sort();
+    if (sorted.length > MAX_MONTHS) {
+      sorted.slice(0, sorted.length - MAX_MONTHS).forEach(k => delete history[k]);
+    }
+    saveHistory(history);
+  }, [netWorth, accounts.length]);
+
+  const history = useMemo(() => {
+    const raw = loadHistory();
+    return Object.entries(raw)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-MAX_MONTHS);
+  }, [netWorth]); // recompute when netWorth changes
+
+  const sparkPoints = useMemo(() => {
+    if (history.length < 2) return null;
+    const vals = history.map(([, v]) => v);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const range = max - min || 1;
+    const W = 100, H = 28;
+    const pts = vals.map((v, i) => {
+      const x = (i / (vals.length - 1)) * W;
+      const y = H - ((v - min) / range) * H;
+      return `${x},${y}`;
+    }).join(' ');
+    return { pts, vals, min, max };
+  }, [history]);
+
+  const trend = history.length >= 2
+    ? history[history.length - 1][1] - history[history.length - 2][1]
+    : 0;
+
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
       <div className="flex items-center gap-2 mb-2">
@@ -27,6 +82,12 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
         </div>
         <h2 className="font-heading text-sm">Net Worth</h2>
         <GlossaryLink term="Net Worth" />
+        {trend !== 0 && !hidden && (
+          <span className={`ml-auto flex items-center gap-0.5 text-[11px] font-medium ${trend >= 0 ? 'text-income' : 'text-expense'}`}>
+            {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+            {trend >= 0 ? '+' : ''}{fmt(trend)}
+          </span>
+        )}
       </div>
       <p className={`text-financial-large ${netWorth >= 0 ? 'text-income' : 'text-expense'} mt-1`}>
         {mask(fmt(netWorth))}
@@ -41,6 +102,30 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
           <span className="font-medium text-expense">{mask(fmt(liabilities))}</span>
         </div>
       </div>
+
+      {/* Sparkline */}
+      {sparkPoints && !hidden && (
+        <div className="mt-3 pt-2 border-t border-border">
+          <p className="text-[10px] text-muted-foreground mb-1">{history.length}-month trend</p>
+          <svg viewBox={`0 0 100 28`} className="w-full h-7" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="nw-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polyline points={sparkPoints.pts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polygon
+              points={`0,28 ${sparkPoints.pts} 100,28`}
+              fill="url(#nw-grad)"
+            />
+          </svg>
+          <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+            <span>{history[0]?.[0]?.slice(0, 7)}</span>
+            <span>{history[history.length - 1]?.[0]?.slice(0, 7)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
