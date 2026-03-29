@@ -61,9 +61,9 @@ const Dashboard = () => {
   useBudgetAlerts(budgets);
 
   const mask = (val: string) => hidden ? '••••••' : val;
+  const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
-  const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
   // Stable within session — the date object is computed once on mount.
   const now = useMemo(() => new Date(), []);
 
