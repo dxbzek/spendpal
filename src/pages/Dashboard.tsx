@@ -13,7 +13,8 @@ import ExpenseByAccountTypeWidget from '@/components/dashboard/ExpenseByAccountT
 import MonthlyComparisonWidget from '@/components/dashboard/MonthlyComparisonWidget';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/context/AuthContext';
-import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
+import { useCurrency } from '@/context/CurrencyContext';
+import { WORLD_CURRENCIES } from '@/utils/currencies';
 import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Trash2, Edit2, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';

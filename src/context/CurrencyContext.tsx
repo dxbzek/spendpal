@@ -3,8 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { CURRENCY_MAP } from '@/utils/currencies';
 
-export { WORLD_CURRENCIES } from '@/utils/currencies';
-
 interface CurrencyContextType {
   currency: string;
   symbol: string;

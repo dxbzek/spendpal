@@ -36,10 +36,12 @@ const Accounts = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const netWorth = useMemo(() => {
-    return accounts.reduce((sum, a) => {
-      if (a.type === 'credit') return sum - a.balance;
-      return sum + a.balance;
+    const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
+    const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
+      const spent = a.creditLimit ? a.creditLimit - a.balance : 0;
+      return s + spent;
     }, 0);
+    return assets - liabilities;
   }, [accounts]);
 
   const accountStats = useMemo(() => {
@@ -101,7 +103,7 @@ const Accounts = () => {
             const stats = accountStats[account.id] || { income: 0, expenses: 0 };
             const utilization =
               account.type === 'credit' && account.creditLimit
-                ? (account.balance / account.creditLimit) * 100
+                ? ((account.creditLimit - account.balance) / account.creditLimit) * 100
                 : null;
 
             return (
