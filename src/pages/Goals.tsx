@@ -7,6 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { differenceInDays, parseISO, subMonths, getMonth, getYear, format } from 'date-fns';
+import AddGoalDialog from '@/components/forms/AddGoalDialog';
+import type { Goal } from '@/types/finance';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const LOG_KEY = (id: string) => `spendpal_goal_log_${id}`;
 interface Contribution { amount: number; note: string; date: string; }
@@ -17,12 +23,6 @@ function loadLog(id: string): Contribution[] {
 function saveLog(id: string, log: Contribution[]) {
   localStorage.setItem(LOG_KEY(id), JSON.stringify(log.slice(0, 20)));
 }
-import AddGoalDialog from '@/components/forms/AddGoalDialog';
-import type { Goal } from '@/types/finance';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 const Goals = () => {
   const { goals, transactions, accounts, addGoalProgress, removeGoal } = useFinance();
