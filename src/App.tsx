@@ -20,6 +20,9 @@ const AIAdvisor = lazy(() => import("@/pages/AIAdvisor"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const AuthPage = lazy(() => import("@/pages/AuthPage"));
 const Glossary = lazy(() => import("@/pages/Glossary"));
+const Accounts = lazy(() => import("@/pages/Accounts"));
+const Reports = lazy(() => import("@/pages/Reports"));
+const Recurring = lazy(() => import("@/pages/Recurring"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -68,6 +71,9 @@ const App = () => (
                   <Route path="/transactions" element={<Transactions />} />
                   <Route path="/budgets" element={<Budgets />} />
                   <Route path="/goals" element={<Goals />} />
+                  <Route path="/accounts" element={<Accounts />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/recurring" element={<Recurring />} />
                   <Route path="/advisor" element={<AIAdvisor />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/glossary" element={<Glossary />} />

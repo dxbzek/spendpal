@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 
 const FUNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`;
-const AI_TIMEOUT_MS = 10_000;
+const AI_TIMEOUT_MS = 25_000;
 
 const getAuthHeaders = async () => {
   const { data: { session } } = await supabase.auth.getSession();
