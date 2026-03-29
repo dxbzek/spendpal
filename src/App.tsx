@@ -1,4 +1,3 @@
-import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,19 +10,18 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Loader2 } from "lucide-react";
 
-// Route-level code splitting — each page is a separate JS chunk
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const Transactions = lazy(() => import("@/pages/Transactions"));
-const Budgets = lazy(() => import("@/pages/Budgets"));
-const Goals = lazy(() => import("@/pages/Goals"));
-const AIAdvisor = lazy(() => import("@/pages/AIAdvisor"));
-const Settings = lazy(() => import("@/pages/Settings"));
-const AuthPage = lazy(() => import("@/pages/AuthPage"));
-const Glossary = lazy(() => import("@/pages/Glossary"));
-const Accounts = lazy(() => import("@/pages/Accounts"));
-const Reports = lazy(() => import("@/pages/Reports"));
-const Recurring = lazy(() => import("@/pages/Recurring"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
+import Dashboard from "@/pages/Dashboard";
+import Transactions from "@/pages/Transactions";
+import Budgets from "@/pages/Budgets";
+import Goals from "@/pages/Goals";
+import AIAdvisor from "@/pages/AIAdvisor";
+import Settings from "@/pages/Settings";
+import AuthPage from "@/pages/AuthPage";
+import Glossary from "@/pages/Glossary";
+import Accounts from "@/pages/Accounts";
+import Reports from "@/pages/Reports";
+import Recurring from "@/pages/Recurring";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -55,32 +53,30 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Suspense fallback={<PageFallback />}>
-              <Routes>
-                <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
-                <Route element={
-                  <ProtectedRoute>
-                    <CurrencyProvider>
-                      <FinanceProvider>
-                        <AppLayout />
-                      </FinanceProvider>
-                    </CurrencyProvider>
-                  </ProtectedRoute>
-                }>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/transactions" element={<Transactions />} />
-                  <Route path="/budgets" element={<Budgets />} />
-                  <Route path="/goals" element={<Goals />} />
-                  <Route path="/accounts" element={<Accounts />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/recurring" element={<Recurring />} />
-                  <Route path="/advisor" element={<AIAdvisor />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/glossary" element={<Glossary />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
+            <Routes>
+              <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
+              <Route element={
+                <ProtectedRoute>
+                  <CurrencyProvider>
+                    <FinanceProvider>
+                      <AppLayout />
+                    </FinanceProvider>
+                  </CurrencyProvider>
+                </ProtectedRoute>
+              }>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/budgets" element={<Budgets />} />
+                <Route path="/goals" element={<Goals />} />
+                <Route path="/accounts" element={<Accounts />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/recurring" element={<Recurring />} />
+                <Route path="/advisor" element={<AIAdvisor />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/glossary" element={<Glossary />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>
