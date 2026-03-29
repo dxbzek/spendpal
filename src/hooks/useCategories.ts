@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { CATEGORIES } from '@/types/finance';
 
 export interface Category {
@@ -24,7 +25,7 @@ export const useCategories = () => {
       .eq('user_id', user.id)
       .order('sort_order');
     if (error) {
-      console.error('Failed to fetch custom categories', error);
+      logger.error('Failed to fetch custom categories', error);
     } else if (data) {
       setCustomCategories((data as any[]).map(r => ({
         name: r.name,

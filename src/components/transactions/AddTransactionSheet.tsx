@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,16 +94,22 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
   const isTransfer = type === 'transfer';
 
-  // Check for duplicate: same amount, merchant, date, accountId, type
+  // Build a lookup map once per transactions change so findDuplicate is O(1) instead of O(n).
+  const duplicateLookup = useMemo(() => {
+    const map = new Map<string, Transaction>();
+    for (const t of transactions) {
+      const key = `${t.accountId}|${t.type}|${t.date}|${t.amount.toFixed(2)}|${t.merchant.toLowerCase().trim()}`;
+      if (!map.has(key)) map.set(key, t);
+    }
+    return map;
+  }, [transactions]);
+
   const findDuplicate = (txAmount: number, txMerchant: string, txDate: string, txAccountId: string, txType: string): Transaction | null => {
-    return transactions.find(existing => 
-      existing.amount === txAmount &&
-      existing.merchant.toLowerCase() === txMerchant.toLowerCase() &&
-      existing.date === txDate &&
-      existing.accountId === txAccountId &&
-      existing.type === txType &&
-      (isEditing ? existing.id !== editTransaction.id : true)
-    ) || null;
+    const key = `${txAccountId}|${txType}|${txDate}|${txAmount.toFixed(2)}|${txMerchant.toLowerCase().trim()}`;
+    const match = duplicateLookup.get(key) ?? null;
+    // Don't flag the transaction being edited as its own duplicate
+    if (isEditing && match?.id === editTransaction?.id) return null;
+    return match;
   };
 
   const executeSubmit = async () => {

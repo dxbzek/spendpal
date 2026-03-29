@@ -234,24 +234,32 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const mapped = mapTransaction(data);
     if (mapped) {
-      setTransactions(prev => [mapped, ...prev]);
-      setBudgets(prev => {
-        const spentByCategory = computeSpentByCategory([mapped, ...transactions]);
-        return prev.map(b => ({ ...b, spent: spentByCategory[b.category] ?? 0 }));
+      // Use functional updater so budget recomputation reads the freshest transaction list,
+      // avoiding stale-closure bugs when multiple transactions are added in quick succession.
+      setTransactions(prev => {
+        const updated = [mapped, ...prev];
+        setBudgets(b => {
+          const spentByCategory = computeSpentByCategory(updated);
+          return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
+        });
+        return updated;
       });
     }
 
     if (!options?.skipBalanceUpdate) {
-      const account = accounts.find(a => a.id === tx.accountId);
-      if (account) {
+      // Fetch a fresh account row instead of relying on potentially-stale closure value.
+      const { data: freshAccount } = await supabase
+        .from('accounts').select('balance').eq('id', tx.accountId).single();
+      if (freshAccount) {
+        const currentBalance = Number(freshAccount.balance);
         const newBalance = tx.type === 'income'
-          ? account.balance + tx.amount
-          : account.balance - tx.amount;
+          ? currentBalance + tx.amount
+          : currentBalance - tx.amount;
         await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
         setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: newBalance } : a));
       }
     }
-  }, [user, accounts, transactions]);
+  }, [user]);
 
   const updateTransaction = useCallback(async (tx: Transaction) => {
     const { error } = await supabase.from('transactions').update({

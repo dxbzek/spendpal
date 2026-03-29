@@ -57,12 +57,8 @@ const Dashboard = () => {
   const mask = (val: string) => hidden ? '••••••' : val;
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
-  const now = useMemo(() => {
-    const d = new Date();
-    // Re-derive only when month/year actually changes (stable within session)
-    return d;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [new Date().getMonth(), new Date().getFullYear()]);
+  // Stable within session — the date object is computed once on mount.
+  const now = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => {
     if (period === 'all') return transactions;
@@ -124,7 +120,12 @@ const Dashboard = () => {
       <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
-          <button onClick={toggleHidden} className="text-primary-foreground/80">
+          <button
+            onClick={toggleHidden}
+            className="text-primary-foreground/80"
+            aria-label={hidden ? 'Show balance' : 'Hide balance'}
+            aria-pressed={hidden}
+          >
             {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
@@ -197,24 +197,26 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [user]);
 
-  // Fetch secondary rate using open.er-api.com (supports all currencies including AED)
-  const fetchRate = useCallback(async () => {
+  // Fetch secondary rate; inline effect avoids the useCallback→useEffect dependency chain
+  // that caused spurious refetches. AbortController cancels stale requests on re-run.
+  useEffect(() => {
     if (!secondaryCurrency || secondaryCurrency === currency) {
       setSecondaryRate(secondaryCurrency === currency ? 1 : null);
       return;
     }
-    try {
-      const res = await fetch(`${EXCHANGE_API}/${currency}`);
-      if (!res.ok) { setSecondaryRate(null); return; }
-      const data = await res.json();
-      const rate = data.rates?.[secondaryCurrency];
-      setSecondaryRate(rate ?? null);
-    } catch {
-      setSecondaryRate(null);
-    }
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`${EXCHANGE_API}/${currency}`, { signal: controller.signal });
+        if (!res.ok) { setSecondaryRate(null); return; }
+        const data = await res.json() as { rates?: Record<string, number> };
+        setSecondaryRate(data.rates?.[secondaryCurrency] ?? null);
+      } catch {
+        setSecondaryRate(null);
+      }
+    })();
+    return () => controller.abort();
   }, [currency, secondaryCurrency]);
-
-  useEffect(() => { fetchRate(); }, [fetchRate]);
 
   const setSecondaryCurrency = (code: string | null) => {
     setSecondaryCurrencyState(code);

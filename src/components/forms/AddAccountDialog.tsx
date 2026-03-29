@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const [statementDate, setStatementDate] = useState('');
 
   const isEdit = !!editAccount;
+  const [submitting, setSubmitting] = useState(false);
 
   // Sync form when editAccount changes or dialog opens
   useEffect(() => {
@@ -38,24 +40,28 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   }, [open, editAccount]);
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
-    const data = {
-      name: name.trim(),
-      type,
-      balance: parseFloat(balance) || 0,
-      currency,
-      icon: ACCOUNT_ICONS[type],
-      creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
-      dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
-      statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
-    };
-
-    if (isEdit) {
-      await updateAccount({ ...data, id: editAccount.id });
-    } else {
-      await addAccount(data);
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const data = {
+        name: name.trim(),
+        type,
+        balance: parseFloat(balance) || 0,
+        currency,
+        icon: ACCOUNT_ICONS[type],
+        creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
+        dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
+        statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
+      };
+      if (isEdit) {
+        await updateAccount({ ...data, id: editAccount.id });
+      } else {
+        await addAccount(data);
+      }
+      onOpenChange(false);
+    } finally {
+      setSubmitting(false);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -106,7 +112,8 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               </div>
             </div>
           )}
-          <Button onClick={handleSubmit} disabled={!name.trim()} className="w-full h-9 text-sm gradient-primary text-primary-foreground">
+          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-9 text-sm gradient-primary text-primary-foreground">
+            {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Add Account'}
           </Button>
         </div>

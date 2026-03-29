@@ -2,7 +2,10 @@ import { useState, useCallback } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import type { Transaction, Budget, Goal, Account } from '@/types/finance';
+
+const REPORT_TIMEOUT_MS = 45_000;
 
 interface Props {
   transactions: Transaction[];
@@ -34,27 +37,41 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
         categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
       });
 
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          type: 'monthly-report',
-          data: {
-            month: currentMonth,
-            income,
-            expenses,
-            netSavings: income - expenses,
-            categories: Object.entries(categoryMap).map(([cat, amt]) => ({ category: cat, amount: amt })),
-            budgets: budgets.map(b => ({ category: b.category, budgeted: b.amount, spent: b.spent })),
-            goals: goals.map(g => ({ name: g.name, target: g.targetAmount, saved: g.savedAmount, status: g.status })),
-            accounts: accounts.map(a => ({ name: a.name, type: a.type, balance: a.balance })),
-            totalBalance: accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0),
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REPORT_TIMEOUT_MS);
+
+      let resp: Response;
+      try {
+        resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
           },
-        }),
-      });
+          body: JSON.stringify({
+            type: 'monthly-report',
+            data: {
+              month: currentMonth,
+              income,
+              expenses,
+              netSavings: income - expenses,
+              categories: Object.entries(categoryMap).map(([cat, amt]) => ({ category: cat, amount: amt })),
+              budgets: budgets.map(b => ({ category: b.category, budgeted: b.amount, spent: b.spent })),
+              goals: goals.map(g => ({ name: g.name, target: g.targetAmount, saved: g.savedAmount, status: g.status })),
+              accounts: accounts.map(a => ({ name: a.name, type: a.type, balance: a.balance })),
+              totalBalance: accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0),
+            },
+          }),
+          signal: controller.signal,
+        });
+      } catch (fetchErr) {
+        if (fetchErr instanceof DOMException && fetchErr.name === 'AbortError') {
+          throw new Error('Report generation timed out. Please try again.');
+        }
+        throw fetchErr;
+      } finally {
+        clearTimeout(timer);
+      }
 
       if (!resp.ok) {
         const err = await resp.json();
@@ -96,7 +113,8 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
         }
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Unknown error');
+      logger.error('MonthlyReportCard generation failed', e);
+      toast.error(e instanceof Error ? e.message : 'AI advisor is unavailable. Please try again later.');
     } finally {
       setLoading(false);
     }
