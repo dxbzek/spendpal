@@ -57,7 +57,11 @@ serve(async (req) => {
     }
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
+    if (!GROQ_API_KEY) {
+      return new Response(JSON.stringify({ error: "AI is not available on this server. Please contact support." }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     let systemPrompt = "";
     let userPrompt = "";
