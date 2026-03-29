@@ -151,11 +151,12 @@ const Transactions = () => {
   };
 
   return (
-    <div className="animate-fade-in">
-      <div className="px-5 pt-12 pb-4">
-        <div className="flex items-center justify-between mb-2">
+    <div>
+      <div className="px-5 md:px-8 pt-12 pb-4">
+        <div className="flex items-center justify-between mb-1">
           <h1 className="text-2xl font-heading">Transactions</h1>
         </div>
+        <p className="text-sm text-muted-foreground mb-4">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</p>
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           {filtered.length > 0 && (
             <button onClick={() => setShowDeleteAll(true)}
@@ -178,22 +179,25 @@ const Transactions = () => {
           <Input placeholder="Search transactions..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card" />
         </div>
 
-        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-          {['all', 'expense', 'income', 'transfer'].map(f => (
-            <button key={f} onClick={() => setFilterType(f)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                filterType === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+        <div className="relative mb-3">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none pr-8">
+            {['all', 'expense', 'income', 'transfer'].map(f => (
+              <button key={f} onClick={() => setFilterType(f)}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  filterType === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+            <button onClick={() => setShowAccountFilter(!showAccountFilter)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
+                filterAccount !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
               }`}>
-              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              <Wallet size={12} />
+              {filterAccount !== 'all' ? getAccountName(filterAccount) : 'Account'}
             </button>
-          ))}
-          <button onClick={() => setShowAccountFilter(!showAccountFilter)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
-              filterAccount !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-            }`}>
-            <Wallet size={12} />
-            {filterAccount !== 'all' ? getAccountName(filterAccount) : 'Account'}
-          </button>
+          </div>
+          <div className="absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
         </div>
 
         {showAccountFilter && (
@@ -216,34 +220,88 @@ const Transactions = () => {
         )}
         </div>
 
-      <div className="px-5 pb-24 md:pb-6">
+      <div className="px-5 md:px-8 pb-24 md:pb-6">
         {grouped.length === 0 ? (
           <div className="text-center py-16">
-            <Receipt size={48} className="mx-auto text-muted-foreground/40 mb-3" />
+            <Receipt size={64} className="mx-auto text-muted-foreground/20 mb-4" />
             <p className="text-muted-foreground text-sm">No transactions found</p>
             <p className="text-xs text-muted-foreground/70 mt-1">Add your first transaction to get started</p>
           </div>
-        ) : (
+        ) : isMobile ? (
           <AnimatePresence>
             {grouped.map(([date, txs]) => (
               <motion.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
-                <p className="text-xs text-muted-foreground font-medium mb-2">{date}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
                 <div className="bg-card rounded-2xl card-shadow overflow-hidden divide-y divide-border">
                   {txs.map((tx, idx) => (
-                    isMobile ? (
-                      <SwipeableTransaction key={tx.id} onDelete={() => setDeleteTxId(tx.id)}>
-                        {renderTxContent(tx, idx)}
-                      </SwipeableTransaction>
-                    ) : (
-                      <div key={tx.id} className="group">
-                        {renderTxContent(tx, idx)}
-                      </div>
-                    )
+                    <SwipeableTransaction key={tx.id} onDelete={() => setDeleteTxId(tx.id)}>
+                      {renderTxContent(tx, idx)}
+                    </SwipeableTransaction>
                   ))}
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
+        ) : (
+          /* Desktop: table layout */
+          <div className="bg-card rounded-2xl card-shadow overflow-hidden">
+            {/* Table header */}
+            <div className="grid grid-cols-[150px_1fr_160px_110px_60px] gap-0 border-b border-border px-4 py-3">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Date</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Merchant / Category</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Account</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-right">Amount</span>
+              <span />
+            </div>
+            <AnimatePresence>
+              {grouped.map(([date, txs]) => (
+                <motion.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  {/* Date group header */}
+                  <div className="px-4 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border">
+                    {date}
+                  </div>
+                  {txs.map((tx, idx) => {
+                    const pair = transferPairs.get(tx.id);
+                    const isLinkedTransfer = !!pair;
+                    const emojiOnly = (str: string) => {
+                      const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
+                      return match ? match[0] : str.charAt(0);
+                    };
+                    return (
+                      <div key={tx.id}
+                        className="grid grid-cols-[150px_1fr_160px_110px_60px] gap-0 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition-colors cursor-pointer group items-center"
+                        onClick={() => openEditSheet(tx)}
+                      >
+                        <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate">{tx.merchant}</p>
+                            <p className="text-[11px] font-medium text-muted-foreground truncate">{tx.category}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {isLinkedTransfer ? `${getAccountName(pair!.from.accountId)} → ${getAccountName(pair!.to.accountId)}` : getAccountName(tx.accountId)}
+                        </span>
+                        <span className={`text-sm font-heading text-right tabular-nums ${
+                          isLinkedTransfer ? 'text-muted-foreground' :
+                          tx.type === 'income' ? 'text-income' : 'text-expense'
+                        }`}>
+                          {isLinkedTransfer ? `${tx.amount}` : `${tx.type === 'income' ? '+' : '-'}${tx.amount}`}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteTxId(tx.id); }}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 ml-auto"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         )}
       </div>
 

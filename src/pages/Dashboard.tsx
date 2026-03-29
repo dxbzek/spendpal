@@ -19,6 +19,8 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAI } from '@/hooks/useAI';
 import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import SpendingPieChart from '@/components/charts/SpendingPieChart';
 import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
@@ -33,6 +35,7 @@ const Dashboard = () => {
   const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
   const { signOut } = useAuth();
   const { fmt, fmtSigned, currency: userCurrency, fmtSecondary, secondaryCurrency, setSecondaryCurrency } = useCurrency();
+  const isMobile = useIsMobile();
   const [secSearch, setSecSearch] = useState('');
   const filteredSecCurrencies = secSearch
     ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
@@ -55,6 +58,7 @@ const Dashboard = () => {
   useBudgetAlerts(budgets);
 
   const mask = (val: string) => hidden ? '••••••' : val;
+  const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
   // Stable within session — the date object is computed once on mount.
@@ -93,7 +97,7 @@ const Dashboard = () => {
   const recentTx = transactions.slice(0, 5);
 
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <div className={`bg-card rounded-2xl p-4 card-shadow ${className}`}>{children}</div>
+    <div className={`bg-card rounded-2xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
   );
 
   const handleGenerateSummary = () => {
@@ -115,88 +119,103 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div>
       {/* Header */}
-      <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
-          <button
-            onClick={toggleHidden}
-            className="text-primary-foreground/80"
-            aria-label={hidden ? 'Show balance' : 'Hide balance'}
-            aria-pressed={hidden}
-          >
-            {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
-        </div>
-        <div className="text-center">
-          <p className="text-primary-foreground/70 text-sm mb-1">Total Balance</p>
-          <p className="text-3xl font-heading text-primary-foreground">{mask(fmt(totalBalance))}</p>
-          {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
-        </div>
-        {/* Secondary currency selector */}
-        <div className="flex justify-center mt-3">
-          <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-            <SelectTrigger className="h-7 w-auto min-w-[100px] max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
-              <SelectValue placeholder="2nd currency" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[240px]">
-              <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
-                <div className="relative">
-                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
-                    className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+      <div className={`gradient-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-3xl' : 'pt-8 pb-6'}`}>
+        <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
+          <div className={`flex items-center ${isMobile ? 'justify-between mb-6' : 'justify-between mb-4'}`}>
+            <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
+            <button onClick={toggleHidden} className="text-primary-foreground/80 p-2 -mr-2 rounded-lg" aria-label={hidden ? 'Show balance' : 'Hide balance'} aria-pressed={hidden}>
+              {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+
+          <div className={`${isMobile ? 'text-center' : 'flex items-center justify-between gap-8'}`}>
+            <div className={isMobile ? '' : 'text-left'}>
+              <p className="text-primary-foreground/70 text-xs uppercase tracking-wider mb-1">Total Balance</p>
+              <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
+              {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
+
+              {/* Income / Expense summary strip */}
+              <div className={`flex gap-6 mt-3 ${isMobile ? 'justify-center' : ''}`}>
+                <div className={isMobile ? 'text-center' : 'text-left'}>
+                  <p className="text-primary-foreground/50 text-[10px] uppercase tracking-wider">Income</p>
+                  <p className="text-primary-foreground text-sm font-semibold">{mask(fmt(income))}</p>
+                </div>
+                <div className="w-px bg-primary-foreground/20" />
+                <div className={isMobile ? 'text-center' : 'text-left'}>
+                  <p className="text-primary-foreground/50 text-[10px] uppercase tracking-wider">Expenses</p>
+                  <p className="text-primary-foreground text-sm font-semibold">{mask(fmt(expenses))}</p>
                 </div>
               </div>
-              <SelectItem value="__none__">None</SelectItem>
-              {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
-                <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex justify-center mt-4">
-          <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
-            {(['all', 'month', 'year'] as const).map(p => (
-              <button key={p} onClick={() => setPeriod(p)}
-                className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  period === p ? 'bg-primary-foreground/20 text-primary-foreground' : 'text-primary-foreground/60'
-                }`}>
-                {p === 'all' ? 'All Time' : p === 'month' ? 'This Month' : 'This Year'}
-              </button>
-            ))}
+            </div>
+
+            {/* Secondary currency + period selector */}
+            <div className={`${isMobile ? 'flex flex-col items-center gap-3 mt-4' : 'flex flex-col items-end gap-3'}`}>
+              <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+                <SelectTrigger className="h-7 w-auto min-w-[100px] max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
+                  <SelectValue placeholder="2nd currency" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[240px]">
+                  <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
+                        className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+                    </div>
+                  </div>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
+                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
+                {(['all', 'month', 'year'] as const).map(p => (
+                  <button key={p} onClick={() => setPeriod(p)}
+                    className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      period === p ? 'bg-primary-foreground/20 text-primary-foreground' : 'text-primary-foreground/60'
+                    }`}>
+                    {p === 'all' ? 'All Time' : p === 'month' ? 'This Month' : 'This Year'}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="px-5 md:px-6 -mt-4 space-y-4 pb-6">
+      <div className="px-5 md:px-8 -mt-4 space-y-4 pb-6">
         {/* Budget overspending alerts */}
         <BudgetAlertBanners budgets={budgets} />
 
         {/* Responsive grid wrapper for dashboard widgets */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
 
-        {/* Net Worth & Money Saved */}
-        <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
+        {/* Net Worth */}
+        <div className="col-span-1">
           <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
+        </div>
+        {/* Money Saved */}
+        <div className="col-span-1">
           <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-3">
-          <Card>
-            <p className="text-xs text-muted-foreground mb-1">Income</p>
-            <p className="text-lg font-heading text-income">{mask(fmt(income))}</p>
-            {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
-          </Card>
-          <Card>
-            <p className="text-xs text-muted-foreground mb-1">Expenses</p>
-            <p className="text-lg font-heading text-expense">{mask(fmt(expenses))}</p>
-            {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
-          </Card>
-        </div>
+        {/* Income */}
+        <Card className="col-span-1 border-t-2 border-t-income">
+          <p className="text-xs text-muted-foreground mb-1">Income</p>
+          <p className="text-financial-medium text-income">{mask(fmt(income))}</p>
+          {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
+        </Card>
+        {/* Expenses */}
+        <Card className="col-span-1 border-t-2 border-t-expense">
+          <p className="text-xs text-muted-foreground mb-1">Expenses</p>
+          <p className="text-financial-medium text-expense">{mask(fmt(expenses))}</p>
+          {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
+        </Card>
 
         {/* Accounts - spans full width */}
-        <Card className="md:col-span-2 lg:col-span-3">
+        <Card className="col-span-2 lg:col-span-3">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Accounts</h2>
             <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
@@ -271,17 +290,23 @@ const Dashboard = () => {
         </Card>
 
         {/* Credit Utilization Tracker */}
-        <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
+        <div className="col-span-2 lg:col-span-2">
+          <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
+        </div>
 
         {/* Expenses by Account Type */}
-        <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
+        <div className="col-span-2 lg:col-span-2">
+          <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
+        </div>
 
         {/* Monthly Comparison */}
-        <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
+        <div className="col-span-2 lg:col-span-4">
+          <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
+        </div>
 
         {/* Spending Pie Chart - hide when no data */}
         {categorySpending.length > 0 && (
-          <Card>
+          <Card className="col-span-2 lg:col-span-2">
             <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
             <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
           </Card>
@@ -289,7 +314,7 @@ const Dashboard = () => {
 
         {/* Monthly Trend Line Chart - hide when no transactions */}
         {transactions.length > 0 && (
-          <Card>
+          <Card className="col-span-2 lg:col-span-2">
             <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
             <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
           </Card>
@@ -297,7 +322,7 @@ const Dashboard = () => {
 
         {/* Category spending list - hide when no data */}
         {categorySpending.length > 0 && (
-          <Card>
+          <Card className="col-span-2 lg:col-span-2">
             <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
             <div className="space-y-2.5">
               {categorySpending.slice(0, 5).map(([cat, data], idx) => {
@@ -310,17 +335,17 @@ const Dashboard = () => {
                       <span className="text-sm font-medium">{fmt(data.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
                     </div>
                   </div>
                 );
               })}
             </div>
-        </Card>
+          </Card>
         )}
 
         {/* Budget overview */}
-        <Card>
+        <Card className="col-span-2 lg:col-span-2">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-heading text-sm">Budget Overview</h2>
             <button onClick={() => navigate('/budgets')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -328,14 +353,30 @@ const Dashboard = () => {
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
             <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
           </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6 }}
+          <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
+            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
               className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
           </div>
+          {/* Top over-budget categories */}
+          {budgets.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
+            const pct = Math.min(Math.round((b.spent / b.amount) * 100), 100);
+            return (
+              <div key={b.id} className="mb-2 last:mb-0">
+                <div className="flex items-center justify-between text-xs mb-0.5">
+                  <span className="text-muted-foreground truncate max-w-[120px]">{b.category}</span>
+                  <span className={`font-medium ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
+                </div>
+              </div>
+            );
+          })}
         </Card>
 
         {creditCards.length > 0 && (
-          <Card>
+          <Card className="col-span-2 lg:col-span-2">
             <h2 className="font-heading text-sm mb-3">Credit Card Due Dates</h2>
             <div className="space-y-2">
               {creditCards.map(cc => {
@@ -358,19 +399,25 @@ const Dashboard = () => {
         )}
 
         {/* Upcoming Bills */}
-        <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
+        <div className="col-span-2 lg:col-span-2">
+          <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
+        </div>
 
-        <div className="md:col-span-2 lg:col-span-3">
+        <div className="col-span-2 lg:col-span-4">
           <RecurringTracker />
         </div>
 
         {/* Monthly AI Report */}
-        <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
+        <div className="col-span-2 lg:col-span-2">
+          <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
+        </div>
 
         {/* AI Summary */}
-        <Card className="border border-dashed border-primary/30">
+        <Card className="col-span-2 lg:col-span-2 border border-dashed border-primary/30">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={16} className="text-primary" />
+            <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Sparkles size={14} className="text-primary" />
+            </div>
             <h2 className="font-heading text-sm">AI Summary</h2>
           </div>
           {summaryText ? (
@@ -394,7 +441,7 @@ const Dashboard = () => {
 
         {/* Recent Transactions - spans full */}
         {recentTx.length > 0 && (
-          <Card className="md:col-span-2 lg:col-span-3">
+          <Card className="col-span-2 lg:col-span-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Recent Transactions</h2>
               <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav from './BottomNav';
 import DesktopSidebar from './DesktopSidebar';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import type { Transaction } from '@/types/finance';
 import { createContext, useContext } from 'react';
 
@@ -18,6 +19,8 @@ const AppLayout = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const location = useLocation();
 
   const openEditSheet = (tx: Transaction) => {
     setEditTx(tx);
@@ -32,14 +35,27 @@ const AppLayout = () => {
   return (
     <EditTxContext.Provider value={{ openEditSheet }}>
       <div className="min-h-screen bg-background flex">
-        {!isMobile && <DesktopSidebar onAddClick={() => { setEditTx(null); setShowAdd(true); }} />}
+        {!isMobile && (
+          <DesktopSidebar
+            onAddClick={() => { setEditTx(null); setShowAdd(true); }}
+            collapsed={isTablet}
+          />
+        )}
 
         <div className="flex-1 min-w-0">
-          <div className="max-w-lg md:max-w-2xl lg:max-w-5xl mx-auto relative">
-            <main className={isMobile ? 'pb-24' : 'pb-8'}>
-              <Outlet />
-            </main>
-          </div>
+          <main className={isMobile ? 'pb-24' : 'pb-8'}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </main>
         </div>
 
         {isMobile && <BottomNav onAddClick={() => { setEditTx(null); setShowAdd(true); }} />}

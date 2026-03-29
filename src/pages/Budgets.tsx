@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Sparkles, Plus, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth } from 'date-fns';
 import { useAI } from '@/hooks/useAI';
@@ -42,8 +43,8 @@ const Budgets = () => {
   };
 
   return (
-    <div className="animate-fade-in">
-      <div className="px-5 pt-12 pb-4 flex items-end justify-between">
+    <div>
+      <div className="px-5 md:px-8 pt-12 pb-4 flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-heading mb-1">Budgets</h1>
           <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
@@ -55,17 +56,17 @@ const Budgets = () => {
         )}
       </div>
 
-      <div className="px-5 md:px-6 space-y-4 pb-6">
+      <div className="px-5 md:px-8 space-y-4 pb-6">
         <div className="bg-card rounded-2xl p-4 card-shadow">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium">{overallPct}% spent</span>
-            <span className="text-xs text-muted-foreground">{daysLeft} days left</span>
+            <span className="text-sm font-semibold">{overallPct}% spent</span>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{daysLeft} days left</span>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>{fmt(totalSpent)}</span><span>{fmt(totalBudgeted)}</span>
           </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(overallPct, 100)}%` }} transition={{ duration: 0.6 }}
+          <div className="h-4 bg-muted rounded-full overflow-hidden">
+            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(overallPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
               className={`h-full rounded-full ${overallPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
           </div>
         </div>
@@ -87,24 +88,28 @@ const Budgets = () => {
           const remaining = b.amount - b.spent;
           const dailyLeft = daysLeft > 0 ? remaining / daysLeft : 0;
           return (
-            <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow group">
+            <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{b.categoryIcon}</span>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
                   <div>
-                    <p className="text-sm font-medium">{b.category}</p>
+                    <p className="text-sm font-semibold">{b.category}</p>
                     <p className="text-xs text-muted-foreground capitalize">{b.period} · {daysLeft}d left</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 90 ? 'bg-destructive/10 text-expense' : pct > 60 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
+                  {pct >= 100 ? (
+                    <Badge variant="destructive" className="text-[10px] px-2 py-0.5">Over Budget</Badge>
+                  ) : (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
+                  )}
                   <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
                   <button onClick={() => setDeleteBudgetId(b.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
                 </div>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5 }}
-                  className={`h-full rounded-full ${pct > 90 ? 'bg-expense' : pct > 60 ? 'bg-warning' : 'bg-primary'}`} />
+              <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                  className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{fmt(b.spent)}</p></div>
@@ -119,7 +124,12 @@ const Budgets = () => {
 
         {/* AI Suggestions */}
         <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/30">
-          <div className="flex items-center gap-2 mb-2"><Sparkles size={16} className="text-primary" /><h2 className="font-heading text-sm">AI Budget Suggestions</h2></div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+              <Sparkles size={13} className="text-primary-foreground" />
+            </div>
+            <h2 className="font-heading text-sm">AI Budget Suggestions</h2>
+          </div>
           {suggestions.length > 0 ? (
             <div className="space-y-2.5">
               {suggestions.map((s) => (

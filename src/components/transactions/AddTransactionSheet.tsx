@@ -217,16 +217,24 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto md:max-w-lg md:mx-auto md:left-1/2 md:-translate-x-1/2 md:right-auto">
+          {/* Drag handle */}
+          <div className="w-10 h-1 rounded-full bg-border mx-auto -mt-1 mb-4" />
           <SheetHeader>
             <SheetTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
           </SheetHeader>
 
           <div className="space-y-5 mt-4">
-            <div className="flex gap-1 p-1 bg-muted rounded-lg">
+            <div className="flex gap-1 p-1 bg-muted rounded-xl">
               {TYPES.map(t => (
                 <button key={t.value} onClick={() => { setType(t.value); if (t.value !== 'transfer') { setCategory(''); setCategoryIcon(''); } }}
-                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
-                    type === t.value ? 'bg-card card-shadow text-foreground' : 'text-muted-foreground'
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    type === t.value
+                      ? t.value === 'expense'
+                        ? 'bg-expense text-white shadow-sm'
+                        : t.value === 'income'
+                          ? 'bg-income text-white shadow-sm'
+                          : 'bg-card card-shadow text-foreground'
+                      : 'text-muted-foreground'
                   }`}>
                   {t.label}
                 </button>
@@ -234,11 +242,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
             </div>
 
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">
+              <label className="text-sm font-medium mb-1.5 block">
                 {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
               </label>
               <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
-                className="text-2xl font-heading h-14 text-center" />
+                className="text-3xl font-heading h-16 text-center tracking-tight" />
             </div>
 
             {/* Recurring toggle - hidden for transfers */}
@@ -308,16 +316,16 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
             {/* Category - hidden for transfers */}
             {!isTransfer && (
               <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Category</label>
-                <div className="grid grid-cols-5 gap-2">
+                <label className="text-sm font-medium mb-2 block">Category</label>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                   {categories.map(c => (
                     <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
                       title={c.name}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all ${
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all active:scale-95 ${
                         category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
                       }`}>
-                      <span className="text-xl">{c.icon}</span>
-                      <span className="truncate w-full text-center text-muted-foreground">{c.name}</span>
+                      <span className="text-2xl">{c.icon}</span>
+                      <span className="truncate w-full text-center text-muted-foreground text-[10px] leading-tight">{c.name}</span>
                     </button>
                   ))}
                 </div>
@@ -326,7 +334,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
             {/* Accounts */}
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">
+              <label className="text-sm font-medium mb-1.5 block">
                 {isTransfer ? 'From Account' : 'Account'}
               </label>
               <Select value={accountId} onValueChange={setAccountId}>
@@ -341,7 +349,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
             {isTransfer && (
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">To Account</label>
+                <label className="text-sm font-medium mb-1.5 block">To Account</label>
                 <Select value={toAccountId} onValueChange={setToAccountId}>
                   <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
                   <SelectContent>
@@ -354,20 +362,20 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
             )}
 
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Date</label>
+              <label className="text-sm font-medium mb-1.5 block">Date</label>
               <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
 
             {/* Merchant / Recipient */}
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">
+              <label className="text-sm font-medium mb-1.5 block">
                 {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
               </label>
               <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} maxLength={100} />
             </div>
 
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
+              <label className="text-sm font-medium mb-1.5 block">Note (optional)</label>
               <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
             </div>
 

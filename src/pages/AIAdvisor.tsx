@@ -11,6 +11,7 @@ import {
   Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink, Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -67,9 +68,9 @@ const INSIGHT_ICONS = {
 };
 
 const INSIGHT_COLORS = {
-  warning: 'bg-warning/10 border-warning/20',
-  positive: 'bg-accent border-accent-foreground/10',
-  suggestion: 'bg-primary/5 border-primary/20',
+  warning: 'bg-warning/10 border-warning/20 border-l-4 border-l-warning',
+  positive: 'bg-accent border-accent-foreground/10 border-l-4 border-l-income',
+  suggestion: 'bg-primary/5 border-primary/20 border-l-4 border-l-primary',
 };
 
 const AIAdvisor = () => {
@@ -178,7 +179,7 @@ const AIAdvisor = () => {
   };
 
   return (
-    <div className="animate-fade-in">
+    <div>
       {/* Header */}
       <div className="gradient-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
@@ -210,8 +211,10 @@ const AIAdvisor = () => {
                 { icon: Shield, label: `${budgets.length} budgets` },
                 { icon: Target, label: `${goals.length} goals` },
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-2 bg-muted/50 rounded-xl p-3">
-                  <Icon size={16} className="text-primary shrink-0" />
+                <div key={label} className="flex items-center gap-2.5 bg-muted/50 rounded-xl p-3">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Icon size={14} className="text-primary" />
+                  </div>
                   <span className="text-xs text-muted-foreground">{label}</span>
                 </div>
               ))}
@@ -252,20 +255,30 @@ const AIAdvisor = () => {
                 <div className="bg-card rounded-2xl p-5 card-shadow">
                   <h3 className="font-heading text-sm mb-3">Budget Health Score</h3>
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="relative w-20 h-20">
-                      <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                        <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-                        <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--primary))" strokeWidth="6"
-                          strokeDasharray={`${(analysis.healthScore / 100) * 213.6} 213.6`}
+                    <div className="relative w-28 h-28 shrink-0">
+                      <svg className="w-28 h-28 -rotate-90" viewBox="0 0 112 112">
+                        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+                        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--primary))" strokeWidth="8"
+                          strokeDasharray={`${(analysis.healthScore / 100) * 289.0} 289.0`}
                           strokeLinecap="round" />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className={`text-xl font-heading ${scoreColor(analysis.healthScore)}`}>{analysis.healthScore}</span>
+                        <span className={`text-2xl font-heading ${scoreColor(analysis.healthScore)}`}>{analysis.healthScore}</span>
                       </div>
                     </div>
                     <div>
                       <p className={`text-lg font-heading ${scoreColor(analysis.healthScore)}`}>{scoreLabel(analysis.healthScore)}</p>
-                      <p className="text-xs text-muted-foreground">out of 100</p>
+                      <p className="text-xs text-muted-foreground mb-2">out of 100</p>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${
+                          analysis.healthScore >= 75 ? 'border-income text-income bg-income/10' :
+                          analysis.healthScore >= 50 ? 'border-warning text-warning bg-warning/10' :
+                          'border-expense text-expense bg-expense/10'
+                        }`}
+                      >
+                        {scoreLabel(analysis.healthScore)}
+                      </Badge>
                     </div>
                   </div>
                 </div>
@@ -370,7 +383,9 @@ const AIAdvisor = () => {
                                 {sim.value > 0 ? '+' : ''}{fmt(sim.value)}
                               </p>
                               {sim.key === analysis.recommendedMethod && (
-                                <span className="text-[9px] text-primary font-medium">★ Recommended</span>
+                                <div className="mt-1">
+                                  <Badge variant="outline" className="text-[9px] border-primary text-primary bg-primary/10 px-1.5 py-0">★ Best</Badge>
+                                </div>
                               )}
                             </button>
                           </TooltipTrigger>

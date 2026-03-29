@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { memo, useMemo } from 'react';
 import { parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -39,18 +39,62 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
   };
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis dataKey="month" tick={{ fontSize: 11 }} className="stroke-muted-foreground" />
-        <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 11 }} className="stroke-muted-foreground" domain={[0, Math.ceil(maxVal * 1.1)]} />
-        <Tooltip formatter={(val: number) => fmt(val)}
-          contentStyle={{ borderRadius: '0.75rem', fontSize: '0.75rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'hsl(var(--card))' }} />
-        <Legend wrapperStyle={{ fontSize: '0.7rem' }} />
-        <Line type="monotone" dataKey="Income" stroke="hsl(152, 62%, 42%)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(152, 62%, 42%)' }} />
-        <Line type="monotone" dataKey="Expenses" stroke="hsl(0, 72%, 51%)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(0, 72%, 51%)' }} />
-      </LineChart>
-    </ResponsiveContainer>
+    <div>
+      <ResponsiveContainer width="100%" height={220}>
+        <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
+          <defs>
+            <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(152, 62%, 42%)" stopOpacity={0.15} />
+              <stop offset="95%" stopColor="hsl(152, 62%, 42%)" stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.1} />
+              <stop offset="95%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+          <XAxis dataKey="month" tick={{ fontSize: 11 }} className="stroke-muted-foreground" />
+          <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 11 }} className="stroke-muted-foreground" domain={[0, Math.ceil(maxVal * 1.1)]} />
+          <Tooltip
+            formatter={(val: number) => fmt(val)}
+            contentStyle={{ borderRadius: '0.75rem', fontSize: '0.75rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'hsl(var(--card))' }}
+          />
+          <Area
+            type="monotone"
+            dataKey="Income"
+            stroke="hsl(152, 62%, 42%)"
+            strokeWidth={2.5}
+            fill="url(#incomeGradient)"
+            dot={false}
+            activeDot={{ r: 5, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+            isAnimationActive={true}
+            animationDuration={600}
+          />
+          <Area
+            type="monotone"
+            dataKey="Expenses"
+            stroke="hsl(0, 72%, 51%)"
+            strokeWidth={2.5}
+            fill="url(#expenseGradient)"
+            dot={false}
+            activeDot={{ r: 5, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+            isAnimationActive={true}
+            animationDuration={600}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+      {/* Custom legend */}
+      <div className="flex items-center justify-center gap-5 mt-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-0.5 rounded-full bg-income inline-block" />
+          <span className="text-[11px] text-muted-foreground">Income</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-0.5 rounded-full bg-expense inline-block" />
+          <span className="text-[11px] text-muted-foreground">Expenses</span>
+        </div>
+      </div>
+    </div>
   );
 });
 
