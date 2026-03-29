@@ -6,26 +6,41 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
+const toEmail = (username: string) => `${username.toLowerCase().trim()}@spendpal.app`;
+
 const AuthPage = () => {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (!username || !password) return;
+
+    const email = toEmail(username);
     setLoading(true);
 
     if (mode === 'login') {
       const { error } = await signIn(email, password);
-      if (error) toast.error(error.message);
+      if (error) toast.error('Invalid username or password.');
     } else {
-      const { error } = await signUp(email, password, displayName);
-      if (error) toast.error(error.message);
-      else toast.success('Account created! Check your email to verify.');
+      if (username.length < 3) {
+        toast.error('Username must be at least 3 characters.');
+        setLoading(false);
+        return;
+      }
+      const { error } = await signUp(email, password, username);
+      if (error) {
+        if (error.message.includes('already registered')) {
+          toast.error('Username already taken. Try another.');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.success('Account created! You can now sign in.');
+      }
     }
     setLoading(false);
   };
@@ -53,19 +68,29 @@ const AuthPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'signup' && (
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Display Name</label>
-              <Input placeholder="Your name" value={displayName} onChange={e => setDisplayName(e.target.value)} />
-            </div>
-          )}
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Email</label>
-            <Input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            <label className="text-sm text-muted-foreground mb-1 block">Username</label>
+            <Input
+              placeholder="yourname"
+              value={username}
+              onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+              required
+              minLength={3}
+              maxLength={30}
+              autoComplete="username"
+            />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Password</label>
-            <Input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              minLength={6}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            />
           </div>
           <Button type="submit" disabled={loading} className="w-full h-12 text-base gradient-primary text-primary-foreground">
             {loading ? <Loader2 className="animate-spin" size={18} /> : mode === 'login' ? 'Sign In' : 'Create Account'}
