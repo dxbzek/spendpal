@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, TrendingDown, History } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, TrendingDown, History, BookmarkPlus, FolderOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
 import { useAI } from '@/hooks/useAI';
+import { toast } from 'sonner';
 import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
 import {
@@ -19,8 +20,20 @@ interface BudgetSuggestion {
   reasoning: string;
 }
 
+const TEMPLATE_KEY = 'spendpal_budget_templates';
+
+interface BudgetTemplate {
+  name: string;
+  savedAt: string;
+  items: Array<{ category: string; categoryIcon: string; amount: number; period: string }>;
+}
+
+function loadTemplates(): BudgetTemplate[] {
+  try { return JSON.parse(localStorage.getItem(TEMPLATE_KEY) || '[]'); } catch { return []; }
+}
+
 const Budgets = () => {
-  const { budgets, transactions, removeBudget, bulkRemoveBudgets } = useFinance();
+  const { budgets, transactions, removeBudget, bulkRemoveBudgets, addBudget } = useFinance();
   const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
   const [showAddBudget, setShowAddBudget] = useState(false);
@@ -30,6 +43,9 @@ const Budgets = () => {
   const [deletingAll, setDeletingAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
   const [tab, setTab] = useState<'this' | 'last'>('this');
+  const [templates, setTemplates] = useState<BudgetTemplate[]>(() => loadTemplates());
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
 
   const now = new Date();
   const daysLeft = differenceInDays(endOfMonth(now), now);
@@ -67,6 +83,39 @@ const Budgets = () => {
     if (result.length > 0) setSuggestions(result);
   };
 
+  const saveTemplate = () => {
+    if (budgets.length === 0) return;
+    const monthKey = format(now, 'MMMM yyyy');
+    const template: BudgetTemplate = {
+      name: monthKey,
+      savedAt: new Date().toISOString(),
+      items: budgets.map(b => ({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period })),
+    };
+    const updated = [template, ...templates.filter(t => t.name !== monthKey)].slice(0, 5);
+    setTemplates(updated);
+    localStorage.setItem(TEMPLATE_KEY, JSON.stringify(updated));
+    toast.success(`Template saved: ${monthKey}`);
+  };
+
+  const applyTemplate = async (template: BudgetTemplate) => {
+    setApplyingTemplate(true);
+    const monthKey = format(now, 'yyyy-MM');
+    try {
+      for (const item of template.items) {
+        const exists = budgets.find(b => b.category === item.category && b.month === monthKey);
+        if (!exists) {
+          await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as any, month: monthKey });
+        }
+      }
+      toast.success(`Applied ${template.items.length} budgets from template`);
+    } catch {
+      toast.error('Failed to apply template');
+    } finally {
+      setApplyingTemplate(false);
+      setShowTemplates(false);
+    }
+  };
+
   const velocityColor = (pct: number) => {
     if (pct >= 100) return 'text-expense';
     if (pct >= 80) return 'text-warning';
@@ -80,12 +129,46 @@ const Budgets = () => {
           <h1 className="text-2xl font-heading mb-1">Budgets</h1>
           <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
         </div>
-        {budgets.length > 0 && (
-          <button onClick={() => setShowDeleteAll(true)} className="text-xs text-destructive font-medium flex items-center gap-1 hover:underline">
-            <Trash2 size={12} /> Delete All
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {budgets.length > 0 && (
+            <button onClick={saveTemplate} className="text-xs text-primary font-medium flex items-center gap-1 hover:underline">
+              <BookmarkPlus size={12} /> Save Template
+            </button>
+          )}
+          {templates.length > 0 && (
+            <button onClick={() => setShowTemplates(!showTemplates)} className="text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
+              <FolderOpen size={12} /> Templates
+            </button>
+          )}
+          {budgets.length > 0 && (
+            <button onClick={() => setShowDeleteAll(true)} className="text-xs text-destructive font-medium flex items-center gap-1 hover:underline">
+              <Trash2 size={12} /> Delete All
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Template picker */}
+      {showTemplates && (
+        <div className="mx-5 md:mx-8 mb-2 bg-card rounded-2xl border border-border p-4 space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Load a Template</p>
+          {templates.map(t => (
+            <div key={t.name} className="flex items-center justify-between py-1">
+              <div>
+                <p className="text-sm font-medium">{t.name}</p>
+                <p className="text-xs text-muted-foreground">{t.items.length} budgets</p>
+              </div>
+              <button
+                onClick={() => applyTemplate(t)}
+                disabled={applyingTemplate}
+                className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
+              >
+                {applyingTemplate ? <Loader2 size={12} className="animate-spin" /> : 'Apply'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="px-5 md:px-8 space-y-4 pb-6">
         {/* Overall progress card */}

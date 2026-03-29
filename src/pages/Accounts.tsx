@@ -6,7 +6,7 @@ import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addDays, getMonth, getYear } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +59,44 @@ const Accounts = () => {
     });
     return stats;
   }, [transactions]);
+
+  // Balance projection: project total assets 30 days forward using recurring transactions
+  const balanceProjection = useMemo(() => {
+    const assetAccs = accounts.filter(a => a.type !== 'credit');
+    if (assetAccs.length === 0) return null;
+    const startBalance = assetAccs.reduce((s, a) => s + a.balance, 0);
+    const recurring = transactions.filter(t => t.isRecurring);
+    const now = new Date();
+    const points: Array<{ day: number; balance: number }> = [{ day: 0, balance: startBalance }];
+    let running = startBalance;
+    for (let d = 1; d <= 30; d++) {
+      const date = addDays(now, d);
+      const dm = getMonth(date), dy = getYear(date);
+      // Check for recurring transactions due this day of month
+      recurring.forEach(r => {
+        const lastDate = parseISO(r.date);
+        if (lastDate.getDate() === date.getDate()) {
+          if (r.type === 'expense') running -= r.amount;
+          else if (r.type === 'income') running += r.amount;
+        }
+      });
+      points.push({ day: d, balance: running });
+    }
+    // Build SVG path
+    const vals = points.map(p => p.balance);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const range = max - min || 1;
+    const W = 100, H = 36;
+    const pts = points.map(p => {
+      const x = (p.day / 30) * W;
+      const y = H - ((p.balance - min) / range) * H;
+      return `${x},${y}`;
+    }).join(' ');
+    const end = points[points.length - 1].balance;
+    const change = end - startBalance;
+    return { pts, startBalance, endBalance: end, change };
+  }, [accounts, transactions]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -250,6 +288,32 @@ const Accounts = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Balance Projection */}
+      {balanceProjection && (
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">30-Day Balance Projection</h2>
+            <span className={`text-xs font-semibold ${balanceProjection.change >= 0 ? 'text-income' : 'text-expense'}`}>
+              {balanceProjection.change >= 0 ? '+' : ''}{fmt(balanceProjection.change)}
+            </span>
+          </div>
+          <svg viewBox="0 0 100 36" className="w-full h-12" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="proj-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polyline points={balanceProjection.pts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polygon points={`0,36 ${balanceProjection.pts} 100,36`} fill="url(#proj-grad)" />
+          </svg>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>Today: {fmt(balanceProjection.startBalance)}</span>
+            <span>+30d: {fmt(balanceProjection.endBalance)}</span>
+          </div>
         </div>
       )}
 

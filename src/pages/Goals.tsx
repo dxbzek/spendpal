@@ -6,7 +6,17 @@ import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { differenceInDays, parseISO, subMonths, getMonth, getYear } from 'date-fns';
+import { differenceInDays, parseISO, subMonths, getMonth, getYear, format } from 'date-fns';
+
+const LOG_KEY = (id: string) => `spendpal_goal_log_${id}`;
+interface Contribution { amount: number; note: string; date: string; }
+
+function loadLog(id: string): Contribution[] {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY(id)) || '[]'); } catch { return []; }
+}
+function saveLog(id: string, log: Contribution[]) {
+  localStorage.setItem(LOG_KEY(id), JSON.stringify(log.slice(0, 20)));
+}
 import AddGoalDialog from '@/components/forms/AddGoalDialog';
 import type { Goal } from '@/types/finance';
 import {
@@ -19,6 +29,8 @@ const Goals = () => {
   const { fmt } = useCurrency();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
+  const [progressNote, setProgressNote] = useState('');
+  const [showLog, setShowLog] = useState<string | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
@@ -54,8 +66,13 @@ const Goals = () => {
     const amount = parseFloat(progressAmount);
     if (isNaN(amount) || amount <= 0) return;
     await addGoalProgress(progressGoalId, amount);
+    // Save to contribution log
+    const log = loadLog(progressGoalId);
+    log.unshift({ amount, note: progressNote.trim(), date: new Date().toISOString() });
+    saveLog(progressGoalId, log);
     setProgressGoalId(null);
     setProgressAmount('');
+    setProgressNote('');
   };
 
   const activeGoals = goals.filter(g => g.status === 'active');
@@ -163,9 +180,40 @@ const Goals = () => {
                         </p>
                       )}
                     </div>
-                    <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); }}
-                      className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add Progress</button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowLog(showLog === goal.id ? null : goal.id)}
+                        className="px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium"
+                      >
+                        Log
+                      </button>
+                      <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); }}
+                        className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add Progress</button>
+                    </div>
                   </div>
+                  {showLog === goal.id && (() => {
+                    const log = loadLog(goal.id);
+                    return (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Contribution History</p>
+                        {log.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No contributions yet</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {log.slice(0, 5).map((c, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <div>
+                                  <span className="font-medium text-income">+{fmt(c.amount)}</span>
+                                  {c.note && <span className="text-muted-foreground ml-1.5">· {c.note}</span>}
+                                </div>
+                                <span className="text-muted-foreground">{format(parseISO(c.date), 'MMM d, yyyy')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -183,6 +231,10 @@ const Goals = () => {
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Amount</label>
               <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} className="text-lg h-12" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
+              <Input placeholder="e.g. Monthly savings transfer" value={progressNote} onChange={e => setProgressNote(e.target.value)} className="h-10" />
             </div>
             <Button onClick={handleAddProgress} className="w-full gradient-primary text-primary-foreground">Save Progress</Button>
           </div>

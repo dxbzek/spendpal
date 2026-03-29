@@ -1,7 +1,10 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet, CalendarRange, X, AlertTriangle } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet, CalendarRange, X, AlertTriangle, Store } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { CATEGORIES } from '@/types/finance';
+import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO, differenceInHours } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -20,9 +23,10 @@ import {
 const UNDO_DELAY_MS = 5000;
 
 const Transactions = () => {
-  const { transactions, accounts, removeTransaction, bulkRemoveTransactions } = useFinance();
+  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, updateTransaction } = useFinance();
   const { fmtSigned, fmt } = useCurrency();
   const { openEditSheet } = useEditTransaction();
+  const { categories: allCategories } = useCategories();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterAccount, setFilterAccount] = useState<string>('all');
@@ -33,6 +37,8 @@ const Transactions = () => {
   const [showImport, setShowImport] = useState(false);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [merchantProfile, setMerchantProfile] = useState<string | null>(null);
+  const [categorizeTxId, setCategorizeTxId] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   // Undo delete state
@@ -155,6 +161,16 @@ const Transactions = () => {
 
   const visibleDupeCount = useMemo(() => filtered.filter(tx => duplicateIds.has(tx.id)).length, [filtered, duplicateIds]);
 
+  // Merchant profile stats
+  const merchantStats = useMemo(() => {
+    if (!merchantProfile) return null;
+    const txs = transactions.filter(tx => tx.merchant.toLowerCase() === merchantProfile.toLowerCase())
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const total = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const count = txs.length;
+    return { txs: txs.slice(0, 20), total, count, icon: txs[0]?.categoryIcon || '🏪' };
+  }, [merchantProfile, transactions]);
+
   const filteredIncome = useMemo(() =>
     filtered.filter(tx => tx.type === 'income' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
     [filtered]
@@ -191,7 +207,12 @@ const Transactions = () => {
           <span className="text-2xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
            <div className="min-w-0">
              <p className="text-sm font-medium truncate flex items-center gap-1.5">
-               {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
+               <button
+                 className="truncate hover:underline text-left"
+                 onClick={e => { e.stopPropagation(); setMerchantProfile(tx.merchant); }}
+               >
+                 {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
+               </button>
                {isDupe && <span title="Possible duplicate"><AlertTriangle size={12} className="text-warning shrink-0" /></span>}
              </p>
              <div className="flex items-center gap-1.5">
@@ -390,7 +411,7 @@ const Transactions = () => {
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
                 <div className="bg-card rounded-2xl card-shadow overflow-hidden divide-y divide-border">
                   {txs.map((tx, idx) => (
-                    <SwipeableTransaction key={tx.id} onDelete={() => handleDeleteSingle(tx.id)}>
+                    <SwipeableTransaction key={tx.id} onDelete={() => handleDeleteSingle(tx.id)} onCategorize={() => setCategorizeTxId(tx.id)}>
                       {renderTxContent(tx, idx)}
                     </SwipeableTransaction>
                   ))}
@@ -465,6 +486,71 @@ const Transactions = () => {
       </div>
 
       <ImportStatementSheet open={showImport} onOpenChange={setShowImport} />
+
+      {/* Merchant Profile Sheet */}
+      <Sheet open={!!merchantProfile} onOpenChange={o => { if (!o) setMerchantProfile(null); }}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <span className="text-2xl">{merchantStats?.icon}</span>
+              <span>{merchantProfile}</span>
+            </SheetTitle>
+          </SheetHeader>
+          {merchantStats && (
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-lg font-bold text-expense">{fmt(merchantStats.total)}</p>
+                  <p className="text-xs text-muted-foreground">Total spent</p>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-lg font-bold">{merchantStats.count}</p>
+                  <p className="text-xs text-muted-foreground">Transactions</p>
+                </div>
+              </div>
+              <div className="space-y-1">
+                {merchantStats.txs.map(tx => (
+                  <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div>
+                      <p className="text-xs font-medium">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                      <p className="text-[11px] text-muted-foreground">{tx.category}</p>
+                    </div>
+                    <span className={`text-sm font-semibold ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                      {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Quick Categorize Sheet */}
+      <Sheet open={!!categorizeTxId} onOpenChange={o => { if (!o) setCategorizeTxId(null); }}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[70vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Change Category</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 grid grid-cols-4 gap-2">
+            {allCategories.map(cat => (
+              <button
+                key={cat.name}
+                onClick={async () => {
+                  if (!categorizeTxId) return;
+                  const tx = transactions.find(t => t.id === categorizeTxId);
+                  if (tx) await updateTransaction({ ...tx, category: cat.name, categoryIcon: cat.icon });
+                  setCategorizeTxId(null);
+                }}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted/50 hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <span className="text-2xl">{cat.icon}</span>
+                <span className="text-[10px] font-medium text-center leading-tight">{cat.name}</span>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={showDeleteAll} onOpenChange={setShowDeleteAll}>
         <AlertDialogContent className="max-w-sm">
