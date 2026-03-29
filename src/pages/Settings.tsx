@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useCurrency, WORLD_CURRENCIES } from '@/context/CurrencyContext';
+import { useCurrency } from '@/context/CurrencyContext';
+import { WORLD_CURRENCIES } from '@/utils/currencies';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
