@@ -91,6 +91,20 @@ const Dashboard = () => {
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [filtered]);
 
+  const thisMonthIncome = useMemo(() => {
+    const month = now.getMonth(), year = now.getFullYear();
+    return transactions
+      .filter(tx => { const d = parseISO(tx.date); return tx.type === 'income' && !creditAccountIds.has(tx.accountId) && d.getMonth() === month && d.getFullYear() === year; })
+      .reduce((s, t) => s + t.amount, 0);
+  }, [transactions, now, creditAccountIds]);
+  const thisMonthExpenses = useMemo(() => {
+    const month = now.getMonth(), year = now.getFullYear();
+    return transactions
+      .filter(tx => { const d = parseISO(tx.date); return tx.type === 'expense' && d.getMonth() === month && d.getFullYear() === year; })
+      .reduce((s, t) => s + t.amount, 0);
+  }, [transactions, now]);
+  const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
+
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
@@ -218,6 +232,32 @@ const Dashboard = () => {
           <p className="text-financial-medium text-expense">{mask(fmt(expenses))}</p>
           {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
         </Card>
+
+        {/* Savings Rate */}
+        {savingsRate !== null && (
+          <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-primary">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Savings Rate — This Month</p>
+                <p className={`text-financial-medium ${savingsRate >= 20 ? 'text-income' : savingsRate >= 0 ? 'text-warning' : 'text-expense'}`}>
+                  {hidden ? '••' : `${savingsRate}%`}
+                </p>
+              </div>
+              <div className="text-right text-xs text-muted-foreground">
+                <p>Saved: {mask(fmt(thisMonthIncome - thisMonthExpenses))}</p>
+                <p className="text-[11px]">{savingsRate >= 20 ? '🎯 On track' : savingsRate >= 10 ? '📈 Getting there' : savingsRate < 0 ? '⚠️ Overspending' : '💡 Room to save'}</p>
+              </div>
+            </div>
+            {!hidden && (
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${savingsRate >= 20 ? 'bg-income' : savingsRate >= 0 ? 'bg-warning' : 'bg-expense'}`}
+                  style={{ width: `${Math.max(0, Math.min(savingsRate, 100))}%` }}
+                />
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Accounts - spans full width */}
         <Card className="col-span-2 lg:col-span-3">

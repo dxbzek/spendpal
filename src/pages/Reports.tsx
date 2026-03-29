@@ -4,13 +4,14 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
 import SpendingPieChart from '@/components/charts/SpendingPieChart';
-import { BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt } from 'lucide-react';
 
 const Reports = () => {
   const { transactions, accounts, budgets } = useFinance();
   const { fmt } = useCurrency();
 
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
+  const [drillCategory, setDrillCategory] = useState<string | null>(null);
 
   const creditAccountIds = useMemo(
     () => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)),
@@ -144,6 +145,50 @@ const Reports = () => {
         <div className="bg-card rounded-2xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Spending by Category</h2>
           <SpendingPieChart data={categoryData} />
+          <div className="mt-3 space-y-1.5">
+            {categoryData.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setDrillCategory(drillCategory === cat.name ? null : cat.name)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${drillCategory === cat.name ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/60'}`}
+              >
+                <span className="flex items-center gap-2">
+                  <span>{cat.icon}</span>
+                  <span className="font-medium">{cat.name}</span>
+                </span>
+                <span className="font-semibold">{fmt(cat.value)}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Drill-through panel */}
+          {drillCategory && (() => {
+            const catTxs = monthTxs.filter(tx => tx.type === 'expense' && tx.category === drillCategory);
+            return (
+              <div className="mt-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{drillCategory} transactions</p>
+                  <button onClick={() => setDrillCategory(null)} className="text-muted-foreground hover:text-foreground"><X size={14} /></button>
+                </div>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                  {catTxs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">No transactions</p>
+                  ) : catTxs.map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-muted/40">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Receipt size={11} className="text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{tx.merchant}</p>
+                          <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d')}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-expense shrink-0 ml-2">{fmt(tx.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 

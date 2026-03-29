@@ -1,8 +1,8 @@
 import { useCurrency } from '@/context/CurrencyContext';
-import { Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
 import type { Account } from '@/types/finance';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 
 interface Props {
@@ -12,6 +12,12 @@ interface Props {
 }
 
 const STORAGE_KEY = 'spendpal_networth_history';
+const NW_GOAL_KEY = 'spendpal_nw_goal';
+
+function loadGoal(): number | null {
+  const v = localStorage.getItem(NW_GOAL_KEY);
+  return v ? parseFloat(v) : null;
+}
 const MAX_MONTHS = 7;
 
 function loadHistory(): Record<string, number> {
@@ -26,6 +32,9 @@ function saveHistory(history: Record<string, number>) {
 
 const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const { fmt } = useCurrency();
+  const [goal, setGoal] = useState<number | null>(() => loadGoal());
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
 
   const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
   const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
@@ -73,6 +82,20 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const trend = history.length >= 2
     ? history[history.length - 1][1] - history[history.length - 2][1]
     : 0;
+
+  const goalProgress = goal && goal > 0 ? Math.min(Math.round((netWorth / goal) * 100), 100) : null;
+
+  const saveGoal = (val: string) => {
+    const n = parseFloat(val);
+    if (!isNaN(n) && n > 0) {
+      setGoal(n);
+      localStorage.setItem(NW_GOAL_KEY, String(n));
+    } else if (val === '') {
+      setGoal(null);
+      localStorage.removeItem(NW_GOAL_KEY);
+    }
+    setEditingGoal(false);
+  };
 
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
@@ -124,6 +147,41 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
             <span>{history[0]?.[0]?.slice(0, 7)}</span>
             <span>{history[history.length - 1]?.[0]?.slice(0, 7)}</span>
           </div>
+        </div>
+      )}
+
+      {/* Net Worth Goal */}
+      {!hidden && (
+        <div className="mt-3 pt-2 border-t border-border">
+          {editingGoal ? (
+            <div className="flex items-center gap-1.5">
+              <Target size={11} className="text-primary shrink-0" />
+              <input
+                type="number"
+                min="1"
+                autoFocus
+                placeholder="Set goal…"
+                defaultValue={goal ?? ''}
+                className="flex-1 text-xs bg-muted rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
+                onBlur={e => saveGoal(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveGoal((e.target as HTMLInputElement).value); if (e.key === 'Escape') setEditingGoal(false); }}
+              />
+            </div>
+          ) : goalProgress !== null ? (
+            <div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                <span className="flex items-center gap-1"><Target size={10} /> Goal progress</span>
+                <button onClick={() => { setGoalInput(String(goal ?? '')); setEditingGoal(true); }} className="hover:text-primary">{goalProgress}% · {fmt(goal!)}</button>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${goalProgress >= 100 ? 'bg-income' : 'bg-primary'}`} style={{ width: `${goalProgress}%` }} />
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setEditingGoal(true)} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
+              <Target size={10} /> Set net worth goal
+            </button>
+          )}
         </div>
       )}
     </div>

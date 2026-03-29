@@ -3,8 +3,10 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { type Account } from '@/types/finance';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
-import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +36,8 @@ const Accounts = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const netWorth = useMemo(() => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
@@ -196,6 +200,53 @@ const Accounts = () => {
                     )}
                   </div>
                 )}
+
+                {/* Transactions toggle */}
+                <button
+                  onClick={() => setExpandedId(expandedId === account.id ? null : account.id)}
+                  className="w-full flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-1"><Receipt size={11} /> Recent transactions</span>
+                  {expandedId === account.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </button>
+
+                {/* Inline transactions */}
+                {expandedId === account.id && (() => {
+                  const acctTxs = transactions
+                    .filter(tx => tx.accountId === account.id)
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .slice(0, 10);
+                  return (
+                    <div className="space-y-1.5 pt-1">
+                      {acctTxs.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-2">No transactions yet</p>
+                      ) : (
+                        <>
+                          {acctTxs.map(tx => (
+                            <div key={tx.id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-muted/40">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-base shrink-0">{tx.categoryIcon}</span>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{tx.merchant}</p>
+                                  <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                                </div>
+                              </div>
+                              <span className={`text-xs font-semibold shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                                {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                              </span>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => navigate('/transactions')}
+                            className="w-full text-xs text-primary font-medium text-center py-1 hover:underline"
+                          >
+                            See all transactions →
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

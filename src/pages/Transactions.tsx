@@ -21,7 +21,7 @@ const UNDO_DELAY_MS = 5000;
 
 const Transactions = () => {
   const { transactions, accounts, removeTransaction, bulkRemoveTransactions } = useFinance();
-  const { fmtSigned } = useCurrency();
+  const { fmtSigned, fmt } = useCurrency();
   const { openEditSheet } = useEditTransaction();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -154,6 +154,16 @@ const Transactions = () => {
   }, [filtered]);
 
   const visibleDupeCount = useMemo(() => filtered.filter(tx => duplicateIds.has(tx.id)).length, [filtered, duplicateIds]);
+
+  const filteredIncome = useMemo(() =>
+    filtered.filter(tx => tx.type === 'income' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
+    [filtered]
+  );
+  const filteredExpenses = useMemo(() =>
+    filtered.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
+    [filtered]
+  );
+  const filteredNet = filteredIncome - filteredExpenses;
 
   const handleDeleteSingle = (txId: string) => {
     const pair = transferPairs.get(txId);
@@ -343,6 +353,28 @@ const Transactions = () => {
           </div>
         )}
         </div>
+
+      {/* Totals bar */}
+      {filtered.length > 0 && (
+        <div className="px-5 md:px-8 mb-3 -mt-1">
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-card rounded-xl card-shadow text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Income</span>
+              <span className="font-semibold text-income">{fmt(filteredIncome)}</span>
+            </div>
+            <div className="w-px h-3 bg-border" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Expenses</span>
+              <span className="font-semibold text-expense">{fmt(filteredExpenses)}</span>
+            </div>
+            <div className="w-px h-3 bg-border" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Net</span>
+              <span className={`font-semibold ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{filteredNet >= 0 ? '+' : ''}{fmt(filteredNet)}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-5 md:px-8 pb-24 md:pb-6">
         {grouped.length === 0 ? (

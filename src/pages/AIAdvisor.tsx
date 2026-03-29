@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useAI, type BudgetAnalysis } from '@/hooks/useAI';
-import { parseISO } from 'date-fns';
+import { parseISO, subMonths, getMonth, getYear } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
@@ -130,6 +130,54 @@ const AIAdvisor = () => {
     };
   }, [transactions, accounts, budgets, goals, currency, now]);
 
+  // Spending anomaly detection — categories where this month's spend is 2x+ the 3-month average
+  const anomalies = useMemo(() => {
+    const n = new Date();
+    const thisM = n.getMonth(), thisY = n.getFullYear();
+
+    // Current month spending by category
+    const curMap: Record<string, number> = {};
+    transactions.forEach(tx => {
+      if (tx.type !== 'expense') return;
+      const d = parseISO(tx.date);
+      if (d.getMonth() !== thisM || d.getFullYear() !== thisY) return;
+      curMap[tx.category] = (curMap[tx.category] || 0) + tx.amount;
+    });
+
+    // Last 3 months average by category
+    const histMap: Record<string, number[]> = {};
+    for (let i = 1; i <= 3; i++) {
+      const prev = subMonths(n, i);
+      const pm = getMonth(prev), py = getYear(prev);
+      const monthMap: Record<string, number> = {};
+      transactions.forEach(tx => {
+        if (tx.type !== 'expense') return;
+        const d = parseISO(tx.date);
+        if (d.getMonth() !== pm || d.getFullYear() !== py) return;
+        monthMap[tx.category] = (monthMap[tx.category] || 0) + tx.amount;
+      });
+      Object.entries(monthMap).forEach(([cat, amt]) => {
+        if (!histMap[cat]) histMap[cat] = [];
+        histMap[cat].push(amt);
+      });
+    }
+
+    return Object.entries(curMap)
+      .filter(([cat, amt]) => {
+        const hist = histMap[cat];
+        if (!hist || hist.length === 0) return false;
+        const avg = hist.reduce((s, v) => s + v, 0) / hist.length;
+        return avg > 0 && amt >= avg * 2;
+      })
+      .map(([cat, amt]) => {
+        const hist = histMap[cat]!;
+        const avg = hist.reduce((s, v) => s + v, 0) / hist.length;
+        const icon = transactions.find(tx => tx.category === cat)?.categoryIcon || '📌';
+        return { category: cat, icon, current: amt, avg, multiple: Math.round((amt / avg) * 10) / 10 };
+      })
+      .sort((a, b) => b.multiple - a.multiple);
+  }, [transactions]);
+
   const handleAnalyze = async () => {
     if (transactions.length < 3) {
       toast.error('Add at least a few transactions for the AI to analyze');
@@ -194,6 +242,35 @@ const AIAdvisor = () => {
       </div>
 
       <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto space-y-4">
+
+        {/* Spending Anomalies — always visible */}
+        {anomalies.length > 0 && (
+          <div className="bg-card rounded-2xl p-5 card-shadow">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle size={16} className="text-warning" />
+              <h3 className="font-heading text-sm">Spending Anomalies This Month</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">Categories spending 2× or more above your 3-month average</p>
+            <div className="space-y-2.5">
+              {anomalies.map(a => (
+                <div key={a.category} className="flex items-center justify-between p-3 bg-warning/10 border border-warning/20 rounded-xl">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">{a.icon}</span>
+                    <div>
+                      <p className="text-sm font-medium">{a.category}</p>
+                      <p className="text-[11px] text-muted-foreground">Avg: {fmt(a.avg)}/mo</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-heading text-warning">{fmt(a.current)}</p>
+                    <p className="text-[10px] font-semibold text-warning">{a.multiple}× average</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Analyze Button */}
         {!analysis && (
           <div className="bg-card rounded-2xl p-6 card-shadow text-center">
