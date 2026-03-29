@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useFinance } from '@/context/FinanceContext';
 import { useAI } from '@/hooks/useAI';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Upload, FileText, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -63,6 +64,7 @@ function normalizeDate(d: string): string {
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, transactions, addTransaction, updateAccount } = useFinance();
   const { loading, categorizeStatement } = useAI();
+  const { currency, symbol } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
   const [statementText, setStatementText] = useState('');
   const [fileName, setFileName] = useState('');
@@ -144,7 +146,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       await addTransaction({
         type: r.type,
         amount: Math.abs(r.amount),
-        currency: 'AED',
+        currency,
         category: r.category,
         categoryIcon: r.categoryIcon,
         merchant: r.merchant,
@@ -282,7 +284,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
             Since these are historical transactions, your balance wasn't adjusted. What is your current account balance?
           </p>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">AED</span>
+            <span className="text-sm font-medium text-muted-foreground">{symbol}</span>
             <Input
               type="number"
               step="0.01"

@@ -2,57 +2,97 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
+import {
+  AccountRowSchema,
+  TransactionRowSchema,
+  BudgetRowSchema,
+  GoalRowSchema,
+  safeParseRow,
+} from '@/lib/schemas';
 import type { Account, Transaction, Budget, Goal } from '@/types/finance';
 
-// Map DB rows to app types
-const mapAccount = (row: any): Account => ({
-  id: row.id,
-  name: row.name,
-  type: row.type,
-  balance: Number(row.balance),
-  currency: row.currency,
-  icon: row.icon,
-  creditLimit: row.credit_limit ? Number(row.credit_limit) : undefined,
-  dueDate: row.due_date ?? undefined,
-  statementDate: row.statement_date ?? undefined,
-});
+// ─── DB row → app type mappers (validated via Zod) ───────────────────────────
 
-const mapTransaction = (row: any): Transaction => ({
-  id: row.id,
-  type: row.type,
-  amount: Number(row.amount),
-  currency: row.currency,
-  category: row.category,
-  categoryIcon: row.category_icon,
-  merchant: row.merchant,
-  accountId: row.account_id,
-  date: row.date,
-  note: row.note ?? undefined,
-  isRecurring: row.is_recurring,
-  totalInstallments: row.total_installments ?? null,
-  currentInstallment: row.current_installment ?? null,
-});
+const mapAccount = (row: unknown): Account | null => {
+  const r = safeParseRow(AccountRowSchema, row, 'Account');
+  if (!r) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    type: r.type,
+    balance: r.balance,
+    currency: r.currency,
+    icon: r.icon,
+    creditLimit: r.credit_limit,
+    dueDate: r.due_date,
+    statementDate: r.statement_date,
+  };
+};
 
-const mapBudget = (row: any): Budget => ({
-  id: row.id,
-  category: row.category,
-  categoryIcon: row.category_icon,
-  amount: Number(row.amount),
-  spent: 0, // computed from transactions
-  period: row.period as 'monthly' | 'weekly',
-  month: row.month,
-});
+const mapTransaction = (row: unknown): Transaction | null => {
+  const r = safeParseRow(TransactionRowSchema, row, 'Transaction');
+  if (!r) return null;
+  return {
+    id: r.id,
+    type: r.type,
+    amount: r.amount,
+    currency: r.currency,
+    category: r.category,
+    categoryIcon: r.category_icon,
+    merchant: r.merchant,
+    accountId: r.account_id,
+    date: r.date,
+    note: r.note,
+    isRecurring: r.is_recurring,
+    totalInstallments: r.total_installments ?? null,
+    currentInstallment: r.current_installment ?? null,
+  };
+};
 
-const mapGoal = (row: any): Goal => ({
-  id: row.id,
-  name: row.name,
-  icon: row.icon,
-  type: row.type,
-  targetAmount: Number(row.target_amount),
-  savedAmount: Number(row.saved_amount),
-  deadline: row.deadline ?? undefined,
-  status: row.status as 'active' | 'completed' | 'paused',
-});
+const mapBudget = (row: unknown, spentByCategory: Record<string, number> = {}): Budget | null => {
+  const r = safeParseRow(BudgetRowSchema, row, 'Budget');
+  if (!r) return null;
+  return {
+    id: r.id,
+    category: r.category,
+    categoryIcon: r.category_icon,
+    amount: r.amount,
+    spent: spentByCategory[r.category] ?? 0,
+    period: r.period,
+    month: r.month,
+  };
+};
+
+const mapGoal = (row: unknown): Goal | null => {
+  const r = safeParseRow(GoalRowSchema, row, 'Goal');
+  if (!r) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    icon: r.icon,
+    type: r.type,
+    targetAmount: r.target_amount,
+    savedAmount: r.saved_amount,
+    deadline: r.deadline,
+    status: r.status,
+  };
+};
+
+// ─── Compute budget spent from transactions ───────────────────────────────────
+
+function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthExpenses = txs.filter(t => t.type === 'expense' && t.date.startsWith(currentMonth));
+  const spent: Record<string, number> = {};
+  for (const t of monthExpenses) {
+    spent[t.category] = (spent[t.category] ?? 0) + t.amount;
+  }
+  return spent;
+}
+
+// ─── Context type ─────────────────────────────────────────────────────────────
 
 interface FinanceContextType {
   accounts: Account[];
@@ -104,31 +144,26 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         supabase.from('goals').select('*').order('created_at'),
       ]);
 
-      if (accRes.data) setAccounts(accRes.data.map(mapAccount));
-      if (txRes.data) {
-        const txs = txRes.data.map(mapTransaction);
-        setTransactions(txs);
+      if (accRes.error) throw accRes.error;
+      if (txRes.error) throw txRes.error;
+      if (bgtRes.error) throw bgtRes.error;
+      if (goalRes.error) throw goalRes.error;
 
-        // Compute budget spent from transactions
-        if (bgtRes.data) {
-          const now = new Date();
-          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-          const monthTxs = txs.filter(t => t.type === 'expense' && t.date.startsWith(currentMonth));
-          const spentByCategory: Record<string, number> = {};
-          monthTxs.forEach(t => {
-            spentByCategory[t.category] = (spentByCategory[t.category] || 0) + t.amount;
-          });
-          setBudgets(bgtRes.data.map(row => ({
-            ...mapBudget(row),
-            spent: spentByCategory[row.category] || 0,
-          })));
-        }
-      } else if (bgtRes.data) {
-        setBudgets(bgtRes.data.map(mapBudget));
-      }
-      if (goalRes.data) setGoals(goalRes.data.map(mapGoal));
+      const validAccounts = (accRes.data ?? []).map(mapAccount).filter((a): a is Account => a !== null);
+      setAccounts(validAccounts);
+
+      const validTxs = (txRes.data ?? []).map(mapTransaction).filter((t): t is Transaction => t !== null);
+      setTransactions(validTxs);
+
+      const spentByCategory = computeSpentByCategory(validTxs);
+      const validBudgets = (bgtRes.data ?? []).map(row => mapBudget(row, spentByCategory)).filter((b): b is Budget => b !== null);
+      setBudgets(validBudgets);
+
+      const validGoals = (goalRes.data ?? []).map(mapGoal).filter((g): g is Goal => g !== null);
+      setGoals(validGoals);
     } catch (err) {
-      console.error('Failed to fetch data', err);
+      logger.error('Failed to fetch finance data', err);
+      toast.error('Failed to load your financial data. Please refresh.');
     } finally {
       setLoading(false);
     }
@@ -136,10 +171,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // --- ACCOUNTS ---
+  // ─── ACCOUNTS ─────────────────────────────────────────────────────────────
+
   const addAccount = useCallback(async (account: Omit<Account, 'id'>) => {
     if (!user) return;
-    const { error } = await supabase.from('accounts').insert({
+    const { data, error } = await supabase.from('accounts').insert({
       user_id: user.id,
       name: account.name,
       type: account.type,
@@ -149,10 +185,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       credit_limit: account.creditLimit ?? null,
       due_date: account.dueDate ?? null,
       statement_date: account.statementDate ?? null,
-    });
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [user, fetchAll]);
+    }).select().single();
+    if (error) { toast.error(`Failed to add account: ${error.message}`); return; }
+    const mapped = mapAccount(data);
+    if (mapped) setAccounts(prev => [...prev, mapped]);
+  }, [user]);
 
   const updateAccount = useCallback(async (account: Account) => {
     const { error } = await supabase.from('accounts').update({
@@ -164,20 +201,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       due_date: account.dueDate ?? null,
       statement_date: account.statementDate ?? null,
     }).eq('id', account.id);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to update account: ${error.message}`); return; }
+    setAccounts(prev => prev.map(a => a.id === account.id ? account : a));
+  }, []);
 
   const removeAccount = useCallback(async (id: string) => {
     const { error } = await supabase.from('accounts').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to delete account: ${error.message}`); return; }
+    setAccounts(prev => prev.filter(a => a.id !== id));
+  }, []);
 
-  // --- TRANSACTIONS ---
+  // ─── TRANSACTIONS ─────────────────────────────────────────────────────────
+
   const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>, options?: { skipBalanceUpdate?: boolean }) => {
     if (!user) return;
-    const { error } = await supabase.from('transactions').insert({
+    const { data, error } = await supabase.from('transactions').insert({
       user_id: user.id,
       account_id: tx.accountId,
       type: tx.type,
@@ -191,26 +229,29 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
-    });
-    if (error) { toast.error(error.message); return; }
-    // Update account balance (skip for imported historical transactions)
+    }).select().single();
+    if (error) { toast.error(`Failed to add transaction: ${error.message}`); return; }
+
+    const mapped = mapTransaction(data);
+    if (mapped) {
+      setTransactions(prev => [mapped, ...prev]);
+      setBudgets(prev => {
+        const spentByCategory = computeSpentByCategory([mapped, ...transactions]);
+        return prev.map(b => ({ ...b, spent: spentByCategory[b.category] ?? 0 }));
+      });
+    }
+
     if (!options?.skipBalanceUpdate) {
       const account = accounts.find(a => a.id === tx.accountId);
       if (account) {
-        const isCreditCard = account.type === 'credit';
-        // Credit cards: balance = available limit. Expense decreases available, income (payment) increases it.
-        // Regular accounts: expenses decrease balance, income increases it
-        let newBalance: number;
-        if (isCreditCard) {
-          newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
-        } else {
-          newBalance = tx.type === 'income' ? account.balance + tx.amount : account.balance - tx.amount;
-        }
+        const newBalance = tx.type === 'income'
+          ? account.balance + tx.amount
+          : account.balance - tx.amount;
         await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
+        setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: newBalance } : a));
       }
     }
-    await fetchAll();
-  }, [user, accounts, fetchAll]);
+  }, [user, accounts, transactions]);
 
   const updateTransaction = useCallback(async (tx: Transaction) => {
     const { error } = await supabase.from('transactions').update({
@@ -226,47 +267,74 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
     }).eq('id', tx.id);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to update transaction: ${error.message}`); return; }
+    setTransactions(prev => {
+      const updated = prev.map(t => t.id === tx.id ? tx : t);
+      setBudgets(b => {
+        const spentByCategory = computeSpentByCategory(updated);
+        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
+      });
+      return updated;
+    });
+  }, []);
 
   const removeTransaction = useCallback(async (id: string) => {
-    // Find the transaction to reverse its balance impact
     const tx = transactions.find(t => t.id === id);
     const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
-    // Reverse balance adjustment
+    if (error) { toast.error(`Failed to delete transaction: ${error.message}`); return; }
+
+    setTransactions(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      setBudgets(b => {
+        const spentByCategory = computeSpentByCategory(updated);
+        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
+      });
+      return updated;
+    });
+
     if (tx) {
       const account = accounts.find(a => a.id === tx.accountId);
       if (account) {
-        const isCreditCard = account.type === 'credit';
-        // Reverse: for credit cards (balance=available), expense had decreased it, income had increased it
-        let newBalance: number;
-        if (isCreditCard) {
-          newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
-        } else {
-          newBalance = tx.type === 'income' ? account.balance - tx.amount : account.balance + tx.amount;
-        }
+        const newBalance = tx.type === 'income'
+          ? account.balance - tx.amount
+          : account.balance + tx.amount;
         await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
+        setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: newBalance } : a));
       }
     }
-    await fetchAll();
-  }, [transactions, accounts, fetchAll]);
+  }, [transactions, accounts]);
 
-  // --- BUDGETS ---
+  const bulkRemoveTransactions = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const { error } = await supabase.from('transactions').delete().in('id', ids);
+    if (error) { toast.error(`Failed to delete transactions: ${error.message}`); return; }
+    setTransactions(prev => {
+      const updated = prev.filter(t => !ids.includes(t.id));
+      setBudgets(b => {
+        const spentByCategory = computeSpentByCategory(updated);
+        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
+      });
+      return updated;
+    });
+  }, []);
+
+  // ─── BUDGETS ──────────────────────────────────────────────────────────────
+
   const addBudget = useCallback(async (budget: Omit<Budget, 'id' | 'spent'>) => {
     if (!user) return;
-    const { error } = await supabase.from('budgets').insert({
+    const { data, error } = await supabase.from('budgets').insert({
       user_id: user.id,
       category: budget.category,
       category_icon: budget.categoryIcon,
       amount: budget.amount,
       period: budget.period,
       month: budget.month,
-    });
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [user, fetchAll]);
+    }).select().single();
+    if (error) { toast.error(`Failed to add budget: ${error.message}`); return; }
+    const spentByCategory = computeSpentByCategory(transactions);
+    const mapped = mapBudget(data, spentByCategory);
+    if (mapped) setBudgets(prev => [...prev, mapped]);
+  }, [user, transactions]);
 
   const updateBudget = useCallback(async (budget: Budget) => {
     const { error } = await supabase.from('budgets').update({
@@ -275,34 +343,28 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: budget.amount,
       period: budget.period,
     }).eq('id', budget.id);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to update budget: ${error.message}`); return; }
+    setBudgets(prev => prev.map(b => b.id === budget.id ? budget : b));
+  }, []);
 
   const removeBudget = useCallback(async (id: string) => {
     const { error } = await supabase.from('budgets').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
-
-  const bulkRemoveTransactions = useCallback(async (ids: string[]) => {
-    if (ids.length === 0) return;
-    const { error } = await supabase.from('transactions').delete().in('id', ids);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to delete budget: ${error.message}`); return; }
+    setBudgets(prev => prev.filter(b => b.id !== id));
+  }, []);
 
   const bulkRemoveBudgets = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
     const { error } = await supabase.from('budgets').delete().in('id', ids);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to delete budgets: ${error.message}`); return; }
+    setBudgets(prev => prev.filter(b => !ids.includes(b.id)));
+  }, []);
 
-  // --- GOALS ---
+  // ─── GOALS ────────────────────────────────────────────────────────────────
+
   const addGoal = useCallback(async (goal: Omit<Goal, 'id'>) => {
     if (!user) return;
-    const { error } = await supabase.from('goals').insert({
+    const { data, error } = await supabase.from('goals').insert({
       user_id: user.id,
       name: goal.name,
       icon: goal.icon,
@@ -311,10 +373,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       saved_amount: goal.savedAmount,
       deadline: goal.deadline ?? null,
       status: goal.status,
-    });
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [user, fetchAll]);
+    }).select().single();
+    if (error) { toast.error(`Failed to add goal: ${error.message}`); return; }
+    const mapped = mapGoal(data);
+    if (mapped) setGoals(prev => [...prev, mapped]);
+  }, [user]);
 
   const updateGoal = useCallback(async (goal: Goal) => {
     const { error } = await supabase.from('goals').update({
@@ -326,25 +389,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       deadline: goal.deadline ?? null,
       status: goal.status,
     }).eq('id', goal.id);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to update goal: ${error.message}`); return; }
+    setGoals(prev => prev.map(g => g.id === goal.id ? goal : g));
+  }, []);
 
   const removeGoal = useCallback(async (id: string) => {
     const { error } = await supabase.from('goals').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [fetchAll]);
+    if (error) { toast.error(`Failed to delete goal: ${error.message}`); return; }
+    setGoals(prev => prev.filter(g => g.id !== id));
+  }, []);
 
   const addGoalProgress = useCallback(async (goalId: string, amount: number) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
-    const { error } = await supabase.from('goals').update({
-      saved_amount: goal.savedAmount + amount,
-    }).eq('id', goalId);
-    if (error) { toast.error(error.message); return; }
-    await fetchAll();
-  }, [goals, fetchAll]);
+    const newSaved = goal.savedAmount + amount;
+    const { error } = await supabase.from('goals').update({ saved_amount: newSaved }).eq('id', goalId);
+    if (error) { toast.error(`Failed to update goal progress: ${error.message}`); return; }
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, savedAmount: newSaved } : g));
+  }, [goals]);
 
   return (
     <FinanceContext.Provider value={{
