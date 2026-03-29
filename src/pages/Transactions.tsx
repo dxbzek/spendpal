@@ -1,9 +1,8 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2, Download, Filter, Wallet, CalendarRange, X, AlertTriangle, Store } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { CATEGORIES } from '@/types/finance';
 import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO, differenceInHours } from 'date-fns';

@@ -6,7 +6,7 @@ import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, addDays, getMonth, getYear } from 'date-fns';
+import { format, parseISO, addDays } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,7 +71,6 @@ const Accounts = () => {
     let running = startBalance;
     for (let d = 1; d <= 30; d++) {
       const date = addDays(now, d);
-      const dm = getMonth(date), dy = getYear(date);
       // Check for recurring transactions due this day of month
       recurring.forEach(r => {
         const lastDate = parseISO(r.date);

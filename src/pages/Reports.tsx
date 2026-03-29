@@ -293,16 +293,14 @@ const Reports = () => {
       {dayOfWeekData.some(d => d.total > 0) && (
         <div className="bg-card rounded-2xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Spending by Day of Week</h2>
-          <div className="flex items-end gap-1.5 h-20">
+          <div className="flex items-end gap-1.5">
             {dayOfWeekData.map(({ label, total, pct }) => (
               <div key={label} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[9px] text-muted-foreground">{total > 0 ? fmt(total) : ''}</span>
-                <div className="w-full rounded-t-sm bg-muted overflow-hidden" style={{ height: '52px' }}>
-                  <div
-                    className="w-full rounded-t-sm bg-primary transition-all mt-auto"
-                    style={{ height: `${pct}%`, marginTop: `${100 - pct}%` }}
-                  />
-                </div>
+                <span className="text-[9px] text-muted-foreground leading-none">{total > 0 ? fmt(total) : ''}</span>
+                <div
+                  className={`w-full rounded-t-sm transition-all ${total > 0 ? 'bg-primary' : 'bg-muted'}`}
+                  style={{ height: `${Math.max(pct * 0.52, total > 0 ? 4 : 2)}px` }}
+                />
                 <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
               </div>
             ))}
