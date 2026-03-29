@@ -22,7 +22,7 @@ import {
 const UNDO_DELAY_MS = 5000;
 
 const Transactions = () => {
-  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, updateTransaction } = useFinance();
+  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, updateTransaction, loading } = useFinance();
   const { fmtSigned, fmt } = useCurrency();
   const { openEditSheet } = useEditTransaction();
   const { categories: allCategories } = useCategories();
@@ -264,6 +264,12 @@ const Transactions = () => {
       </div>
     );
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div>
