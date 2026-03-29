@@ -10,7 +10,7 @@ import ImportStatementSheet from '@/components/transactions/ImportStatementSheet
 import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useEditTransaction } from '@/components/layout/AppLayout';
+import { useEditTransaction } from '@/context/EditTxContext';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,

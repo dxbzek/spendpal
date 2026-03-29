@@ -6,14 +6,8 @@ import DesktopSidebar from './DesktopSidebar';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import type { Transaction } from '@/types/finance';
-import { createContext, useContext } from 'react';
-
-interface EditTxContextType {
-  openEditSheet: (tx: Transaction) => void;
-}
-
-const EditTxContext = createContext<EditTxContextType>({ openEditSheet: () => {} });
-export const useEditTransaction = () => useContext(EditTxContext);
+import { EditTxContext } from '@/context/EditTxContext';
+export { useEditTransaction } from '@/context/EditTxContext';
 
 const AppLayout = () => {
   const [showAdd, setShowAdd] = useState(false);
