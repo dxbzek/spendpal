@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PageSpinner } from '@/components/ui/spinner';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, TrendingDown, History, BookmarkPlus, FolderOpen } from 'lucide-react';
@@ -33,7 +34,7 @@ function loadTemplates(): BudgetTemplate[] {
 }
 
 const Budgets = () => {
-  const { budgets, transactions, removeBudget, bulkRemoveBudgets, addBudget } = useFinance();
+  const { budgets, transactions, removeBudget, bulkRemoveBudgets, addBudget, loading } = useFinance();
   const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
   const [showAddBudget, setShowAddBudget] = useState(false);
@@ -121,6 +122,8 @@ const Budgets = () => {
     if (pct >= 80) return 'text-warning';
     return 'text-income';
   };
+
+  if (loading) return <PageSpinner />;
 
   return (
     <div>
@@ -249,8 +252,8 @@ const Budgets = () => {
                       ) : (
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                       )}
-                      <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
-                      <button onClick={() => setDeleteBudgetId(b.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
+                      <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} aria-label="Edit budget" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2"><Edit2 size={14} /></button>
+                      <button onClick={() => setDeleteBudgetId(b.id)} aria-label="Delete budget" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2"><Trash2 size={14} /></button>
                     </div>
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">

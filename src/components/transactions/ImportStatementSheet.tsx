@@ -65,7 +65,7 @@ function normalizeDate(d: string): string {
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, transactions, addTransaction, updateAccount } = useFinance();
   const { loading, categorizeStatement } = useAI();
-  const { currency, symbol } = useCurrency();
+  const { currency, symbol, fmt } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
   const [statementText, setStatementText] = useState('');
   const [fileName, setFileName] = useState('');
@@ -296,7 +296,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                       <p className="text-xs text-muted-foreground">{row.category} · {row.date}</p>
                     </div>
                     <p className={`text-sm font-heading ${row.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                      {row.type === 'income' ? '+' : '-'}{symbol}{Math.abs(row.amount).toFixed(2)}
+                      {row.type === 'income' ? '+' : '-'}{fmt(Math.abs(row.amount))}
                     </p>
                   </button>
                 ))}

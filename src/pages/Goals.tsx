@@ -1,3 +1,4 @@
+import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -92,11 +93,7 @@ const Goals = () => {
     return `~${years.toFixed(1)} year${years >= 2 ? 's' : ''}`;
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <PageSpinner />;
 
   return (
     <div>
@@ -162,8 +159,8 @@ const Goals = () => {
                           {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d`}
                         </span>
                       )}
-                      <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
-                      <button onClick={() => setDeleteGoalId(goal.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
+                      <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} aria-label="Edit goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2"><Edit2 size={14} /></button>
+                      <button onClick={() => setDeleteGoalId(goal.id)} aria-label="Delete goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2"><Trash2 size={14} /></button>
                     </div>
                   </div>
                   {/* Prominent percentage */}

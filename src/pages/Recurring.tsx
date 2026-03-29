@@ -1,3 +1,4 @@
+import { PageSpinner } from '@/components/ui/spinner';
 import { useMemo, useState } from 'react';
 import { format, parseISO, getMonth, getYear } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
@@ -60,11 +61,7 @@ const Recurring = () => {
   const monthlyCommitted = groups.reduce((s, g) => s + g.avgAmount, 0);
   const dueTotal = groups.filter(g => !g.paidThisMonth).reduce((s, g) => s + g.avgAmount, 0);
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <PageSpinner />;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-5">
