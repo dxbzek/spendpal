@@ -21,7 +21,7 @@ function minPayment(principal: number): number {
 }
 
 const Debt = () => {
-  const { accounts } = useFinance();
+  const { accounts, loading } = useFinance();
   const { fmt } = useCurrency();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aprs, setAprs] = useState<Record<string, number>>({});
@@ -56,6 +56,12 @@ const Debt = () => {
     if (pct >= 30) return 'bg-warning';
     return 'bg-primary';
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div>

@@ -18,7 +18,7 @@ interface InstallmentPlan {
 }
 
 const Installments = () => {
-  const { transactions } = useFinance();
+  const { transactions, loading } = useFinance();
   const { fmt } = useCurrency();
 
   const plans = useMemo<InstallmentPlan[]>(() => {
@@ -66,6 +66,12 @@ const Installments = () => {
   const activePlans = plans.filter(p => p.paidInstallments < p.totalInstallments);
   const completedPlans = plans.filter(p => p.paidInstallments >= p.totalInstallments);
   const totalRemaining = activePlans.reduce((s, p) => s + (p.totalAmount - p.paidAmount), 0);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-6">

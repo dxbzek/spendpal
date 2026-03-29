@@ -25,7 +25,7 @@ function saveLog(id: string, log: Contribution[]) {
 }
 
 const Goals = () => {
-  const { goals, transactions, accounts, addGoalProgress, removeGoal } = useFinance();
+  const { goals, transactions, accounts, addGoalProgress, removeGoal, loading } = useFinance();
   const { fmt } = useCurrency();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
@@ -91,6 +91,12 @@ const Goals = () => {
     const years = months / 12;
     return `~${years.toFixed(1)} year${years >= 2 ? 's' : ''}`;
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div>
@@ -221,7 +227,7 @@ const Goals = () => {
         )}
       </div>
 
-      <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) setProgressGoalId(null); }}>
+      <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) { setProgressGoalId(null); setProgressAmount(''); setProgressNote(''); } }}>
         <DialogContent className="max-w-sm mx-auto">
           <DialogHeader>
             <DialogTitle>Add Progress</DialogTitle>
