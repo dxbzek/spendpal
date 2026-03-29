@@ -28,7 +28,7 @@ const AppLayout = () => {
 
   return (
     <EditTxContext.Provider value={{ openEditSheet }}>
-      <div className="min-h-screen bg-background flex">
+      <div className="h-screen bg-background flex overflow-hidden">
         {!isMobile && (
           <DesktopSidebar
             onAddClick={() => { setEditTx(null); setShowAdd(true); }}
@@ -36,8 +36,8 @@ const AppLayout = () => {
           />
         )}
 
-        <div className="flex-1 min-w-0">
-          <main className={isMobile ? 'pb-24' : 'pb-8'}>
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <main className={isMobile ? 'pb-28' : 'pb-8'}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}

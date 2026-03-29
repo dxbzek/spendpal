@@ -68,7 +68,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside className={`${collapsed ? 'w-16' : 'w-60'} shrink-0 border-r border-border bg-card h-screen sticky top-0 flex flex-col py-4 transition-all duration-200`}>
+      <aside className={`${collapsed ? 'w-16' : 'w-60'} shrink-0 border-r border-border bg-card h-full flex flex-col py-4 transition-all duration-200 overflow-hidden`}>
         {/* Brand */}
         <div className={`px-4 flex items-center gap-3 mb-2 ${collapsed ? 'justify-center' : ''}`}>
           <img src={logo} alt="SpendPal" className="w-8 h-8 rounded-xl object-cover shrink-0" />
@@ -109,7 +109,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
         </div>
 
         {/* Main Nav Items */}
-        <nav className="flex-1 px-3 space-y-0.5">
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto min-h-0">
           {NAV_ITEMS_MAIN.map(item => (
             <NavButton
               key={item.path}
