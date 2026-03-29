@@ -296,7 +296,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                       <p className="text-xs text-muted-foreground">{row.category} · {row.date}</p>
                     </div>
                     <p className={`text-sm font-heading ${row.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                      {row.type === 'income' ? '+' : '-'}د.إ {Math.abs(row.amount).toFixed(2)}
+                      {row.type === 'income' ? '+' : '-'}{symbol}{Math.abs(row.amount).toFixed(2)}
                     </p>
                   </button>
                 ))}

@@ -367,7 +367,7 @@ const Settings = () => {
         setAvatarUrl(data.avatar_url);
       }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [user]);
 
   const filteredCurrencies = currencySearch

@@ -104,7 +104,7 @@ const Budgets = () => {
       for (const item of template.items) {
         const exists = budgets.find(b => b.category === item.category && b.month === monthKey);
         if (!exists) {
-          await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as any, month: monthKey });
+          await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as 'monthly' | 'weekly', month: monthKey });
         }
       }
       toast.success(`Applied ${template.items.length} budgets from template`);

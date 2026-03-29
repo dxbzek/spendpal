@@ -75,7 +75,7 @@ const Debt = () => {
               </div>
               <div className="bg-primary-foreground/10 rounded-2xl p-3 backdrop-blur-sm">
                 <p className="text-primary-foreground/70 text-[11px] mb-0.5">Utilization</p>
-                <p className={`text-lg font-heading ${overallUtil >= 30 ? 'text-yellow-300' : 'text-primary-foreground'}`}>{overallUtil.toFixed(0)}%</p>
+                <p className={`text-lg font-heading ${overallUtil >= 30 ? 'text-warning' : 'text-primary-foreground'}`}>{overallUtil.toFixed(0)}%</p>
               </div>
             </div>
           ) : (
