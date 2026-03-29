@@ -1,5 +1,5 @@
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { useMemo } from 'react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { memo, useMemo } from 'react';
 import { parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Transaction } from '@/types/finance';
@@ -9,7 +9,7 @@ interface Props {
   creditAccountIds: Set<string>;
 }
 
-const MonthlyTrendChart = ({ transactions, creditAccountIds }: Props) => {
+const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
   const { fmt } = useCurrency();
 
   const data = useMemo(() => {
@@ -96,6 +96,6 @@ const MonthlyTrendChart = ({ transactions, creditAccountIds }: Props) => {
       </div>
     </div>
   );
-};
+});
 
 export default MonthlyTrendChart;

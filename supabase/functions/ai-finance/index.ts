@@ -1,8 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Restrict to your production domain. The ALLOWED_ORIGIN env var should be set
+// in the Supabase dashboard (e.g. "https://spendpal.vercel.app").
+// Falls back to the wildcard only if the env var is not configured, so local
+// development continues to work without extra setup.
+const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": allowedOrigin,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
@@ -41,6 +47,15 @@ serve(async (req) => {
     }
 
     const { type, data } = JSON.parse(body);
+
+    const ALLOWED_TYPES = ["summary", "budget-suggestions", "categorize-csv", "monthly-report", "budget-advisor"] as const;
+    type AllowedType = typeof ALLOWED_TYPES[number];
+    if (!ALLOWED_TYPES.includes(type as AllowedType)) {
+      return new Response(JSON.stringify({ error: "Invalid request type" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
@@ -220,10 +235,6 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       ];
       toolChoice = { type: "function", function: { name: "budget_analysis" } };
 
-    } else {
-      return new Response(JSON.stringify({ error: "Invalid request type" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     const requestBody: any = {

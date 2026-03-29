@@ -34,3 +34,12 @@ export const CATEGORY_CHART_COLORS = {
 
 export const getCategoryChartColor = (category: string, index: number): string =>
   COLORS_MAP[category] || FALLBACK[index % FALLBACK.length];
+
+/**
+ * Extract the first emoji character from a category icon string.
+ * Falls back to the first character if no emoji is found.
+ */
+export const extractEmoji = (icon: string): string => {
+  const match = icon.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
+  return match ? match[0] : icon.charAt(0);
+};

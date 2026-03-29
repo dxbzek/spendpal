@@ -82,11 +82,12 @@ const AIAdvisor = () => {
   const [activeSimTab, setActiveSimTab] = useState<string>('envelope');
   const [applyingEnvelopes, setApplyingEnvelopes] = useState(false);
 
+  // monthKey is stable for the lifetime of the session — the month won't change
+  // while the user has the app open, so an empty dep array is correct here.
   const monthKey = useMemo(() => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [new Date().getMonth(), new Date().getFullYear()]);
+  }, []);
   const now = useMemo(() => new Date(), [new Date().getMonth(), new Date().getFullYear()]);
 
   // Build financial summary for AI
@@ -309,8 +310,8 @@ const AIAdvisor = () => {
               <div className="bg-card rounded-2xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Behavior Insights</h3>
                 <div className="space-y-2.5">
-                  {analysis.insights.map((insight, i) => (
-                    <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${INSIGHT_COLORS[insight.type]}`}>
+                  {analysis.insights.map((insight) => (
+                    <div key={insight.title} className={`flex items-start gap-3 p-3 rounded-xl border ${INSIGHT_COLORS[insight.type]}`}>
                       <div className="shrink-0 mt-0.5">{INSIGHT_ICONS[insight.type]}</div>
                       <div>
                         <p className="text-sm font-medium">{insight.title}</p>
@@ -332,10 +333,10 @@ const AIAdvisor = () => {
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {analysis.suggestedEnvelopes.map((env, i) => {
+                  {analysis.suggestedEnvelopes.map((env) => {
                     const diff = env.amount - env.currentSpending;
                     return (
-                      <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                      <div key={env.category} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
                         <div className="flex items-center gap-2.5">
                           <span className="text-lg">{env.icon}</span>
                           <div>
@@ -414,16 +415,16 @@ const AIAdvisor = () => {
                                   <div className="bg-income/5 border border-income/20 rounded-xl p-3">
                                     <h4 className="font-heading text-xs text-income mb-2">✅ Pros</h4>
                                     <ul className="space-y-1">
-                                      {detail.pros.map((p, i) => (
-                                        <li key={i} className="text-xs text-foreground/70">• {p}</li>
+                                      {detail.pros.map((p) => (
+                                        <li key={p} className="text-xs text-foreground/70">• {p}</li>
                                       ))}
                                     </ul>
                                   </div>
                                   <div className="bg-expense/5 border border-expense/20 rounded-xl p-3">
                                     <h4 className="font-heading text-xs text-expense mb-2">⚠️ Cons</h4>
                                     <ul className="space-y-1">
-                                      {detail.cons.map((c, i) => (
-                                        <li key={i} className="text-xs text-foreground/70">• {c}</li>
+                                      {detail.cons.map((c) => (
+                                        <li key={c} className="text-xs text-foreground/70">• {c}</li>
                                       ))}
                                     </ul>
                                   </div>
@@ -484,8 +485,8 @@ const AIAdvisor = () => {
               <div className="bg-card rounded-2xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Recommended Adjustments</h3>
                 <div className="space-y-2.5">
-                  {analysis.dynamicAdjustments.map((adj, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-accent/30 rounded-xl">
+                  {analysis.dynamicAdjustments.map((adj) => (
+                    <div key={adj.action} className="flex items-start gap-3 p-3 bg-accent/30 rounded-xl">
                       <ArrowRight size={16} className="text-primary shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-medium">{adj.action}</p>

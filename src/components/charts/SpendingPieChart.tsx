@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useCurrency } from '@/context/CurrencyContext';
 import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
@@ -6,7 +7,7 @@ interface Props {
   data: { name: string; value: number; icon: string }[];
 }
 
-const SpendingPieChart = ({ data }: Props) => {
+const SpendingPieChart = memo(({ data }: Props) => {
   const { fmt } = useCurrency();
 
   if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No expense data to visualize</p>;
@@ -31,7 +32,7 @@ const SpendingPieChart = ({ data }: Props) => {
               animationEasing="ease-out"
             >
               {data.map((entry, i) => (
-                <Cell key={i} fill={CATEGORY_CHART_COLORS[entry.name] || CATEGORY_CHART_COLORS._default(i)} />
+                <Cell key={entry.name} fill={CATEGORY_CHART_COLORS[entry.name] || CATEGORY_CHART_COLORS._default(i)} />
               ))}
             </Pie>
             <Tooltip
@@ -54,6 +55,6 @@ const SpendingPieChart = ({ data }: Props) => {
       </div>
     </div>
   );
-};
+});
 
 export default SpendingPieChart;

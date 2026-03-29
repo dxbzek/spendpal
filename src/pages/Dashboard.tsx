@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
+import { CATEGORY_CHART_COLORS, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import BudgetAlertBanners from '@/components/dashboard/BudgetAlertBanners';
 import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
@@ -61,12 +61,8 @@ const Dashboard = () => {
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
-  const now = useMemo(() => {
-    const d = new Date();
-    // Re-derive only when month/year actually changes (stable within session)
-    return d;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [new Date().getMonth(), new Date().getFullYear()]);
+  // Stable within session — the date object is computed once on mount.
+  const now = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => {
     if (period === 'all') return transactions;
@@ -129,7 +125,7 @@ const Dashboard = () => {
         <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
           <div className={`flex items-center ${isMobile ? 'justify-between mb-6' : 'justify-between mb-4'}`}>
             <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
-            <button onClick={toggleHidden} className="text-primary-foreground/80 p-2 -mr-2 rounded-lg" aria-label={hidden ? 'Show balance' : 'Hide balance'}>
+            <button onClick={toggleHidden} className="text-primary-foreground/80 p-2 -mr-2 rounded-lg" aria-label={hidden ? 'Show balance' : 'Hide balance'} aria-pressed={hidden}>
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
@@ -454,7 +450,7 @@ const Dashboard = () => {
               {recentTx.map(tx => (
                 <div key={tx.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{tx.categoryIcon.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u)?.[0] || tx.categoryIcon.charAt(0)}</span>
+                    <span className="text-xl">{extractEmoji(tx.categoryIcon)}</span>
                     <div>
                       <p className="text-sm font-medium">{tx.merchant}</p>
                       <p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>

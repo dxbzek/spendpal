@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -46,25 +46,32 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
   }, [open, editGoal]);
 
   const selected = GOAL_TYPES.find(g => g.name === goalType);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !goalType || !targetAmount) return;
-    const data = {
-      name: name.trim(),
-      icon: selected?.icon || '🎯',
-      type: goalType,
-      targetAmount: parseFloat(targetAmount),
-      savedAmount: editGoal?.savedAmount || 0,
-      deadline: deadline ? format(deadline, 'yyyy-MM-dd') : undefined,
-      status: (editGoal?.status || 'active') as 'active' | 'completed' | 'paused',
-    };
-
-    if (isEdit) {
-      await updateGoal({ ...data, id: editGoal.id });
-    } else {
-      await addGoal(data);
+    if (!name.trim() || !goalType || !targetAmount || submitting) return;
+    const parsedTarget = parseFloat(targetAmount);
+    if (isNaN(parsedTarget) || parsedTarget <= 0) return;
+    setSubmitting(true);
+    try {
+      const data = {
+        name: name.trim(),
+        icon: selected?.icon || '🎯',
+        type: goalType,
+        targetAmount: parsedTarget,
+        savedAmount: editGoal?.savedAmount || 0,
+        deadline: deadline ? format(deadline, 'yyyy-MM-dd') : undefined,
+        status: (editGoal?.status || 'active') as 'active' | 'completed' | 'paused',
+      };
+      if (isEdit) {
+        await updateGoal({ ...data, id: editGoal.id });
+      } else {
+        await addGoal(data);
+      }
+      onOpenChange(false);
+    } finally {
+      setSubmitting(false);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -76,7 +83,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
         <div className="space-y-4 mt-2">
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Goal Name</label>
-            <Input placeholder="e.g., Emergency Fund" value={name} onChange={e => setName(e.target.value)} />
+            <Input placeholder="e.g., Emergency Fund" value={name} onChange={e => setName(e.target.value)} maxLength={80} />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">Type</label>
@@ -94,7 +101,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Target Amount ({currency})</label>
-            <Input type="number" placeholder="10000" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} />
+            <Input type="number" placeholder="10000" min="0.01" step="0.01" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Deadline (optional)</label>
@@ -115,8 +122,9 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
               </button>
             )}
           </div>
-          <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || !targetAmount}
+          <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || !targetAmount || submitting}
             className="w-full gradient-primary text-primary-foreground">
+            {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Create Goal'}
           </Button>
         </div>

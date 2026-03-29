@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
 import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
-import { getCategoryChartColor } from '@/utils/categoryColors';
+import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditTransaction } from '@/components/layout/AppLayout';
 import {
@@ -91,11 +91,6 @@ const Transactions = () => {
 
   const renderTxContent = (tx: typeof filtered[0], idx: number) => {
     const catColor = getCategoryChartColor(tx.category, idx);
-    const emojiOnly = (str: string) => {
-      const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
-      return match ? match[0] : str.charAt(0);
-    };
-    
     const pair = transferPairs.get(tx.id);
     const isLinkedTransfer = !!pair;
     const fromAccountName = isLinkedTransfer ? getAccountName(pair.from.accountId) : '';
@@ -107,7 +102,7 @@ const Transactions = () => {
         onClick={() => openEditSheet(tx)}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <span className="text-2xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
+          <span className="text-2xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
            <div className="min-w-0">
              <p className="text-sm font-medium truncate">
                {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}

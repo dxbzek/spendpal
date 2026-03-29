@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
 import { useNavigate } from 'react-router-dom';
@@ -96,25 +97,49 @@ const DataBackupCard = () => {
   const handleConfirmRestore = async () => {
     if (!pendingFile || !user) return;
     setShowConfirm(false);
+    setRestoring(true);
+
+    // 1. Parse and validate the backup file
+    let data: {
+      version: number;
+      accounts: Array<Record<string, unknown>>;
+      transactions: Array<Record<string, unknown>>;
+      budgets?: Array<Record<string, unknown>>;
+      goals?: Array<Record<string, unknown>>;
+    };
+    try {
+      const text = await pendingFile.text();
+      data = JSON.parse(text) as typeof data;
+    } catch {
+      toast.error('Invalid backup file: could not parse JSON.');
+      setRestoring(false);
+      setPendingFile(null);
+      return;
+    }
+
+    if (!data.version || !Array.isArray(data.accounts) || !Array.isArray(data.transactions)) {
+      toast.error('Invalid backup file: missing required fields (version, accounts, transactions).');
+      setRestoring(false);
+      setPendingFile(null);
+      return;
+    }
 
     try {
-      setRestoring(true);
-      const text = await pendingFile.text();
-      const data = JSON.parse(text);
-
-      if (!data.version || !data.accounts || !data.transactions) {
-        toast.error('Invalid backup file format');
-        return;
+      // 2. Delete existing data — check each result for errors
+      const [delTx, delBgt, delGoal, delAcc] = await Promise.all([
+        supabase.from('transactions').delete().eq('user_id', user.id),
+        supabase.from('budgets').delete().eq('user_id', user.id),
+        supabase.from('goals').delete().eq('user_id', user.id),
+        supabase.from('accounts').delete().eq('user_id', user.id),
+      ]);
+      for (const res of [delTx, delBgt, delGoal, delAcc]) {
+        if (res.error) throw res.error;
       }
 
-      await supabase.from('transactions').delete().eq('user_id', user.id);
-      await supabase.from('budgets').delete().eq('user_id', user.id);
-      await supabase.from('goals').delete().eq('user_id', user.id);
-      await supabase.from('accounts').delete().eq('user_id', user.id);
-
-      if (data.accounts?.length) {
+      // 3. Re-insert accounts
+      if (data.accounts.length) {
         const { error } = await supabase.from('accounts').insert(
-          data.accounts.map((a: any) => ({
+          data.accounts.map((a) => ({
             user_id: user.id, name: a.name, type: a.type, balance: a.balance,
             currency: a.currency, icon: a.icon, credit_limit: a.creditLimit ?? null,
             due_date: a.dueDate ?? null, statement_date: a.statementDate ?? null,
@@ -123,24 +148,29 @@ const DataBackupCard = () => {
         if (error) throw error;
       }
 
-      const { data: newAccounts } = await supabase.from('accounts').select('*').eq('user_id', user.id);
+      // 4. Build old→new account ID map
+      const { data: newAccounts, error: accFetchErr } = await supabase
+        .from('accounts').select('*').eq('user_id', user.id);
+      if (accFetchErr) throw accFetchErr;
       const accountMap: Record<string, string> = {};
-      if (newAccounts) {
-        data.accounts.forEach((old: any) => {
-          const match = newAccounts.find((n: any) => n.name === old.name && n.type === old.type);
-          if (match) accountMap[old.id] = match.id;
-        });
-      }
+      data.accounts.forEach((old) => {
+        const match = (newAccounts ?? []).find(
+          (n) => n.name === old.name && n.type === old.type
+        );
+        if (match) accountMap[old.id as string] = match.id as string;
+      });
 
-      if (data.transactions?.length) {
+      // 5. Re-insert transactions
+      if (data.transactions.length) {
         const mapped = data.transactions
-          .filter((t: any) => accountMap[t.accountId])
-          .map((t: any) => ({
-            user_id: user.id, account_id: accountMap[t.accountId], type: t.type,
+          .filter((t) => accountMap[t.accountId as string])
+          .map((t) => ({
+            user_id: user.id, account_id: accountMap[t.accountId as string], type: t.type,
             amount: t.amount, currency: t.currency, category: t.category,
             category_icon: t.categoryIcon, merchant: t.merchant, date: t.date,
             note: t.note ?? null, is_recurring: t.isRecurring ?? false,
-            total_installments: t.totalInstallments ?? null, current_installment: t.currentInstallment ?? null,
+            total_installments: t.totalInstallments ?? null,
+            current_installment: t.currentInstallment ?? null,
           }));
         if (mapped.length) {
           const { error } = await supabase.from('transactions').insert(mapped);
@@ -148,9 +178,10 @@ const DataBackupCard = () => {
         }
       }
 
+      // 6. Re-insert budgets
       if (data.budgets?.length) {
         const { error } = await supabase.from('budgets').insert(
-          data.budgets.map((b: any) => ({
+          data.budgets.map((b) => ({
             user_id: user.id, category: b.category, category_icon: b.categoryIcon,
             amount: b.amount, period: b.period, month: b.month,
           }))
@@ -158,9 +189,10 @@ const DataBackupCard = () => {
         if (error) throw error;
       }
 
+      // 7. Re-insert goals
       if (data.goals?.length) {
         const { error } = await supabase.from('goals').insert(
-          data.goals.map((g: any) => ({
+          data.goals.map((g) => ({
             user_id: user.id, name: g.name, icon: g.icon, type: g.type,
             target_amount: g.targetAmount, saved_amount: g.savedAmount,
             deadline: g.deadline ?? null, status: g.status,
@@ -170,10 +202,13 @@ const DataBackupCard = () => {
       }
 
       await refresh();
-      toast.success(`Restored ${data.accounts.length} accounts, ${data.transactions.length} transactions`);
-    } catch (err: any) {
-      console.error('Restore failed', err);
-      toast.error('Restore failed: ' + (err.message || 'Unknown error'));
+      toast.success(
+        `Restored ${data.accounts.length} accounts and ${data.transactions.length} transactions.`
+      );
+    } catch (err: unknown) {
+      logger.error('Restore failed', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Restore failed: ${msg}`);
     } finally {
       setRestoring(false);
       setPendingFile(null);

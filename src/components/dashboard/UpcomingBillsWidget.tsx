@@ -61,12 +61,12 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
         <h2 className="font-heading text-sm">Upcoming Bills</h2>
       </div>
       <div className="space-y-2">
-        {upcomingBills.map((bill, i) => {
+        {upcomingBills.map((bill) => {
           const urgent = bill.daysLeft <= 3;
           const soon = bill.daysLeft <= 7;
           return (
             <div
-              key={i}
+              key={`${bill.name}-${bill.dueDate.getTime()}`}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors ${
                 urgent
                   ? 'bg-expense/8 border border-expense/20'

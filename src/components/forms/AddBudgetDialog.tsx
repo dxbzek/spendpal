@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,23 +24,30 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const [period, setPeriod] = useState<'monthly' | 'weekly'>(editBudget?.period || 'monthly');
 
   const selectedCat = CATEGORIES.find(c => c.name === category);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!category || !amount) return;
-    const data = {
-      category,
-      categoryIcon: selectedCat?.icon || '📌',
-      amount: parseFloat(amount),
-      period,
-      month: format(new Date(), 'yyyy-MM'),
-    };
-
-    if (isEdit) {
-      await updateBudget({ ...data, id: editBudget.id, spent: editBudget.spent });
-    } else {
-      await addBudget(data);
+    if (!category || !amount || submitting) return;
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+    setSubmitting(true);
+    try {
+      const data = {
+        category,
+        categoryIcon: selectedCat?.icon || '📌',
+        amount: parsedAmount,
+        period,
+        month: format(new Date(), 'yyyy-MM'),
+      };
+      if (isEdit) {
+        await updateBudget({ ...data, id: editBudget.id, spent: editBudget.spent });
+      } else {
+        await addBudget(data);
+      }
+      onOpenChange(false);
+    } finally {
+      setSubmitting(false);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -62,7 +70,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
-            <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+            <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Period</label>
@@ -74,7 +82,8 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleSubmit} disabled={!category || !amount} className="w-full gradient-primary text-primary-foreground">
+          <Button onClick={handleSubmit} disabled={!category || !amount || submitting} className="w-full gradient-primary text-primary-foreground">
+            {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Add Budget'}
           </Button>
         </div>

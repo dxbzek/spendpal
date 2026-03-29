@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
@@ -24,6 +26,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const [statementDate, setStatementDate] = useState('');
 
   const isEdit = !!editAccount;
+  const [submitting, setSubmitting] = useState(false);
 
   // Sync form when editAccount changes or dialog opens
   useEffect(() => {
@@ -38,24 +41,37 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   }, [open, editAccount]);
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
-    const data = {
-      name: name.trim(),
-      type,
-      balance: parseFloat(balance) || 0,
-      currency,
-      icon: ACCOUNT_ICONS[type],
-      creditLimit: type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined,
-      dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
-      statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
-    };
-
-    if (isEdit) {
-      await updateAccount({ ...data, id: editAccount.id });
-    } else {
-      await addAccount(data);
+    if (!name.trim() || submitting) return;
+    const parsedBalance = parseFloat(balance) || 0;
+    const parsedCreditLimit = type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined;
+    // For non-credit accounts, disallow negative balances
+    if (type !== 'credit' && parsedBalance < 0) { toast.error('Balance cannot be negative'); return; }
+    // For credit accounts, ensure available limit does not exceed credit limit
+    if (type === 'credit' && parsedCreditLimit !== undefined && parsedBalance > parsedCreditLimit) {
+      toast.error('Available limit cannot exceed credit limit');
+      return;
     }
-    onOpenChange(false);
+    setSubmitting(true);
+    try {
+      const data = {
+        name: name.trim(),
+        type,
+        balance: parsedBalance,
+        currency,
+        icon: ACCOUNT_ICONS[type],
+        creditLimit: parsedCreditLimit,
+        dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
+        statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
+      };
+      if (isEdit) {
+        await updateAccount({ ...data, id: editAccount.id });
+      } else {
+        await addAccount(data);
+      }
+      onOpenChange(false);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -68,7 +84,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" maxLength={50} />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Type</label>
@@ -106,7 +122,8 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               </div>
             </div>
           )}
-          <Button onClick={handleSubmit} disabled={!name.trim()} className="w-full h-9 text-sm gradient-primary text-primary-foreground">
+          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-9 text-sm gradient-primary text-primary-foreground">
+            {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Add Account'}
           </Button>
         </div>

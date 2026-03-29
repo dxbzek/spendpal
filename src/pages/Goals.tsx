@@ -29,7 +29,9 @@ const Goals = () => {
 
   const handleAddProgress = async () => {
     if (!progressGoalId || !progressAmount) return;
-    await addGoalProgress(progressGoalId, parseFloat(progressAmount));
+    const amount = parseFloat(progressAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    await addGoalProgress(progressGoalId, amount);
     setProgressGoalId(null);
     setProgressAmount('');
   };
@@ -135,7 +137,7 @@ const Goals = () => {
           <div className="space-y-4 mt-2">
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Amount</label>
-              <Input type="number" placeholder="0.00" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} className="text-lg h-12" />
+              <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} className="text-lg h-12" />
             </div>
             <Button onClick={handleAddProgress} className="w-full gradient-primary text-primary-foreground">Save Progress</Button>
           </div>
