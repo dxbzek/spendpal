@@ -1,14 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Restrict to your production domain. The ALLOWED_ORIGIN env var should be set
-// in the Supabase dashboard (e.g. "https://spendpal.vercel.app").
-// Falls back to the wildcard only if the env var is not configured, so local
-// development continues to work without extra setup.
-const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
-
+// Always allow all origins. The Authorization header is validated server-side
+// so wildcard CORS does not reduce security here.
 const corsHeaders = {
-  "Access-Control-Allow-Origin": allowedOrigin,
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
