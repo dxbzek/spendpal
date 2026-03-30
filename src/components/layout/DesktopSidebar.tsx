@@ -4,18 +4,33 @@ import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wal
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const NAV_ITEMS_MAIN = [
-  { path: '/', label: 'Home', icon: LayoutDashboard },
-  { path: '/transactions', label: 'Transactions', icon: Receipt },
-  { path: '/accounts', label: 'Accounts', icon: Wallet },
-  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { path: '/goals', label: 'Goals', icon: Target },
-  { path: '/debt', label: 'Debt', icon: CreditCard },
-  { path: '/installments', label: 'Installments', icon: Layers },
-  { path: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/recurring', label: 'Recurring', icon: RefreshCw },
-  { path: '/advisor', label: 'AI Advisor', icon: Brain },
+const NAV_SECTIONS = [
+  {
+    label: 'Main',
+    items: [
+      { path: '/', label: 'Home', icon: LayoutDashboard },
+      { path: '/transactions', label: 'Transactions', icon: Receipt },
+      { path: '/accounts', label: 'Accounts', icon: Wallet },
+    ],
+  },
+  {
+    label: 'Planning',
+    items: [
+      { path: '/budgets', label: 'Budgets', icon: PiggyBank },
+      { path: '/goals', label: 'Goals', icon: Target },
+      { path: '/debt', label: 'Debt', icon: CreditCard },
+      { path: '/installments', label: 'Installments', icon: Layers },
+      { path: '/recurring', label: 'Recurring', icon: RefreshCw },
+    ],
+  },
+  {
+    label: 'Analytics',
+    items: [
+      { path: '/reports', label: 'Reports', icon: BarChart3 },
+      { path: '/calendar', label: 'Calendar', icon: CalendarDays },
+      { path: '/advisor', label: 'AI Advisor', icon: Brain },
+    ],
+  },
 ];
 
 const NAV_ITEM_SETTINGS = { path: '/settings', label: 'Settings', icon: Settings };
@@ -118,15 +133,26 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
         </div>
 
         {/* Main Nav Items */}
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto min-h-0">
-          {NAV_ITEMS_MAIN.map(item => (
-            <NavButton
-              key={item.path}
-              {...item}
-              active={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
-              collapsed={collapsed}
-            />
+        <nav className="flex-1 px-3 overflow-y-auto min-h-0 space-y-4">
+          {NAV_SECTIONS.map(section => (
+            <div key={section.label}>
+              {!collapsed && (
+                <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest px-3 mb-1">
+                  {section.label}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {section.items.map(item => (
+                  <NavButton
+                    key={item.path}
+                    {...item}
+                    active={location.pathname === item.path}
+                    onClick={() => navigate(item.path)}
+                    collapsed={collapsed}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
