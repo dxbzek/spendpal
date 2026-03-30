@@ -4,23 +4,56 @@ import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 
 const FUNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`;
-const AI_TIMEOUT_MS = 25_000;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
+/** Headers for raw fetch (streaming endpoints). Includes apikey required by Supabase gateway. */
 const getAuthHeaders = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Please sign in to use AI features');
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${session.access_token}`,
+    apikey: ANON_KEY,
   };
 };
 
 /** Shared fetch helper with AbortController timeout */
-async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = AI_TIMEOUT_MS): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('AI advisor is taking too long — please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Invoke a Supabase edge function with a timeout via AbortController. */
+async function invokeWithTimeout<T>(
+  fnName: string,
+  body: unknown,
+  timeoutMs: number,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { data, error } = await supabase.functions.invoke<T>(fnName, {
+      body,
+      signal: controller.signal,
+    });
+    if (error) {
+      // FunctionsHttpError has a context property with the response
+      const msg =
+        (error as { message?: string }).message ??
+        'AI advisor is unavailable. Please try again later.';
+      throw new Error(msg);
+    }
+    return data as T;
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new Error('AI advisor is taking too long — please try again.');
@@ -68,6 +101,7 @@ export const useAI = () => {
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState('');
 
+  // Streaming — uses raw fetch (supabase.functions.invoke doesn't support SSE)
   const generateSummary = useCallback(async (data: unknown) => {
     setLoading(true);
     setSummaryText('');
@@ -77,7 +111,7 @@ export const useAI = () => {
         method: 'POST',
         headers,
         body: JSON.stringify({ type: 'summary', data }),
-      }, 30_000); // streaming needs a longer timeout
+      }, 30_000);
 
       if (!resp.ok) {
         const err = await resp.json() as { error?: string };
@@ -130,23 +164,13 @@ export const useAI = () => {
   const generateBudgetSuggestions = useCallback(async (data: unknown): Promise<unknown[]> => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const resp = await fetchWithTimeout(FUNC_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ type: 'budget-suggestions', data }),
-      });
-
-      if (!resp.ok) {
-        const err = await resp.json() as { error?: string };
-        throw new Error(err.error ?? 'Failed to generate suggestions');
-      }
-
-      const body = await resp.json() as { result?: string };
+      const body = await invokeWithTimeout<{ result?: string }>(
+        'ai-finance',
+        { type: 'budget-suggestions', data },
+        25_000,
+      );
       const jsonMatch = body.result?.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]) as unknown[];
-      }
+      if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
       return [];
     } catch (e: unknown) {
       logger.error('generateBudgetSuggestions failed', e);
@@ -161,37 +185,29 @@ export const useAI = () => {
   const categorizeStatement = useCallback(async (text: string): Promise<unknown[] | null> => {
     setLoading(true);
 
-    const attempt = async (): Promise<Response> => {
-      const headers = await getAuthHeaders();
-      return fetchWithTimeout(FUNC_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ type: 'categorize-csv', data: text }),
-      }, 45_000); // large statements need extra time
-    };
+    const attempt = () =>
+      invokeWithTimeout<{ result?: string }>(
+        'ai-finance',
+        { type: 'categorize-csv', data: text },
+        45_000,
+      );
 
     try {
-      let resp: Response;
+      let body: { result?: string };
       try {
-        resp = await attempt();
+        body = await attempt();
       } catch (firstErr) {
         // Retry once on network-level failures (e.g. cold-start drop, transient error)
-        const isNetwork = firstErr instanceof TypeError || (firstErr instanceof Error && firstErr.message === 'Failed to fetch');
+        const isNetwork =
+          firstErr instanceof TypeError ||
+          (firstErr instanceof Error && firstErr.message.includes('Failed to fetch'));
         if (!isNetwork) throw firstErr;
         await new Promise(r => setTimeout(r, 2000));
-        resp = await attempt();
+        body = await attempt();
       }
 
-      if (!resp.ok) {
-        const err = await resp.json() as { error?: string };
-        throw new Error(err.error ?? 'Failed to categorize transactions');
-      }
-
-      const body = await resp.json() as { result?: string };
       const jsonMatch = body.result?.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]) as unknown[];
-      }
+      if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
       return [];
     } catch (e: unknown) {
       logger.error('categorizeStatement failed', e);
@@ -206,19 +222,11 @@ export const useAI = () => {
   const generateBudgetAnalysis = useCallback(async (data: unknown): Promise<BudgetAnalysis | null> => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const resp = await fetchWithTimeout(FUNC_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ type: 'budget-advisor', data }),
-      });
-
-      if (!resp.ok) {
-        const err = await resp.json() as { error?: string };
-        throw new Error(err.error ?? 'Failed to generate budget analysis');
-      }
-
-      const body = await resp.json() as { result?: unknown };
+      const body = await invokeWithTimeout<{ result?: unknown }>(
+        'ai-finance',
+        { type: 'budget-advisor', data },
+        25_000,
+      );
       const result = body.result;
       if (result && typeof result === 'object' && 'recommendedMethod' in result) {
         return result as BudgetAnalysis;
