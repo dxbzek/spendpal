@@ -169,7 +169,7 @@ export const useAI = () => {
         { type: 'budget-suggestions', data },
         25_000,
       );
-      const jsonMatch = body.result?.match(/\[[\s\S]*\]/);
+      const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
       if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
       return [];
     } catch (e: unknown) {
@@ -206,7 +206,7 @@ export const useAI = () => {
         body = await attempt();
       }
 
-      const jsonMatch = body.result?.match(/\[[\s\S]*\]/);
+      const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
       if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
       return [];
     } catch (e: unknown) {

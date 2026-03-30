@@ -106,6 +106,7 @@ interface FinanceContextType {
   removeAccount: (id: string) => Promise<void>;
   // Transactions
   addTransaction: (tx: Omit<Transaction, 'id'>, options?: { skipBalanceUpdate?: boolean }) => Promise<void>;
+  bulkAddTransactions: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   bulkRemoveTransactions: (ids: string[]) => Promise<void>;
@@ -259,6 +260,36 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: newBalance } : a));
       }
     }
+  }, [user]);
+
+  const bulkAddTransactions = useCallback(async (txs: Omit<Transaction, 'id'>[]) => {
+    if (!user || txs.length === 0) return;
+    const rows = txs.map(tx => ({
+      user_id: user.id,
+      account_id: tx.accountId,
+      type: tx.type,
+      amount: tx.amount,
+      currency: tx.currency,
+      category: tx.category,
+      category_icon: tx.categoryIcon,
+      merchant: tx.merchant,
+      date: tx.date,
+      note: tx.note ?? null,
+      is_recurring: tx.isRecurring ?? false,
+      total_installments: tx.totalInstallments ?? null,
+      current_installment: tx.currentInstallment ?? null,
+    }));
+    const { data, error } = await supabase.from('transactions').insert(rows).select();
+    if (error) { toast.error(`Failed to import transactions: ${error.message}`); return; }
+    const mapped = (data ?? []).map(mapTransaction).filter(Boolean) as Transaction[];
+    setTransactions(prev => {
+      const updated = [...mapped, ...prev];
+      setBudgets(b => {
+        const spentByCategory = computeSpentByCategory(updated);
+        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
+      });
+      return updated;
+    });
   }, [user]);
 
   const updateTransaction = useCallback(async (tx: Transaction) => {
@@ -426,14 +457,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const contextValue = useMemo(() => ({
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
-    addTransaction, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addTransaction, bulkAddTransactions, updateTransaction, removeTransaction, bulkRemoveTransactions,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
     addGoal, updateGoal, removeGoal, addGoalProgress,
     refresh: fetchAll,
   }), [
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
-    addTransaction, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addTransaction, bulkAddTransactions, updateTransaction, removeTransaction, bulkRemoveTransactions,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
     addGoal, updateGoal, removeGoal, addGoalProgress,
     fetchAll,

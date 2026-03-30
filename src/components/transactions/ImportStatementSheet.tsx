@@ -135,7 +135,7 @@ function normalizeDate(d: string): string {
 }
 
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
-  const { accounts, transactions, addTransaction, updateAccount } = useFinance();
+  const { accounts, transactions, bulkAddTransactions, updateAccount } = useFinance();
   const { loading, categorizeStatement } = useAI();
   const { currency, symbol, fmt } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -238,18 +238,16 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     const selected = parsed.filter(r => r.selected);
     if (selected.length === 0) { toast.error('No transactions selected'); return; }
 
-    for (const r of selected) {
-      await addTransaction({
-        type: r.type,
-        amount: Math.abs(r.amount),
-        currency,
-        category: r.category,
-        categoryIcon: r.categoryIcon,
-        merchant: r.merchant,
-        accountId,
-        date: r.date,
-      }, { skipBalanceUpdate: true });
-    }
+    await bulkAddTransactions(selected.map(r => ({
+      type: r.type,
+      amount: Math.abs(r.amount),
+      currency,
+      category: r.category,
+      categoryIcon: r.categoryIcon,
+      merchant: r.merchant,
+      accountId,
+      date: r.date,
+    })));
 
     toast.success(`Imported ${selected.length} transactions`);
     
