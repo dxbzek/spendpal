@@ -30,31 +30,52 @@ interface ParsedRow {
 
 async function extractPdfText(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+  // Use Vite's URL resolution to load the worker from the local package.
+  // Falls back to the unpkg CDN if the local path can't be resolved.
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url,
+    ).href;
+  } catch {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  }
+
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pages: string[] = [];
-  // Process up to 30 pages to avoid timeouts on large statements
+
+  // Process up to 30 pages to avoid timeouts on large statements.
   const pageCount = Math.min(pdf.numPages, 30);
+
   for (let i = 1; i <= pageCount; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // Group text items by their Y coordinate to reconstruct table rows.
+
+    // Group text items by approximate Y coordinate.
     // PDF Y is bottom-up, so sort descending (top of page first).
+    // Use a 3-unit tolerance band to handle font-baseline micro-shifts
+    // that cause items on the same visual row to have slightly different Ys.
     const lineMap = new Map<number, Array<{ x: number; str: string }>>();
     for (const item of content.items as Array<{ str: string; transform: number[] }>) {
       if (!item.str.trim()) continue;
-      const y = Math.round(item.transform[5]);
+      const rawY = item.transform[5];
       const x = item.transform[4];
-      if (!lineMap.has(y)) lineMap.set(y, []);
-      lineMap.get(y)!.push({ x, str: item.str });
+      // Find an existing bucket within ±3 units, or create a new one.
+      const bucketY = Array.from(lineMap.keys()).find(k => Math.abs(k - rawY) <= 3) ?? Math.round(rawY);
+      if (!lineMap.has(bucketY)) lineMap.set(bucketY, []);
+      lineMap.get(bucketY)!.push({ x, str: item.str });
     }
+
     const sortedYs = Array.from(lineMap.keys()).sort((a, b) => b - a);
     const lines = sortedYs.map(y =>
       lineMap.get(y)!.sort((a, b) => a.x - b.x).map(it => it.str).join('  ')
     );
     pages.push(lines.join('\n'));
   }
+
   return pages.join('\n\n');
 }
 
@@ -175,7 +196,11 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
     const textToProcess = cleanStatementText(raw);
     if (textToProcess.replace(/\s/g, '').length < 30) {
-      toast.error('The text doesn\'t appear to contain transaction data. Try copying the full statement table including dates and amounts.');
+      if (inputMode === 'file') {
+        toast.error('No transaction rows found in this PDF. The file may be scanned/image-based. Try using Paste Text mode — copy the statement table from your banking app or PDF viewer.');
+      } else {
+        toast.error('No transaction data found. Make sure the pasted text includes rows with dates and amounts.');
+      }
       return;
     }
     const results = await categorizeStatement(textToProcess);
