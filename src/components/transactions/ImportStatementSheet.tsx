@@ -88,30 +88,31 @@ async function extractExcelText(file: File): Promise<string> {
 }
 
 /**
- * Distil bank statement text down to transaction-relevant lines only.
+ * Remove obvious noise from extracted bank statement text while keeping
+ * everything that could be a transaction.
  *
- * Strategy:
- *  1. Keep lines that contain a date pattern (DD/MM/YYYY or YYYY-MM-DD) — these are transaction rows.
- *  2. Keep lines that end with a plain amount or "CR"/"DR" suffix — these are amount-only
- *     continuation lines produced by some banks for FX conversions.
- *  3. Drop everything else: bank disclaimers, Arabic boilerplate, page headers, table borders.
+ * Only strips:
+ *  - Blank lines
+ *  - Lines made entirely of border/decoration characters (+, -, =, |, *, ~, _)
+ *  - Lines that contain NO Latin characters and NO digits (e.g. pure Arabic boilerplate)
  *
- * This aggressively reduces noise while preserving all actual transaction data.
+ * Everything else — transaction rows, headers, footers, amounts — is kept.
+ * The AI is responsible for identifying which lines are actual transactions.
  */
 function cleanStatementText(text: string): string {
-  const dateRe = /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/;
-  const amountLineRe = /[\d,]+\.\d{2}\s*(CR|DR)?\s*$/i;
-
-  const kept = text
+  return text
     .split('\n')
     .filter(line => {
       const t = line.trim();
       if (!t) return false;
-      return dateRe.test(t) || amountLineRe.test(t);
+      // Drop pure table-border lines like "+------+------+" or "=========="
+      if (/^[\+\-\=\|\*\~\_\.\s]+$/.test(t)) return false;
+      // Drop lines with no Latin letters and no digits (pure Arabic / symbol-only)
+      if (!/[a-zA-Z0-9]/.test(t)) return false;
+      return true;
     })
-    .map(line => line.replace(/\s{3,}/g, '  ').trim());
-
-  return kept.join('\n');
+    .map(line => line.replace(/\s{5,}/g, '    ').trim())
+    .join('\n');
 }
 
 function normalizeDate(d: string): string {
@@ -197,9 +198,9 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     const textToProcess = cleanStatementText(raw);
     if (textToProcess.replace(/\s/g, '').length < 30) {
       if (inputMode === 'file') {
-        toast.error('No transaction rows found in this PDF. The file may be scanned/image-based. Try using Paste Text mode — copy the statement table from your banking app or PDF viewer.');
+        toast.error('Could not extract text from this PDF. If it is a scanned/image PDF, open it in your browser, select all (Ctrl+A), copy, then use the Paste Text tab.');
       } else {
-        toast.error('No transaction data found. Make sure the pasted text includes rows with dates and amounts.');
+        toast.error('The pasted content looks like a footer or table border — no transaction rows found. Copy the full statement table including dates and amounts, not just the bottom of the page.');
       }
       return;
     }
