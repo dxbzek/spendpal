@@ -105,20 +105,30 @@ const Dashboard = () => {
   const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
 
   const healthScore = useMemo(() => {
-    // Savings rate (0-30)
-    const sr = savingsRate ?? 0;
-    const savingsScore = sr >= 20 ? 30 : sr >= 10 ? 20 : sr >= 0 ? 10 : 0;
-    // Budget adherence (0-30): fraction of budgets not over limit
-    const onTrack = budgets.length ? budgets.filter(b => b.spent <= b.amount).length / budgets.length : 1;
-    const budgetScore = Math.round(onTrack * 30);
-    // Debt / credit utilization (0-20)
+    const hasActivity = thisMonthIncome > 0 || thisMonthExpenses > 0;
+    if (!hasActivity && budgets.length === 0 && accounts.length === 0) return null;
+
+    // Savings rate (0-30): only score if there is actual income this month
+    const sr = savingsRate ?? null;
+    const savingsScore = sr === null ? 0 : sr >= 20 ? 30 : sr >= 10 ? 20 : sr >= 0 ? 10 : 0;
+
+    // Budget adherence (0-30): only score if budgets exist
+    const budgetScore = budgets.length === 0 ? 0 : Math.round(
+      (budgets.filter(b => b.spent <= b.amount).length / budgets.length) * 30
+    );
+
+    // Debt / credit utilization (0-20): no credit cards = neutral 10, not a free 20
     const creditAccs = accounts.filter(a => a.type === 'credit' && a.creditLimit);
-    const avgUtil = creditAccs.length ? creditAccs.reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / creditAccs.length : 0;
-    const debtScore = creditAccs.length === 0 ? 20 : avgUtil < 0.3 ? 20 : avgUtil < 0.5 ? 14 : avgUtil < 0.75 ? 8 : 3;
+    const avgUtil = creditAccs.length
+      ? creditAccs.reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / creditAccs.length
+      : 0;
+    const debtScore = creditAccs.length === 0 ? 10 : avgUtil < 0.3 ? 20 : avgUtil < 0.5 ? 14 : avgUtil < 0.75 ? 8 : 3;
+
     // Net worth positive (0-20)
     const nwScore = totalBalance > 0 ? Math.min(20, Math.round((totalBalance / Math.max(thisMonthExpenses || 1, 1)) * 2)) : 0;
+
     return Math.min(100, savingsScore + budgetScore + debtScore + nwScore);
-  }, [savingsRate, budgets, accounts, totalBalance, thisMonthExpenses]);
+  }, [savingsRate, thisMonthIncome, thisMonthExpenses, budgets, accounts, totalBalance]);
 
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
@@ -278,12 +288,17 @@ const Dashboard = () => {
         <Card className="col-span-2 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-sm">Financial Health</h2>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              healthScore >= 75 ? 'bg-income/10 text-income' : healthScore >= 50 ? 'bg-warning/10 text-warning' : 'bg-expense/10 text-expense'
-            }`}>
-              {healthScore >= 75 ? 'Good' : healthScore >= 50 ? 'Fair' : 'Needs Work'}
-            </span>
+            {healthScore !== null && (
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                healthScore >= 75 ? 'bg-income/10 text-income' : healthScore >= 50 ? 'bg-warning/10 text-warning' : 'bg-expense/10 text-expense'
+              }`}>
+                {healthScore >= 75 ? 'Good' : healthScore >= 50 ? 'Fair' : 'Needs Work'}
+              </span>
+            )}
           </div>
+          {healthScore === null ? (
+            <p className="text-xs text-muted-foreground py-2">Add transactions, budgets, or accounts to see your financial health score.</p>
+          ) : (
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20 shrink-0">
               <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
@@ -312,6 +327,7 @@ const Dashboard = () => {
               ))}
             </div>
           </div>
+          )}
         </Card>
 
         {/* Accounts - spans full width */}

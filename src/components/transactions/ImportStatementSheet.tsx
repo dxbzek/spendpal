@@ -66,6 +66,33 @@ async function extractExcelText(file: File): Promise<string> {
   return XLSX.utils.sheet_to_csv(firstSheet);
 }
 
+/**
+ * Distil bank statement text down to transaction-relevant lines only.
+ *
+ * Strategy:
+ *  1. Keep lines that contain a date pattern (DD/MM/YYYY or YYYY-MM-DD) — these are transaction rows.
+ *  2. Keep lines that end with a plain amount or "CR"/"DR" suffix — these are amount-only
+ *     continuation lines produced by some banks for FX conversions.
+ *  3. Drop everything else: bank disclaimers, Arabic boilerplate, page headers, table borders.
+ *
+ * This aggressively reduces noise while preserving all actual transaction data.
+ */
+function cleanStatementText(text: string): string {
+  const dateRe = /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/;
+  const amountLineRe = /[\d,]+\.\d{2}\s*(CR|DR)?\s*$/i;
+
+  const kept = text
+    .split('\n')
+    .filter(line => {
+      const t = line.trim();
+      if (!t) return false;
+      return dateRe.test(t) || amountLineRe.test(t);
+    })
+    .map(line => line.replace(/\s{3,}/g, '  ').trim());
+
+  return kept.join('\n');
+}
+
 function normalizeDate(d: string): string {
   // Already ISO: YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
@@ -141,9 +168,14 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   };
 
   const handleParse = async () => {
-    const textToProcess = inputMode === 'paste' ? pasteText : statementText;
-    if (!textToProcess || !accountId) {
+    const raw = inputMode === 'paste' ? pasteText : statementText;
+    if (!raw || !accountId) {
       toast.error(inputMode === 'paste' ? 'Please paste some text and select an account' : 'Please upload a file and select an account');
+      return;
+    }
+    const textToProcess = cleanStatementText(raw);
+    if (textToProcess.replace(/\s/g, '').length < 30) {
+      toast.error('The text doesn\'t appear to contain transaction data. Try copying the full statement table including dates and amounts.');
       return;
     }
     const results = await categorizeStatement(textToProcess);
@@ -160,7 +192,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       }
       setStep('review');
     } else {
-      toast.error('Could not parse transactions from the file');
+      toast.error('No transactions found. Make sure the text includes dates, merchant names, and amounts — not just headers or footers.');
     }
   };
 
