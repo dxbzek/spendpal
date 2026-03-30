@@ -1,3 +1,4 @@
+import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -21,7 +22,7 @@ function minPayment(principal: number): number {
 }
 
 const Debt = () => {
-  const { accounts } = useFinance();
+  const { accounts, loading } = useFinance();
   const { fmt } = useCurrency();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aprs, setAprs] = useState<Record<string, number>>({});
@@ -56,6 +57,8 @@ const Debt = () => {
     if (pct >= 30) return 'bg-warning';
     return 'bg-primary';
   };
+
+  if (loading) return <PageSpinner />;
 
   return (
     <div>

@@ -1,3 +1,4 @@
+import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -22,7 +23,7 @@ import {
 const UNDO_DELAY_MS = 5000;
 
 const Transactions = () => {
-  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, updateTransaction } = useFinance();
+  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, updateTransaction, loading } = useFinance();
   const { fmtSigned, fmt } = useCurrency();
   const { openEditSheet } = useEditTransaction();
   const { categories: allCategories } = useCategories();
@@ -265,6 +266,8 @@ const Transactions = () => {
       </div>
     );
   };
+
+  if (loading) return <PageSpinner />;
 
   return (
     <div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Receipt, Wallet, BarChart3, Plus,
@@ -35,7 +35,7 @@ interface BottomNavProps {
 }
 
 const NavButton = ({ path, label, icon: Icon, active, onClick }: {
-  path: string; label: string; icon: any; active: boolean; onClick: () => void;
+  path: string; label: string; icon: React.ComponentType<{ size: number; className?: string }>; active: boolean; onClick: () => void;
 }) => (
   <button
     onClick={onClick}

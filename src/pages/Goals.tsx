@@ -1,3 +1,4 @@
+import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -25,7 +26,7 @@ function saveLog(id: string, log: Contribution[]) {
 }
 
 const Goals = () => {
-  const { goals, transactions, accounts, addGoalProgress, removeGoal } = useFinance();
+  const { goals, transactions, accounts, addGoalProgress, removeGoal, loading } = useFinance();
   const { fmt } = useCurrency();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
@@ -92,6 +93,8 @@ const Goals = () => {
     return `~${years.toFixed(1)} year${years >= 2 ? 's' : ''}`;
   };
 
+  if (loading) return <PageSpinner />;
+
   return (
     <div>
       {/* Header */}
@@ -156,8 +159,8 @@ const Goals = () => {
                           {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d`}
                         </span>
                       )}
-                      <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1"><Edit2 size={14} /></button>
-                      <button onClick={() => setDeleteGoalId(goal.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"><Trash2 size={14} /></button>
+                      <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} aria-label="Edit goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2"><Edit2 size={14} /></button>
+                      <button onClick={() => setDeleteGoalId(goal.id)} aria-label="Delete goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2"><Trash2 size={14} /></button>
                     </div>
                   </div>
                   {/* Prominent percentage */}
@@ -221,7 +224,7 @@ const Goals = () => {
         )}
       </div>
 
-      <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) setProgressGoalId(null); }}>
+      <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) { setProgressGoalId(null); setProgressAmount(''); setProgressNote(''); } }}>
         <DialogContent className="max-w-sm mx-auto">
           <DialogHeader>
             <DialogTitle>Add Progress</DialogTitle>

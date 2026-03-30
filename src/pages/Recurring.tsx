@@ -1,3 +1,4 @@
+import { PageSpinner } from '@/components/ui/spinner';
 import { useMemo, useState } from 'react';
 import { format, parseISO, getMonth, getYear } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
@@ -16,7 +17,7 @@ interface RecurringGroup {
 }
 
 const Recurring = () => {
-  const { transactions } = useFinance();
+  const { transactions, loading } = useFinance();
   const { fmt } = useCurrency();
   const [addOpen, setAddOpen] = useState(false);
 
@@ -59,6 +60,8 @@ const Recurring = () => {
   const paidCount = groups.filter(g => g.paidThisMonth).length;
   const monthlyCommitted = groups.reduce((s, g) => s + g.avgAmount, 0);
   const dueTotal = groups.filter(g => !g.paidThisMonth).reduce((s, g) => s + g.avgAmount, 0);
+
+  if (loading) return <PageSpinner />;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-5">
