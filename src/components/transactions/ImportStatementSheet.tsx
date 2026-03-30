@@ -220,6 +220,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       return;
     }
     const results = await categorizeStatement(textToProcess);
+    if (results === null) return; // fetch/network error already shown by useAI
     if (results.length > 0) {
       const rows = results.map((r: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
         const normalized = { ...r, date: normalizeDate(r.date) };

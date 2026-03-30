@@ -158,7 +158,7 @@ export const useAI = () => {
     }
   }, []);
 
-  const categorizeStatement = useCallback(async (text: string): Promise<unknown[]> => {
+  const categorizeStatement = useCallback(async (text: string): Promise<unknown[] | null> => {
     setLoading(true);
     try {
       const headers = await getAuthHeaders();
@@ -166,7 +166,7 @@ export const useAI = () => {
         method: 'POST',
         headers,
         body: JSON.stringify({ type: 'categorize-csv', data: text }),
-      }, 30_000); // large statements need more time
+      }, 45_000); // large statements need extra time
 
       if (!resp.ok) {
         const err = await resp.json() as { error?: string };
@@ -183,7 +183,7 @@ export const useAI = () => {
       logger.error('categorizeStatement failed', e);
       const msg = e instanceof Error ? e.message : 'AI advisor is unavailable. Please try again later.';
       toast.error(msg);
-      return [];
+      return null; // null signals a fetch/network error so callers don't show a second toast
     } finally {
       setLoading(false);
     }
