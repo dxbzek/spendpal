@@ -11,6 +11,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { Upload, FileText, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 interface Props {
   open: boolean;
@@ -31,17 +32,9 @@ interface ParsedRow {
 async function extractPdfText(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
 
-  // Use Vite's URL resolution to load the worker from the local package.
-  // Falls back to the unpkg CDN if the local path can't be resolved.
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).href;
-  } catch {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-  }
+  // Use the statically-imported worker URL so Vite bundles and serves the
+  // worker file correctly in production (the ?url import copies it to output).
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
