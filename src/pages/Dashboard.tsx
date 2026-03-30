@@ -106,7 +106,8 @@ const Dashboard = () => {
 
   const healthScore = useMemo(() => {
     const hasActivity = thisMonthIncome > 0 || thisMonthExpenses > 0;
-    if (!hasActivity && budgets.length === 0 && accounts.length === 0) return null;
+    // Need at least some financial activity to produce a meaningful score
+    if (!hasActivity && budgets.length === 0) return null;
 
     // Savings rate (0-30): only score if there is actual income this month
     const sr = savingsRate ?? null;
@@ -117,11 +118,12 @@ const Dashboard = () => {
       (budgets.filter(b => b.spent <= b.amount).length / budgets.length) * 30
     );
 
-    // Debt / credit utilization (0-20): no credit cards = neutral 10, not a free 20
+    // Debt / credit utilization (0-20)
     const creditAccs = accounts.filter(a => a.type === 'credit' && a.creditLimit);
     const avgUtil = creditAccs.length
       ? creditAccs.reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / creditAccs.length
       : 0;
+    // No credit cards = neutral 10 (only when there IS other activity to score)
     const debtScore = creditAccs.length === 0 ? 10 : avgUtil < 0.3 ? 20 : avgUtil < 0.5 ? 14 : avgUtil < 0.75 ? 8 : 3;
 
     // Net worth positive (0-20)
