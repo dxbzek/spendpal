@@ -1,5 +1,4 @@
 import { useState, useRef, useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -289,11 +288,11 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
 
   return (
     <>
-      <Sheet open={open} onOpenChange={handleClose}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto md:max-w-lg md:mx-auto md:left-1/2 md:-translate-x-1/2 md:right-auto">
-          <SheetHeader>
-            <SheetTitle className="text-lg">Import Bank Statement</SheetTitle>
-          </SheetHeader>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Import Bank Statement</DialogTitle>
+          </DialogHeader>
 
           {step === 'upload' && (
             <div className="space-y-5 mt-4">
@@ -402,8 +401,8 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showBalanceDialog} onOpenChange={setShowBalanceDialog}>
         <DialogContent className="sm:max-w-sm">

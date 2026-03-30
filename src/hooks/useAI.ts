@@ -160,13 +160,27 @@ export const useAI = () => {
 
   const categorizeStatement = useCallback(async (text: string): Promise<unknown[] | null> => {
     setLoading(true);
-    try {
+
+    const attempt = async (): Promise<Response> => {
       const headers = await getAuthHeaders();
-      const resp = await fetchWithTimeout(FUNC_URL, {
+      return fetchWithTimeout(FUNC_URL, {
         method: 'POST',
         headers,
         body: JSON.stringify({ type: 'categorize-csv', data: text }),
       }, 45_000); // large statements need extra time
+    };
+
+    try {
+      let resp: Response;
+      try {
+        resp = await attempt();
+      } catch (firstErr) {
+        // Retry once on network-level failures (e.g. cold-start drop, transient error)
+        const isNetwork = firstErr instanceof TypeError || (firstErr instanceof Error && firstErr.message === 'Failed to fetch');
+        if (!isNetwork) throw firstErr;
+        await new Promise(r => setTimeout(r, 2000));
+        resp = await attempt();
+      }
 
       if (!resp.ok) {
         const err = await resp.json() as { error?: string };
