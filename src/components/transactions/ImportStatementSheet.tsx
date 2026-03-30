@@ -88,30 +88,45 @@ async function extractExcelText(file: File): Promise<string> {
 }
 
 /**
- * Remove obvious noise from extracted bank statement text while keeping
- * everything that could be a transaction.
+ * Smart pre-filter for bank statement text.
  *
- * Only strips:
- *  - Blank lines
- *  - Lines made entirely of border/decoration characters (+, -, =, |, *, ~, _)
- *  - Lines that contain NO Latin characters and NO digits (e.g. pure Arabic boilerplate)
+ * Keeps ONLY lines that are:
+ *  1. A transaction row containing a date (DD/MM/YYYY)
+ *  2. Within 12 lines of a date-bearing line (catches merchants, amounts,
+ *     FX conversion notes that appear near transaction rows)
+ *  3. A standalone amount line (e.g. "43.76" or "2,900.00CR") — needed for
+ *     column-format PDFs where amounts appear on their own line
  *
- * Everything else — transaction rows, headers, footers, amounts — is kept.
- * The AI is responsible for identifying which lines are actual transactions.
+ * Everything else — legal disclaimers, conditions, bank contact info,
+ * marketing text — is far from any transaction date and gets dropped.
+ * This keeps the payload small and focused for the AI.
  */
 function cleanStatementText(text: string): string {
-  return text
-    .split('\n')
-    .filter(line => {
-      const t = line.trim();
-      if (!t) return false;
-      // Drop pure table-border lines like "+------+------+" or "=========="
-      if (/^[\+\-\=\|\*\~\_\.\s]+$/.test(t)) return false;
-      // Drop lines with no Latin letters and no digits (pure Arabic / symbol-only)
-      if (!/[a-zA-Z0-9]/.test(t)) return false;
-      return true;
+  const allLines = text.split('\n').map(l => l.trim());
+  const txDateRe = /\b\d{1,2}[\/\-]\d{1,2}[\/\-](\d{2}|\d{4})\b/;
+  const amountOnlyRe = /^[\d,]+\.\d{2}\s*(CR|DR|AED|USD|EUR|GBP)?\s*$/i;
+  const borderRe = /^[\+\-\=\|\*\~\_\.\s]+$/;
+
+  const hasDate = allLines.map(l => txDateRe.test(l));
+
+  return allLines
+    .filter((line, i) => {
+      if (!line) return false;
+      if (borderRe.test(line)) return false;
+      if (!/[a-zA-Z0-9]/.test(line)) return false;
+      // Always keep lines that contain a date
+      if (hasDate[i]) return true;
+      // Keep standalone amount lines (column-format tables)
+      if (amountOnlyRe.test(line)) return true;
+      // Keep lines within 12 lines of any date line
+      const lo = Math.max(0, i - 12);
+      const hi = Math.min(allLines.length - 1, i + 12);
+      for (let j = lo; j <= hi; j++) {
+        if (hasDate[j]) return true;
+      }
+      return false;
     })
-    .map(line => line.replace(/\s{5,}/g, '    ').trim())
+    .map(line => line.replace(/\s{5,}/g, '    '))
     .join('\n');
 }
 

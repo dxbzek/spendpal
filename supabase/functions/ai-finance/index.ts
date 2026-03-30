@@ -85,21 +85,35 @@ Use AED amounts. Only return the JSON array, no other text.`;
       userPrompt = `Here is my spending data:\n${JSON.stringify(data)}`;
 
     } else if (type === "categorize-csv") {
-      systemPrompt = `You are a transaction categorizer. Given bank statement data in any format (CSV, PDF-extracted text with columns, plain tabular rows, or copied table text), extract every transaction and categorize it.
+      systemPrompt = `You are a bank statement transaction extractor. Extract every purchase/payment transaction and categorize it. Return ONLY a JSON array, no other text.
 
-PARSING RULES:
-- Each row/line typically contains: date, description/merchant, and amount (debit/credit)
-- Amounts may appear as negative numbers, in a "Debit" column, or labeled "DR" for expenses
-- Amounts in a "Credit" column or labeled "CR" or positive are income/transfers
-- Dates may be in DD/MM/YYYY, MM/DD/YYYY, or YYYY-MM-DD — always output as YYYY-MM-DD
-- Skip header rows, balance rows, opening/closing balance lines, and page totals
-- If a row has no clear amount or date, skip it
+TWO FORMATS YOU WILL SEE:
+
+FORMAT A — Single line per transaction (common in CSV exports):
+  09/02/2026 10/02/2026 APPLE.COM/BILL ITUNES.COM IRL 11.85
+  Each line has: transaction-date posting-date description amount
+
+FORMAT B — Multi-column (common in PDF-extracted text, e.g. Emirates NBD):
+  Dates appear on their own lines, then merchant names on their own lines, then amounts on their own lines:
+  23/03/2026
+  24/03/2026
+  DIFFANY SUPER HAIR FIXING DUBAI ARE
+  OTG LLC DUBAI ARE
+  36.75
+  2.00
+  In this case match them IN ORDER: 1st date→1st merchant→1st amount, 2nd date→2nd merchant→2nd amount, etc.
+
+RULES:
+- Amounts ending in CR (e.g. "2,900.00CR") are income/payments received, type="income"
+- All other amounts are expenses, type="expense"
+- For foreign currency lines like "11.55 USD / (1 AED = USD 0.26394) / 43.76" use the AED amount (43.76)
+- Skip: opening/closing balance lines, "Remaining Principle Balance", statement summary rows, installment plan headers
+- Dates: always output as YYYY-MM-DD
 
 Categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
-Category icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
+Icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
 
-Return a JSON array of objects: { merchant, amount (positive number), date (YYYY-MM-DD), category, categoryIcon, type ("expense"|"income") }
-Only return the JSON array, no other text.`;
+Return: [{ merchant, amount, date, category, categoryIcon, type }]`;
       userPrompt = `Here is my bank statement:\n${data}`;
 
     } else if (type === "monthly-report") {
