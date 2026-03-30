@@ -26,7 +26,9 @@ import Installments from "@/pages/Installments";
 import CalendarView from "@/pages/CalendarView";
 import NotFound from "@/pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { refetchOnWindowFocus: false } },
+});
 
 const PageFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
