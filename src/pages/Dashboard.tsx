@@ -179,19 +179,6 @@ const Dashboard = () => {
               <p className="text-primary-foreground/70 text-xs uppercase tracking-wider mb-1">Total Balance</p>
               <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
               {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
-
-              {/* Income / Expense summary strip */}
-              <div className={`flex gap-6 mt-3 ${isMobile ? 'justify-center' : ''}`}>
-                <div className={isMobile ? 'text-center' : 'text-left'}>
-                  <p className="text-primary-foreground/50 text-[10px] uppercase tracking-wider">Income</p>
-                  <p className="text-primary-foreground text-sm font-semibold">{mask(fmt(income))}</p>
-                </div>
-                <div className="w-px bg-primary-foreground/20" />
-                <div className={isMobile ? 'text-center' : 'text-left'}>
-                  <p className="text-primary-foreground/50 text-[10px] uppercase tracking-wider">Expenses</p>
-                  <p className="text-primary-foreground text-sm font-semibold">{mask(fmt(expenses))}</p>
-                </div>
-              </div>
             </div>
 
             {/* Secondary currency + period selector */}
@@ -229,365 +216,382 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="px-5 md:px-8 -mt-4 space-y-4 pb-6">
-        {/* Budget overspending alerts */}
-        <BudgetAlertBanners budgets={budgets} />
-        {/* Recurring transactions not yet logged this month */}
-        <RecurringDueBanner transactions={transactions} />
+      <div className="px-5 md:px-8 -mt-4 pb-8">
+        {/* Alerts */}
+        <div className="space-y-2 mb-4">
+          <BudgetAlertBanners budgets={budgets} />
+          <RecurringDueBanner transactions={transactions} />
+        </div>
 
-        {/* Responsive grid wrapper for dashboard widgets */}
+        {/* Section divider helper */}
+        {/* ── OVERVIEW ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-3 pt-1">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
 
-        {/* Net Worth */}
-        <div className="col-span-1">
-          <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
-        </div>
-        {/* Money Saved */}
-        <div className="col-span-1">
-          <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
-        </div>
+          <div className="col-span-1">
+            <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
+          </div>
+          <div className="col-span-1">
+            <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
+          </div>
+          <Card className="col-span-1 border-t-2 border-t-income">
+            <p className="text-xs text-muted-foreground mb-1">Income</p>
+            <p className="text-financial-medium text-income">{mask(fmt(income))}</p>
+            {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
+          </Card>
+          <Card className="col-span-1 border-t-2 border-t-expense">
+            <p className="text-xs text-muted-foreground mb-1">Expenses</p>
+            <p className="text-financial-medium text-expense">{mask(fmt(expenses))}</p>
+            {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
+          </Card>
 
-        {/* Income */}
-        <Card className="col-span-1 border-t-2 border-t-income">
-          <p className="text-xs text-muted-foreground mb-1">Income</p>
-          <p className="text-financial-medium text-income">{mask(fmt(income))}</p>
-          {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
-        </Card>
-        {/* Expenses */}
-        <Card className="col-span-1 border-t-2 border-t-expense">
-          <p className="text-xs text-muted-foreground mb-1">Expenses</p>
-          <p className="text-financial-medium text-expense">{mask(fmt(expenses))}</p>
-          {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
-        </Card>
-
-        {/* Savings Rate */}
-        {savingsRate !== null && (
-          <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-primary">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">Savings Rate — This Month</p>
-                <p className={`text-financial-medium ${savingsRate >= 20 ? 'text-income' : savingsRate >= 0 ? 'text-warning' : 'text-expense'}`}>
-                  {hidden ? '••' : `${savingsRate}%`}
-                </p>
+          {savingsRate !== null && (
+            <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-primary">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Savings Rate — This Month</p>
+                  <p className={`text-financial-medium ${savingsRate >= 20 ? 'text-income' : savingsRate >= 0 ? 'text-warning' : 'text-expense'}`}>
+                    {hidden ? '••' : `${savingsRate}%`}
+                  </p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <p>Saved: {mask(fmt(thisMonthIncome - thisMonthExpenses))}</p>
+                  <p className="text-[11px]">{savingsRate >= 20 ? '🎯 On track' : savingsRate >= 10 ? '📈 Getting there' : savingsRate < 0 ? '⚠️ Overspending' : '💡 Room to save'}</p>
+                </div>
               </div>
-              <div className="text-right text-xs text-muted-foreground">
-                <p>Saved: {mask(fmt(thisMonthIncome - thisMonthExpenses))}</p>
-                <p className="text-[11px]">{savingsRate >= 20 ? '🎯 On track' : savingsRate >= 10 ? '📈 Getting there' : savingsRate < 0 ? '⚠️ Overspending' : '💡 Room to save'}</p>
-              </div>
+              {!hidden && (
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${savingsRate >= 20 ? 'bg-income' : savingsRate >= 0 ? 'bg-warning' : 'bg-expense'}`}
+                    style={{ width: `${Math.max(0, Math.min(savingsRate, 100))}%` }}
+                  />
+                </div>
+              )}
+            </Card>
+          )}
+        </div>
+
+        {/* ── ACCOUNTS & HEALTH ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Accounts & Health</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          <Card className="col-span-2 lg:col-span-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-heading text-sm">Accounts</h2>
+              <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
+                <Plus size={14} /> Add
+              </button>
             </div>
-            {!hidden && (
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${savingsRate >= 20 ? 'bg-income' : savingsRate >= 0 ? 'bg-warning' : 'bg-expense'}`}
-                  style={{ width: `${Math.max(0, Math.min(savingsRate, 100))}%` }}
-                />
+            <div className="space-y-4">
+              {(['cash', 'debit', 'credit'] as const).map(accountType => {
+                const group = accounts.filter(a => a.type === accountType);
+                if (group.length === 0) return null;
+                const labels = { cash: '💵 Cash', debit: '💳 Debit Cards', credit: '🏦 Credit Cards' };
+                return (
+                  <div key={accountType}>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
+                    <div className="space-y-3">
+                      {group.map(a => {
+                        const spent = a.type === 'credit' && a.creditLimit ? a.creditLimit - a.balance : 0;
+                        const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((spent / a.creditLimit) * 100), 100) : 0;
+                        const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-amber-500' : 'bg-primary';
+                        return (
+                          <div key={a.id} className="group">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="text-2xl">{a.icon}</span>
+                                <div>
+                                  <p className="text-sm font-medium">{a.name}</p>
+                                  {a.type === 'credit' && (
+                                    <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                                      {a.statementDate && a.statementDate > 0 && <span>Stmt: {a.statementDate}th</span>}
+                                      {a.dueDate && <span>Due: {a.dueDate}th</span>}
+                                      {a.creditLimit && <span>Limit: {fmt(a.creditLimit)}</span>}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="text-right">
+                                  <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
+                                  {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
+                                  {a.type === 'credit' && (
+                                    <p className="text-[11px] font-medium text-primary/70">Available Limit</p>
+                                  )}
+                                </div>
+                                <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
+                                  <Edit2 size={14} />
+                                </button>
+                                <button onClick={() => setDeleteAccountId(a.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            {a.type === 'credit' && a.creditLimit && (
+                              <div className="mt-1.5 ml-11">
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                                  <span>{utilization}% used</span>
+                                  <span>{fmt(spent)} / {fmt(a.creditLimit)}</span>
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all ${utilizationColor}`} style={{ width: `${utilization}%` }} />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet. Add one to get started!</p>}
+            </div>
+          </Card>
+
+          <Card className="col-span-2 lg:col-span-1">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-heading text-sm">Financial Health</h2>
+              {healthScore !== null && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  healthScore >= 75 ? 'bg-income/10 text-income' : healthScore >= 50 ? 'bg-warning/10 text-warning' : 'bg-expense/10 text-expense'
+                }`}>
+                  {healthScore >= 75 ? 'Good' : healthScore >= 50 ? 'Fair' : 'Needs Work'}
+                </span>
+              )}
+            </div>
+            {healthScore === null ? (
+              <p className="text-xs text-muted-foreground py-2">Add transactions, budgets, or accounts to see your score.</p>
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative w-20 h-20 shrink-0">
+                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+                    <circle cx="40" cy="40" r="32" fill="none"
+                      stroke={healthScore >= 75 ? 'hsl(var(--income))' : healthScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--expense))'}
+                      strokeWidth="6"
+                      strokeDasharray={`${(healthScore / 100) * 201} 201`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-heading">{hidden ? '—' : healthScore}</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5 w-full text-xs">
+                  {[
+                    { label: 'Savings rate', val: savingsRate !== null ? `${savingsRate}%` : 'No data', ok: (savingsRate ?? -1) >= 10 },
+                    { label: 'Budget adherence', val: budgets.length ? `${budgets.filter(b => b.spent <= b.amount).length}/${budgets.length} on track` : 'No budgets', ok: budgets.length === 0 || budgets.every(b => b.spent <= b.amount) },
+                    { label: 'Credit utilization', val: accounts.some(a => a.type === 'credit') ? `${Math.round(accounts.filter(a => a.type === 'credit' && a.creditLimit).reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / Math.max(accounts.filter(a => a.type === 'credit' && a.creditLimit).length, 1) * 100)}%` : 'No credit', ok: true },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className={`font-medium ${item.ok ? 'text-income' : 'text-warning'}`}>{hidden ? '••' : item.val}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </Card>
-        )}
+        </div>
 
-        {/* Financial Health Score */}
-        <Card className="col-span-2 lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading text-sm">Financial Health</h2>
-            {healthScore !== null && (
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                healthScore >= 75 ? 'bg-income/10 text-income' : healthScore >= 50 ? 'bg-warning/10 text-warning' : 'bg-expense/10 text-expense'
-              }`}>
-                {healthScore >= 75 ? 'Good' : healthScore >= 50 ? 'Fair' : 'Needs Work'}
-              </span>
-            )}
+        {/* ── SPENDING ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
-          {healthScore === null ? (
-            <p className="text-xs text-muted-foreground py-2">Add transactions, budgets, or accounts to see your financial health score.</p>
-          ) : (
-          <div className="flex items-center gap-4">
-            <div className="relative w-20 h-20 shrink-0">
-              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r="32" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-                <circle cx="40" cy="40" r="32" fill="none"
-                  stroke={healthScore >= 75 ? 'hsl(var(--income))' : healthScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--expense))'}
-                  strokeWidth="6"
-                  strokeDasharray={`${(healthScore / 100) * 201} 201`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-heading">{hidden ? '—' : healthScore}</span>
-              </div>
-            </div>
-            <div className="space-y-1.5 flex-1 text-xs">
-              {[
-                { label: 'Savings rate', val: savingsRate !== null ? `${savingsRate}%` : 'No data', ok: (savingsRate ?? -1) >= 10 },
-                { label: 'Budget adherence', val: budgets.length ? `${budgets.filter(b => b.spent <= b.amount).length}/${budgets.length} on track` : 'No budgets', ok: budgets.length === 0 || budgets.every(b => b.spent <= b.amount) },
-                { label: 'Credit utilization', val: accounts.some(a => a.type === 'credit') ? `${Math.round(accounts.filter(a => a.type === 'credit' && a.creditLimit).reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / Math.max(accounts.filter(a => a.type === 'credit' && a.creditLimit).length, 1) * 100)}%` : 'No credit', ok: true },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{item.label}</span>
-                  <span className={`font-medium ${item.ok ? 'text-income' : 'text-warning'}`}>{hidden ? '••' : item.val}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+
+          {categorySpending.length > 0 && (
+            <Card className="col-span-2 lg:col-span-2">
+              <h2 className="font-heading text-sm mb-3">Breakdown</h2>
+              <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
+            </Card>
           )}
-        </Card>
 
-        {/* Accounts - spans full width */}
-        <Card className="col-span-2 lg:col-span-3">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading text-sm">Accounts</h2>
-            <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
-              <Plus size={14} /> Add
-            </button>
+          {transactions.length > 0 && (
+            <Card className="col-span-2 lg:col-span-2">
+              <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
+              <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
+            </Card>
+          )}
+
+          {categorySpending.length > 0 && (
+            <Card className="col-span-2 lg:col-span-2">
+              <h2 className="font-heading text-sm mb-3">By Category</h2>
+              <div className="space-y-2.5">
+                {categorySpending.slice(0, 5).map(([cat, data], idx) => {
+                  const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
+                  const barColor = CATEGORY_CHART_COLORS[cat] || CATEGORY_CHART_COLORS._default(idx);
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: barColor }} /> {cat}</span>
+                        <span className="text-sm font-medium">{fmt(data.total)}</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          <div className="col-span-2 lg:col-span-2">
+            <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
           </div>
-          <div className="space-y-4">
-            {(['cash', 'debit', 'credit'] as const).map(accountType => {
-              const group = accounts.filter(a => a.type === accountType);
-              if (group.length === 0) return null;
-              const labels = { cash: '💵 Cash', debit: '💳 Debit Cards', credit: '🏦 Credit Cards' };
+
+          <div className="col-span-2 lg:col-span-4">
+            <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
+          </div>
+        </div>
+
+        {/* ── PLANNING ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          <Card className="col-span-2 lg:col-span-2">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-heading text-sm">Budget Overview</h2>
+              <button onClick={() => navigate('/budgets')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+              <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
+            </div>
+            <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
+                className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
+            </div>
+            {budgets.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
+              const pct = Math.min(Math.round((b.spent / b.amount) * 100), 100);
               return (
-                <div key={accountType}>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
-                  <div className="space-y-3">
-                    {group.map(a => {
-                      const spent = a.type === 'credit' && a.creditLimit ? a.creditLimit - a.balance : 0;
-                      const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((spent / a.creditLimit) * 100), 100) : 0;
-                      const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-amber-500' : 'bg-primary';
-                      return (
-                        <div key={a.id} className="group">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-2xl">{a.icon}</span>
-                              <div>
-                                <p className="text-sm font-medium">{a.name}</p>
-                                {a.type === 'credit' && (
-                                  <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                                    {a.statementDate && a.statementDate > 0 && <span>Stmt: {a.statementDate}th</span>}
-                                    {a.dueDate && <span>Due: {a.dueDate}th</span>}
-                                    {a.creditLimit && <span>Limit: {fmt(a.creditLimit)}</span>}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-right">
-                                <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
-                                {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
-                                {a.type === 'credit' && (
-                                   <p className="text-[11px] font-medium text-primary/70">Available Limit</p>
-                                 )}
-                              </div>
-                              <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
-                                <Edit2 size={14} />
-                              </button>
-                              <button onClick={() => setDeleteAccountId(a.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                          {a.type === 'credit' && a.creditLimit && (
-                            <div className="mt-1.5 ml-11">
-                              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-                                <span>{utilization}% used</span>
-                                <span>{fmt(spent)} / {fmt(a.creditLimit)}</span>
-                              </div>
-                              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${utilizationColor}`} style={{ width: `${utilization}%` }} />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                <div key={b.id} className="mb-2 last:mb-0">
+                  <div className="flex items-center justify-between text-xs mb-0.5">
+                    <span className="text-muted-foreground truncate max-w-[120px]">{b.category}</span>
+                    <span className={`font-medium ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                      className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                 </div>
               );
             })}
-            {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet. Add one to get started!</p>}
+          </Card>
+
+          <div className="col-span-2 lg:col-span-2">
+            <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
           </div>
-        </Card>
 
-        {/* Credit Utilization Tracker */}
-        <div className="col-span-2 lg:col-span-2">
-          <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
-        </div>
-
-        {/* Expenses by Account Type */}
-        <div className="col-span-2 lg:col-span-2">
-          <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
-        </div>
-
-        {/* Monthly Comparison */}
-        <div className="col-span-2 lg:col-span-4">
-          <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
-        </div>
-
-        {/* Spending Pie Chart - hide when no data */}
-        {categorySpending.length > 0 && (
-          <Card className="col-span-2 lg:col-span-2">
-            <h2 className="font-heading text-sm mb-3">Spending Breakdown</h2>
-            <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
-          </Card>
-        )}
-
-        {/* Monthly Trend Line Chart - hide when no transactions */}
-        {transactions.length > 0 && (
-          <Card className="col-span-2 lg:col-span-2">
-            <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
-            <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
-          </Card>
-        )}
-
-        {/* Category spending list - hide when no data */}
-        {categorySpending.length > 0 && (
-          <Card className="col-span-2 lg:col-span-2">
-            <h2 className="font-heading text-sm mb-3">Spending by Category</h2>
-            <div className="space-y-2.5">
-              {categorySpending.slice(0, 5).map(([cat, data], idx) => {
-                const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
-                const barColor = CATEGORY_CHART_COLORS[cat] || CATEGORY_CHART_COLORS._default(idx);
-                return (
-                  <div key={cat}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: barColor }} /> {cat}</span>
-                      <span className="text-sm font-medium">{fmt(data.total)}</span>
+          {creditCards.length > 0 && (
+            <Card className="col-span-2 lg:col-span-2">
+              <h2 className="font-heading text-sm mb-3">Credit Card Due Dates</h2>
+              <div className="space-y-2">
+                {creditCards.map(cc => {
+                  const dueDay = cc.dueDate!;
+                  const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
+                  if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
+                  const daysLeft = differenceInDays(dueDate, now);
+                  return (
+                    <div key={cc.id} className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2"><span className="text-lg">{cc.icon}</span><span className="text-sm">{cc.name}</span></div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Due {format(dueDate, 'MMM d')}</p>
+                        <p className={`text-xs font-medium ${daysLeft <= 7 ? 'text-expense' : 'text-primary'}`}>{daysLeft}d left</p>
+                      </div>
                     </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
-
-        {/* Budget overview */}
-        <Card className="col-span-2 lg:col-span-2">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="font-heading text-sm">Budget Overview</h2>
-            <button onClick={() => navigate('/budgets')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-            <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
-          </div>
-          <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
-              className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
-          </div>
-          {/* Top over-budget categories */}
-          {budgets.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
-            const pct = Math.min(Math.round((b.spent / b.amount) * 100), 100);
-            return (
-              <div key={b.id} className="mb-2 last:mb-0">
-                <div className="flex items-center justify-between text-xs mb-0.5">
-                  <span className="text-muted-foreground truncate max-w-[120px]">{b.category}</span>
-                  <span className={`font-medium ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
-                </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </Card>
-
-        {creditCards.length > 0 && (
-          <Card className="col-span-2 lg:col-span-2">
-            <h2 className="font-heading text-sm mb-3">Credit Card Due Dates</h2>
-            <div className="space-y-2">
-              {creditCards.map(cc => {
-                const dueDay = cc.dueDate!;
-                const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
-                if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
-                const daysLeft = differenceInDays(dueDate, now);
-                return (
-                  <div key={cc.id} className="flex items-center justify-between py-1">
-                    <div className="flex items-center gap-2"><span className="text-lg">{cc.icon}</span><span className="text-sm">{cc.name}</span></div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Due {format(dueDate, 'MMM d')}</p>
-                      <p className={`text-xs font-medium ${daysLeft <= 7 ? 'text-expense' : 'text-primary'}`}>{daysLeft}d left</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
-
-        {/* Upcoming Bills */}
-        <div className="col-span-2 lg:col-span-2">
-          <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
-        </div>
-
-        <div className="col-span-2 lg:col-span-4">
-          <RecurringTracker />
-        </div>
-
-        {/* Monthly AI Report */}
-        <div className="col-span-2 lg:col-span-2">
-          <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
-        </div>
-
-        {/* Spending Forecast */}
-        <div className="col-span-2 lg:col-span-1">
-          <SpendingForecastWidget transactions={transactions} />
-        </div>
-
-        {/* AI Summary */}
-        <Card className="col-span-2 lg:col-span-2 border border-dashed border-primary/30">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Sparkles size={14} className="text-primary" />
-            </div>
-            <h2 className="font-heading text-sm">AI Summary</h2>
-          </div>
-          {summaryText ? (
-            <>
-              <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
-              <button onClick={handleGenerateSummary} disabled={aiLoading}
-                className="mt-3 w-full py-2 rounded-xl bg-accent text-accent-foreground text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Regenerating…</> : <><Sparkles size={14} /> Regenerate</>}
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
-              <button onClick={handleGenerateSummary} disabled={aiLoading}
-                className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
-              </button>
-            </>
+            </Card>
           )}
-        </Card>
 
-        {/* Recent Transactions - spans full */}
-        {recentTx.length > 0 && (
-          <Card className="col-span-2 lg:col-span-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading text-sm">Recent Transactions</h2>
-              <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+          <div className="col-span-2 lg:col-span-2">
+            <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
+          </div>
+
+          <div className="col-span-2 lg:col-span-4">
+            <RecurringTracker />
+          </div>
+        </div>
+
+        {/* ── INSIGHTS ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          <div className="col-span-2 lg:col-span-2">
+            <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
+          </div>
+
+          <div className="col-span-2 lg:col-span-1">
+            <SpendingForecastWidget transactions={transactions} />
+          </div>
+
+          <Card className="col-span-2 lg:col-span-2 border border-dashed border-primary/30">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Sparkles size={14} className="text-primary" />
+              </div>
+              <h2 className="font-heading text-sm">AI Summary</h2>
             </div>
-            <div className="space-y-3">
-              {recentTx.map(tx => (
-                <div key={tx.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{extractEmoji(tx.categoryIcon)}</span>
-                    <div>
-                      <p className="text-sm font-medium">{tx.merchant}</p>
-                      <p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
-                    </div>
-                  </div>
-                  <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                    {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {summaryText ? (
+              <>
+                <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
+                <button onClick={handleGenerateSummary} disabled={aiLoading}
+                  className="mt-3 w-full py-2 rounded-xl bg-accent text-accent-foreground text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                  {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Regenerating…</> : <><Sparkles size={14} /> Regenerate</>}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
+                <button onClick={handleGenerateSummary} disabled={aiLoading}
+                  className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                  {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
+                </button>
+              </>
+            )}
           </Card>
-        )}
-        </div>{/* end grid */}
+
+          {recentTx.length > 0 && (
+            <Card className="col-span-2 lg:col-span-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-heading text-sm">Recent Transactions</h2>
+                <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+              </div>
+              <div className="space-y-3">
+                {recentTx.map(tx => (
+                  <div key={tx.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{extractEmoji(tx.categoryIcon)}</span>
+                      <div>
+                        <p className="text-sm font-medium">{tx.merchant}</p>
+                        <p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                      </div>
+                    </div>
+                    <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                      {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
 
       <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} editAccount={editAccount} />
