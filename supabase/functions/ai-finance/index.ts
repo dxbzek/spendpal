@@ -85,12 +85,22 @@ Use AED amounts. Only return the JSON array, no other text.`;
       userPrompt = `Here is my spending data:\n${JSON.stringify(data)}`;
 
     } else if (type === "categorize-csv") {
-      systemPrompt = `You are a transaction categorizer. Given bank statement data (CSV, PDF text, or tabular text), categorize each transaction into one of these categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
-Also determine if each is an expense or income.
-Return a JSON array of objects with: merchant, amount, date (MUST be YYYY-MM-DD format), category, categoryIcon, type (expense/income). Dates MUST always be in YYYY-MM-DD ISO format, never DD/MM/YYYY or MM/DD/YYYY.
+      systemPrompt = `You are a transaction categorizer. Given bank statement data in any format (CSV, PDF-extracted text with columns, plain tabular rows, or copied table text), extract every transaction and categorize it.
+
+PARSING RULES:
+- Each row/line typically contains: date, description/merchant, and amount (debit/credit)
+- Amounts may appear as negative numbers, in a "Debit" column, or labeled "DR" for expenses
+- Amounts in a "Credit" column or labeled "CR" or positive are income/transfers
+- Dates may be in DD/MM/YYYY, MM/DD/YYYY, or YYYY-MM-DD — always output as YYYY-MM-DD
+- Skip header rows, balance rows, opening/closing balance lines, and page totals
+- If a row has no clear amount or date, skip it
+
+Categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
 Category icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
+
+Return a JSON array of objects: { merchant, amount (positive number), date (YYYY-MM-DD), category, categoryIcon, type ("expense"|"income") }
 Only return the JSON array, no other text.`;
-      userPrompt = `Here are my bank statement transactions:\n${data}`;
+      userPrompt = `Here is my bank statement:\n${data}`;
 
     } else if (type === "monthly-report") {
       systemPrompt = `You are a personal finance analyst for a UAE resident. Generate a comprehensive monthly financial report. Structure it with clear sections using markdown-style headers:

@@ -34,12 +34,28 @@ async function extractPdfText(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pages: string[] = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
+  // Process up to 30 pages to avoid timeouts on large statements
+  const pageCount = Math.min(pdf.numPages, 30);
+  for (let i = 1; i <= pageCount; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    pages.push(content.items.map((item: any) => item.str).join(' '));
+    // Group text items by their Y coordinate to reconstruct table rows.
+    // PDF Y is bottom-up, so sort descending (top of page first).
+    const lineMap = new Map<number, Array<{ x: number; str: string }>>();
+    for (const item of content.items as Array<{ str: string; transform: number[] }>) {
+      if (!item.str.trim()) continue;
+      const y = Math.round(item.transform[5]);
+      const x = item.transform[4];
+      if (!lineMap.has(y)) lineMap.set(y, []);
+      lineMap.get(y)!.push({ x, str: item.str });
+    }
+    const sortedYs = Array.from(lineMap.keys()).sort((a, b) => b - a);
+    const lines = sortedYs.map(y =>
+      lineMap.get(y)!.sort((a, b) => a.x - b.x).map(it => it.str).join('  ')
+    );
+    pages.push(lines.join('\n'));
   }
-  return pages.join('\n');
+  return pages.join('\n\n');
 }
 
 async function extractExcelText(file: File): Promise<string> {
@@ -89,10 +105,20 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       let text = '';
       if (ext === 'pdf') {
         text = await extractPdfText(file);
+        if (text.replace(/\s/g, '').length < 50) {
+          toast.error('This PDF appears to be image-based (scanned). Please export as text or use the Paste Text option.');
+          setFileName('');
+          return;
+        }
       } else if (ext === 'xlsx' || ext === 'xls') {
         text = await extractExcelText(file);
       } else {
         text = await file.text();
+      }
+      // Truncate to ~60 000 chars to stay within AI context limits
+      if (text.length > 60_000) {
+        text = text.slice(0, 60_000);
+        toast.warning('Statement truncated to first 60 000 characters. For best results, export a shorter date range.');
       }
       setStatementText(text);
     } catch (err) {
