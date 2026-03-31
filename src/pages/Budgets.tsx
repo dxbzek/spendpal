@@ -48,7 +48,7 @@ const Budgets = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
 
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const daysLeft = differenceInDays(endOfMonth(now), now);
   const totalDays = getDaysInMonth(now);
   const daysElapsed = totalDays - daysLeft;
