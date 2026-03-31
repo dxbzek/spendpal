@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Transaction, Budget } from '@/types/finance';
+import { detectDuplicates } from '@/utils/detectDuplicates';
 
 // ─── Budget spent computation (extracted from FinanceContext) ─────────────────
 
@@ -51,6 +52,7 @@ describe('computeSpentByCategory', () => {
 
   it('ignores transactions from previous months', () => {
     const lastMonthDate = new Date();
+    lastMonthDate.setDate(1); // prevent day-overflow when current day > last day of prev month
     lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
     const oldDate = lastMonthDate.toISOString().slice(0, 10);
     const txs = [
@@ -178,5 +180,86 @@ describe('getBudgetStatus', () => {
 
   it('returns "ok" for zero spent', () => {
     expect(getBudgetStatus(makeBudget(0, 500))).toBe('ok');
+  });
+});
+
+// ─── detectDuplicates (O(n) algorithm) ───────────────────────────────────────
+
+describe('detectDuplicates', () => {
+  it('returns empty set for empty array', () => {
+    expect(detectDuplicates([])).toEqual(new Set());
+  });
+
+  it('returns empty set when no duplicates', () => {
+    const txs = [
+      makeTransaction({ id: 'tx-1', amount: 100, merchant: 'Coffee Shop', date: '2025-01-10' }),
+      makeTransaction({ id: 'tx-2', amount: 200, merchant: 'Supermarket', date: '2025-01-10' }),
+    ];
+    expect(detectDuplicates(txs).size).toBe(0);
+  });
+
+  it('flags two same-day same-amount same-merchant transactions as duplicates', () => {
+    const txs = [
+      makeTransaction({ id: 'tx-1', amount: 50, merchant: 'Starbucks', date: '2025-01-10' }),
+      makeTransaction({ id: 'tx-2', amount: 50, merchant: 'Starbucks', date: '2025-01-10' }),
+    ];
+    const dupes = detectDuplicates(txs);
+    expect(dupes.has('tx-1')).toBe(true);
+    expect(dupes.has('tx-2')).toBe(true);
+  });
+
+  it('is case-insensitive for merchant names', () => {
+    const txs = [
+      makeTransaction({ id: 'tx-1', amount: 50, merchant: 'starbucks', date: '2025-01-10' }),
+      makeTransaction({ id: 'tx-2', amount: 50, merchant: 'STARBUCKS', date: '2025-01-10' }),
+    ];
+    const dupes = detectDuplicates(txs);
+    expect(dupes.size).toBe(2);
+  });
+
+  it('does not flag transactions 2+ days apart', () => {
+    const txs = [
+      makeTransaction({ id: 'tx-1', amount: 50, merchant: 'Starbucks', date: '2025-01-10' }),
+      makeTransaction({ id: 'tx-2', amount: 50, merchant: 'Starbucks', date: '2025-01-12' }),
+    ];
+    expect(detectDuplicates(txs).size).toBe(0);
+  });
+
+  it('does not flag same amount+merchant but different type', () => {
+    const txs = [
+      makeTransaction({ id: 'tx-1', type: 'expense', amount: 100, merchant: 'Bank', date: '2025-01-10' }),
+      makeTransaction({ id: 'tx-2', type: 'income', amount: 100, merchant: 'Bank', date: '2025-01-10' }),
+    ];
+    expect(detectDuplicates(txs).size).toBe(0);
+  });
+
+  it('handles 1000 transactions with 5 duplicate pairs correctly', () => {
+    const txs: Transaction[] = [];
+    // 990 unique transactions
+    for (let i = 0; i < 990; i++) {
+      txs.push(makeTransaction({ id: `tx-${i}`, amount: i + 1, merchant: `Merchant${i}`, date: '2025-01-10' }));
+    }
+    // 10 transactions forming 5 duplicate pairs
+    for (let i = 0; i < 5; i++) {
+      txs.push(makeTransaction({ id: `dupe-${i}a`, amount: 999, merchant: `DupeMerchant${i}`, date: '2025-01-10' }));
+      txs.push(makeTransaction({ id: `dupe-${i}b`, amount: 999, merchant: `DupeMerchant${i}`, date: '2025-01-10' }));
+    }
+
+    const start = performance.now();
+    const dupes = detectDuplicates(txs);
+    const elapsed = performance.now() - start;
+
+    expect(dupes.size).toBe(10); // exactly the 5 pairs
+    expect(elapsed).toBeLessThan(50); // must complete in <50ms
+
+    // Verify only the duplicate pairs are flagged
+    for (let i = 0; i < 5; i++) {
+      expect(dupes.has(`dupe-${i}a`)).toBe(true);
+      expect(dupes.has(`dupe-${i}b`)).toBe(true);
+    }
+    // The first 990 unique transactions should NOT be flagged
+    for (let i = 0; i < 990; i++) {
+      expect(dupes.has(`tx-${i}`)).toBe(false);
+    }
   });
 });

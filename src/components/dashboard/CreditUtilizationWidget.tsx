@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { CreditCard } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
@@ -10,7 +11,7 @@ interface Props {
   mask: (val: string) => string;
 }
 
-const CreditUtilizationWidget = ({ accounts, hidden, mask }: Props) => {
+const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => {
   const { fmt } = useCurrency();
   const creditCards = accounts.filter(a => a.type === 'credit' && a.creditLimit);
 
@@ -86,4 +87,4 @@ const CreditUtilizationWidget = ({ accounts, hidden, mask }: Props) => {
   );
 };
 
-export default CreditUtilizationWidget;
+export default memo(CreditUtilizationWidget);

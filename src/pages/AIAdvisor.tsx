@@ -1,14 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { useAI, type BudgetAnalysis } from '@/hooks/useAI';
+import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
+import { format, parseISO } from 'date-fns';
 import { parseISO, subMonths, getMonth, getYear } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink, Info,
+  History, Trash2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,10 +79,19 @@ const AIAdvisor = () => {
   const navigate = useNavigate();
   const { transactions, accounts, budgets, goals, addBudget } = useFinance();
   const { fmt, currency } = useCurrency();
-  const { loading, generateBudgetAnalysis } = useAI();
+  const { loading, generateBudgetAnalysis, fetchAdvisorHistory, deleteAdvisorSession } = useAI();
   const [analysis, setAnalysis] = useState<BudgetAnalysis | null>(null);
   const [activeSimTab, setActiveSimTab] = useState<string>('envelope');
   const [applyingEnvelopes, setApplyingEnvelopes] = useState(false);
+  const [history, setHistory] = useState<AdvisorSession[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const loadHistory = useCallback(async () => {
+    const sessions = await fetchAdvisorHistory();
+    setHistory(sessions);
+  }, [fetchAdvisorHistory]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   // monthKey is stable for the lifetime of the session — the month won't change
   // while the user has the app open, so an empty dep array is correct here.
@@ -184,7 +195,10 @@ const AIAdvisor = () => {
       return;
     }
     const result = await generateBudgetAnalysis(financialData);
-    if (result) setAnalysis(result);
+    if (result) {
+      setAnalysis(result);
+      loadHistory(); // refresh history list
+    }
   };
 
   const handleApplyEnvelopes = async () => {
@@ -242,6 +256,55 @@ const AIAdvisor = () => {
       </div>
 
       <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto space-y-4">
+
+        {/* Past Sessions */}
+        {history.length > 0 && (
+          <div className="bg-card rounded-2xl card-shadow overflow-hidden">
+            <button
+              onClick={() => setShowHistory(h => !h)}
+              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
+              <div className="flex items-center gap-2">
+                <History size={14} className="text-muted-foreground" />
+                <span className="text-sm font-medium">Past Analyses ({history.length})</span>
+              </div>
+              {showHistory ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+            </button>
+            {showHistory && (
+              <div className="border-t border-border divide-y divide-border">
+                {history.map(session => (
+                  <div key={session.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors">
+                    <button
+                      onClick={() => { setAnalysis(session.result); setActiveSimTab(session.result.recommendedMethod); }}
+                      className="flex items-center gap-3 flex-1 text-left">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-base">{METHOD_DETAILS[session.result.recommendedMethod]?.emoji ?? '📊'}</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {METHOD_DETAILS[session.result.recommendedMethod]?.name ?? session.result.recommendedMethod}
+                          <span className={`ml-2 text-xs font-semibold ${scoreColor(session.result.healthScore)}`}>
+                            {session.result.healthScore}/100
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISO(session.created_at), 'MMM d, yyyy · h:mm a')}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await deleteAdvisorSession(session.id);
+                        setHistory(prev => prev.filter(s => s.id !== session.id));
+                      }}
+                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Spending Anomalies — always visible */}
         {anomalies.length > 0 && (

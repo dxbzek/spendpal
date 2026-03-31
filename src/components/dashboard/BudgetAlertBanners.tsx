@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Budget } from '@/types/finance';
@@ -57,4 +58,4 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
   );
 };
 
-export default BudgetAlertBanners;
+export default memo(BudgetAlertBanners);

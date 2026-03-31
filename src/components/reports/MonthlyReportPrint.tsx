@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { FileText, Printer } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, parseISO, getDaysInMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useFinance } from '@/context/FinanceContext';
 

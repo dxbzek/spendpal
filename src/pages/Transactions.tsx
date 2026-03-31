@@ -6,12 +6,13 @@ import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, Al
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
-import { format, parseISO, differenceInHours } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { detectDuplicates } from '@/utils/detectDuplicates';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
 import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
-import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
+import { extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditTransaction } from '@/context/EditTxContext';
 import { toast } from 'sonner';
@@ -22,8 +23,10 @@ import {
 
 const UNDO_DELAY_MS = 5000;
 
+const PAGE_SIZE = 50;
+
 const Transactions = () => {
-  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, updateTransaction, loading } = useFinance();
+  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, bulkUpdateCategory, updateTransaction, loading } = useFinance();
   const { fmtSigned, fmt } = useCurrency();
   const { openEditSheet } = useEditTransaction();
   const { categories: allCategories } = useCategories();
@@ -41,6 +44,12 @@ const Transactions = () => {
   const [deleting, setDeleting] = useState(false);
   const [merchantProfile, setMerchantProfile] = useState<string | null>(null);
   const [categorizeTxId, setCategorizeTxId] = useState<string | null>(null);
+  // Pagination
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Bulk selection
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
   const isMobile = useIsMobile();
 
   // Undo delete state
@@ -85,25 +94,8 @@ const Transactions = () => {
     });
   }, [removeTransaction]);
 
-  // Detect duplicates: same merchant + amount + type within 24h
-  const duplicateIds = useMemo(() => {
-    const dupes = new Set<string>();
-    for (let i = 0; i < transactions.length; i++) {
-      for (let j = i + 1; j < transactions.length; j++) {
-        const a = transactions[i], b = transactions[j];
-        if (
-          a.type === b.type &&
-          a.amount === b.amount &&
-          a.merchant.toLowerCase() === b.merchant.toLowerCase() &&
-          Math.abs(differenceInHours(parseISO(a.date), parseISO(b.date))) <= 24
-        ) {
-          dupes.add(a.id);
-          dupes.add(b.id);
-        }
-      }
-    }
-    return dupes;
-  }, [transactions]);
+  // Detect duplicates: same merchant + amount + type within 24h (O(n) algorithm)
+  const duplicateIds = useMemo(() => detectDuplicates(transactions), [transactions]);
 
   // Merge transfer pairs: match expense+income with same date, amount, category='Transfer'
   const { mergedTransactions, transferPairs } = useMemo(() => {
@@ -154,18 +146,23 @@ const Transactions = () => {
     });
   }, [mergedTransactions, search, filterType, filterAccount, transferPairs, dateFrom, dateTo, pendingDeleteIds]);
 
+  // Reset pagination when filters change
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, filterType, filterAccount, dateFrom, dateTo]);
+
+  const paginated = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
 
   const grouped = useMemo(() => {
-    const map: Record<string, typeof filtered> = {};
-    filtered.forEach(tx => {
+    const map: Record<string, typeof paginated> = {};
+    paginated.forEach(tx => {
       const key = format(parseISO(tx.date), 'MMMM d, yyyy');
       if (!map[key]) map[key] = [];
       map[key].push(tx);
     });
     return Object.entries(map);
-  }, [filtered]);
+  }, [paginated]);
 
   const visibleDupeCount = useMemo(() => filtered.filter(tx => duplicateIds.has(tx.id)).length, [filtered, duplicateIds]);
 
@@ -198,19 +195,39 @@ const Transactions = () => {
     }
   };
 
-  const renderTxContent = (tx: typeof filtered[0], idx: number) => {
-    const catColor = getCategoryChartColor(tx.category, idx);
+  const renderTxContent = (tx: typeof filtered[0], _idx: number) => {
     const pair = transferPairs.get(tx.id);
     const isLinkedTransfer = !!pair;
     const fromAccountName = isLinkedTransfer ? getAccountName(pair.from.accountId) : '';
     const toAccountName = isLinkedTransfer ? getAccountName(pair.to.accountId) : '';
     const isDupe = duplicateIds.has(tx.id);
+    const isSelected = selectedIds.has(tx.id);
 
     return (
       <div
-        className="flex items-center justify-between p-4 cursor-pointer active:bg-muted/50 transition-colors"
-        onClick={() => openEditSheet(tx)}
+        className={`flex items-center justify-between p-4 cursor-pointer active:bg-muted/50 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+        onClick={() => {
+          if (selectMode) {
+            setSelectedIds(prev => {
+              const next = new Set(prev);
+              if (next.has(tx.id)) next.delete(tx.id);
+              else next.add(tx.id);
+              return next;
+            });
+          } else {
+            openEditSheet(tx);
+          }
+        }}
       >
+        {selectMode && (
+          <div className="shrink-0 mr-2">
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+              isSelected ? 'bg-primary border-primary' : 'border-border'
+            }`}>
+              {isSelected && <span className="text-primary-foreground text-[10px] leading-none">✓</span>}
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span className="text-2xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
            <div className="min-w-0">
@@ -275,7 +292,10 @@ const Transactions = () => {
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-2xl font-heading">Transactions</h1>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          {filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
+          {visibleCount < filtered.length && ` (showing ${visibleCount})`}
+        </p>
 
         {/* Duplicate warning banner */}
         {visibleDupeCount > 0 && (
@@ -300,7 +320,53 @@ const Transactions = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
             <Upload size={14} /> <span className="hidden sm:inline">Import</span>
           </button>
+          <button
+            onClick={() => {
+              setSelectMode(s => !s);
+              setSelectedIds(new Set());
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              selectMode ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}>
+            {selectMode ? <X size={14} /> : <span>☑</span>} <span className="hidden sm:inline">{selectMode ? 'Cancel' : 'Select'}</span>
+          </button>
         </div>
+
+        {/* Bulk action bar */}
+        {selectMode && selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2.5 bg-primary/10 border border-primary/20 rounded-xl">
+            <span className="text-xs font-semibold text-primary flex-1">{selectedIds.size} selected</span>
+            <button
+              onClick={() => setSelectedIds(new Set(filtered.map(t => t.id)))}
+              className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors">
+              Select all {filtered.length}
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setBulkCategoryOpen(o => !o)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
+                Change Category
+              </button>
+              {bulkCategoryOpen && (
+                <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-card border border-border rounded-xl shadow-lg p-2 max-h-64 overflow-y-auto">
+                  {allCategories.map(cat => (
+                    <button
+                      key={cat.name}
+                      onClick={async () => {
+                        await bulkUpdateCategory([...selectedIds], cat.name, cat.icon);
+                        setBulkCategoryOpen(false);
+                        setSelectedIds(new Set());
+                        setSelectMode(false);
+                      }}
+                      className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground text-xs transition-colors">
+                      <span>{cat.icon}</span> {cat.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="relative mb-3">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -359,33 +425,55 @@ const Transactions = () => {
         )}
 
         {showDateFilter && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <label className="text-[11px] text-muted-foreground shrink-0">From</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+          <div className="flex flex-col gap-2 mb-4">
+            {/* Quick presets */}
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                { label: 'Today', from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') },
+                { label: 'This week', from: format(startOfWeek(new Date()), 'yyyy-MM-dd'), to: format(endOfWeek(new Date()), 'yyyy-MM-dd') },
+                { label: 'This month', from: format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: format(endOfMonth(new Date()), 'yyyy-MM-dd') },
+                { label: 'Last month', from: format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'), to: format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd') },
+              ].map(preset => (
+                <button
+                  key={preset.label}
+                  onClick={() => { setDateFrom(preset.from); setDateTo(preset.to); }}
+                  className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                    dateFrom === preset.from && dateTo === preset.to
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}>
+                  {preset.label}
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <label className="text-[11px] text-muted-foreground shrink-0">To</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <label className="text-[11px] text-muted-foreground shrink-0">From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => setDateFrom(e.target.value)}
+                  className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <label className="text-[11px] text-muted-foreground shrink-0">To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={e => setDateTo(e.target.value)}
+                  className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setDateFrom(''); setDateTo(''); }}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs hover:bg-destructive/10 hover:text-destructive transition-colors"
+                >
+                  <X size={12} /> Clear
+                </button>
+              )}
             </div>
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs hover:bg-destructive/10 hover:text-destructive transition-colors"
-              >
-                <X size={12} /> Clear
-              </button>
-            )}
           </div>
         )}
         </div>
@@ -451,7 +539,7 @@ const Transactions = () => {
                   <div className="px-4 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border">
                     {date}
                   </div>
-                  {txs.map((tx, idx) => {
+                  {txs.map((tx, _idx) => {
                     const pair = transferPairs.get(tx.id);
                     const isLinkedTransfer = !!pair;
                     const isDupe = duplicateIds.has(tx.id);
@@ -499,6 +587,17 @@ const Transactions = () => {
           </div>
         )}
       </div>
+
+      {/* Show more pagination */}
+      {visibleCount < filtered.length && (
+        <div className="px-5 md:px-8 pb-4 flex justify-center">
+          <button
+            onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+            className="px-6 py-2.5 rounded-full bg-muted text-muted-foreground text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+            Show more ({filtered.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
 
       <ImportStatementSheet open={showImport} onOpenChange={setShowImport} />
 

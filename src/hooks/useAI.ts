@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 import { logger } from '@/lib/logger';
+import type { Json } from '@/integrations/supabase/types';
 
 const FUNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -97,7 +99,15 @@ export interface BudgetAnalysis {
   }>;
 }
 
+export interface AdvisorSession {
+  id: string;
+  session_type: string;
+  result: BudgetAnalysis;
+  created_at: string;
+}
+
 export const useAI = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState('');
 
@@ -228,14 +238,26 @@ export const useAI = () => {
         25_000,
       );
       const result = body.result;
+      let parsed: BudgetAnalysis | null = null;
       if (result && typeof result === 'object' && 'recommendedMethod' in result) {
-        return result as BudgetAnalysis;
-      }
-      if (typeof result === 'string') {
+        parsed = result as BudgetAnalysis;
+      } else if (typeof result === 'string') {
         const jsonMatch = result.match(/\{[\s\S]*\}/);
-        if (jsonMatch) return JSON.parse(jsonMatch[0]) as BudgetAnalysis;
+        if (jsonMatch) parsed = JSON.parse(jsonMatch[0]) as BudgetAnalysis;
       }
-      throw new Error('Unexpected response format from AI advisor');
+      if (!parsed) throw new Error('Unexpected response format from AI advisor');
+
+      // Persist to advisor_sessions for history
+      if (user) {
+        const { error: saveError } = await supabase.from('advisor_sessions').insert({
+          user_id: user.id,
+          session_type: 'budget-advisor',
+          result: parsed as unknown as Json,
+        });
+        if (saveError) logger.error('Failed to save advisor session', saveError);
+      }
+
+      return parsed;
     } catch (e: unknown) {
       logger.error('generateBudgetAnalysis failed', e);
       const msg = e instanceof Error ? e.message : 'AI advisor is unavailable. Please try again later.';
@@ -244,9 +266,38 @@ export const useAI = () => {
     } finally {
       setLoading(false);
     }
+  }, [user]);
+
+  const fetchAdvisorHistory = useCallback(async (): Promise<AdvisorSession[]> => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('advisor_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) {
+      logger.error('Failed to fetch advisor history', error);
+      return [];
+    }
+    return (data ?? []).map(row => ({
+      id: row.id,
+      session_type: row.session_type,
+      result: row.result as unknown as BudgetAnalysis,
+      created_at: row.created_at,
+    }));
+  }, [user]);
+
+  const deleteAdvisorSession = useCallback(async (id: string): Promise<void> => {
+    const { error } = await supabase.from('advisor_sessions').delete().eq('id', id);
+    if (error) logger.error('Failed to delete advisor session', error);
   }, []);
 
   const categorizeCSV = categorizeStatement;
 
-  return { loading, summaryText, generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV, generateBudgetAnalysis };
+  return {
+    loading, summaryText,
+    generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV, generateBudgetAnalysis,
+    fetchAdvisorHistory, deleteAdvisorSession,
+  };
 };

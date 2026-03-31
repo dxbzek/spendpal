@@ -94,6 +94,16 @@ function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
 
 // ─── Context type ─────────────────────────────────────────────────────────────
 
+export interface TransferInput {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  currency: string;
+  date: string;
+  merchant: string;
+  note?: string | null;
+}
+
 interface FinanceContextType {
   accounts: Account[];
   transactions: Transaction[];
@@ -105,8 +115,10 @@ interface FinanceContextType {
   updateAccount: (account: Account) => Promise<void>;
   removeAccount: (id: string) => Promise<void>;
   // Transactions
-  addTransaction: (tx: Omit<Transaction, 'id'>, options?: { skipBalanceUpdate?: boolean }) => Promise<void>;
+  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransfer: (transfer: TransferInput) => Promise<void>;
   bulkAddTransactions: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
+  bulkUpdateCategory: (ids: string[], category: string, categoryIcon: string) => Promise<void>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   bulkRemoveTransactions: (ids: string[]) => Promise<void>;
@@ -214,7 +226,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ─── TRANSACTIONS ─────────────────────────────────────────────────────────
 
-  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>, options?: { skipBalanceUpdate?: boolean }) => {
+  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>) => {
     if (!user) return;
     const { data, error } = await supabase.from('transactions').insert({
       user_id: user.id,
@@ -235,8 +247,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const mapped = mapTransaction(data);
     if (mapped) {
-      // Use functional updater so budget recomputation reads the freshest transaction list,
-      // avoiding stale-closure bugs when multiple transactions are added in quick succession.
       setTransactions(prev => {
         const updated = [mapped, ...prev];
         setBudgets(b => {
@@ -247,18 +257,72 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
     }
 
-    if (!options?.skipBalanceUpdate) {
-      // Fetch a fresh account row instead of relying on potentially-stale closure value.
-      const { data: freshAccount } = await supabase
-        .from('accounts').select('balance').eq('id', tx.accountId).single();
-      if (freshAccount) {
-        const currentBalance = Number(freshAccount.balance);
-        const newBalance = tx.type === 'income'
-          ? currentBalance + tx.amount
-          : currentBalance - tx.amount;
-        await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
-        setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: newBalance } : a));
-      }
+    // Refresh account balance from DB (updated atomically by DB trigger)
+    const { data: freshAccount } = await supabase
+      .from('accounts').select('balance').eq('id', tx.accountId).single();
+    if (freshAccount) {
+      setAccounts(prev => prev.map(a =>
+        a.id === tx.accountId ? { ...a, balance: Number(freshAccount.balance) } : a
+      ));
+    }
+  }, [user]);
+
+  const addTransfer = useCallback(async (transfer: TransferInput) => {
+    if (!user) return;
+    const rows = [
+      {
+        user_id: user.id,
+        account_id: transfer.fromAccountId,
+        type: 'expense' as const,
+        amount: transfer.amount,
+        currency: transfer.currency,
+        category: 'Transfer',
+        category_icon: '🔄',
+        merchant: transfer.merchant || 'Transfer',
+        date: transfer.date,
+        note: transfer.note ?? null,
+        is_recurring: false,
+        total_installments: null,
+        current_installment: null,
+      },
+      {
+        user_id: user.id,
+        account_id: transfer.toAccountId,
+        type: 'income' as const,
+        amount: transfer.amount,
+        currency: transfer.currency,
+        category: 'Transfer',
+        category_icon: '🔄',
+        merchant: transfer.merchant || 'Transfer',
+        date: transfer.date,
+        note: transfer.note ?? null,
+        is_recurring: false,
+        total_installments: null,
+        current_installment: null,
+      },
+    ];
+    const { data, error } = await supabase.from('transactions').insert(rows).select();
+    if (error) { toast.error(`Failed to add transfer: ${error.message}`); return; }
+
+    const mapped = (data ?? []).map(mapTransaction).filter(Boolean) as Transaction[];
+    setTransactions(prev => {
+      const updated = [...mapped, ...prev];
+      setBudgets(b => {
+        const spentByCategory = computeSpentByCategory(updated);
+        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
+      });
+      return updated;
+    });
+
+    // Refresh both account balances from DB (updated atomically by DB trigger)
+    const accountIds = [transfer.fromAccountId, transfer.toAccountId];
+    const { data: freshAccounts } = await supabase
+      .from('accounts').select('id, balance').in('id', accountIds);
+    if (freshAccounts) {
+      setAccounts(prev => prev.map(a => {
+        const fresh = freshAccounts.find(f => f.id === a.id);
+        return fresh ? { ...a, balance: Number(fresh.balance) } : a;
+      }));
     }
   }, [user]);
 
@@ -331,24 +395,61 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return updated;
     });
 
+    // Refresh account balance from DB (updated atomically by DB trigger)
     if (tx) {
-      const account = accounts.find(a => a.id === tx.accountId);
-      if (account) {
-        const newBalance = tx.type === 'income'
-          ? account.balance - tx.amount
-          : account.balance + tx.amount;
-        await supabase.from('accounts').update({ balance: newBalance }).eq('id', tx.accountId);
-        setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: newBalance } : a));
+      const { data: freshAccount } = await supabase
+        .from('accounts').select('balance').eq('id', tx.accountId).single();
+      if (freshAccount) {
+        setAccounts(prev => prev.map(a =>
+          a.id === tx.accountId ? { ...a, balance: Number(freshAccount.balance) } : a
+        ));
       }
     }
-  }, [transactions, accounts]);
+  }, [transactions]);
 
   const bulkRemoveTransactions = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
+    // Capture affected account IDs before deletion
+    const affectedAccountIds = [...new Set(
+      transactions.filter(t => ids.includes(t.id)).map(t => t.accountId)
+    )];
+
     const { error } = await supabase.from('transactions').delete().in('id', ids);
     if (error) { toast.error(`Failed to delete transactions: ${error.message}`); return; }
+
     setTransactions(prev => {
       const updated = prev.filter(t => !ids.includes(t.id));
+      setBudgets(b => {
+        const spentByCategory = computeSpentByCategory(updated);
+        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
+      });
+      return updated;
+    });
+
+    // Refresh balances for all affected accounts (updated by DB trigger)
+    if (affectedAccountIds.length > 0) {
+      const { data: freshAccounts } = await supabase
+        .from('accounts').select('id, balance').in('id', affectedAccountIds);
+      if (freshAccounts) {
+        setAccounts(prev => prev.map(a => {
+          const fresh = freshAccounts.find(f => f.id === a.id);
+          return fresh ? { ...a, balance: Number(fresh.balance) } : a;
+        }));
+      }
+    }
+  }, [transactions]);
+
+  const bulkUpdateCategory = useCallback(async (ids: string[], category: string, categoryIcon: string) => {
+    if (ids.length === 0) return;
+    const { error } = await supabase
+      .from('transactions')
+      .update({ category, category_icon: categoryIcon })
+      .in('id', ids);
+    if (error) { toast.error(`Failed to update categories: ${error.message}`); return; }
+    setTransactions(prev => {
+      const updated = prev.map(t =>
+        ids.includes(t.id) ? { ...t, category, categoryIcon } : t
+      );
       setBudgets(b => {
         const spentByCategory = computeSpentByCategory(updated);
         return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
@@ -457,14 +558,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const contextValue = useMemo(() => ({
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
-    addTransaction, bulkAddTransactions, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
     addGoal, updateGoal, removeGoal, addGoalProgress,
     refresh: fetchAll,
   }), [
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
-    addTransaction, bulkAddTransactions, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
     addGoal, updateGoal, removeGoal, addGoalProgress,
     fetchAll,

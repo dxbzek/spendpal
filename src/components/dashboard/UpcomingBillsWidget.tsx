@@ -2,7 +2,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { CalendarClock } from 'lucide-react';
 import { differenceInDays, addMonths, parseISO, format } from 'date-fns';
 import type { Transaction, Account } from '@/types/finance';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 interface Props {
   accounts: Account[];
@@ -98,4 +98,4 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
   );
 };
 
-export default UpcomingBillsWidget;
+export default memo(UpcomingBillsWidget);
