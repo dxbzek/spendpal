@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { CATEGORIES } from '@/types/finance';
+import { CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, type TransactionType } from '@/types/finance';
 
 export interface Category {
   name: string;
@@ -106,8 +106,18 @@ export const useCategories = () => {
     await fetchCustom();
   }, [user, customCategories, fetchCustom, updateCategory]);
 
+  const getCategoriesForType = (type: TransactionType): Category[] => {
+    const typeDefaults = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const customNames = new Set(customCategories.map(c => c.name));
+    const defaults: Category[] = (typeDefaults as readonly { name: string; icon: string }[])
+      .filter(c => !customNames.has(c.name))
+      .map(c => ({ name: c.name, icon: c.icon, isCustom: false }));
+    return [...customCategories, ...defaults];
+  };
+
   return {
     categories: allCategories,
+    getCategoriesForType,
     customCategories,
     loading,
     addCategory,

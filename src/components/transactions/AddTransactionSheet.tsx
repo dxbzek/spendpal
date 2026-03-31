@@ -32,7 +32,7 @@ const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
   const { accounts, transactions, addTransaction, updateTransaction, removeTransaction } = useFinance();
   const { currency } = useCurrency();
-  const { categories } = useCategories();
+  const { getCategoriesForType } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -226,7 +226,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
           <div className="space-y-5 mt-4">
             <div className="flex gap-1 p-1 bg-muted rounded-xl">
               {TYPES.map(t => (
-                <button key={t.value} onClick={() => { setType(t.value); if (t.value !== 'transfer') { setCategory(''); setCategoryIcon(''); } }}
+                <button key={t.value} onClick={() => { setType(t.value); setCategory(''); setCategoryIcon(''); }}
                   className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
                     type === t.value
                       ? t.value === 'expense'
@@ -318,7 +318,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
               <div>
                 <label className="text-sm font-medium mb-2 block">Category</label>
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                  {categories.map(c => (
+                  {getCategoriesForType(type).map(c => (
                     <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
                       title={c.name}
                       className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all active:scale-95 ${
