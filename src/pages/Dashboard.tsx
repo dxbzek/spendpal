@@ -12,7 +12,7 @@ import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWid
 import ExpenseByAccountTypeWidget from '@/components/dashboard/ExpenseByAccountTypeWidget';
 import MonthlyComparisonWidget from '@/components/dashboard/MonthlyComparisonWidget';
 import { useFinance } from '@/context/FinanceContext';
-import { useAuth } from '@/context/AuthContext';
+
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
 import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Trash2, Edit2, Search } from 'lucide-react';
@@ -36,7 +36,7 @@ import {
 
 const Dashboard = () => {
   const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
-  const { signOut } = useAuth();
+  
   const { fmt, fmtSigned, currency: userCurrency, fmtSecondary, secondaryCurrency, setSecondaryCurrency } = useCurrency();
   const isMobile = useIsMobile();
   const [secSearch, setSecSearch] = useState('');
@@ -137,7 +137,7 @@ const Dashboard = () => {
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
   const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
-  const recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
+  const _recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
   const recentTx = transactions.slice(0, 5);
 
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (

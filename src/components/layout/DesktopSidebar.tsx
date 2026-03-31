@@ -40,7 +40,7 @@ interface DesktopSidebarProps {
   collapsed?: boolean;
 }
 
-const NavButton = ({ path, label, icon: Icon, active, onClick, collapsed }: {
+const NavButton = ({ path: _path, label, icon: Icon, active, onClick, collapsed }: {
   path: string; label: string; icon: any; active: boolean; onClick: () => void; collapsed?: boolean;
 }) => {
   if (collapsed) {

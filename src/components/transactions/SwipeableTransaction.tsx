@@ -21,7 +21,7 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
   const categorizeBgOpacity = useTransform(x, [0, 60, 120], [0, 0.8, 1]);
   const categorizeIconScale = useTransform(x, [0, 60, 120], [0.5, 0.8, 1]);
 
-  const [dragging, setDragging] = useState(false);
+  const [_dragging, setDragging] = useState(false);
 
   const handleDragEnd = (_: any, info: PanInfo) => {
     setDragging(false);

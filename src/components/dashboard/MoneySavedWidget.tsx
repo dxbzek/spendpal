@@ -2,7 +2,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { PiggyBank, TrendingUp, TrendingDown } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
 import type { Transaction } from '@/types/finance';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 interface Props {
   transactions: Transaction[];
@@ -11,7 +11,7 @@ interface Props {
   mask: (val: string) => string;
 }
 
-const MoneySavedWidget = ({ transactions, creditAccountIds, hidden, mask }: Props) => {
+const MoneySavedWidget = ({ transactions, creditAccountIds, hidden: _hidden, mask }: Props) => {
   const { fmt } = useCurrency();
 
   const { saved, pct } = useMemo(() => {
@@ -50,4 +50,4 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden, mask }: Prop
   );
 };
 
-export default MoneySavedWidget;
+export default memo(MoneySavedWidget);

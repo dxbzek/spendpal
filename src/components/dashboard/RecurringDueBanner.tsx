@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getMonth, getYear, parseISO } from 'date-fns';
@@ -67,4 +68,4 @@ const RecurringDueBanner = ({ transactions }: Props) => {
   );
 };
 
-export default RecurringDueBanner;
+export default memo(RecurringDueBanner);

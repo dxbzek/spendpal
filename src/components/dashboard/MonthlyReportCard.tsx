@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -153,4 +153,4 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
   );
 };
 
-export default MonthlyReportCard;
+export default memo(MonthlyReportCard);

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { PieChart } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
@@ -18,7 +18,7 @@ const TYPE_CONFIG = {
   credit: { label: '🏦 Credit', color: 'bg-amber-500' },
 } as const;
 
-const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden, mask }: Props) => {
+const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, mask }: Props) => {
   const { fmt } = useCurrency();
 
   const breakdown = useMemo(() => {
@@ -82,4 +82,4 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden, mask }: Pr
   );
 };
 
-export default ExpenseByAccountTypeWidget;
+export default memo(ExpenseByAccountTypeWidget);

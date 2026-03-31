@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCategories, type Category } from '@/hooks/useCategories';
+import { useCategories } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
@@ -14,7 +14,7 @@ const EMOJI_SUGGESTIONS = ['☕', '🛒', '🚗', '🍽️', '📱', '🚇', '�
 const PREVIEW_COUNT = 6;
 
 const CategoryManager = () => {
-  const { categories, customCategories, addCategory, updateCategory, removeCategory, overrideDefault } = useCategories();
+  const { customCategories, addCategory, updateCategory, removeCategory, overrideDefault } = useCategories();
   const [showAdd, setShowAdd] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [newName, setNewName] = useState('');
@@ -113,7 +113,7 @@ const CategoryManager = () => {
                   <Button size="sm" className="h-7 text-xs" onClick={handleOverrideDefault}>Save</Button>
                 </div>
               </div>
-            ) : (item.type === 'custom' && editingId === (item as any).id) ? (
+            ) : (item.type === 'custom' && editingId === item.id) ? (
               <div className="flex-1 space-y-2">
                 <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-8 text-sm" />
                 <div className="flex flex-wrap gap-1">
@@ -137,7 +137,7 @@ const CategoryManager = () => {
                 <span className="text-xs truncate flex-1">{item.name}</span>
                 <button onClick={() => {
                   if (item.type === 'custom') {
-                    setEditingId((item as any).id!);
+                    setEditingId(item.id!);
                     setEditName(item.name);
                     setEditIcon(item.icon);
                   } else {
@@ -149,7 +149,7 @@ const CategoryManager = () => {
                   <Pencil size={12} />
                 </button>
                 {item.type === 'custom' && (
-                  <button onClick={() => setDeleteId((item as any).id!)}
+                  <button onClick={() => setDeleteId(item.id!)}
                     className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">
                     <Trash2 size={12} />
                   </button>

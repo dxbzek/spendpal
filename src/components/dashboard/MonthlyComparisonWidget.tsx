@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
@@ -18,7 +18,7 @@ const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
   credit: { label: 'Credit', icon: '🏦' },
 };
 
-const MonthlyComparisonWidget = ({ accounts, transactions, hidden, mask }: Props) => {
+const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask }: Props) => {
   const { fmt } = useCurrency();
 
   const comparison = useMemo(() => {
@@ -130,4 +130,4 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden, mask }: Props
   );
 };
 
-export default MonthlyComparisonWidget;
+export default memo(MonthlyComparisonWidget);

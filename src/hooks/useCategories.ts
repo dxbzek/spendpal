@@ -20,14 +20,14 @@ export const useCategories = () => {
   const fetchCustom = useCallback(async () => {
     if (!user) { setLoading(false); return; }
     const { data, error } = await supabase
-      .from('custom_categories' as any)
+      .from('custom_categories')
       .select('*')
       .eq('user_id', user.id)
       .order('sort_order');
     if (error) {
       logger.error('Failed to fetch custom categories', error);
     } else if (data) {
-      setCustomCategories((data as any[]).map(r => ({
+      setCustomCategories(data.map(r => ({
         name: r.name,
         icon: r.icon,
         isCustom: true,
@@ -50,12 +50,12 @@ export const useCategories = () => {
 
   const addCategory = useCallback(async (name: string, icon: string) => {
     if (!user) return;
-    const { error } = await supabase.from('custom_categories' as any).insert({
+    const { error } = await supabase.from('custom_categories').insert({
       user_id: user.id,
       name: name.trim(),
       icon,
       sort_order: customCategories.length,
-    } as any);
+    });
     if (error) {
       if (error.code === '23505') toast.error('Category already exists');
       else toast.error(error.message);
@@ -66,8 +66,8 @@ export const useCategories = () => {
   }, [user, customCategories.length, fetchCustom]);
 
   const updateCategory = useCallback(async (id: string, name: string, icon: string) => {
-    const { error } = await supabase.from('custom_categories' as any)
-      .update({ name: name.trim(), icon } as any)
+    const { error } = await supabase.from('custom_categories')
+      .update({ name: name.trim(), icon })
       .eq('id', id);
     if (error) { toast.error(error.message); return; }
     toast.success('Category updated');
@@ -75,7 +75,7 @@ export const useCategories = () => {
   }, [fetchCustom]);
 
   const removeCategory = useCallback(async (id: string) => {
-    const { error } = await supabase.from('custom_categories' as any).delete().eq('id', id);
+    const { error } = await supabase.from('custom_categories').delete().eq('id', id);
     if (error) { toast.error(error.message); return; }
     toast.success('Category removed');
     await fetchCustom();
@@ -84,12 +84,12 @@ export const useCategories = () => {
   // Override a default category (create custom with same name, different icon)
   const overrideDefault = useCallback(async (name: string, newIcon: string) => {
     if (!user) return;
-    const { error } = await supabase.from('custom_categories' as any).insert({
+    const { error } = await supabase.from('custom_categories').insert({
       user_id: user.id,
       name,
       icon: newIcon,
       sort_order: customCategories.length,
-    } as any);
+    });
     if (error) {
       if (error.code === '23505') {
         // Already overridden, update instead

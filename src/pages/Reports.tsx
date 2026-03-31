@@ -276,7 +276,7 @@ const Reports = () => {
         <div className="bg-card rounded-2xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Income by Source</h2>
           <div className="space-y-2">
-            {incomeBySource.map(([source, data], i) => {
+            {incomeBySource.map(([source, data], _i) => {
               const pct = income > 0 ? Math.round((data.value / income) * 100) : 0;
               return (
                 <div key={source}>

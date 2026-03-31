@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { getCategoryChartColor } from '@/utils/categoryColors';
@@ -146,4 +146,4 @@ const RecurringTracker = () => {
   );
 };
 
-export default RecurringTracker;
+export default memo(RecurringTracker);

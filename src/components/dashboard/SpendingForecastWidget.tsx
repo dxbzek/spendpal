@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { getDaysInMonth, getDate } from 'date-fns';
@@ -83,4 +83,4 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
   );
 };
 
-export default SpendingForecastWidget;
+export default memo(SpendingForecastWidget);

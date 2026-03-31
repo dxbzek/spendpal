@@ -2,7 +2,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { Wallet, TrendingUp, TrendingDown, Target } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
 import type { Account } from '@/types/finance';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 
 interface Props {
@@ -34,7 +34,6 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const { fmt } = useCurrency();
   const [goal, setGoal] = useState<number | null>(() => loadGoal());
   const [editingGoal, setEditingGoal] = useState(false);
-  const [goalInput, setGoalInput] = useState('');
 
   const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
   const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
@@ -171,7 +170,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
             <div>
               <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
                 <span className="flex items-center gap-1"><Target size={10} /> Goal progress</span>
-                <button onClick={() => { setGoalInput(String(goal ?? '')); setEditingGoal(true); }} className="hover:text-primary">{goalProgress}% · {fmt(goal!)}</button>
+                <button onClick={() => setEditingGoal(true)} className="hover:text-primary">{goalProgress}% · {fmt(goal!)}</button>
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all ${goalProgress >= 100 ? 'bg-income' : 'bg-primary'}`} style={{ width: `${goalProgress}%` }} />
@@ -188,4 +187,4 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   );
 };
 
-export default NetWorthWidget;
+export default memo(NetWorthWidget);
