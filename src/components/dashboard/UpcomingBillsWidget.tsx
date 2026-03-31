@@ -19,7 +19,8 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
     // Credit card due dates
     accounts.filter(a => a.type === 'credit' && a.dueDate).forEach(cc => {
       const dueDate = new Date(now.getFullYear(), now.getMonth(), cc.dueDate!);
-      if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (dueDate < todayStart) dueDate.setMonth(dueDate.getMonth() + 1);
       const spent = cc.creditLimit ? cc.creditLimit - cc.balance : 0;
       if (spent > 0) {
         bills.push({
