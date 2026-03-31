@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
-import { format, parseISO } from 'date-fns';
-import { parseISO, subMonths, getMonth, getYear } from 'date-fns';
+import { format, parseISO, subMonths, getMonth, getYear } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
