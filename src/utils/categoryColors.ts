@@ -22,6 +22,15 @@ const COLORS_MAP: Record<string, string> = {
   'Salary': '#10b981',
   'Freelance': '#34d399',
   'Investment': '#6366f1',
+  'Utilities': '#f59e0b',
+  'Insurance': '#64748b',
+  'Fitness': '#22d3ee',
+  'Personal Care': '#f43f5e',
+  'Gift': '#c084fc',
+  'Bonus': '#fbbf24',
+  'Business': '#0284c7',
+  'Rental Income': '#8b5cf6',
+  'Refund': '#4ade80',
   'Other': '#64748b',
 };
 

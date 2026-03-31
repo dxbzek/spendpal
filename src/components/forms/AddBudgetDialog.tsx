@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { CATEGORIES, type Budget } from '@/types/finance';
+import { EXPENSE_EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
 import { format, subMonths, getMonth, getYear, parseISO } from 'date-fns';
 
 interface Props {
@@ -36,7 +36,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const [rollover, setRollover] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const selectedCat = CATEGORIES.find(c => c.name === category);
+  const selectedCat = EXPENSE_CATEGORIES.find(c => c.name === category);
 
   // Last month's unspent for this category
   const lastMonthUnspent = useMemo(() => {
@@ -122,7 +122,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map(c => (
+                {EXPENSE_CATEGORIES.map(c => (
                   <SelectItem key={c.name} value={c.name}>{c.icon} {c.name}</SelectItem>
                 ))}
               </SelectContent>

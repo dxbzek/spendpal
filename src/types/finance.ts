@@ -50,7 +50,7 @@ export interface Goal {
   status: 'active' | 'completed' | 'paused';
 }
 
-export const CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   { name: 'Coffee', icon: '☕' },
   { name: 'Groceries', icon: '🛒' },
   { name: 'Transport', icon: '🚗' },
@@ -67,11 +67,43 @@ export const CATEGORIES = [
   { name: 'Health', icon: '🏥' },
   { name: 'Education', icon: '📚' },
   { name: 'Subscriptions', icon: '🔄' },
-  { name: 'Salary', icon: '💰' },
-  { name: 'Freelance', icon: '💻' },
-  { name: 'Transfer', icon: '🔁' },
+  { name: 'Utilities', icon: '🔌' },
+  { name: 'Insurance', icon: '🛡️' },
+  { name: 'Fitness', icon: '🏋️' },
+  { name: 'Personal Care', icon: '💆' },
   { name: 'Other', icon: '📌' },
 ] as const;
+
+export const INCOME_CATEGORIES = [
+  { name: 'Salary', icon: '💰' },
+  { name: 'Freelance', icon: '💻' },
+  { name: 'Gift', icon: '🎁' },
+  { name: 'Bonus', icon: '🎉' },
+  { name: 'Investment', icon: '📈' },
+  { name: 'Business', icon: '🏢' },
+  { name: 'Rental Income', icon: '🏡' },
+  { name: 'Refund', icon: '💵' },
+  { name: 'Other', icon: '📌' },
+] as const;
+
+// Full union kept for backward compatibility (e.g. budget dialog, category manager)
+export const CATEGORIES = [
+  ...EXPENSE_CATEGORIES,
+  { name: 'Salary', icon: '💰' },
+  { name: 'Freelance', icon: '💻' },
+  { name: 'Gift', icon: '🎁' },
+  { name: 'Bonus', icon: '🎉' },
+  { name: 'Investment', icon: '📈' },
+  { name: 'Business', icon: '🏢' },
+  { name: 'Rental Income', icon: '🏡' },
+  { name: 'Refund', icon: '💵' },
+  { name: 'Transfer', icon: '🔁' },
+] as const;
+
+export function getCategoriesForType(type: TransactionType) {
+  if (type === 'income') return INCOME_CATEGORIES;
+  return EXPENSE_CATEGORIES;
+}
 
 
 
