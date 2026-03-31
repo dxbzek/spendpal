@@ -32,7 +32,7 @@ const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
   const { accounts, transactions, addTransaction, updateTransaction, removeTransaction } = useFinance();
   const { currency } = useCurrency();
-  const { getCategoriesForType } = useCategories();
+  const { getCategoriesForType, refresh: refreshCategories } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -55,20 +55,37 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const isEditing = !!editTransaction;
 
   useEffect(() => {
+    if (open) refreshCategories();
+  }, [open]);
+
+  useEffect(() => {
     if (editTransaction && open) {
-      setType(editTransaction.type as TransactionType);
+      const isTransferTx = editTransaction.category === 'Transfer' && editTransaction.type === 'expense';
+      setType(isTransferTx ? 'transfer' : editTransaction.type as TransactionType);
       setAmount(String(editTransaction.amount));
       setCategory(editTransaction.category);
       setCategoryIcon(editTransaction.categoryIcon);
       setAccountId(editTransaction.accountId);
-      setMerchant(editTransaction.merchant || '');
+      setMerchant(editTransaction.merchant === 'Transfer' ? '' : (editTransaction.merchant || ''));
       setDate(editTransaction.date);
       setIsRecurring(editTransaction.isRecurring || false);
       setHasInstallments(!!(editTransaction.totalInstallments && editTransaction.currentInstallment));
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
       setCurrentInstallment(String(editTransaction.currentInstallment || 1));
       setNote(editTransaction.note || '');
-      setToAccountId('');
+      if (isTransferTx) {
+        // Find the matching income half to restore toAccountId
+        const match = transactions.find(t =>
+          t.type === 'income' &&
+          t.category === 'Transfer' &&
+          t.date === editTransaction.date &&
+          t.amount === editTransaction.amount &&
+          t.id !== editTransaction.id
+        );
+        setToAccountId(match?.accountId || '');
+      } else {
+        setToAccountId('');
+      }
     } else if (!open) {
       resetForm();
     }

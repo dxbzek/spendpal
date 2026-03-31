@@ -79,12 +79,12 @@ const Dashboard = () => {
   }, [transactions, period, now]);
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
-  const income = useMemo(() => filtered.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
-  const expenses = useMemo(() => filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0), [filtered]);
+  const income = useMemo(() => filtered.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
+  const expenses = useMemo(() => filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0), [filtered]);
 
   const categorySpending = useMemo(() => {
     const map: Record<string, { icon: string; total: number }> = {};
-    filtered.filter(t => t.type === 'expense').forEach(t => {
+    filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer').forEach(t => {
       if (!map[t.category]) map[t.category] = { icon: t.categoryIcon, total: 0 };
       map[t.category].total += t.amount;
     });
@@ -97,8 +97,8 @@ const Dashboard = () => {
     for (const tx of transactions) {
       const d = parseISO(tx.date);
       if (d.getMonth() !== month || d.getFullYear() !== year) continue;
-      if (tx.type === 'income' && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
-      else if (tx.type === 'expense') exp += tx.amount;
+      if (tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
+      else if (tx.type === 'expense' && tx.category !== 'Transfer') exp += tx.amount;
     }
     return [inc, exp];
   }, [transactions, now, creditAccountIds]);
@@ -138,7 +138,27 @@ const Dashboard = () => {
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
   const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
   const _recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
-  const recentTx = transactions.slice(0, 5);
+  // Merge transfer pairs for recent transactions display (same logic as Transactions page)
+  const recentTx = useMemo(() => {
+    const pairedIds = new Set<string>();
+    const mergedList: (typeof transactions[0] & { toAccountId?: string })[] = [];
+    const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
+    const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
+    const transferToAccount = new Map<string, string>();
+    for (const exp of transferExpenses) {
+      const match = transferIncomes.find(inc => inc.date === exp.date && inc.amount === exp.amount && !pairedIds.has(inc.id));
+      if (match) {
+        pairedIds.add(exp.id);
+        pairedIds.add(match.id);
+        transferToAccount.set(exp.id, match.accountId);
+      }
+    }
+    for (const tx of transactions) {
+      if (pairedIds.has(tx.id) && !transferToAccount.has(tx.id)) continue; // skip income half
+      mergedList.push({ ...tx, toAccountId: transferToAccount.get(tx.id) });
+    }
+    return mergedList.slice(0, 5);
+  }, [transactions]);
 
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
     <div className={`bg-card rounded-2xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
@@ -574,20 +594,29 @@ const Dashboard = () => {
                 <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
               </div>
               <div className="space-y-3">
-                {recentTx.map(tx => (
-                  <div key={tx.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{extractEmoji(tx.categoryIcon)}</span>
-                      <div>
-                        <p className="text-sm font-medium">{tx.merchant}</p>
-                        <p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                {recentTx.map(tx => {
+                  const isTransfer = tx.category === 'Transfer';
+                  const toAccName = tx.toAccountId ? (accounts.find(a => a.id === tx.toAccountId)?.name || '') : null;
+                  const fromAccName = isTransfer ? (accounts.find(a => a.id === tx.accountId)?.name || '') : null;
+                  return (
+                    <div key={tx.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{extractEmoji(tx.categoryIcon)}</span>
+                        <div>
+                          <p className="text-sm font-medium">{isTransfer ? 'Transfer' : tx.merchant}</p>
+                          {isTransfer && toAccName ? (
+                            <p className="text-xs text-muted-foreground">{fromAccName} → {toAccName}</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                          )}
+                        </div>
                       </div>
+                      <p className={`text-sm font-heading ${isTransfer ? 'text-muted-foreground' : tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                        {fmtSigned(tx.amount, isTransfer ? 'transfer' : tx.type as 'income' | 'expense')}
+                      </p>
                     </div>
-                    <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                      {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
           )}
