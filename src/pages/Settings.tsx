@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
 import { useNavigate } from 'react-router-dom';
@@ -277,6 +277,7 @@ const DangerZoneCard = () => {
       // Clear localStorage snapshots
       localStorage.removeItem('spendpal_networth_history');
       localStorage.removeItem('spendpal_rollover_cats');
+      localStorage.removeItem('spendpal_monthly_income');
       toast.success('All data deleted');
       window.location.reload();
     } catch (err: unknown) {
@@ -357,6 +358,7 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
+  const [monthlyIncome, setMonthlyIncome] = useState(() => localStorage.getItem('spendpal_monthly_income') || '');
 
   useEffect(() => {
     if (!user) return;
@@ -529,6 +531,43 @@ const Settings = () => {
             <Button onClick={handleSave} disabled={saving} className="w-full h-12 gradient-primary text-primary-foreground">
               {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
             </Button>
+          </div>
+        </section>
+
+        {/* Financial */}
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Financial</p>
+          <div className="bg-card rounded-2xl p-5 card-shadow">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0 mt-0.5">
+                <Wallet size={17} className="text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Monthly Income</p>
+                <p className="text-xs text-muted-foreground mb-3">Used to show how much of your income you're projected to spend</p>
+                <Input
+                  type="number"
+                  placeholder="e.g. 15000"
+                  value={monthlyIncome}
+                  onChange={e => setMonthlyIncome(e.target.value)}
+                  className="h-11"
+                  min="0"
+                />
+                <Button
+                  size="sm"
+                  className="mt-2 gradient-primary text-primary-foreground"
+                  onClick={() => {
+                    const val = parseFloat(monthlyIncome);
+                    if (monthlyIncome === '' || (!isNaN(val) && val >= 0)) {
+                      localStorage.setItem('spendpal_monthly_income', monthlyIncome);
+                      toast.success('Monthly income saved');
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
           </div>
         </section>
 

@@ -4,12 +4,19 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { getDaysInMonth, getDate } from 'date-fns';
 import type { Transaction } from '@/types/finance';
 
+const INCOME_KEY = 'spendpal_monthly_income';
+
 interface Props {
   transactions: Transaction[];
 }
 
 const SpendingForecastWidget = ({ transactions }: Props) => {
   const { fmt } = useCurrency();
+
+  const monthlyIncome = useMemo(() => {
+    const v = parseFloat(localStorage.getItem(INCOME_KEY) || '0');
+    return isNaN(v) ? 0 : v;
+  }, []);
 
   const { spentSoFar, projected, daysElapsed, daysInMonth, dailyAvg, isOnTrack } = useMemo(() => {
     const now = new Date();
@@ -27,7 +34,12 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const dailyAvg = daysElapsed > 0 ? spentSoFar / daysElapsed : 0;
-    const projected = Math.round(dailyAvg * daysInMonth);
+
+    // On days 1–2 the daily rate is unreliable (e.g. rent paid day 1 extrapolates to 39k).
+    // Use actual spend so far instead of linear extrapolation.
+    const projected = daysElapsed <= 2
+      ? spentSoFar
+      : Math.round(dailyAvg * daysInMonth);
 
     const lastMonthSpent = transactions
       .filter(tx => {
@@ -47,6 +59,8 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
   if (spentSoFar === 0) return null;
 
   const pct = Math.min(Math.round((daysElapsed / daysInMonth) * 100), 100);
+  const incomePct = monthlyIncome > 0 ? Math.round((projected / monthlyIncome) * 100) : null;
+  const incomeColor = incomePct == null ? '' : incomePct > 90 ? 'text-expense' : incomePct > 70 ? 'text-warning' : 'text-income';
 
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow">
@@ -61,10 +75,18 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
           <p className={`text-financial-large font-heading ${isOnTrack ? 'text-primary' : 'text-expense'}`}>
             {fmt(projected)}
           </p>
+          {incomePct !== null && (
+            <p className={`text-[11px] mt-0.5 font-medium ${incomeColor}`}>
+              {incomePct}% of monthly income
+            </p>
+          )}
         </div>
         <div className="text-right">
           <p className="text-[11px] text-muted-foreground mb-0.5">Spent so far</p>
           <p className="text-sm font-semibold">{fmt(Math.round(spentSoFar))}</p>
+          {monthlyIncome > 0 && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">of {fmt(monthlyIncome)}/mo</p>
+          )}
         </div>
       </div>
 
@@ -77,7 +99,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground">
         <span>Day {daysElapsed} of {daysInMonth}</span>
-        <span>{fmt(Math.round(dailyAvg))}/day avg</span>
+        <span>{daysElapsed <= 2 ? 'Early — projection pending' : `${fmt(Math.round(dailyAvg))}/day avg`}</span>
       </div>
     </div>
   );
