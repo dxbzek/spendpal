@@ -6,7 +6,6 @@ import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
 import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
-import MonthlyReportCard from '@/components/dashboard/MonthlyReportCard';
 import SpendingForecastWidget from '@/components/dashboard/SpendingForecastWidget';
 import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWidget';
 import ExpenseByAccountTypeWidget from '@/components/dashboard/ExpenseByAccountTypeWidget';
@@ -15,12 +14,11 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Sparkles, Loader2, Trash2, Edit2, Search } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Loader2, Trash2, Edit2, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
-import { useAI } from '@/hooks/useAI';
 import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -57,7 +55,6 @@ const Dashboard = () => {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
-  const { loading: aiLoading, summaryText, generateSummary } = useAI();
   useBudgetAlerts(budgets);
 
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
@@ -164,15 +161,6 @@ const Dashboard = () => {
     <div className={`bg-card rounded-2xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
   );
 
-  const handleGenerateSummary = () => {
-    generateSummary({
-      income, expenses,
-      categories: categorySpending.map(([cat, data]) => ({ category: cat, amount: data.total })),
-      totalBalance,
-      budgets: budgets.map(b => ({ category: b.category, budgeted: b.amount, spent: b.spent })),
-      recurring: recurring.map(r => ({ merchant: r.merchant, amount: r.amount })),
-    });
-  };
 
   if (dataLoading) {
     return (
@@ -257,14 +245,14 @@ const Dashboard = () => {
           <div className="col-span-1">
             <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
           </div>
-          <Card className="col-span-1 border-t-2 border-t-income">
+          <Card className="col-span-1">
             <p className="text-xs text-muted-foreground mb-1">Income</p>
-            <p className="text-financial-medium text-income">{mask(fmt(income))}</p>
+            <p className="text-financial-medium">{mask(fmt(income))}</p>
             {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
           </Card>
-          <Card className="col-span-1 border-t-2 border-t-expense">
+          <Card className="col-span-1">
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
-            <p className="text-financial-medium text-expense">{mask(fmt(expenses))}</p>
+            <p className="text-financial-medium">{mask(fmt(expenses))}</p>
             {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
           </Card>
 
@@ -554,38 +542,8 @@ const Dashboard = () => {
           </div>
 
           <div className="col-span-2 lg:col-span-2">
-            <MonthlyReportCard transactions={transactions} budgets={budgets} goals={goals} accounts={accounts} />
-          </div>
-
-          <div className="col-span-2 lg:col-span-1">
             <SpendingForecastWidget transactions={transactions} />
           </div>
-
-          <Card className="col-span-2 lg:col-span-2 border border-dashed border-primary/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Sparkles size={14} className="text-primary" />
-              </div>
-              <h2 className="font-heading text-sm">AI Summary</h2>
-            </div>
-            {summaryText ? (
-              <>
-                <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
-                <button onClick={handleGenerateSummary} disabled={aiLoading}
-                  className="mt-3 w-full py-2 rounded-xl bg-accent text-accent-foreground text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                  {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Regenerating…</> : <><Sparkles size={14} /> Regenerate</>}
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground mb-3">Your month in plain English</p>
-                <button onClick={handleGenerateSummary} disabled={aiLoading}
-                  className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                  {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Summary</>}
-                </button>
-              </>
-            )}
-          </Card>
 
           {recentTx.length > 0 && (
             <Card className="col-span-2 lg:col-span-4">

@@ -78,10 +78,7 @@ const RecurringTracker = () => {
                   <div key={item.id} className="py-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
-                          style={{ backgroundColor: catColor + '1A', color: catColor }}>
-                          {item.categoryIcon}
-                        </div>
+                        <span className="text-xl shrink-0">{item.categoryIcon}</span>
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.merchant}</p>
                           <div className="flex items-center gap-2">

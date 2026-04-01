@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { PageSpinner } from '@/components/ui/spinner';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, TrendingDown, History, BookmarkPlus, FolderOpen } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
@@ -191,7 +191,7 @@ const Budgets = () => {
           {daysElapsed > 0 && totalBudgeted > 0 && (
             <div className="flex items-center justify-between text-xs mt-1">
               <span className="text-muted-foreground flex items-center gap-1">
-                {projectedPct > 100 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                {projectedPct > 100 ? <TrendingUp size={11} /> : null}
                 Projected month-end
               </span>
               <span className={`font-semibold ${velocityColor(projectedPct)}`}>
@@ -240,7 +240,7 @@ const Budgets = () => {
                 <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
+                      <span className="text-2xl shrink-0">{b.categoryIcon}</span>
                       <div>
                         <p className="text-sm font-semibold">{b.category}</p>
                         <p className="text-xs text-muted-foreground capitalize">{b.period} · {daysLeft}d left</p>
@@ -269,7 +269,7 @@ const Budgets = () => {
                   {daysElapsed > 0 && (
                     <div className="flex items-center justify-between pt-2 border-t border-border text-[11px]">
                       <span className={`flex items-center gap-1 ${velocityColor(projPct)}`}>
-                        {projPct > 100 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                        {projPct > 100 ? <TrendingUp size={10} /> : null}
                         On pace: {fmt(projected)}
                       </span>
                       {lastMonthAmt !== undefined && (
@@ -291,7 +291,7 @@ const Budgets = () => {
               return (
                 <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
+                    <span className="text-2xl shrink-0">{b.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{b.category}</p>
                       <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {fmt(b.amount)}</p>

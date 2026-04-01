@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { EXPENSE_EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
+import { EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
 import { format, subMonths, getMonth, getYear, parseISO } from 'date-fns';
 
 interface Props {

@@ -99,9 +99,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
       <div className="flex items-center gap-2 mb-2">
-        <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
-          <Wallet size={13} className="text-primary" />
-        </div>
+        <Wallet size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Net Worth</h2>
         <GlossaryLink term="Net Worth" />
         {trend !== 0 && !hidden && (
@@ -111,7 +109,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
           </span>
         )}
       </div>
-      <p className={`text-financial-large ${netWorth >= 0 ? 'text-income' : 'text-expense'} mt-1`}>
+      <p className="text-financial-large mt-1">
         {mask(fmt(netWorth))}
       </p>
       <div className="mt-2 space-y-1">

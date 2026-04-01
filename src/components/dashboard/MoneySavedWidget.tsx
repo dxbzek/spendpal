@@ -29,9 +29,7 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden: _hidden, mas
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
       <div className="flex items-center gap-2 mb-2">
-        <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
-          <PiggyBank size={13} className="text-primary" />
-        </div>
+        <PiggyBank size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Saved This Month</h2>
         <GlossaryLink term="Saved This Month" />
       </div>
