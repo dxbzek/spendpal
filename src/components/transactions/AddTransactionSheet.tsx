@@ -250,12 +250,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const displayTotal = hasInstallments
     ? (loanTotal || perInstallment * totalInst)
     : perInstallment;
-  const remainingBalance = hasInstallments
-    ? (loanTotal || perInstallment * totalInst) - currentInst * perInstallment
-    : 0;
-  const remainingInstCount = hasInstallments && perInstallment > 0
-    ? Math.max(0, Math.ceil(remainingBalance / perInstallment))
-    : Math.max(0, totalInst - currentInst);
+  const remainingInstCount = hasInstallments ? Math.max(0, totalInst - currentInst) : 0;
+  const remainingBalance = remainingInstCount * perInstallment;
   const totalAmount = displayTotal;
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
