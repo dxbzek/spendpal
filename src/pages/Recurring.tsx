@@ -128,11 +128,7 @@ const Recurring = () => {
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${
-                  group.paidThisMonth ? 'bg-primary/10' : 'bg-accent'
-                }`}>
-                  {group.categoryIcon}
-                </div>
+                <span className="text-2xl shrink-0">{group.categoryIcon}</span>
                 <div className="min-w-0">
                   <p className="font-semibold truncate">{group.merchant}</p>
                   <p className="text-xs text-muted-foreground truncate">

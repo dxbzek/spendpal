@@ -55,9 +55,7 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
   return (
     <div className="bg-card rounded-2xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
-          <CalendarClock size={13} className="text-primary" />
-        </div>
+        <CalendarClock size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Upcoming Bills</h2>
       </div>
       <div className="space-y-2">

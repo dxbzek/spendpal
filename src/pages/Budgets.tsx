@@ -240,7 +240,7 @@ const Budgets = () => {
                 <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
+                      <span className="text-2xl shrink-0">{b.categoryIcon}</span>
                       <div>
                         <p className="text-sm font-semibold">{b.category}</p>
                         <p className="text-xs text-muted-foreground capitalize">{b.period} · {daysLeft}d left</p>
@@ -291,7 +291,7 @@ const Budgets = () => {
               return (
                 <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl shrink-0">{b.categoryIcon}</span>
+                    <span className="text-2xl shrink-0">{b.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{b.category}</p>
                       <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {fmt(b.amount)}</p>

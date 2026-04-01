@@ -110,9 +110,7 @@ const Installments = () => {
                 return (
                   <div key={plan.key} className="bg-card rounded-2xl border border-border p-4 space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-xl shrink-0">
-                        {plan.categoryIcon}
-                      </div>
+                      <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{plan.merchant}</p>
                         <p className="text-xs text-muted-foreground">{plan.category}</p>
@@ -153,9 +151,7 @@ const Installments = () => {
               {completedPlans.map(plan => (
                 <div key={plan.key} className="bg-card rounded-2xl border border-border p-4 opacity-60">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-xl shrink-0">
-                      {plan.categoryIcon}
-                    </div>
+                    <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{plan.merchant}</p>
                       <p className="text-xs text-muted-foreground">{plan.totalInstallments} payments · {fmt(plan.totalAmount)} total</p>
