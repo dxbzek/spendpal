@@ -264,7 +264,7 @@ const Budgets = () => {
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
                     <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
-                      className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
+                      className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center mb-2">
                     <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{fmt(b.spent)}</p></div>
@@ -302,10 +302,10 @@ const Budgets = () => {
                       <p className="text-sm font-semibold">{b.category}</p>
                       <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {fmt(b.amount)}</p>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct >= 100 ? 'bg-destructive/10 text-expense' : pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 100 ? 'bg-destructive/10 text-expense' : pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
-                    <div style={{ width: `${Math.min(pct, 100)}%` }} className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
+                    <div style={{ width: `${Math.min(pct, 100)}%` }} className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{fmt(lastSpent)}</span></span>
