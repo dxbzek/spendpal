@@ -95,7 +95,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
       <aside className={`${collapsed ? 'w-16' : 'w-60'} shrink-0 border-r border-border bg-card h-full flex flex-col py-4 transition-all duration-200 overflow-hidden`}>
         {/* Brand */}
         <div className={`px-4 flex items-center gap-3 mb-2 ${collapsed ? 'justify-center' : ''}`}>
-          <img src={logo} alt="SpendPal" className="w-8 h-8 rounded-xl object-cover shrink-0" />
+          <img src={logo} alt="SpendPal" className="w-8 h-8 object-contain shrink-0" />
           {!collapsed && (
             <div>
               <span className="font-heading text-base font-bold">SpendPal</span>

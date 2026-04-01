@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
+import { Target } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useCategories } from '@/hooks/useCategories';
 import { type TransactionType } from '@/types/finance';
@@ -30,7 +31,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
-  const { accounts, transactions, addTransaction, updateTransaction, removeTransaction } = useFinance();
+  const { accounts, transactions, goals, addTransaction, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
   const { currency } = useCurrency();
   const { getCategoriesForType, refresh: refreshCategories } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
@@ -47,7 +48,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const [currentInstallment, setCurrentInstallment] = useState('1');
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
   const [note, setNote] = useState('');
-  
+  const [allocateToGoal, setAllocateToGoal] = useState(false);
+  const [goalAllocationId, setGoalAllocationId] = useState('');
+  const [goalAllocationAmount, setGoalAllocationAmount] = useState('');
+
   // Duplicate detection state
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicateMatch, setDuplicateMatch] = useState<Transaction | null>(null);
@@ -107,6 +111,9 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     setCurrentInstallment('1');
     setIsTrackingOnly(false);
     setNote('');
+    setAllocateToGoal(false);
+    setGoalAllocationId('');
+    setGoalAllocationAmount('');
     setShowDuplicateWarning(false);
     setDuplicateMatch(null);
     setPendingSubmit(null);
@@ -197,6 +204,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       await addTransaction(txData);
     }
 
+    if (allocateToGoal && goalAllocationId && parseFloat(goalAllocationAmount) > 0) {
+      await addGoalProgress(goalAllocationId, parseFloat(goalAllocationAmount));
+    }
+
     resetForm();
     onOpenChange(false);
   };
@@ -236,13 +247,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto md:max-w-lg md:mx-auto md:left-1/2 md:-translate-x-1/2 md:right-auto">
-          {/* Drag handle */}
-          <div className="w-10 h-1 rounded-full bg-border mx-auto -mt-1 mb-4" />
-          <SheetHeader>
-            <SheetTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
-          </SheetHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
+          </DialogHeader>
 
           <div className="space-y-5 mt-4">
             <div className="flex gap-1 p-1 bg-muted rounded-xl">
@@ -409,12 +418,49 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
               </div>
             )}
 
+            {/* Allocate to Goal */}
+            {!isEditing && goals.filter(g => g.status === 'active').length > 0 && (
+              <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Target size={14} className="text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">Allocate to Goal</p>
+                      <p className="text-xs text-muted-foreground">Add progress to a savings goal</p>
+                    </div>
+                  </div>
+                  <Switch checked={allocateToGoal} onCheckedChange={v => { setAllocateToGoal(v); if (!v) { setGoalAllocationId(''); setGoalAllocationAmount(''); }}} />
+                </div>
+                {allocateToGoal && (
+                  <div className="space-y-2 pt-1">
+                    <Select value={goalAllocationId} onValueChange={setGoalAllocationId}>
+                      <SelectTrigger><SelectValue placeholder="Select goal" /></SelectTrigger>
+                      <SelectContent>
+                        {goals.filter(g => g.status === 'active').map(g => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.icon} {g.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      placeholder="Amount to allocate"
+                      value={goalAllocationAmount}
+                      onChange={e => setGoalAllocationAmount(e.target.value)}
+                      min="0.01"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
               {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
             </Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Duplicate transaction warning */}
       <AlertDialog open={showDuplicateWarning} onOpenChange={(o) => { if (!o) { setShowDuplicateWarning(false); setPendingSubmit(null); setDuplicateMatch(null); } }}>

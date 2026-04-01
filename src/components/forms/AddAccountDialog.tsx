@@ -76,7 +76,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xs mx-auto p-4">
+      <DialogContent className="max-w-sm mx-auto">
         <DialogHeader className="pb-1">
           <DialogTitle className="text-base">{isEdit ? 'Edit Account' : 'Add Account'}</DialogTitle>
         </DialogHeader>
