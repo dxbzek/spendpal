@@ -156,9 +156,7 @@ const Installments = () => {
                       <p className="font-semibold truncate">{plan.merchant}</p>
                       <p className="text-xs text-muted-foreground">{plan.totalInstallments} payments · {fmt(plan.totalAmount)} total</p>
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-income/15 flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={16} className="text-income" />
-                    </div>
+                    <CheckCircle2 size={16} className="text-income shrink-0" />
                   </div>
                 </div>
               ))}

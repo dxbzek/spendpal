@@ -143,9 +143,7 @@ const Recurring = () => {
                   <p className="text-xs text-muted-foreground">avg/mo</p>
                 </div>
                 {group.paidThisMonth ? (
-                  <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                    <Check size={16} className="text-primary" />
-                  </div>
+                  <Check size={16} className="text-primary shrink-0" />
                 ) : (
                   <button
                     onClick={() => setAddOpen(true)}
