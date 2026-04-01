@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -236,13 +236,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto md:max-w-lg md:mx-auto md:left-1/2 md:-translate-x-1/2 md:right-auto">
-          {/* Drag handle */}
-          <div className="w-10 h-1 rounded-full bg-border mx-auto -mt-1 mb-4" />
-          <SheetHeader>
-            <SheetTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
-          </SheetHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
+          </DialogHeader>
 
           <div className="space-y-5 mt-4">
             <div className="flex gap-1 p-1 bg-muted rounded-xl">
@@ -413,8 +411,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
               {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
             </Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Duplicate transaction warning */}
       <AlertDialog open={showDuplicateWarning} onOpenChange={(o) => { if (!o) { setShowDuplicateWarning(false); setPendingSubmit(null); setDuplicateMatch(null); } }}>
