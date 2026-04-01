@@ -24,7 +24,6 @@ const GOAL_TYPES = [
   { name: 'Education', icon: '📚' },
   { name: 'Wedding', icon: '💍' },
   { name: 'Gadget', icon: '📱' },
-  { name: 'Other', icon: '🎯' },
 ];
 
 const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
@@ -39,17 +38,35 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
   useEffect(() => {
     if (open) {
       setName(editGoal?.name || '');
-      setGoalType(editGoal?.type || '');
+      const existingType = editGoal?.type || '';
+      const isKnown = GOAL_TYPES.some(g => g.name === existingType);
+      if (existingType && !isKnown) {
+        setGoalType('__custom__');
+        setCustomName(existingType);
+        setCustomIcon(editGoal?.icon || '🎯');
+      } else {
+        setGoalType(existingType);
+        setCustomName('');
+        setCustomIcon('🎯');
+      }
       setTargetAmount(editGoal?.targetAmount?.toString() || '');
       setDeadline(editGoal?.deadline ? new Date(editGoal.deadline) : undefined);
     }
   }, [open, editGoal]);
 
-  const selected = GOAL_TYPES.find(g => g.name === goalType);
+  const isPreset = GOAL_TYPES.some(g => g.name === goalType);
+  const isCustom = goalType === '__custom__' || (!isPreset && goalType !== '');
+  const [customName, setCustomName] = useState('');
+  const [customIcon, setCustomIcon] = useState('🎯');
+
+  const selected = isCustom
+    ? { name: customName || 'Custom', icon: customIcon || '🎯' }
+    : GOAL_TYPES.find(g => g.name === goalType);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !goalType || !targetAmount || submitting) return;
+    const resolvedType = goalType === '__custom__' ? (customName.trim() || 'Custom') : goalType;
+    if (!name.trim() || !resolvedType || !targetAmount || submitting) return;
     const parsedTarget = parseFloat(targetAmount);
     if (isNaN(parsedTarget) || parsedTarget <= 0) return;
     setSubmitting(true);
@@ -57,7 +74,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
       const data = {
         name: name.trim(),
         icon: selected?.icon || '🎯',
-        type: goalType,
+        type: resolvedType,
         targetAmount: parsedTarget,
         savedAmount: editGoal?.savedAmount || 0,
         deadline: deadline ? format(deadline, 'yyyy-MM-dd') : undefined,
@@ -97,7 +114,32 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
                   <span className="text-muted-foreground">{g.name}</span>
                 </button>
               ))}
+              <button onClick={() => setGoalType('__custom__')}
+                className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
+                  goalType === '__custom__' ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                }`}>
+                <span className="text-xl">{goalType === '__custom__' ? (customIcon || '🎯') : '✏️'}</span>
+                <span className="text-muted-foreground">Custom</span>
+              </button>
             </div>
+            {goalType === '__custom__' && (
+              <div className="mt-3 flex gap-2">
+                <Input
+                  placeholder="🎯"
+                  value={customIcon}
+                  onChange={e => setCustomIcon(e.target.value)}
+                  className="w-16 text-center text-lg px-1"
+                  maxLength={4}
+                />
+                <Input
+                  placeholder="e.g., Bike, Travel, Pet..."
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  maxLength={30}
+                  className="flex-1"
+                />
+              </div>
+            )}
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Target Amount ({currency})</label>
@@ -122,7 +164,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
               </button>
             )}
           </div>
-          <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || !targetAmount || submitting}
+          <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || (goalType === '__custom__' && !customName.trim()) || !targetAmount || submitting}
             className="w-full gradient-primary text-primary-foreground">
             {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Create Goal'}

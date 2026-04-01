@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
@@ -602,15 +602,15 @@ const Transactions = () => {
 
       <ImportStatementSheet open={showImport} onOpenChange={setShowImport} />
 
-      {/* Merchant Profile Sheet */}
-      <Sheet open={!!merchantProfile} onOpenChange={o => { if (!o) setMerchantProfile(null); }}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
+      {/* Merchant Profile Dialog */}
+      <Dialog open={!!merchantProfile} onOpenChange={o => { if (!o) setMerchantProfile(null); }}>
+        <DialogContent className="max-w-sm w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <span className="text-2xl">{merchantStats?.icon}</span>
               <span>{merchantProfile}</span>
-            </SheetTitle>
-          </SheetHeader>
+            </DialogTitle>
+          </DialogHeader>
           {merchantStats && (
             <div className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -638,15 +638,15 @@ const Transactions = () => {
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      {/* Quick Categorize Sheet */}
-      <Sheet open={!!categorizeTxId} onOpenChange={o => { if (!o) setCategorizeTxId(null); }}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[70vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Change Category</SheetTitle>
-          </SheetHeader>
+      {/* Quick Categorize Dialog */}
+      <Dialog open={!!categorizeTxId} onOpenChange={o => { if (!o) setCategorizeTxId(null); }}>
+        <DialogContent className="max-w-sm w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Change Category</DialogTitle>
+          </DialogHeader>
           <div className="mt-4 grid grid-cols-4 gap-2">
             {allCategories.map(cat => (
               <button
@@ -664,8 +664,8 @@ const Transactions = () => {
               </button>
             ))}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showDeleteAll} onOpenChange={setShowDeleteAll}>
         <AlertDialogContent className="max-w-sm">
