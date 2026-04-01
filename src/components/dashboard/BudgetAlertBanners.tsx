@@ -15,7 +15,7 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
     .filter(b => b.amount > 0 && (b.spent / b.amount) >= 0.75)
     .map(b => {
       const pct = Math.round((b.spent / b.amount) * 100);
-      const over = pct >= 100;
+      const over = pct > 100;
       const high = pct >= 90;
       return { ...b, pct, over, high };
     })
