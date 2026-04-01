@@ -125,6 +125,7 @@ const Transactions = () => {
   const filtered = useMemo(() => {
     return mergedTransactions.filter(tx => {
       if (pendingDeleteIds.has(tx.id)) return false;
+      if (tx.isTrackingOnly) return false;
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase()) || (tx.note && tx.note.toLowerCase().includes(search.toLowerCase()));
       const isTransferEntry = tx.category === 'Transfer';
       const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && isTransferEntry);

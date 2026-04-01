@@ -27,6 +27,7 @@ export interface Transaction {
   isRecurring?: boolean;
   totalInstallments?: number | null;
   currentInstallment?: number | null;
+  isTrackingOnly?: boolean;
 }
 
 export interface Budget {

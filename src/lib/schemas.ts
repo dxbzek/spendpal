@@ -31,6 +31,7 @@ export const TransactionRowSchema = z.object({
   is_recurring: z.boolean().optional().default(false),
   total_installments: z.number().nullable().optional(),
   current_installment: z.number().nullable().optional(),
+  is_tracking_only: z.boolean().optional().default(false),
 });
 
 export const BudgetRowSchema = z.object({
