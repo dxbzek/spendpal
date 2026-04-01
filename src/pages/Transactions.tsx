@@ -268,11 +268,11 @@ const Transactions = () => {
         <div className="flex items-center gap-2 shrink-0">
           {isLinkedTransfer ? (
             <p className="text-sm font-heading text-muted-foreground">
-              {fmtSigned(tx.amount, 'expense')}
+              {fmtSigned(tx.amount, 'transfer')}
             </p>
           ) : (
             <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
-              {fmtSigned(tx.amount, tx.type as 'income' | 'expense')}
+              {fmtSigned(tx.amount, tx.type as 'income' | 'expense' | 'transfer')}
             </p>
           )}
           <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(tx.id); }}

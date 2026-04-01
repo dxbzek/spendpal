@@ -10,6 +10,7 @@ export interface Category {
   icon: string;
   isCustom?: boolean;
   id?: string;
+  type?: 'expense' | 'income' | 'both';
 }
 
 export const useCategories = () => {
@@ -32,6 +33,7 @@ export const useCategories = () => {
         icon: r.icon,
         isCustom: true,
         id: r.id,
+        type: (r.type as 'expense' | 'income' | 'both') ?? 'both',
       })));
     }
     setLoading(false);
@@ -48,12 +50,13 @@ export const useCategories = () => {
     return [...customCategories, ...defaults];
   })();
 
-  const addCategory = useCallback(async (name: string, icon: string) => {
+  const addCategory = useCallback(async (name: string, icon: string, type: 'expense' | 'income' | 'both' = 'both') => {
     if (!user) return;
     const { error } = await supabase.from('custom_categories').insert({
       user_id: user.id,
       name: name.trim(),
       icon,
+      type,
       sort_order: customCategories.length,
     });
     if (error) {
@@ -65,9 +68,11 @@ export const useCategories = () => {
     await fetchCustom();
   }, [user, customCategories.length, fetchCustom]);
 
-  const updateCategory = useCallback(async (id: string, name: string, icon: string) => {
+  const updateCategory = useCallback(async (id: string, name: string, icon: string, type?: 'expense' | 'income' | 'both') => {
+    const update: { name: string; icon: string; type?: string } = { name: name.trim(), icon };
+    if (type) update.type = type;
     const { error } = await supabase.from('custom_categories')
-      .update({ name: name.trim(), icon })
+      .update(update)
       .eq('id', id);
     if (error) { toast.error(error.message); return; }
     toast.success('Category updated');
@@ -88,6 +93,7 @@ export const useCategories = () => {
       user_id: user.id,
       name,
       icon: newIcon,
+      type: 'both',
       sort_order: customCategories.length,
     });
     if (error) {
@@ -109,10 +115,12 @@ export const useCategories = () => {
   const getCategoriesForType = (type: TransactionType): Category[] => {
     const typeDefaults = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     const customNames = new Set(customCategories.map(c => c.name));
+    // Include custom categories that match the type (or are set to 'both')
+    const filteredCustom = customCategories.filter(c => !c.type || c.type === 'both' || c.type === type);
     const defaults: Category[] = (typeDefaults as readonly { name: string; icon: string }[])
       .filter(c => !customNames.has(c.name))
       .map(c => ({ name: c.name, icon: c.icon, isCustom: false }));
-    return [...customCategories, ...defaults];
+    return [...filteredCustom, ...defaults];
   };
 
   return {

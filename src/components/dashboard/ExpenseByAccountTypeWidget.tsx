@@ -26,7 +26,7 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, m
     const totals: Record<string, number> = { cash: 0, debit: 0, credit: 0 };
 
     transactions
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === 'expense' && t.category !== 'Transfer')
       .forEach(t => {
         const aType = accountTypeMap.get(t.accountId);
         if (aType && aType in totals) totals[aType] += t.amount;

@@ -13,30 +13,63 @@ const EMOJI_SUGGESTIONS = ['☕', '🛒', '🚗', '🍽️', '📱', '🚇', '�
 
 const PREVIEW_COUNT = 6;
 
+type CategoryType = 'expense' | 'income' | 'both';
+
+const TYPE_OPTIONS: { value: CategoryType; label: string }[] = [
+  { value: 'expense', label: 'Expense' },
+  { value: 'both', label: 'Both' },
+  { value: 'income', label: 'Income' },
+];
+
+const TYPE_BADGE: Record<CategoryType, string> = {
+  expense: '💸',
+  income: '💰',
+  both: '',
+};
+
+const TypeToggle = ({ value, onChange }: { value: CategoryType; onChange: (v: CategoryType) => void }) => (
+  <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
+    {TYPE_OPTIONS.map(opt => (
+      <button
+        key={opt.value}
+        onClick={() => onChange(opt.value)}
+        className={`flex-1 py-1 rounded-md text-xs font-medium transition-all ${
+          value === opt.value ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+);
+
 const CategoryManager = () => {
   const { customCategories, addCategory, updateCategory, removeCategory, overrideDefault } = useCategories();
   const [showAdd, setShowAdd] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('📌');
+  const [newType, setNewType] = useState<CategoryType>('both');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editIcon, setEditIcon] = useState('');
+  const [editType, setEditType] = useState<CategoryType>('both');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editDefaultName, setEditDefaultName] = useState<string | null>(null);
   const [defaultNewIcon, setDefaultNewIcon] = useState('');
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
-    await addCategory(newName, newIcon);
+    await addCategory(newName, newIcon, newType);
     setNewName('');
     setNewIcon('📌');
+    setNewType('both');
     setShowAdd(false);
   };
 
   const handleUpdate = async () => {
     if (!editingId || !editName.trim()) return;
-    await updateCategory(editingId, editName, editIcon);
+    await updateCategory(editingId, editName, editIcon, editType);
     setEditingId(null);
   };
 
@@ -73,6 +106,10 @@ const CategoryManager = () => {
       {showAdd && (
         <div className="bg-muted/50 rounded-xl p-3 space-y-3">
           <Input placeholder="Category name" value={newName} onChange={e => setNewName(e.target.value)} className="h-10" />
+          <div>
+            <p className="text-xs text-muted-foreground mb-1.5">Type</p>
+            <TypeToggle value={newType} onChange={setNewType} />
+          </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">Pick an icon</p>
             <div className="flex flex-wrap gap-1.5">
@@ -116,6 +153,7 @@ const CategoryManager = () => {
             ) : (item.type === 'custom' && editingId === item.id) ? (
               <div className="flex-1 space-y-2">
                 <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-8 text-sm" />
+                <TypeToggle value={editType} onChange={setEditType} />
                 <div className="flex flex-wrap gap-1">
                   {EMOJI_SUGGESTIONS.slice(0, 20).map(emoji => (
                     <button key={emoji} onClick={() => setEditIcon(emoji)}
@@ -135,11 +173,18 @@ const CategoryManager = () => {
               <>
                 <span className="text-lg">{item.icon}</span>
                 <span className="text-xs truncate flex-1">{item.name}</span>
+                {item.type === 'custom' && item.type !== 'default' && (() => {
+                  const cat = customCategories.find(c => c.id === (item as { id?: string }).id);
+                  const badge = cat?.type && cat.type !== 'both' ? TYPE_BADGE[cat.type] : null;
+                  return badge ? <span className="text-xs shrink-0">{badge}</span> : null;
+                })()}
                 <button onClick={() => {
                   if (item.type === 'custom') {
                     setEditingId(item.id!);
                     setEditName(item.name);
                     setEditIcon(item.icon);
+                    const cat = customCategories.find(c => c.id === item.id);
+                    setEditType(cat?.type ?? 'both');
                   } else {
                     setEditDefaultName(item.name);
                     setDefaultNewIcon(item.icon);
