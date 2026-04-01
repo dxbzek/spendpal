@@ -12,12 +12,10 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
   const { fmt } = useCurrency();
 
   const alerts = budgets
-    .filter(b => b.amount > 0 && (b.spent / b.amount) >= 0.75)
+    .filter(b => b.amount > 0 && b.spent > b.amount)
     .map(b => {
       const pct = Math.round((b.spent / b.amount) * 100);
-      const over = pct > 100;
-      const high = pct >= 90;
-      return { ...b, pct, over, high };
+      return { ...b, pct, over: true, high: true };
     })
     .sort((a, b) => b.pct - a.pct);
 
