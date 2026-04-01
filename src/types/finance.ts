@@ -27,6 +27,7 @@ export interface Transaction {
   isRecurring?: boolean;
   totalInstallments?: number | null;
   currentInstallment?: number | null;
+  loanTotalAmount?: number | null;
   isTrackingOnly?: boolean;
 }
 

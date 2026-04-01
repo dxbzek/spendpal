@@ -144,7 +144,7 @@ const Transactions = () => {
       const matchDateTo = !dateTo || tx.date <= dateTo;
 
       return matchSearch && matchType && matchAccount && matchDateFrom && matchDateTo;
-    });
+    }).sort((a, b) => b.date.localeCompare(a.date));
   }, [mergedTransactions, search, filterType, filterAccount, transferPairs, dateFrom, dateTo, pendingDeleteIds]);
 
   // Reset pagination when filters change

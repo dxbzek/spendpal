@@ -47,6 +47,7 @@ const mapTransaction = (row: unknown): Transaction | null => {
     isRecurring: r.is_recurring,
     totalInstallments: r.total_installments ?? null,
     currentInstallment: r.current_installment ?? null,
+    loanTotalAmount: r.loan_total_amount ?? null,
     isTrackingOnly: r.is_tracking_only ?? false,
   };
 };
@@ -243,6 +244,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
+      loan_total_amount: tx.loanTotalAmount ?? null,
     }).select().single();
     if (error) { toast.error(`Failed to add transaction: ${error.message}`); return; }
 
@@ -343,6 +345,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
+      loan_total_amount: tx.loanTotalAmount ?? null,
     }));
     const { data, error } = await supabase.from('transactions').insert(rows).select();
     if (error) { toast.error(`Failed to import transactions: ${error.message}`); return; }
@@ -370,6 +373,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
+      loan_total_amount: tx.loanTotalAmount ?? null,
     }).eq('id', tx.id);
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return; }
     setTransactions(prev => {
