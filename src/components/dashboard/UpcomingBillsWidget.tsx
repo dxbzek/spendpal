@@ -83,7 +83,7 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
               <div className="text-right">
                 <p className="text-sm font-heading">{fmt(bill.amount)}</p>
                 <p className={`text-[11px] font-semibold ${
-                  urgent ? 'text-expense' : soon ? 'text-warning' : 'text-primary'
+                  urgent ? 'text-expense' : soon ? 'text-warning' : 'text-muted-foreground'
                 }`}>
                   {bill.daysLeft === 0 ? 'Today!' : bill.daysLeft === 1 ? 'Tomorrow' : `${bill.daysLeft}d`}
                 </p>

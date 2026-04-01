@@ -250,7 +250,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
                         ? 'bg-expense text-white shadow-sm'
                         : t.value === 'income'
                           ? 'bg-income text-white shadow-sm'
-                          : 'bg-card card-shadow text-foreground'
+                          : 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground'
                   }`}>
                   {t.label}
@@ -391,10 +391,12 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
               <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} maxLength={100} />
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Note (optional)</label>
-              <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
-            </div>
+            {!isTransfer && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Note (optional)</label>
+                <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
+              </div>
+            )}
 
             <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
               {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
