@@ -57,8 +57,12 @@ const Budgets = () => {
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const overallPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
 
-  // Projected spend at current daily rate
-  const projectedSpend = daysElapsed > 0 ? (totalSpent / daysElapsed) * totalDays : 0;
+  // Projected spend at current daily rate, capped at budget when within budget
+  const projectedSpend = daysElapsed > 0
+    ? (totalSpent <= totalBudgeted
+      ? Math.min((totalSpent / daysElapsed) * totalDays, totalBudgeted)
+      : (totalSpent / daysElapsed) * totalDays)
+    : 0;
   const projectedPct = totalBudgeted ? Math.round((projectedSpend / totalBudgeted) * 100) : 0;
 
   // Last month's spending per category
@@ -233,7 +237,9 @@ const Budgets = () => {
               const dailyLeft = daysLeft > 0 ? remaining / daysLeft : 0;
               // Velocity for this budget
               const dailyRate = daysElapsed > 0 ? b.spent / daysElapsed : 0;
-              const projected = dailyRate * totalDays;
+              const projected = b.spent <= b.amount
+                ? Math.min(dailyRate * totalDays, b.amount)
+                : dailyRate * totalDays;
               const projPct = b.amount ? Math.round((projected / b.amount) * 100) : 0;
               const lastMonthAmt = lastMonthData[b.category];
               return (
@@ -247,7 +253,7 @@ const Budgets = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {pct >= 100 ? (
+                      {pct > 100 ? (
                         <Badge variant="destructive" className="text-[10px] px-2 py-0.5">Over Budget</Badge>
                       ) : (
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
