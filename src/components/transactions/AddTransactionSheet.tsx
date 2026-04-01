@@ -355,10 +355,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
                       <div className="bg-primary/5 rounded-lg p-2.5 text-center">
                         <p className="text-xs text-muted-foreground">Total Cost</p>
                         <p className="text-sm font-heading text-foreground">
-                          {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
+                          {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency} ({currentInstallment}/{totalInstallments})
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Remaining: {remainingBalance.toLocaleString()} {currency} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
+                          Remaining: {remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
                         </p>
                       </div>
                     )}
