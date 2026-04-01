@@ -16,6 +16,7 @@ interface InstallmentPlan {
   totalAmount: number;
   paidAmount: number;
   latestDate: string;
+  isTrackingOnly: boolean;
 }
 
 const Installments = () => {
@@ -54,6 +55,7 @@ const Installments = () => {
         totalAmount,
         paidAmount,
         latestDate: latest.date,
+        isTrackingOnly: txs.some(t => t.isTrackingOnly),
       };
     }).sort((a, b) => {
       // Active plans first, then completed
@@ -112,7 +114,12 @@ const Installments = () => {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{plan.merchant}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold truncate">{plan.merchant}</p>
+                          {plan.isTrackingOnly && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">Tracking</span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">{plan.category}</p>
                       </div>
                       <div className="text-right shrink-0">
@@ -153,7 +160,12 @@ const Installments = () => {
                   <div className="flex items-center gap-3">
                     <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{plan.merchant}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold truncate">{plan.merchant}</p>
+                        {plan.isTrackingOnly && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">Tracking</span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">{plan.totalInstallments} payments · {fmt(plan.totalAmount)} total</p>
                     </div>
                     <CheckCircle2 size={16} className="text-income shrink-0" />

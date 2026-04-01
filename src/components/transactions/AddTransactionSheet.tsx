@@ -45,6 +45,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const [hasInstallments, setHasInstallments] = useState(false);
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
+  const [isTrackingOnly, setIsTrackingOnly] = useState(false);
   const [note, setNote] = useState('');
   
   // Duplicate detection state
@@ -72,6 +73,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       setHasInstallments(!!(editTransaction.totalInstallments && editTransaction.currentInstallment));
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
       setCurrentInstallment(String(editTransaction.currentInstallment || 1));
+      setIsTrackingOnly(editTransaction.isTrackingOnly || false);
       setNote(editTransaction.note || '');
       if (isTransferTx) {
         // Find the matching income half to restore toAccountId
@@ -103,6 +105,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     setHasInstallments(false);
     setTotalInstallments('12');
     setCurrentInstallment('1');
+    setIsTrackingOnly(false);
     setNote('');
     setShowDuplicateWarning(false);
     setDuplicateMatch(null);
@@ -185,6 +188,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       isRecurring: isTransfer ? false : isRecurring,
       totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : null,
       currentInstallment: (hasInstallments && isRecurring) ? (parseInt(currentInstallment) || 1) : null,
+      isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
     };
 
     if (isEditing) {
@@ -293,6 +297,13 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
 
                 {hasInstallments && isRecurring && (
                   <div className="space-y-3 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Tracking Only</p>
+                        <p className="text-xs text-muted-foreground">From CC / Tabby — no balance deduction</p>
+                      </div>
+                      <Switch checked={isTrackingOnly} onCheckedChange={setIsTrackingOnly} />
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>

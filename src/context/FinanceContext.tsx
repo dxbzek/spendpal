@@ -47,6 +47,7 @@ const mapTransaction = (row: unknown): Transaction | null => {
     isRecurring: r.is_recurring,
     totalInstallments: r.total_installments ?? null,
     currentInstallment: r.current_installment ?? null,
+    isTrackingOnly: r.is_tracking_only ?? false,
   };
 };
 
@@ -84,7 +85,7 @@ const mapGoal = (row: unknown): Goal | null => {
 function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const monthExpenses = txs.filter(t => t.type === 'expense' && t.date.startsWith(currentMonth));
+  const monthExpenses = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && t.date.startsWith(currentMonth));
   const spent: Record<string, number> = {};
   for (const t of monthExpenses) {
     spent[t.category] = (spent[t.category] ?? 0) + t.amount;
@@ -242,6 +243,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
+      is_tracking_only: tx.isTrackingOnly ?? false,
     }).select().single();
     if (error) { toast.error(`Failed to add transaction: ${error.message}`); return; }
 
@@ -342,6 +344,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
+      is_tracking_only: tx.isTrackingOnly ?? false,
     }));
     const { data, error } = await supabase.from('transactions').insert(rows).select();
     if (error) { toast.error(`Failed to import transactions: ${error.message}`); return; }
@@ -369,6 +372,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
+      is_tracking_only: tx.isTrackingOnly ?? false,
     }).eq('id', tx.id);
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return; }
     setTransactions(prev => {
