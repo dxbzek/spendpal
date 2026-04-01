@@ -24,6 +24,34 @@ interface InstallmentPlan {
 /** Round to 2 decimal places to avoid floating-point display artefacts. */
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * Solve for the monthly interest rate implied by a loan using bisection.
+ * Satisfies: PV = PMT × (1 − (1+r)^−n) / r
+ * Returns 0 when there is no interest (PMT × n ≤ PV).
+ */
+function solveMonthlyRate(pv: number, pmt: number, n: number): number {
+  if (pmt * n <= pv + 0.005) return 0;
+  let lo = 1e-9;
+  let hi = 1.0; // 100 % per month is a safe upper bound
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    const pvCalc = pmt * (1 - Math.pow(1 + mid, -n)) / mid;
+    if (pvCalc > pv) lo = mid; else hi = mid;
+    if (hi - lo < 1e-12) break;
+  }
+  return (lo + hi) / 2;
+}
+
+/**
+ * Remaining loan balance after k payments on an amortising schedule.
+ * Formula: PV×(1+r)^k − PMT×((1+r)^k − 1)/r
+ */
+function amortBalance(pv: number, pmt: number, r: number, k: number): number {
+  if (r === 0) return Math.max(0, pv - k * pmt);
+  const factor = Math.pow(1 + r, k);
+  return pv * factor - pmt * (factor - 1) / r;
+}
+
 const Installments = () => {
   const { transactions, loading } = useFinance();
   const { fmt } = useCurrency();
@@ -96,15 +124,31 @@ const Installments = () => {
     const paidPayments = round2(plan.paidInstallments * plan.amountPerInstallment);
     const grossTotal = round2(plan.totalInstallments * plan.amountPerInstallment);
 
-    // Principal-based breakdown only available when loanTotalAmount is set
+    // Principal/interest breakdown requires loanTotalAmount
     const hasLoan = plan.loanTotalAmount != null && plan.loanTotalAmount > 0;
     const loanTotal = plan.loanTotalAmount ?? grossTotal;
-    const principalPerInstallment = round2(loanTotal / plan.totalInstallments);
-    const interestPerInstallment = round2(plan.amountPerInstallment - principalPerInstallment);
+    const totalInterest = round2(grossTotal - loanTotal);
+    const hasInterest = hasLoan && totalInterest > 0;
 
-    const paidPrincipal = round2(plan.paidInstallments * principalPerInstallment);
-    const remainingPrincipal = round2(loanTotal - paidPrincipal);
-    const remainingInterest = round2(remainingInstallments * interestPerInstallment);
+    // Use amortising schedule to match bank calculations (e.g. ENBD).
+    // The monthly rate is derived from loanTotal, perInstallment, totalInstallments.
+    let paidPrincipal: number;
+    let remainingPrincipal: number;
+    let remainingInterest: number;
+
+    if (hasInterest) {
+      const r = solveMonthlyRate(loanTotal, plan.amountPerInstallment, plan.totalInstallments);
+      const remBal = amortBalance(loanTotal, plan.amountPerInstallment, r, plan.paidInstallments);
+      remainingPrincipal = round2(Math.max(0, remBal));
+      paidPrincipal = round2(loanTotal - remainingPrincipal);
+      // Remaining interest = remaining total payments − remaining principal
+      remainingInterest = round2(remainingPayments - remainingPrincipal);
+    } else {
+      // Zero-interest: equal principal per installment
+      paidPrincipal = round2(plan.paidInstallments * (loanTotal / plan.totalInstallments));
+      remainingPrincipal = round2(loanTotal - paidPrincipal);
+      remainingInterest = 0;
+    }
 
     const progressPct = plan.totalInstallments > 0
       ? Math.round((plan.paidInstallments / plan.totalInstallments) * 100)
