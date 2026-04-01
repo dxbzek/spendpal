@@ -71,8 +71,13 @@ const RecurringTracker = () => {
                   ? Math.round((item.currentInstallment! / item.totalInstallments!) * 100)
                   : null;
                 const remaining = hasInstallments
-                  ? (item.totalInstallments! - item.currentInstallment!) * item.amount
+                  ? (item.loanTotalAmount
+                      ? item.loanTotalAmount - item.currentInstallment! * item.amount
+                      : (item.totalInstallments! - item.currentInstallment!) * item.amount)
                   : null;
+                const remainingInstallments = hasInstallments && remaining !== null && item.amount > 0
+                  ? Math.max(0, Math.ceil(remaining / item.amount))
+                  : hasInstallments ? Math.max(0, item.totalInstallments! - item.currentInstallment!) : null;
 
                 return (
                   <div key={item.id} className="py-2.5">
@@ -94,7 +99,7 @@ const RecurringTracker = () => {
                       <div className="text-right shrink-0">
                         <span className="text-sm font-heading">{fmt(item.amount)}</span>
                         {hasInstallments && (
-                          <p className="text-[10px] text-muted-foreground">{fmt(remaining!)} left</p>
+                          <p className="text-[10px] text-muted-foreground">{fmt(remaining!)} left ({remainingInstallments} mo)</p>
                         )}
                       </div>
                     </div>

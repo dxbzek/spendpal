@@ -31,6 +31,9 @@ export const TransactionRowSchema = z.object({
   is_recurring: z.boolean().optional().default(false),
   total_installments: z.number().nullable().optional(),
   current_installment: z.number().nullable().optional(),
+  loan_total_amount: z.union([z.number(), z.string(), z.null()]).optional().transform(v =>
+    v != null && v !== '' ? Number(v) : null
+  ),
   is_tracking_only: z.boolean().optional().default(false),
 });
 

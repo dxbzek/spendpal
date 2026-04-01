@@ -47,6 +47,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
+  const [loanTotalAmount, setLoanTotalAmount] = useState('');
   const [note, setNote] = useState('');
   const [allocateToGoal, setAllocateToGoal] = useState(false);
   const [goalAllocationId, setGoalAllocationId] = useState('');
@@ -77,6 +78,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       setHasInstallments(!!(editTransaction.totalInstallments && editTransaction.currentInstallment));
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
       setCurrentInstallment(String(editTransaction.currentInstallment || 1));
+      setLoanTotalAmount(editTransaction.loanTotalAmount ? String(editTransaction.loanTotalAmount) : '');
       setIsTrackingOnly(editTransaction.isTrackingOnly || false);
       setNote(editTransaction.note || '');
       if (isTransferTx) {
@@ -109,6 +111,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     setHasInstallments(false);
     setTotalInstallments('12');
     setCurrentInstallment('1');
+    setLoanTotalAmount('');
     setIsTrackingOnly(false);
     setNote('');
     setAllocateToGoal(false);
@@ -195,6 +198,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       isRecurring: isTransfer ? false : isRecurring,
       totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : null,
       currentInstallment: (hasInstallments && isRecurring) ? (parseInt(currentInstallment) || 1) : null,
+      loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || null) : null,
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
     };
 
@@ -239,9 +243,20 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
     setCategoryIcon(icon);
   };
 
-  const totalAmount = hasInstallments
-    ? (parseFloat(amount) || 0) * (parseInt(totalInstallments) || 0)
-    : parseFloat(amount) || 0;
+  const perInstallment = parseFloat(amount) || 0;
+  const totalInst = parseInt(totalInstallments) || 0;
+  const currentInst = parseInt(currentInstallment) || 0;
+  const loanTotal = parseFloat(loanTotalAmount) || 0;
+  const displayTotal = hasInstallments
+    ? (loanTotal || perInstallment * totalInst)
+    : perInstallment;
+  const remainingBalance = hasInstallments
+    ? (loanTotal || perInstallment * totalInst) - currentInst * perInstallment
+    : 0;
+  const remainingInstCount = hasInstallments && perInstallment > 0
+    ? Math.max(0, Math.ceil(remainingBalance / perInstallment))
+    : Math.max(0, totalInst - currentInst);
+  const totalAmount = displayTotal;
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
 
@@ -334,6 +349,12 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
                           className="h-10" />
                       </div>
                     </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Total Loan Amount ({currency}) — optional</label>
+                      <Input type="number" placeholder={`e.g. ${(perInstallment * totalInst).toFixed(2)}`}
+                        value={loanTotalAmount} onChange={e => setLoanTotalAmount(e.target.value)}
+                        className="h-10" />
+                    </div>
                     {amount && (
                       <div className="bg-primary/5 rounded-lg p-2.5 text-center">
                         <p className="text-xs text-muted-foreground">Total Cost</p>
@@ -341,7 +362,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
                           {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Remaining: {((parseInt(totalInstallments) - parseInt(currentInstallment)) * (parseFloat(amount) || 0)).toLocaleString()} {currency}
+                          Remaining: {remainingBalance.toLocaleString()} {currency} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
                         </p>
                       </div>
                     )}
