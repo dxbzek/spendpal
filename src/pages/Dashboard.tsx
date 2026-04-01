@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { CATEGORY_CHART_COLORS, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
-import BudgetAlertBanners from '@/components/dashboard/BudgetAlertBanners';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
 import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
@@ -226,8 +225,7 @@ const Dashboard = () => {
 
       <div className="px-5 md:px-8 -mt-4 pb-8">
         {/* Alerts */}
-        <div className="space-y-2 mb-4">
-          <BudgetAlertBanners budgets={budgets} />
+        <div className="mb-4">
           <RecurringDueBanner transactions={transactions} />
         </div>
 
