@@ -16,6 +16,7 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
 
     budgets.forEach(b => {
       if (b.amount <= 0) return;
+      if (b.isFixed) return; // Fixed expenses always reach 100% — alerts are noise
       const pct = (b.spent / b.amount) * 100;
 
       for (const threshold of THRESHOLDS) {

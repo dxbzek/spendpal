@@ -63,6 +63,7 @@ const mapBudget = (row: unknown, spentByCategory: Record<string, number> = {}): 
     spent: spentByCategory[r.category] ?? 0,
     period: r.period,
     month: r.month,
+    isFixed: r.is_fixed ?? false,
   };
 };
 
@@ -474,6 +475,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: budget.amount,
       period: budget.period,
       month: budget.month,
+      is_fixed: budget.isFixed ?? false,
     }).select().single();
     if (error) { toast.error(`Failed to add budget: ${error.message}`); return; }
     const spentByCategory = computeSpentByCategory(transactions);
@@ -487,6 +489,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       category_icon: budget.categoryIcon,
       amount: budget.amount,
       period: budget.period,
+      is_fixed: budget.isFixed ?? false,
     }).eq('id', budget.id);
     if (error) { toast.error(`Failed to update budget: ${error.message}`); return; }
     setBudgets(prev => prev.map(b => b.id === budget.id ? budget : b));

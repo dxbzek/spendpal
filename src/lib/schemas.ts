@@ -44,6 +44,7 @@ export const BudgetRowSchema = z.object({
   amount: z.union([z.number(), z.string()]).transform(Number).pipe(z.number().positive()),
   period: z.enum(['monthly', 'weekly']),
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be YYYY-MM'),
+  is_fixed: z.boolean().optional().default(false),
 });
 
 export const GoalRowSchema = z.object({
