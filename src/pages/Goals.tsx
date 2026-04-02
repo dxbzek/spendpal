@@ -22,12 +22,15 @@ function loadLog(id: string): Contribution[] {
   try { return JSON.parse(localStorage.getItem(LOG_KEY(id)) || '[]'); } catch { return []; }
 }
 function saveLog(id: string, log: Contribution[]) {
-  localStorage.setItem(LOG_KEY(id), JSON.stringify(log.slice(0, 20)));
+  localStorage.setItem(LOG_KEY(id), JSON.stringify(log.slice(0, 100)));
 }
 
 const Goals = () => {
   const { goals, transactions, accounts, addGoalProgress, removeGoal, loading } = useFinance();
   const { fmt } = useCurrency();
+
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
   const [progressNote, setProgressNote] = useState('');
@@ -110,14 +113,14 @@ const Goals = () => {
           <div className="bg-primary-foreground/10 rounded-2xl p-4 backdrop-blur-sm">
             <p className="text-primary-foreground/70 text-xs mb-1">Total Progress</p>
             <p className="text-2xl font-heading text-primary-foreground mb-2">
-              {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {fmt(totalTarget)}</span>
+              {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {mask(fmt(totalTarget))}</span>
             </p>
             <div className="h-3.5 bg-primary-foreground/20 rounded-full overflow-hidden">
               <motion.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
             </div>
             {monthlySavingsRate > 0 && (
               <p className="text-primary-foreground/60 text-[11px] mt-2 flex items-center gap-1">
-                <TrendingUp size={11} /> Avg monthly savings: {fmt(monthlySavingsRate)}
+                <TrendingUp size={11} /> Avg monthly savings: {mask(fmt(monthlySavingsRate))}
               </p>
             )}
           </div>
@@ -167,8 +170,8 @@ const Goals = () => {
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-2xl font-heading text-primary">{pct}%</p>
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{fmt(goal.savedAmount)} saved</p>
-                      <p className="text-xs text-muted-foreground">of {fmt(goal.targetAmount)}</p>
+                      <p className="text-xs text-muted-foreground">{mask(fmt(goal.savedAmount))} saved</p>
+                      <p className="text-xs text-muted-foreground">of {mask(fmt(goal.targetAmount))}</p>
                     </div>
                   </div>
                   <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
@@ -176,7 +179,7 @@ const Goals = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">{fmt(remaining)} remaining</p>
+                      <p className="text-xs text-muted-foreground">{mask(fmt(remaining))} remaining</p>
                       {estimate && (
                         <p className="text-[11px] text-primary/70 flex items-center gap-0.5 mt-0.5">
                           <TrendingUp size={10} /> {estimate} at current rate
@@ -206,7 +209,7 @@ const Goals = () => {
                             {log.slice(0, 5).map((c, i) => (
                               <div key={i} className="flex items-center justify-between text-xs">
                                 <div>
-                                  <span className="font-medium text-income">+{fmt(c.amount)}</span>
+                                  <span className="font-medium text-income">+{mask(fmt(c.amount))}</span>
                                   {c.note && <span className="text-muted-foreground ml-1.5">· {c.note}</span>}
                                 </div>
                                 <span className="text-muted-foreground">{format(parseISO(c.date), 'MMM d, yyyy')}</span>

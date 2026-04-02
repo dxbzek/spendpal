@@ -37,6 +37,9 @@ const Budgets = () => {
   const { budgets, transactions, removeBudget, bulkRemoveBudgets, addBudget, loading } = useFinance();
   const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
+
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
@@ -96,7 +99,7 @@ const Budgets = () => {
       savedAt: new Date().toISOString(),
       items: budgets.map(b => ({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period })),
     };
-    const updated = [template, ...templates.filter(t => t.name !== monthKey)].slice(0, 5);
+    const updated = [template, ...templates.filter(t => t.name !== monthKey)].slice(0, 12);
     setTemplates(updated);
     localStorage.setItem(TEMPLATE_KEY, JSON.stringify(updated));
     toast.success(`Template saved: ${monthKey}`);
@@ -185,7 +188,7 @@ const Budgets = () => {
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{daysLeft} days left</span>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>{fmt(totalSpent)}</span><span>{fmt(totalBudgeted)}</span>
+            <span>{mask(fmt(totalSpent))}</span><span>{mask(fmt(totalBudgeted))}</span>
           </div>
           <div className="h-4 bg-muted rounded-full overflow-hidden mb-2">
             <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(overallPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -199,7 +202,7 @@ const Budgets = () => {
                 Projected month-end
               </span>
               <span className={`font-semibold ${velocityColor(projectedPct)}`}>
-                {fmt(projectedSpend)} ({projectedPct}%)
+                {mask(fmt(projectedSpend))} ({projectedPct}%)
               </span>
             </div>
           )}
@@ -267,19 +270,19 @@ const Budgets = () => {
                       className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center mb-2">
-                    <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{fmt(b.spent)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Remaining</p><p className={`text-sm font-medium ${remaining < 0 ? 'text-expense' : ''}`}>{fmt(remaining)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Daily left</p><p className="text-sm font-medium">{fmt(dailyLeft)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{mask(fmt(b.spent))}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Remaining</p><p className={`text-sm font-medium ${remaining < 0 ? 'text-expense' : ''}`}>{mask(fmt(remaining))}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Daily left</p><p className="text-sm font-medium">{mask(fmt(dailyLeft))}</p></div>
                   </div>
                   {/* Velocity + last month */}
                   {daysElapsed > 0 && (
                     <div className="flex items-center justify-between pt-2 border-t border-border text-[11px]">
                       <span className={`flex items-center gap-1 ${velocityColor(projPct)}`}>
                         {projPct > 100 ? <TrendingUp size={10} /> : null}
-                        On pace: {fmt(projected)}
+                        On pace: {mask(fmt(projected))}
                       </span>
                       {lastMonthAmt !== undefined && (
-                        <span className="text-muted-foreground">Last mo: {fmt(lastMonthAmt)}</span>
+                        <span className="text-muted-foreground">Last mo: {mask(fmt(lastMonthAmt))}</span>
                       )}
                     </div>
                   )}
@@ -300,7 +303,7 @@ const Budgets = () => {
                     <span className="text-2xl shrink-0">{b.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{b.category}</p>
-                      <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {fmt(b.amount)}</p>
+                      <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {mask(fmt(b.amount))}</p>
                     </div>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 100 ? 'bg-destructive/10 text-expense' : pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                   </div>
@@ -308,10 +311,10 @@ const Budgets = () => {
                     <div style={{ width: `${Math.min(pct, 100)}%` }} className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{fmt(lastSpent)}</span></span>
+                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{mask(fmt(lastSpent))}</span></span>
                     {b.spent > 0 && (
                       <span className={diff > 0 ? 'text-expense' : 'text-income'}>
-                        {diff > 0 ? '+' : ''}{fmt(diff)} vs now
+                        {hidden ? '••••••' : `${diff > 0 ? '+' : ''}${fmt(diff)}`} vs now
                       </span>
                     )}
                   </div>
@@ -335,7 +338,7 @@ const Budgets = () => {
                 <div key={s.category} className="p-3 bg-accent/50 rounded-xl">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">{s.category}</span>
-                    <span className="text-sm font-heading text-primary">{fmt(s.suggestedAmount)}</span>
+                    <span className="text-sm font-heading text-primary">{mask(fmt(s.suggestedAmount))}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{s.reasoning}</p>
                 </div>
