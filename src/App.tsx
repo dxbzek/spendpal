@@ -20,7 +20,6 @@ import AuthPage from "@/pages/AuthPage";
 import Glossary from "@/pages/Glossary";
 import Accounts from "@/pages/Accounts";
 import Reports from "@/pages/Reports";
-import Recurring from "@/pages/Recurring";
 import Debt from "@/pages/Debt";
 import Installments from "@/pages/Installments";
 import CalendarView from "@/pages/CalendarView";
@@ -75,7 +74,7 @@ const App = () => (
                 <Route path="/goals" element={<Goals />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/reports" element={<Reports />} />
-                <Route path="/recurring" element={<Recurring />} />
+                <Route path="/recurring" element={<Navigate to="/installments" replace />} />
                 <Route path="/debt" element={<Debt />} />
                 <Route path="/installments" element={<Installments />} />
                 <Route path="/calendar" element={<CalendarView />} />

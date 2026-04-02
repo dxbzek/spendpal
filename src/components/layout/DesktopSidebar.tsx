@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo.png';
-import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wallet, BarChart3, RefreshCw, CreditCard, Layers, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wallet, BarChart3, CreditCard, Layers, CalendarDays } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -20,7 +20,6 @@ const NAV_SECTIONS = [
       { path: '/goals', label: 'Goals', icon: Target },
       { path: '/debt', label: 'Debt', icon: CreditCard },
       { path: '/installments', label: 'Installments', icon: Layers },
-      { path: '/recurring', label: 'Recurring', icon: RefreshCw },
     ],
   },
   {
