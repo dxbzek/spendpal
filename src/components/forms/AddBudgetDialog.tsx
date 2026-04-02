@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
+import { EXPENSE_CATEGORIES, FIXED_EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
 import { format, subMonths, getMonth, getYear, parseISO } from 'date-fns';
 
 interface Props {
@@ -34,6 +34,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const [amount, setAmount] = useState(editBudget?.amount?.toString() || '');
   const [period, setPeriod] = useState<'monthly' | 'weekly'>(editBudget?.period || 'monthly');
   const [rollover, setRollover] = useState(false);
+  const [isFixed, setIsFixed] = useState(editBudget?.isFixed ?? false);
   const [submitting, setSubmitting] = useState(false);
 
   const selectedCat = EXPENSE_CATEGORIES.find(c => c.name === category);
@@ -63,11 +64,12 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
     return spent > 0 ? null : null; // Only show rollover if there was a budget
   }, [category, budgets, transactions, isEdit]);
 
-  // When category changes, load rollover preference
+  // When category changes, load rollover preference and auto-detect fixed
   useEffect(() => {
     if (!category) return;
     const saved = getRolloverCats();
     setRollover(saved.has(category));
+    if (!isEdit) setIsFixed(FIXED_EXPENSE_CATEGORIES.has(category));
   }, [category]);
 
   // When rollover toggles, update amount
@@ -98,6 +100,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
         amount: parsedAmount,
         period,
         month: format(new Date(), 'yyyy-MM'),
+        isFixed,
       };
       if (isEdit) {
         await updateBudget({ ...data, id: editBudget.id, spent: editBudget.spent });
@@ -141,6 +144,15 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
                 <SelectItem value="weekly">Weekly</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Fixed expense option */}
+          <div className="flex items-center justify-between p-3 bg-accent/50 rounded-xl">
+            <div>
+              <p className="text-xs font-medium">Fixed expense</p>
+              <p className="text-[11px] text-muted-foreground">Skip budget alerts (e.g. rent, utilities)</p>
+            </div>
+            <Switch checked={isFixed} onCheckedChange={setIsFixed} />
           </div>
 
           {/* Rollover option */}

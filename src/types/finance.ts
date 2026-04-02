@@ -39,7 +39,10 @@ export interface Budget {
   spent: number;
   period: 'monthly' | 'weekly';
   month: string; // YYYY-MM
+  isFixed?: boolean;
 }
+
+export const FIXED_EXPENSE_CATEGORIES = new Set(['Rent', 'DEWA', 'Utilities', 'Insurance', 'Telecom', 'Subscriptions']);
 
 export interface Goal {
   id: string;
