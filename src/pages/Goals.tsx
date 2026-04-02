@@ -2,7 +2,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Plus, Edit2, Trash2, CalendarClock, TrendingUp } from 'lucide-react';
+import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ const Goals = () => {
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
   const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0);
@@ -80,6 +81,7 @@ const Goals = () => {
   };
 
   const activeGoals = goals.filter(g => g.status === 'active');
+  const completedGoals = goals.filter(g => g.status !== 'active');
 
   const getDaysRemaining = (deadline?: string) => {
     if (!deadline) return null;
@@ -223,6 +225,33 @@ const Goals = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {completedGoals.length > 0 && (
+          <div className="mt-6">
+            <button
+              onClick={() => setShowCompleted(v => !v)}
+              className="flex items-center gap-2 text-sm font-heading text-muted-foreground uppercase tracking-wide mb-4 hover:text-foreground transition-colors"
+            >
+              <CheckCircle2 size={14} className="text-income" />
+              Completed · {completedGoals.length}
+              <ChevronDown size={14} className={`transition-transform ${showCompleted ? 'rotate-180' : ''}`} />
+            </button>
+            {showCompleted && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {completedGoals.map(goal => (
+                  <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow opacity-70 flex items-center gap-4">
+                    <span className="w-12 h-12 rounded-2xl bg-income/10 flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{goal.name}</p>
+                      <p className="text-xs text-income font-medium">{mask(fmt(goal.savedAmount))} saved</p>
+                    </div>
+                    <CheckCircle2 size={18} className="text-income shrink-0" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

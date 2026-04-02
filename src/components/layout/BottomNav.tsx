@@ -157,8 +157,11 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}
-            <MoreHorizontal size={20} className="relative z-10" />
-            <span className="relative z-10 text-[10px] font-medium">More</span>
+            {showMore
+              ? <X size={20} className="relative z-10" />
+              : <MoreHorizontal size={20} className="relative z-10" />
+            }
+            <span className="relative z-10 text-[10px] font-medium">{showMore ? 'Close' : 'More'}</span>
           </button>
         </div>
       </nav>

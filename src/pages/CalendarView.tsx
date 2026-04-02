@@ -106,6 +106,17 @@ const CalendarView = () => {
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+        <span>Spending:</span>
+        {[['bg-primary/25', 'Low'], ['bg-primary/50', 'Med'], ['bg-warning/70', 'High'], ['bg-expense/80', 'Very high']].map(([cls, label]) => (
+          <span key={label} className="flex items-center gap-1">
+            <span className={`w-3 h-1.5 rounded-full ${cls}`} />
+            {label}
+          </span>
+        ))}
+      </div>
+
       {/* Calendar grid */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         {/* Day headers */}
@@ -152,17 +163,6 @@ const CalendarView = () => {
             );
           })}
         </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-        <span>Spending:</span>
-        {[['bg-primary/25', 'Low'], ['bg-primary/50', 'Med'], ['bg-warning/70', 'High'], ['bg-expense/80', 'Very high']].map(([cls, label]) => (
-          <span key={label} className="flex items-center gap-1">
-            <span className={`w-3 h-1.5 rounded-full ${cls}`} />
-            {label}
-          </span>
-        ))}
       </div>
 
       {/* Selected day transactions */}
