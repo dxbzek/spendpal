@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -164,7 +165,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const executeSubmit = async () => {
     if (isTransfer) {
-      if (!amount || !accountId || !toAccountId || accountId === toAccountId) return;
+      if (!amount) { toast.error('Please enter an amount'); return; }
+      if (!accountId) { toast.error('Please select an account'); return; }
+      if (!toAccountId) { toast.error('Please select a destination account'); return; }
+      if (accountId === toAccountId) { toast.error('Source and destination accounts must be different'); return; }
       if (isEditing) {
         await removeTransaction(editTransaction.id);
       }
@@ -203,7 +207,9 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       return;
     }
 
-    if (!amount || !category || !accountId) return;
+    if (!amount) { toast.error('Please enter an amount'); return; }
+    if (!category) { toast.error('Please select a category'); return; }
+    if (!accountId) { toast.error('Please select an account'); return; }
 
     const txData = {
       type,
