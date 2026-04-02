@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Receipt, Wallet, BarChart3, Plus,
   MoreHorizontal, PiggyBank, Target, Layers, CalendarDays,
-  RefreshCw, Brain, Settings, CreditCard, X,
+  Brain, Settings, CreditCard, X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -23,7 +23,6 @@ const MORE_ITEMS = [
   { path: '/goals', label: 'Goals', icon: Target },
   { path: '/installments', label: 'Installments', icon: Layers },
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { path: '/recurring', label: 'Recurring', icon: RefreshCw },
   { path: '/advisor', label: 'AI Advisor', icon: Brain },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
