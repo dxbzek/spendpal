@@ -207,6 +207,7 @@ const Recurring = () => {
       <AddTransactionSheet
         open={addOpen}
         onOpenChange={handleAddOpen}
+        recurringMode={true}
         prefill={prefillGroup ? {
           type: prefillGroup.type,
           merchant: prefillGroup.merchant,

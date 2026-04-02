@@ -30,6 +30,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   editTransaction?: Transaction | null;
   prefill?: Prefill | null;
+  recurringMode?: boolean;
 }
 
 const TYPES: { value: TransactionType; label: string }[] = [
@@ -40,7 +41,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 
 const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
-const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill }: Props) => {
+const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, recurringMode }: Props) => {
   const { accounts, transactions, goals, addTransaction, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
   const { currency } = useCurrency();
   const { getCategoriesForType, refresh: refreshCategories } = useCategories();
@@ -111,6 +112,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill }: P
       setCategoryIcon(prefill.categoryIcon);
       setMerchant(prefill.merchant);
       setIsRecurring(prefill.isRecurring);
+    } else if (open && recurringMode) {
+      setIsRecurring(true);
     } else if (!open) {
       resetForm();
     }
@@ -283,7 +286,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill }: P
 
           <div className="space-y-5 mt-4">
             <div className="flex gap-1 p-1 bg-muted rounded-xl">
-              {TYPES.map(t => (
+              {TYPES.filter(t => !recurringMode || t.value !== 'transfer').map(t => (
                 <button key={t.value} onClick={() => { setType(t.value); setCategory(''); setCategoryIcon(''); }}
                   className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
                     type === t.value
@@ -310,17 +313,19 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill }: P
             {/* Recurring toggle - hidden for transfers */}
             {!isTransfer && (
               <div className="bg-muted/50 rounded-xl p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Recurring</p>
-                    <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
+                {!recurringMode && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Recurring</p>
+                      <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
+                    </div>
+                    <Switch checked={isRecurring} onCheckedChange={(v) => {
+                      setIsRecurring(v);
+                      if (v) setHasInstallments(true);
+                      if (!v) setHasInstallments(false);
+                    }} />
                   </div>
-                  <Switch checked={isRecurring} onCheckedChange={(v) => {
-                    setIsRecurring(v);
-                    if (v) setHasInstallments(true);
-                    if (!v) setHasInstallments(false);
-                  }} />
-                </div>
+                )}
 
                 {isRecurring && (
                   <div className="flex items-center justify-between">
@@ -453,7 +458,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill }: P
             )}
 
             {/* Allocate to Goal */}
-            {!isEditing && goals.filter(g => g.status === 'active').length > 0 && (
+            {!isEditing && !hasInstallments && goals.filter(g => g.status === 'active').length > 0 && (
               <div className="bg-muted/50 rounded-xl p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

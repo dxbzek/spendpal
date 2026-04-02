@@ -42,7 +42,7 @@ export interface Budget {
   isFixed?: boolean;
 }
 
-export const FIXED_EXPENSE_CATEGORIES = new Set(['Rent', 'DEWA', 'Utilities', 'Insurance', 'Telecom', 'Subscriptions']);
+export const FIXED_EXPENSE_CATEGORIES = new Set(['Rent', 'DEWA', 'Utilities', 'Insurance', 'Telecom', 'Subscriptions', 'Loans']);
 
 export interface Goal {
   id: string;
@@ -68,6 +68,7 @@ export const EXPENSE_CATEGORIES = [
   { name: 'Delivery', icon: '📦' },
   { name: 'DEWA', icon: '💡' },
   { name: 'Rent', icon: '🏠' },
+  { name: 'Loans', icon: '🏦' },
   { name: 'Shopping', icon: '🛍️' },
   { name: 'Health', icon: '🏥' },
   { name: 'Education', icon: '📚' },
