@@ -24,6 +24,10 @@ function minPayment(principal: number): number {
 const Debt = () => {
   const { accounts, loading } = useFinance();
   const { fmt } = useCurrency();
+
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
+
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aprs, setAprs] = useState<Record<string, number>>({});
   const [payments, setPayments] = useState<Record<string, number>>({});
@@ -70,11 +74,11 @@ const Debt = () => {
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-primary-foreground/10 rounded-2xl p-3 backdrop-blur-sm">
                 <p className="text-primary-foreground/70 text-[11px] mb-0.5">Total Owed</p>
-                <p className="text-lg font-heading text-primary-foreground">{fmt(totalOwed)}</p>
+                <p className="text-lg font-heading text-primary-foreground">{mask(fmt(totalOwed))}</p>
               </div>
               <div className="bg-primary-foreground/10 rounded-2xl p-3 backdrop-blur-sm">
                 <p className="text-primary-foreground/70 text-[11px] mb-0.5">Credit Limit</p>
-                <p className="text-lg font-heading text-primary-foreground">{fmt(totalLimit)}</p>
+                <p className="text-lg font-heading text-primary-foreground">{mask(fmt(totalLimit))}</p>
               </div>
               <div className="bg-primary-foreground/10 rounded-2xl p-3 backdrop-blur-sm">
                 <p className="text-primary-foreground/70 text-[11px] mb-0.5">Utilization</p>
@@ -131,7 +135,7 @@ const Debt = () => {
               return (
                 <div key={debt.id} className="bg-card rounded-2xl card-shadow overflow-hidden">
                   <button
-                    className="w-full p-4 text-left"
+                    className="w-full p-4 text-left hover:bg-muted/40 transition-colors"
                     onClick={() => setExpanded(isExpanded ? null : debt.id)}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -140,7 +144,7 @@ const Debt = () => {
                         <div>
                           <p className="text-sm font-semibold">{debt.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {fmt(debt.owed)} owed of {fmt(debt.creditLimit || 0)} limit
+                            {mask(fmt(debt.owed))} owed of {mask(fmt(debt.creditLimit || 0))} limit
                           </p>
                         </div>
                       </div>
@@ -164,7 +168,7 @@ const Debt = () => {
                     <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <TrendingDown size={11} />
-                        Min payment: {fmt(minPayment(debt.owed))}/mo
+                        Min payment: {mask(fmt(minPayment(debt.owed)))}/mo
                       </span>
                       {payoffDate && (
                         <span className="flex items-center gap-1">
@@ -222,18 +226,18 @@ const Debt = () => {
                               </div>
                               <div className="bg-accent/50 rounded-xl p-3">
                                 <p className="text-[11px] text-muted-foreground mb-0.5">Total paid</p>
-                                <p className="text-sm font-heading">{fmt(totalCost)}</p>
+                                <p className="text-sm font-heading">{mask(fmt(totalCost))}</p>
                               </div>
                               <div className="bg-destructive/10 rounded-xl p-3">
                                 <p className="text-[11px] text-muted-foreground mb-0.5">Interest</p>
-                                <p className="text-sm font-heading text-expense">{fmt(interest)}</p>
+                                <p className="text-sm font-heading text-expense">{mask(fmt(interest))}</p>
                               </div>
                             </div>
                           ) : (
                             <div className="bg-destructive/10 rounded-xl p-3 text-center">
                               <p className="text-xs text-expense font-semibold">Payment too low — doesn't cover interest</p>
                               <p className="text-[11px] text-muted-foreground mt-0.5">
-                                Minimum to cover interest: {fmt((debt.owed * apr) / 100 / 12 + 1)}/mo
+                                Minimum to cover interest: {mask(fmt(Math.ceil((debt.owed * apr) / 100 / 12 * 100) / 100))}/mo
                               </p>
                             </div>
                           )}

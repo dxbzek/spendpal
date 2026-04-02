@@ -10,10 +10,18 @@ import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { extractEmoji } from '@/utils/categoryColors';
 
 const CalendarView = () => {
-  const { transactions, loading } = useFinance();
+  const { transactions, accounts, loading } = useFinance();
   const { fmt } = useCurrency();
   const [current, setCurrent] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
+
+  const creditAccountIds = useMemo(
+    () => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)),
+    [accounts]
+  );
 
   const monthTxs = useMemo(() =>
     transactions.filter(tx => {
@@ -50,7 +58,10 @@ const CalendarView = () => {
     return monthTxs.filter(tx => tx.date === key);
   }, [selectedDay, monthTxs]);
 
-  const totalIncome = useMemo(() => monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [monthTxs]);
+  const totalIncome = useMemo(
+    () => monthTxs.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0),
+    [monthTxs, creditAccountIds]
+  );
   const totalExpenses = useMemo(() => monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0), [monthTxs]);
 
   const dayColor = (total: number) => {
@@ -87,12 +98,23 @@ const CalendarView = () => {
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card rounded-2xl border border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">Income</p>
-          <p className="font-bold text-primary">{fmt(totalIncome)}</p>
+          <p className="font-bold text-primary">{mask(fmt(totalIncome))}</p>
         </div>
         <div className="bg-card rounded-2xl border border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">Expenses</p>
-          <p className="font-bold text-expense">{fmt(totalExpenses)}</p>
+          <p className="font-bold text-expense">{mask(fmt(totalExpenses))}</p>
         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+        <span>Spending:</span>
+        {[['bg-primary/25', 'Low'], ['bg-primary/50', 'Med'], ['bg-warning/70', 'High'], ['bg-expense/80', 'Very high']].map(([cls, label]) => (
+          <span key={label} className="flex items-center gap-1">
+            <span className={`w-3 h-1.5 rounded-full ${cls}`} />
+            {label}
+          </span>
+        ))}
       </div>
 
       {/* Calendar grid */}
@@ -134,24 +156,13 @@ const CalendarView = () => {
                 {total > 0 && (
                   <div className={`w-5 h-1.5 rounded-full ${dayColor(total)}`} />
                 )}
-                {total > 0 && (
+                {total > 0 && !hidden && (
                   <span className="text-[9px] text-muted-foreground leading-none">{fmt(total)}</span>
                 )}
               </button>
             );
           })}
         </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-        <span>Spending:</span>
-        {[['bg-primary/25', 'Low'], ['bg-primary/50', 'Med'], ['bg-warning/70', 'High'], ['bg-expense/80', 'Very high']].map(([cls, label]) => (
-          <span key={label} className="flex items-center gap-1">
-            <span className={`w-3 h-1.5 rounded-full ${cls}`} />
-            {label}
-          </span>
-        ))}
       </div>
 
       {/* Selected day transactions */}
@@ -178,7 +189,7 @@ const CalendarView = () => {
                     </div>
                   </div>
                   <span className={`text-sm font-semibold shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                    {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                    {tx.type === 'income' ? '+' : '-'}{mask(fmt(tx.amount))}
                   </span>
                 </div>
               ))}

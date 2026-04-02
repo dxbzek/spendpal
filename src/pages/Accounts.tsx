@@ -34,6 +34,10 @@ const TYPE_COLORS: Record<string, string> = {
 const Accounts = () => {
   const { accounts, transactions, removeAccount, loading } = useFinance();
   const { fmt } = useCurrency();
+
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
+
   const [addOpen, setAddOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -127,7 +131,7 @@ const Accounts = () => {
       <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-5">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Total Net Worth</p>
         <p className={`text-3xl font-bold font-heading ${netWorth >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-          {fmt(Math.abs(netWorth))}
+          {mask(fmt(Math.abs(netWorth)))}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           {accounts.length} account{accounts.length !== 1 ? 's' : ''}
@@ -187,12 +191,12 @@ const Accounts = () => {
                 <div className="flex items-end justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">Balance</p>
-                    <p className="text-xl font-bold font-heading">{fmt(account.balance)}</p>
+                    <p className="text-xl font-bold font-heading">{mask(fmt(account.balance))}</p>
                   </div>
                   {account.type === 'credit' && account.creditLimit && (
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">Credit limit</p>
-                      <p className="text-sm font-medium">{fmt(account.creditLimit)}</p>
+                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit))}</p>
                     </div>
                   )}
                 </div>
@@ -228,14 +232,14 @@ const Accounts = () => {
                       <div className="flex items-center gap-1 text-xs">
                         <TrendingUp size={12} className="text-primary" />
                         <span className="text-muted-foreground">In:</span>
-                        <span className="font-medium text-primary">{fmt(stats.income)}</span>
+                        <span className="font-medium text-primary">{mask(fmt(stats.income))}</span>
                       </div>
                     )}
                     {stats.expenses > 0 && (
                       <div className="flex items-center gap-1 text-xs">
                         <TrendingDown size={12} className="text-destructive" />
                         <span className="text-muted-foreground">Out:</span>
-                        <span className="font-medium text-destructive">{fmt(stats.expenses)}</span>
+                        <span className="font-medium text-destructive">{mask(fmt(stats.expenses))}</span>
                       </div>
                     )}
                   </div>
@@ -272,7 +276,7 @@ const Accounts = () => {
                                 </div>
                               </div>
                               <span className={`text-xs font-semibold shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                                {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                                {tx.type === 'income' ? '+' : '-'}{mask(fmt(tx.amount))}
                               </span>
                             </div>
                           ))}
@@ -299,7 +303,7 @@ const Accounts = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">30-Day Balance Projection</h2>
             <span className={`text-xs font-semibold ${balanceProjection.change >= 0 ? 'text-income' : 'text-expense'}`}>
-              {balanceProjection.change >= 0 ? '+' : ''}{fmt(balanceProjection.change)}
+              {hidden ? '••••••' : `${balanceProjection.change >= 0 ? '+' : ''}${fmt(balanceProjection.change)}`}
             </span>
           </div>
           <svg viewBox="0 0 100 36" className="w-full h-12" preserveAspectRatio="none">
@@ -313,8 +317,8 @@ const Accounts = () => {
             <polygon points={`0,36 ${balanceProjection.pts} 100,36`} fill="url(#proj-grad)" />
           </svg>
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>Today: {fmt(balanceProjection.startBalance)}</span>
-            <span>+30d: {fmt(balanceProjection.endBalance)}</span>
+            <span>Today: {mask(fmt(balanceProjection.startBalance))}</span>
+            <span>+30d: {mask(fmt(balanceProjection.endBalance))}</span>
           </div>
         </div>
       )}

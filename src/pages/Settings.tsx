@@ -173,6 +173,8 @@ const DataBackupCard = () => {
             note: t.note ?? null, is_recurring: t.isRecurring ?? false,
             total_installments: t.totalInstallments ?? null,
             current_installment: t.currentInstallment ?? null,
+            is_tracking_only: t.isTrackingOnly ?? false,
+            loan_total_amount: t.loanTotalAmount ?? null,
           }));
         if (mapped.length) {
           const { error } = await supabase.from('transactions').insert(mapped);

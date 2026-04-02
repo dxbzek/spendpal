@@ -79,6 +79,9 @@ const AIAdvisor = () => {
   const { transactions, accounts, budgets, goals, addBudget } = useFinance();
   const { fmt, currency } = useCurrency();
   const { loading, generateBudgetAnalysis, fetchAdvisorHistory, deleteAdvisorSession } = useAI();
+
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
   const [analysis, setAnalysis] = useState<BudgetAnalysis | null>(null);
   const [activeSimTab, setActiveSimTab] = useState<string>('envelope');
   const [applyingEnvelopes, setApplyingEnvelopes] = useState(false);
@@ -320,11 +323,11 @@ const AIAdvisor = () => {
                     <span className="text-lg">{a.icon}</span>
                     <div>
                       <p className="text-sm font-medium">{a.category}</p>
-                      <p className="text-[11px] text-muted-foreground">Avg: {fmt(a.avg)}/mo</p>
+                      <p className="text-[11px] text-muted-foreground">Avg: {mask(fmt(a.avg))}/mo</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-heading text-warning">{fmt(a.current)}</p>
+                    <p className="text-sm font-heading text-warning">{mask(fmt(a.current))}</p>
                     <p className="text-[10px] font-semibold text-warning">{a.multiple}× average</p>
                   </div>
                 </div>
@@ -494,14 +497,14 @@ const AIAdvisor = () => {
                           <span className="text-lg">{env.icon}</span>
                           <div>
                             <p className="text-sm font-medium">{env.category}</p>
-                            <p className="text-[10px] text-muted-foreground">Currently: {fmt(env.currentSpending)}/mo</p>
+                            <p className="text-[10px] text-muted-foreground">Currently: {mask(fmt(env.currentSpending))}/mo</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-heading">{fmt(env.amount)}</p>
+                          <p className="text-sm font-heading">{mask(fmt(env.amount))}</p>
                           <p className={`text-[10px] font-medium ${diff >= 0 ? 'text-income' : 'text-expense'}`}>
                             {diff >= 0 ? <TrendingUp size={10} className="inline mr-0.5" /> : <TrendingDown size={10} className="inline mr-0.5" />}
-                            {diff >= 0 ? '+' : ''}{fmt(Math.abs(diff))}
+                            {hidden ? '••••••' : `${diff >= 0 ? '+' : ''}${fmt(Math.abs(diff))}`}
                           </p>
                         </div>
                       </div>
@@ -533,7 +536,7 @@ const AIAdvisor = () => {
                               } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card' : ''}`}>
                               <p className="text-xs text-muted-foreground mb-1">{sim.label}</p>
                               <p className={`text-sm font-heading ${sim.value > 0 ? 'text-income' : 'text-expense'}`}>
-                                {sim.value > 0 ? '+' : ''}{fmt(sim.value)}
+                                {hidden ? '••••••' : `${sim.value > 0 ? '+' : ''}${fmt(sim.value)}`}
                               </p>
                               {sim.key === analysis.recommendedMethod && (
                                 <div className="mt-1">

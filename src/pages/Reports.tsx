@@ -11,6 +11,9 @@ const Reports = () => {
   const { transactions, accounts, budgets, loading } = useFinance();
   const { fmt } = useCurrency();
 
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
+
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [drillCategory, setDrillCategory] = useState<string | null>(null);
 
@@ -142,12 +145,12 @@ const Reports = () => {
         <div className="bg-card rounded-2xl border border-border p-3 text-center">
           <TrendingUp size={18} className="text-primary mx-auto mb-1" />
           <p className="text-xs text-muted-foreground">Income</p>
-          <p className="font-bold text-sm">{fmt(income)}</p>
+          <p className="font-bold text-sm">{mask(fmt(income))}</p>
         </div>
         <div className="bg-card rounded-2xl border border-border p-3 text-center">
           <TrendingDown size={18} className="text-destructive mx-auto mb-1" />
           <p className="text-xs text-muted-foreground">Expenses</p>
-          <p className="font-bold text-sm">{fmt(expenses)}</p>
+          <p className="font-bold text-sm">{mask(fmt(expenses))}</p>
           {expenseChange !== null && (
             <p className={`text-[10px] font-medium ${expenseChange > 0 ? 'text-destructive' : 'text-primary'}`}>
               {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs prev
@@ -158,7 +161,7 @@ const Reports = () => {
           <Minus size={18} className={`mx-auto mb-1 ${net >= 0 ? 'text-primary' : 'text-destructive'}`} />
           <p className="text-xs text-muted-foreground">Net</p>
           <p className={`font-bold text-sm ${net >= 0 ? 'text-primary' : 'text-destructive'}`}>
-            {net < 0 ? '-' : ''}{fmt(Math.abs(net))}
+            {hidden ? '••••••' : `${net < 0 ? '-' : ''}${fmt(Math.abs(net))}`}
           </p>
         </div>
       </div>
@@ -185,7 +188,7 @@ const Reports = () => {
                   <span>{cat.icon}</span>
                   <span className="font-medium">{cat.name}</span>
                 </span>
-                <span className="font-semibold">{fmt(cat.value)}</span>
+                <span className="font-semibold">{mask(fmt(cat.value))}</span>
               </button>
             ))}
           </div>
@@ -211,7 +214,7 @@ const Reports = () => {
                           <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d')}</p>
                         </div>
                       </div>
-                      <span className="text-xs font-semibold text-expense shrink-0 ml-2">{fmt(tx.amount)}</span>
+                      <span className="text-xs font-semibold text-expense shrink-0 ml-2">{mask(fmt(tx.amount))}</span>
                     </div>
                   ))}
                 </div>
@@ -236,7 +239,7 @@ const Reports = () => {
                     <span>{b.category}</span>
                   </span>
                   <span className={over ? 'text-destructive font-semibold' : 'text-muted-foreground'}>
-                    {fmt(b.spent)} / {fmt(b.amount)}
+                    {mask(fmt(b.spent))} / {mask(fmt(b.amount))}
                   </span>
                 </div>
                 <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -264,7 +267,7 @@ const Reports = () => {
                   <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}</span>
                   <span className="text-sm truncate">{merchant}</span>
                 </div>
-                <span className="text-sm font-medium shrink-0">{fmt(amount)}</span>
+                <span className="text-sm font-medium shrink-0">{mask(fmt(amount))}</span>
               </div>
             ))}
           </div>
@@ -285,7 +288,7 @@ const Reports = () => {
                       <span>{data.icon}</span>
                       <span className="font-medium">{source}</span>
                     </span>
-                    <span className="font-semibold text-primary">{fmt(data.value)} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
+                    <span className="font-semibold text-primary">{mask(fmt(data.value))} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
                   </div>
                   <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
@@ -304,7 +307,7 @@ const Reports = () => {
           <div className="flex items-end gap-1.5">
             {dayOfWeekData.map(({ label, total, pct }) => (
               <div key={label} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[9px] text-muted-foreground leading-none">{total > 0 ? fmt(total) : ''}</span>
+                <span className="text-[9px] text-muted-foreground leading-none">{total > 0 && !hidden ? fmt(total) : ''}</span>
                 <div
                   className={`w-full rounded-t-sm transition-all ${total > 0 ? 'bg-primary' : 'bg-muted'}`}
                   style={{ height: `${Math.max(pct * 0.52, total > 0 ? 4 : 2)}px` }}

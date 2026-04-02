@@ -16,10 +16,20 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+interface Prefill {
+  type: TransactionType;
+  merchant: string;
+  amount: string;
+  category: string;
+  categoryIcon: string;
+  isRecurring: boolean;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editTransaction?: Transaction | null;
+  prefill?: Prefill | null;
 }
 
 const TYPES: { value: TransactionType; label: string }[] = [
@@ -30,7 +40,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 
 const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
-const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => {
+const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill }: Props) => {
   const { accounts, transactions, goals, addTransaction, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
   const { currency } = useCurrency();
   const { getCategoriesForType, refresh: refreshCategories } = useCategories();
@@ -94,10 +104,17 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction }: Props) => 
       } else {
         setToAccountId('');
       }
+    } else if (prefill && open) {
+      setType(prefill.type);
+      setAmount(prefill.amount);
+      setCategory(prefill.category);
+      setCategoryIcon(prefill.categoryIcon);
+      setMerchant(prefill.merchant);
+      setIsRecurring(prefill.isRecurring);
     } else if (!open) {
       resetForm();
     }
-  }, [editTransaction, open]);
+  }, [editTransaction, prefill, open]);
 
   const resetForm = () => {
     setType('expense');
