@@ -233,7 +233,7 @@ const Debt = () => {
                             <div className="bg-destructive/10 rounded-xl p-3 text-center">
                               <p className="text-xs text-expense font-semibold">Payment too low — doesn't cover interest</p>
                               <p className="text-[11px] text-muted-foreground mt-0.5">
-                                Minimum to cover interest: {fmt((debt.owed * apr) / 100 / 12 + 1)}/mo
+                                Minimum to cover interest: {fmt(Math.ceil((debt.owed * apr) / 100 / 12 * 100) / 100)}/mo
                               </p>
                             </div>
                           )}

@@ -45,10 +45,11 @@ const Installments = () => {
       const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
       const latest = sorted[0];
       const totalInstallments = latest.totalInstallments!;
-      // Use currentInstallment from the latest transaction as the authoritative paid count.
-      // If the user logs each payment separately, txs.length gives the count; we take
-      // whichever is greater so both workflows are supported.
-      const paidInstallments = Math.max(latest.currentInstallment ?? 0, txs.length);
+      // Use currentInstallment when explicitly set (user-tracked workflow);
+      // fall back to txs.length when payments are each logged as separate entries.
+      const paidInstallments = latest.currentInstallment != null
+        ? latest.currentInstallment
+        : txs.length;
       const amountPerInstallment = latest.amount;
       // Prefer the explicit loan total; fall back to installment × count.
       const loanTotalAmount = latest.loanTotalAmount ?? null;

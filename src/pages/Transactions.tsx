@@ -28,6 +28,9 @@ const PAGE_SIZE = 50;
 const Transactions = () => {
   const { transactions, accounts, removeTransaction, bulkRemoveTransactions, bulkUpdateCategory, updateTransaction, loading } = useFinance();
   const { fmtSigned, fmt } = useCurrency();
+
+  const hidden = localStorage.getItem('balanceHidden') === 'true';
+  const mask = (val: string) => hidden ? '••••••' : val;
   const { openEditSheet } = useEditTransaction();
   const { categories: allCategories } = useCategories();
   const [searchInput, setSearchInput] = useState('');
@@ -485,17 +488,17 @@ const Transactions = () => {
           <div className="flex items-center gap-3 px-4 py-2.5 bg-card rounded-xl card-shadow text-xs">
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">Income</span>
-              <span className="font-semibold text-income">{fmt(filteredIncome)}</span>
+              <span className="font-semibold text-income">{mask(fmt(filteredIncome))}</span>
             </div>
             <div className="w-px h-3 bg-border" />
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">Expenses</span>
-              <span className="font-semibold text-expense">{fmt(filteredExpenses)}</span>
+              <span className="font-semibold text-expense">{mask(fmt(filteredExpenses))}</span>
             </div>
             <div className="w-px h-3 bg-border" />
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">Net</span>
-              <span className={`font-semibold ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{filteredNet >= 0 ? '+' : ''}{fmt(filteredNet)}</span>
+              <span className={`font-semibold ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{hidden ? '••••••' : `${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`}</span>
             </div>
           </div>
         </div>
@@ -571,7 +574,7 @@ const Transactions = () => {
                           isLinkedTransfer ? 'text-muted-foreground' :
                           tx.type === 'income' ? 'text-income' : 'text-expense'
                         }`}>
-                          {isLinkedTransfer ? `${tx.amount}` : `${tx.type === 'income' ? '+' : '-'}${tx.amount}`}
+                          {hidden ? '••••••' : isLinkedTransfer ? fmt(tx.amount) : `${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}`}
                         </span>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteSingle(tx.id); }}
@@ -615,7 +618,7 @@ const Transactions = () => {
             <div className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 rounded-xl p-3 text-center">
-                  <p className="text-lg font-bold text-expense">{fmt(merchantStats.total)}</p>
+                  <p className="text-lg font-bold text-expense">{mask(fmt(merchantStats.total))}</p>
                   <p className="text-xs text-muted-foreground">Total spent</p>
                 </div>
                 <div className="bg-muted/50 rounded-xl p-3 text-center">
@@ -631,7 +634,7 @@ const Transactions = () => {
                       <p className="text-[11px] text-muted-foreground">{tx.category}</p>
                     </div>
                     <span className={`text-sm font-semibold ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                      {hidden ? '••••••' : `${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}`}
                     </span>
                   </div>
                 ))}
