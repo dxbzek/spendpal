@@ -246,6 +246,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
       loan_total_amount: tx.loanTotalAmount ?? null,
+      is_tracking_only: tx.isTrackingOnly ?? false,
     }).select().single();
     if (error) { toast.error(`Failed to add transaction: ${error.message}`); return; }
 
@@ -347,6 +348,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
       loan_total_amount: tx.loanTotalAmount ?? null,
+      is_tracking_only: tx.isTrackingOnly ?? false,
     }));
     const { data, error } = await supabase.from('transactions').insert(rows).select();
     if (error) { toast.error(`Failed to import transactions: ${error.message}`); return; }
@@ -375,6 +377,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
       loan_total_amount: tx.loanTotalAmount ?? null,
+      is_tracking_only: tx.isTrackingOnly ?? false,
     }).eq('id', tx.id);
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return; }
     setTransactions(prev => {
