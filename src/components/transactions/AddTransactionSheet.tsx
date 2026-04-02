@@ -458,7 +458,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
             )}
 
             {/* Allocate to Goal */}
-            {!isEditing && !hasInstallments && goals.filter(g => g.status === 'active').length > 0 && (
+            {!isEditing && !hasInstallments && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
               <div className="bg-muted/50 rounded-xl p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
