@@ -2,6 +2,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
 import {
   startOfMonth, endOfMonth, eachDayOfInterval, getDay, format, parseISO,
   addMonths, subMonths, isSameDay, isSameMonth,
@@ -12,11 +13,9 @@ import { extractEmoji } from '@/utils/categoryColors';
 const CalendarView = () => {
   const { transactions, accounts, loading } = useFinance();
   const { fmt } = useCurrency();
+  const { hidden, mask } = useBalanceMask();
   const [current, setCurrent] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
 
   const creditAccountIds = useMemo(
     () => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)),
@@ -39,6 +38,15 @@ const CalendarView = () => {
     });
     return map;
   }, [monthTxs]);
+
+  // Income per day (exclude credit card credits)
+  const dayIncome = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthTxs
+      .filter(tx => tx.type === 'income' && !creditAccountIds.has(tx.accountId))
+      .forEach(tx => { map[tx.date] = (map[tx.date] || 0) + tx.amount; });
+    return map;
+  }, [monthTxs, creditAccountIds]);
 
   const maxDay = Math.max(...Object.values(dayTotals), 1);
 
@@ -95,19 +103,25 @@ const CalendarView = () => {
       </div>
 
       {/* Month summary */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-card rounded-2xl border border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">Income</p>
-          <p className="font-bold text-primary">{mask(fmt(totalIncome))}</p>
+          <p className="font-bold text-primary text-sm">{mask(fmt(totalIncome))}</p>
         </div>
         <div className="bg-card rounded-2xl border border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">Expenses</p>
-          <p className="font-bold text-expense">{mask(fmt(totalExpenses))}</p>
+          <p className="font-bold text-expense text-sm">{mask(fmt(totalExpenses))}</p>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+          <p className="text-xs text-muted-foreground">Net</p>
+          <p className={`font-bold text-sm ${totalIncome - totalExpenses >= 0 ? 'text-primary' : 'text-expense'}`}>
+            {hidden ? '••••••' : `${totalIncome - totalExpenses < 0 ? '-' : '+'}${fmt(Math.abs(totalIncome - totalExpenses))}`}
+          </p>
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
         <span>Spending:</span>
         {[['bg-primary/25', 'Low'], ['bg-primary/50', 'Med'], ['bg-warning/70', 'High'], ['bg-expense/80', 'Very high']].map(([cls, label]) => (
           <span key={label} className="flex items-center gap-1">
@@ -115,6 +129,10 @@ const CalendarView = () => {
             {label}
           </span>
         ))}
+        <span className="flex items-center gap-1 ml-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-income" />
+          Income
+        </span>
       </div>
 
       {/* Calendar grid */}
@@ -138,6 +156,7 @@ const CalendarView = () => {
           {days.all.map((day, i) => {
             const key = format(day, 'yyyy-MM-dd');
             const total = dayTotals[key] || 0;
+            const income = dayIncome[key] || 0;
             const isSelected = selectedDay && isSameDay(day, selectedDay);
             const isToday = isSameDay(day, new Date());
             const colPos = (days.startDow + i) % 7;
@@ -145,7 +164,7 @@ const CalendarView = () => {
               <button
                 key={key}
                 onClick={() => setSelectedDay(isSelected ? null : day)}
-                className={`h-14 flex flex-col items-center pt-1.5 gap-1 border-b border-r border-border/50 last:border-r-0 transition-colors relative
+                className={`h-14 flex flex-col items-center pt-1.5 gap-0.5 border-b border-r border-border/50 last:border-r-0 transition-colors relative
                   ${isSelected ? 'bg-primary/10 ring-1 ring-inset ring-primary' : 'hover:bg-muted/50'}
                   ${colPos === 6 ? 'border-r-0' : ''}`}
               >
@@ -153,9 +172,14 @@ const CalendarView = () => {
                   ${isToday ? 'bg-primary text-primary-foreground' : 'text-foreground'}`}>
                   {format(day, 'd')}
                 </span>
-                {total > 0 && (
-                  <div className={`w-5 h-1.5 rounded-full ${dayColor(total)}`} />
-                )}
+                <div className="flex items-center gap-0.5">
+                  {total > 0 && (
+                    <div className={`w-4 h-1.5 rounded-full ${dayColor(total)}`} />
+                  )}
+                  {income > 0 && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-income shrink-0" />
+                  )}
+                </div>
                 {total > 0 && !hidden && (
                   <span className="text-[9px] text-muted-foreground leading-none">{fmt(total)}</span>
                 )}

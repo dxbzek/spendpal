@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import { PageSpinner } from '@/components/ui/spinner';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen } from 'lucide-react';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
@@ -37,9 +38,7 @@ const Budgets = () => {
   const { budgets, transactions, removeBudget, bulkRemoveBudgets, addBudget, loading } = useFinance();
   const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
-
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
+  const { hidden, mask } = useBalanceMask();
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
@@ -84,6 +83,40 @@ const Budgets = () => {
   }, [transactions, now]);
 
   const lastMonthLabel = format(subMonths(now, 1), 'MMMM');
+  const lastMonthKey = format(subMonths(now, 1), 'yyyy-MM');
+  const currentMonthKey = format(now, 'yyyy-MM');
+
+  const lastMonthBudgets = useMemo(
+    () => budgets.filter(b => b.month === lastMonthKey),
+    [budgets, lastMonthKey]
+  );
+
+  const hasCopiedLastMonth = useMemo(
+    () => lastMonthBudgets.every(b => budgets.some(cb => cb.month === currentMonthKey && cb.category === b.category)),
+    [budgets, lastMonthBudgets, currentMonthKey]
+  );
+
+  const [copyingLastMonth, setCopyingLastMonth] = useState(false);
+
+  const copyFromLastMonth = async () => {
+    if (lastMonthBudgets.length === 0) return;
+    setCopyingLastMonth(true);
+    try {
+      let copied = 0;
+      for (const b of lastMonthBudgets) {
+        const exists = budgets.some(cb => cb.month === currentMonthKey && cb.category === b.category);
+        if (!exists) {
+          await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period, month: currentMonthKey });
+          copied++;
+        }
+      }
+      toast.success(copied > 0 ? `Copied ${copied} budget${copied > 1 ? 's' : ''} from ${lastMonthLabel}` : 'All budgets already exist for this month');
+    } catch {
+      toast.error('Failed to copy budgets');
+    } finally {
+      setCopyingLastMonth(false);
+    }
+  };
 
   const handleGenerateSuggestions = async () => {
     const spendingData = transactions.filter(t => t.type === 'expense').map(t => ({ category: t.category, amount: t.amount, date: t.date }));
@@ -139,10 +172,20 @@ const Budgets = () => {
           <h1 className="text-2xl font-heading mb-1">Budgets</h1>
           <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {lastMonthBudgets.length > 0 && !hasCopiedLastMonth && (
+            <button
+              onClick={copyFromLastMonth}
+              disabled={copyingLastMonth}
+              className="text-xs text-primary font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
+            >
+              {copyingLastMonth ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
+              Copy {lastMonthLabel}
+            </button>
+          )}
           {budgets.length > 0 && (
-            <button onClick={saveTemplate} className="text-xs text-primary font-medium flex items-center gap-1 hover:underline">
-              <BookmarkPlus size={12} /> Save Template
+            <button onClick={saveTemplate} className="text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
+              <BookmarkPlus size={12} /> Save
             </button>
           )}
           {templates.length > 0 && (

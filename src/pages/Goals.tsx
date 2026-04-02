@@ -2,7 +2,8 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown } from 'lucide-react';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
+import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown, Pause, Play, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -26,15 +27,14 @@ function saveLog(id: string, log: Contribution[]) {
 }
 
 const Goals = () => {
-  const { goals, transactions, accounts, addGoalProgress, removeGoal, loading } = useFinance();
+  const { goals, transactions, accounts, addGoalProgress, removeGoal, updateGoal, loading } = useFinance();
   const { fmt } = useCurrency();
-
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
+  const { hidden, mask } = useBalanceMask();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressAmount, setProgressAmount] = useState('');
   const [progressNote, setProgressNote] = useState('');
   const [showLog, setShowLog] = useState<string | null>(null);
+  const [showAllLog, setShowAllLog] = useState<string | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
@@ -146,12 +146,17 @@ const Goals = () => {
               const daysLeft = getDaysRemaining(goal.deadline);
               const estimate = getCompletionEstimate(remaining);
               return (
-                <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
+                <div key={goal.id} className={`bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''}`}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate">{goal.name}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-sm font-semibold truncate">{goal.name}</p>
+                          {goal.status === 'paused' && (
+                            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Paused</span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">{goal.type}</p>
                       </div>
                     </div>
@@ -164,6 +169,13 @@ const Goals = () => {
                           {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d`}
                         </span>
                       )}
+                      <button
+                        onClick={() => updateGoal({ ...goal, status: 'active' === goal.status ? 'paused' : 'active' })}
+                        aria-label={goal.status === 'paused' ? 'Resume goal' : 'Pause goal'}
+                        title={goal.status === 'paused' ? 'Resume' : 'Pause'}
+                        className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2">
+                        {goal.status === 'paused' ? <Play size={14} /> : <Pause size={14} />}
+                      </button>
                       <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} aria-label="Edit goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2"><Edit2 size={14} /></button>
                       <button onClick={() => setDeleteGoalId(goal.id)} aria-label="Delete goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2"><Trash2 size={14} /></button>
                     </div>
@@ -181,26 +193,46 @@ const Goals = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">{mask(fmt(remaining))} remaining</p>
-                      {estimate && (
-                        <p className="text-[11px] text-primary/70 flex items-center gap-0.5 mt-0.5">
-                          <TrendingUp size={10} /> {estimate} at current rate
+                      {remaining > 0 ? (
+                        <>
+                          <p className="text-xs text-muted-foreground">{mask(fmt(remaining))} remaining</p>
+                          {estimate && (
+                            <p className="text-[11px] text-primary/70 flex items-center gap-0.5 mt-0.5">
+                              <TrendingUp size={10} /> {estimate} at current rate
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs font-semibold text-income flex items-center gap-1">
+                          <Trophy size={12} /> Goal reached!
                         </p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setShowLog(showLog === goal.id ? null : goal.id)}
-                        className="px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium"
-                      >
-                        Log
-                      </button>
-                      <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); }}
-                        className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add Progress</button>
+                      {pct >= 100 ? (
+                        <button
+                          onClick={() => updateGoal({ ...goal, status: 'completed' })}
+                          className="px-3 py-1.5 rounded-lg bg-income/10 text-income text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform">
+                          <CheckCircle2 size={12} /> Complete
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setShowLog(showLog === goal.id ? null : goal.id)}
+                            className="px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium"
+                          >
+                            Log
+                          </button>
+                          <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); }}
+                            className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add</button>
+                        </>
+                      )}
                     </div>
                   </div>
                   {showLog === goal.id && (() => {
                     const log = loadLog(goal.id);
+                    const isShowingAll = showAllLog === goal.id;
+                    const visible = isShowingAll ? log : log.slice(0, 5);
                     return (
                       <div className="mt-3 pt-3 border-t border-border">
                         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Contribution History</p>
@@ -208,7 +240,7 @@ const Goals = () => {
                           <p className="text-xs text-muted-foreground">No contributions yet</p>
                         ) : (
                           <div className="space-y-1.5">
-                            {log.slice(0, 5).map((c, i) => (
+                            {visible.map((c, i) => (
                               <div key={i} className="flex items-center justify-between text-xs">
                                 <div>
                                   <span className="font-medium text-income">+{mask(fmt(c.amount))}</span>
@@ -217,6 +249,14 @@ const Goals = () => {
                                 <span className="text-muted-foreground">{format(parseISO(c.date), 'MMM d, yyyy')}</span>
                               </div>
                             ))}
+                            {log.length > 5 && (
+                              <button
+                                onClick={() => setShowAllLog(isShowingAll ? null : goal.id)}
+                                className="text-[11px] text-primary hover:underline mt-1"
+                              >
+                                {isShowingAll ? 'Show less' : `Show all ${log.length} entries`}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

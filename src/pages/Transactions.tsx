@@ -2,7 +2,8 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle } from 'lucide-react';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
+import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
@@ -29,16 +30,17 @@ const Transactions = () => {
   const { transactions, accounts, removeTransaction, bulkRemoveTransactions, bulkUpdateCategory, updateTransaction, loading } = useFinance();
   const { fmtSigned, fmt } = useCurrency();
 
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
+  const { hidden, mask } = useBalanceMask();
   const { openEditSheet } = useEditTransaction();
   const { categories: allCategories } = useCategories();
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterAccount, setFilterAccount] = useState<string>('all');
   const [showAccountFilter, setShowAccountFilter] = useState(false);
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -145,13 +147,14 @@ const Transactions = () => {
 
       const matchDateFrom = !dateFrom || tx.date >= dateFrom;
       const matchDateTo = !dateTo || tx.date <= dateTo;
+      const matchCategory = filterCategory === 'all' || tx.category === filterCategory;
 
-      return matchSearch && matchType && matchAccount && matchDateFrom && matchDateTo;
+      return matchSearch && matchType && matchAccount && matchDateFrom && matchDateTo && matchCategory;
     }).sort((a, b) => b.date.localeCompare(a.date));
-  }, [mergedTransactions, search, filterType, filterAccount, transferPairs, dateFrom, dateTo, pendingDeleteIds]);
+  }, [mergedTransactions, search, filterType, filterAccount, filterCategory, transferPairs, dateFrom, dateTo, pendingDeleteIds]);
 
   // Reset pagination when filters change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, filterType, filterAccount, dateFrom, dateTo]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, filterType, filterAccount, filterCategory, dateFrom, dateTo]);
 
   const paginated = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
@@ -398,6 +401,13 @@ const Transactions = () => {
               <Wallet size={12} />
               {filterAccount !== 'all' ? getAccountName(filterAccount) : 'Account'}
             </button>
+            <button onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
+                filterCategory !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+              <Tag size={12} />
+              {filterCategory !== 'all' ? filterCategory : 'Category'}
+            </button>
             <button onClick={() => setShowDateFilter(!showDateFilter)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
                 (dateFrom || dateTo) ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
@@ -423,6 +433,25 @@ const Transactions = () => {
                   filterAccount === acc.id ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
                 }`}>
                 {acc.icon} {acc.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showCategoryFilter && (
+          <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 flex-wrap">
+            <button onClick={() => { setFilterCategory('all'); setShowCategoryFilter(false); }}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                filterCategory === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
+              }`}>
+              All Categories
+            </button>
+            {allCategories.map(cat => (
+              <button key={cat.name} onClick={() => { setFilterCategory(cat.name); setShowCategoryFilter(false); }}
+                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                  filterCategory === cat.name ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
+                }`}>
+                {cat.icon} {cat.name}
               </button>
             ))}
           </div>
