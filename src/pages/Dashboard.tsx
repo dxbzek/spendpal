@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
 import { CATEGORY_CHART_COLORS, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
@@ -46,7 +47,7 @@ const Dashboard = () => {
   const toggleHidden = () => {
     setHidden(prev => {
       const next = !prev;
-      localStorage.setItem('balanceHidden', String(next));
+      dispatchBalanceMaskToggle(next);
       return next;
     });
   };

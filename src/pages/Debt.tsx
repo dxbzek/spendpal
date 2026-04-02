@@ -2,9 +2,10 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, ChevronUp } from 'lucide-react';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
+import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, ChevronUp, Zap, Snowflake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, addMonths } from 'date-fns';
+import { format, addMonths, getDate } from 'date-fns';
 import { Input } from '@/components/ui/input';
 
 const DEFAULT_APR = 20; // %
@@ -13,24 +14,84 @@ function monthsToPayoff(principal: number, apr: number, monthlyPayment: number):
   if (monthlyPayment <= 0 || principal <= 0) return Infinity;
   const r = apr / 100 / 12;
   if (r === 0) return Math.ceil(principal / monthlyPayment);
-  if (monthlyPayment <= principal * r) return Infinity; // payment doesn't cover interest
+  if (monthlyPayment <= principal * r) return Infinity;
   return Math.ceil(-Math.log(1 - (principal * r) / monthlyPayment) / Math.log(1 + r));
 }
 
+function totalInterest(principal: number, apr: number, monthlyPayment: number): number {
+  const months = monthsToPayoff(principal, apr, monthlyPayment);
+  if (months === Infinity) return Infinity;
+  return monthlyPayment * months - principal;
+}
+
 function minPayment(principal: number): number {
-  return Math.max(25, principal * 0.02); // 2% minimum, at least 25
+  return Math.max(25, principal * 0.02);
+}
+
+// Simulate multi-card payoff with a fixed extra payment allocated per strategy
+function simulateStrategy(
+  debts: Array<{ id: string; owed: number; apr: number; minPay: number }>,
+  order: typeof debts,
+  extraBudget: number
+): { totalInterest: number; months: number } {
+  // Start with min payments for all, put extra towards priority card
+  const states = debts.map(d => ({ ...d, balance: d.owed }));
+  const minBudget = debts.reduce((s, d) => s + d.minPay, 0);
+  const totalBudget = minBudget + extraBudget;
+
+  let month = 0;
+  let totalInt = 0;
+
+  while (states.some(s => s.balance > 0) && month < 600) {
+    month++;
+    // Apply interest first
+    states.forEach(s => {
+      if (s.balance > 0) {
+        s.balance += s.balance * (s.apr / 100 / 12);
+      }
+    });
+
+    // Determine priority card (first in order that still has balance)
+    const priorityId = order.find(o => states.find(s => s.id === o.id)!.balance > 0)?.id;
+    let remaining = totalBudget;
+
+    // Pay min on non-priority, full allocation on priority
+    for (const state of states) {
+      if (state.balance <= 0) continue;
+      if (state.id === priorityId) continue;
+      const pay = Math.min(state.minPay, state.balance);
+      const beforeBalance = state.balance;
+      state.balance = Math.max(0, state.balance - pay);
+      totalInt += beforeBalance - state.balance - 0; // no int tracking needed, already added
+      remaining -= pay;
+    }
+
+    // Put rest on priority
+    const priorityState = states.find(s => s.id === priorityId);
+    if (priorityState && priorityState.balance > 0) {
+      const pay = Math.min(remaining, priorityState.balance);
+      priorityState.balance = Math.max(0, priorityState.balance - pay);
+    }
+  }
+
+  // Compute total interest: (total paid) - (original principal)
+  const totalPaid = totalBudget * month - states.reduce((s, st) => s + Math.max(0, st.balance), 0);
+  const originalPrincipal = debts.reduce((s, d) => s + d.owed, 0);
+  return { totalInterest: Math.max(0, totalPaid - originalPrincipal), months: month };
 }
 
 const Debt = () => {
   const { accounts, loading } = useFinance();
   const { fmt } = useCurrency();
-
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
+  const { hidden, mask } = useBalanceMask();
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aprs, setAprs] = useState<Record<string, number>>({});
   const [payments, setPayments] = useState<Record<string, number>>({});
+  const [strategyTab, setStrategyTab] = useState<'avalanche' | 'snowball'>('avalanche');
+  const [extraBudget, setExtraBudget] = useState(200);
+
+  const todayDate = getDate(new Date());
 
   const creditDebts = useMemo(() =>
     accounts
@@ -61,6 +122,50 @@ const Debt = () => {
     if (pct >= 30) return 'bg-warning';
     return 'bg-primary';
   };
+
+  // Due date helpers
+  const getDueDaysRemaining = (dueDate?: number) => {
+    if (!dueDate) return null;
+    const diff = dueDate - todayDate;
+    // If already passed this month, next month
+    return diff < 0 ? diff + 30 : diff;
+  };
+
+  // Multi-card strategy data
+  const strategyDebts = useMemo(() =>
+    creditDebts.map(d => ({
+      id: d.id,
+      name: d.name,
+      icon: d.icon,
+      owed: d.owed,
+      apr: getApr(d.id),
+      minPay: minPayment(d.owed),
+    }))
+  , [creditDebts, aprs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const avalancheOrder = useMemo(() =>
+    [...strategyDebts].sort((a, b) => b.apr - a.apr),
+    [strategyDebts]
+  );
+
+  const snowballOrder = useMemo(() =>
+    [...strategyDebts].sort((a, b) => a.owed - b.owed),
+    [strategyDebts]
+  );
+
+  const avalancheResult = useMemo(() =>
+    creditDebts.length > 1 ? simulateStrategy(strategyDebts, avalancheOrder, extraBudget) : null,
+    [strategyDebts, avalancheOrder, extraBudget, creditDebts.length]
+  );
+
+  const snowballResult = useMemo(() =>
+    creditDebts.length > 1 ? simulateStrategy(strategyDebts, snowballOrder, extraBudget) : null,
+    [strategyDebts, snowballOrder, extraBudget, creditDebts.length]
+  );
+
+  const activeOrder = strategyTab === 'avalanche' ? avalancheOrder : snowballOrder;
+  const activeResult = strategyTab === 'avalanche' ? avalancheResult : snowballResult;
+  const otherResult = strategyTab === 'avalanche' ? snowballResult : avalancheResult;
 
   if (loading) return <PageSpinner />;
 
@@ -131,6 +236,9 @@ const Debt = () => {
               const interest = months < Infinity ? totalCost - debt.owed : Infinity;
               const payoffDate = months < Infinity ? addMonths(new Date(), months) : null;
               const isExpanded = expanded === debt.id;
+              const dueDaysLeft = getDueDaysRemaining(debt.dueDate);
+              const isDueSoon = dueDaysLeft !== null && dueDaysLeft <= 7;
+              const isDueToday = dueDaysLeft !== null && dueDaysLeft === 0;
 
               return (
                 <div key={debt.id} className="bg-card rounded-2xl card-shadow overflow-hidden">
@@ -164,16 +272,27 @@ const Debt = () => {
                       />
                     </div>
 
-                    {/* Quick stats */}
-                    <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
+                    {/* Quick stats row */}
+                    <div className="flex items-center justify-between mt-2 text-xs gap-2 flex-wrap">
+                      <span className="text-muted-foreground flex items-center gap-1">
                         <TrendingDown size={11} />
-                        Min payment: {mask(fmt(minPayment(debt.owed)))}/mo
+                        Min: {mask(fmt(minPayment(debt.owed)))}/mo
                       </span>
                       {payoffDate && (
-                        <span className="flex items-center gap-1">
+                        <span className="text-muted-foreground flex items-center gap-1">
                           <CalendarClock size={11} />
-                          {months} mo to pay off
+                          {months} mo · {format(payoffDate, 'MMM yyyy')}
+                        </span>
+                      )}
+                      {/* Due date badge */}
+                      {debt.dueDate && (
+                        <span className={`flex items-center gap-1 font-medium px-2 py-0.5 rounded-full ${
+                          isDueToday ? 'bg-destructive/15 text-expense' :
+                          isDueSoon ? 'bg-warning/15 text-warning' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          <CalendarClock size={10} />
+                          {isDueToday ? 'Due today' : isDueSoon ? `Due in ${dueDaysLeft}d` : `Due day ${debt.dueDate}`}
                         </span>
                       )}
                     </div>
@@ -241,13 +360,6 @@ const Debt = () => {
                               </p>
                             </div>
                           )}
-
-                          {/* Debt due date */}
-                          {debt.dueDate && (
-                            <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1">
-                              <CalendarClock size={11} /> Payment due: day {debt.dueDate} of each month
-                            </p>
-                          )}
                         </div>
                       </motion.div>
                     )}
@@ -256,20 +368,130 @@ const Debt = () => {
               );
             })}
 
-            {/* Avalanche vs snowball tip */}
-            <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/20">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff Strategies</p>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-accent/50 rounded-xl p-3">
-                  <p className="font-semibold mb-1">❄️ Debt Snowball</p>
-                  <p className="text-muted-foreground">Pay smallest balance first. Wins motivation through quick wins.</p>
-                </div>
-                <div className="bg-accent/50 rounded-xl p-3">
-                  <p className="font-semibold mb-1">🔥 Debt Avalanche</p>
-                  <p className="text-muted-foreground">Pay highest APR first. Saves the most money long-term.</p>
+            {/* Multi-card Payoff Optimizer */}
+            {creditDebts.length > 1 && (
+              <div className="bg-card rounded-2xl card-shadow border border-primary/10 overflow-hidden">
+                <div className="p-4 pb-3">
+                  <p className="text-sm font-heading mb-1">Payoff Optimizer</p>
+                  <p className="text-xs text-muted-foreground mb-3">Best order to attack your {creditDebts.length} cards</p>
+
+                  {/* Extra budget input */}
+                  <div className="flex items-center gap-3 mb-4 bg-muted/50 rounded-xl p-3">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Extra monthly budget (above minimums)</p>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="50"
+                        value={extraBudget}
+                        onChange={e => setExtraBudget(parseFloat(e.target.value) || 0)}
+                        className="h-8 text-sm bg-background"
+                      />
+                    </div>
+                    {avalancheResult && snowballResult && (
+                      <div className="text-right shrink-0">
+                        <p className="text-[10px] text-muted-foreground">Avalanche saves</p>
+                        <p className="text-sm font-heading text-income">
+                          {mask(fmt(Math.max(0, snowballResult.totalInterest - avalancheResult.totalInterest)))}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">vs Snowball</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Strategy tabs */}
+                  <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
+                    <button
+                      onClick={() => setStrategyTab('avalanche')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        strategyTab === 'avalanche' ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
+                      }`}
+                    >
+                      <Zap size={12} className={strategyTab === 'avalanche' ? 'text-warning' : ''} />
+                      Avalanche
+                    </button>
+                    <button
+                      onClick={() => setStrategyTab('snowball')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        strategyTab === 'snowball' ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
+                      }`}
+                    >
+                      <Snowflake size={12} className={strategyTab === 'snowball' ? 'text-blue-400' : ''} />
+                      Snowball
+                    </button>
+                  </div>
+
+                  {/* Strategy description */}
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {strategyTab === 'avalanche'
+                      ? 'Pay highest APR first — saves the most money in interest long-term'
+                      : 'Pay smallest balance first — builds momentum with quick wins'}
+                  </p>
+
+                  {/* Ranked card list */}
+                  <div className="space-y-2 mb-4">
+                    {activeOrder.map((d, i) => (
+                      <div key={d.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${i === 0 ? 'bg-primary/8 border border-primary/15' : 'bg-muted/40'}`}>
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                          i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        }`}>{i + 1}</span>
+                        <span className="text-base shrink-0">{d.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{d.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {mask(fmt(d.owed))} · {d.apr}% APR
+                          </p>
+                        </div>
+                        {i === 0 && (
+                          <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
+                            Focus here
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Strategy result */}
+                  {activeResult && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-accent/50 rounded-xl p-3 text-center">
+                        <p className="text-[11px] text-muted-foreground mb-0.5">Total interest</p>
+                        <p className="text-sm font-heading text-expense">{mask(fmt(activeResult.totalInterest))}</p>
+                      </div>
+                      <div className="bg-accent/50 rounded-xl p-3 text-center">
+                        <p className="text-[11px] text-muted-foreground mb-0.5">Debt free in</p>
+                        <p className="text-sm font-heading">{activeResult.months} mo</p>
+                        <p className="text-[10px] text-muted-foreground">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
+                      </div>
+                    </div>
+                  )}
+                  {otherResult && activeResult && (
+                    <p className="text-[10px] text-muted-foreground text-center mt-2">
+                      {strategyTab === 'avalanche'
+                        ? `Snowball would take ${otherResult.months} mo and cost ${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} more`
+                        : `Avalanche would save ${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} in interest`}
+                    </p>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Single card strategy tip */}
+            {creditDebts.length === 1 && (
+              <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/20">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff Strategies</p>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-accent/50 rounded-xl p-3">
+                    <p className="font-semibold mb-1">❄️ Debt Snowball</p>
+                    <p className="text-muted-foreground">Pay smallest balance first. Wins motivation through quick wins.</p>
+                  </div>
+                  <div className="bg-accent/50 rounded-xl p-3">
+                    <p className="font-semibold mb-1">🔥 Debt Avalanche</p>
+                    <p className="text-muted-foreground">Pay highest APR first. Saves the most money long-term.</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
 import { format, parseISO, subMonths, getMonth, getYear } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -80,8 +81,7 @@ const AIAdvisor = () => {
   const { fmt, currency } = useCurrency();
   const { loading, generateBudgetAnalysis, fetchAdvisorHistory, deleteAdvisorSession } = useAI();
 
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
+  const { hidden, mask } = useBalanceMask();
   const [analysis, setAnalysis] = useState<BudgetAnalysis | null>(null);
   const [activeSimTab, setActiveSimTab] = useState<string>('envelope');
   const [applyingEnvelopes, setApplyingEnvelopes] = useState(false);

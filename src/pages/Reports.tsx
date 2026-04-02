@@ -3,16 +3,15 @@ import { useMemo, useState } from 'react';
 import { format, parseISO, subMonths, getDay } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
 import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
 import SpendingPieChart from '@/components/charts/SpendingPieChart';
-import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank } from 'lucide-react';
 
 const Reports = () => {
   const { transactions, accounts, budgets, loading } = useFinance();
   const { fmt } = useCurrency();
-
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
+  const { hidden, mask } = useBalanceMask();
 
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [drillCategory, setDrillCategory] = useState<string | null>(null);
@@ -63,6 +62,22 @@ const Reports = () => {
 
   const expenseChange = prevExpenses > 0 ? ((expenses - prevExpenses) / prevExpenses) * 100 : null;
   const net = income - expenses;
+  const savingsRate = income > 0 ? Math.round((net / income) * 100) : null;
+
+  const exportCsv = () => {
+    const rows = [
+      ['Date', 'Merchant', 'Category', 'Type', 'Amount'],
+      ...monthTxs.map(tx => [tx.date, tx.merchant, tx.category, tx.type, tx.amount.toFixed(2)]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spendpal-${selectedMonth}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const categoryData = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};
@@ -129,19 +144,29 @@ const Reports = () => {
           <h1 className="text-2xl font-heading font-bold">Reports</h1>
           <p className="text-sm text-muted-foreground">Analytics &amp; financial insights</p>
         </div>
-        <select
-          value={selectedMonth}
-          onChange={e => setSelectedMonth(e.target.value)}
-          className="text-sm border border-border rounded-xl px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {months.map(m => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          {hasData && (
+            <button
+              onClick={exportCsv}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              <Download size={13} /> Export CSV
+            </button>
+          )}
+          <select
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+            className="text-sm border border-border rounded-xl px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {months.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-card rounded-2xl border border-border p-3 text-center">
           <TrendingUp size={18} className="text-primary mx-auto mb-1" />
           <p className="text-xs text-muted-foreground">Income</p>
@@ -162,6 +187,13 @@ const Reports = () => {
           <p className="text-xs text-muted-foreground">Net</p>
           <p className={`font-bold text-sm ${net >= 0 ? 'text-primary' : 'text-destructive'}`}>
             {hidden ? '••••••' : `${net < 0 ? '-' : ''}${fmt(Math.abs(net))}`}
+          </p>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+          <PiggyBank size={18} className={`mx-auto mb-1 ${savingsRate !== null && savingsRate >= 20 ? 'text-primary' : 'text-muted-foreground'}`} />
+          <p className="text-xs text-muted-foreground">Savings Rate</p>
+          <p className={`font-bold text-sm ${savingsRate === null ? 'text-muted-foreground' : savingsRate >= 20 ? 'text-primary' : savingsRate < 0 ? 'text-destructive' : 'text-foreground'}`}>
+            {savingsRate === null ? '—' : `${savingsRate}%`}
           </p>
         </div>
       </div>

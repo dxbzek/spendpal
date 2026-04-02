@@ -2,6 +2,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { type Account } from '@/types/finance';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
@@ -34,9 +35,7 @@ const TYPE_COLORS: Record<string, string> = {
 const Accounts = () => {
   const { accounts, transactions, removeAccount, loading } = useFinance();
   const { fmt } = useCurrency();
-
-  const hidden = localStorage.getItem('balanceHidden') === 'true';
-  const mask = (val: string) => hidden ? '••••••' : val;
+  const { hidden, mask } = useBalanceMask();
 
   const [addOpen, setAddOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
