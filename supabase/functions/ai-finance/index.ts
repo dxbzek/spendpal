@@ -100,12 +100,22 @@ FORMAT B — Multi-column (common in PDF-extracted text, e.g. Emirates NBD):
   2.00
   In this case match them IN ORDER: 1st date→1st merchant→1st amount, 2nd date→2nd merchant→2nd amount, etc.
 
+DATE FORMATS YOU MAY ENCOUNTER — always output as YYYY-MM-DD regardless of input format:
+  • DD/MM/YYYY or DD-MM-YYYY          e.g. 23/03/2026, 03-07-2025
+  • MM/DD/YYYY                         e.g. 03/23/2026
+  • YYYY-MM-DD or YYYY/MM/DD          e.g. 2026-03-23, 2026/03/23
+  • DD Mon YYYY or DD-Mon-YYYY        e.g. 23 Mar 2026, 23-Mar-2026
+  • Mon DD, YYYY or Month DD YYYY     e.g. Mar 23, 2026, March 23 2026
+  • 2-digit year variants             e.g. 23/03/26, 23-Mar-26 → treat as 20XX
+  • Date with time (strip the time)   e.g. 23/03/2026 14:30:00 → 2026-03-23
+  When ambiguous (e.g. 05/06/2026 could be May 6 or June 5), prefer DD/MM/YYYY order unless other dates in the statement consistently use MM/DD.
+
 RULES:
 - Amounts ending in CR (e.g. "2,900.00CR") are income/payments received, type="income"
 - All other amounts are expenses, type="expense"
 - For foreign currency lines like "11.55 USD / (1 AED = USD 0.26394) / 43.76" use the AED amount (43.76)
 - Skip: opening/closing balance lines, "Remaining Principle Balance", statement summary rows, installment plan headers
-- Dates: always output as YYYY-MM-DD
+- Dates: ALWAYS output as YYYY-MM-DD
 
 Categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
 Icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
