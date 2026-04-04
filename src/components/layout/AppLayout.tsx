@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav from './BottomNav';
@@ -15,6 +15,11 @@ const AppLayout = () => {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const location = useLocation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname]);
 
   const openEditSheet = (tx: Transaction) => {
     setEditTx(tx);
@@ -36,7 +41,7 @@ const AppLayout = () => {
           />
         )}
 
-        <div className="flex-1 min-w-0 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto">
           <main className={isMobile ? 'pb-28' : 'pb-8'}>
             <AnimatePresence mode="wait">
               <motion.div
