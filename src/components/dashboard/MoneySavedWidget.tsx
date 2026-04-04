@@ -33,7 +33,7 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden: _hidden, mas
         <h2 className="font-heading text-sm">Saved This Month</h2>
         <GlossaryLink term="Saved This Month" />
       </div>
-      <p className={`text-financial-large ${positive ? 'text-income' : 'text-expense'} mt-1`}>
+      <p className={`text-financial-large min-w-0 ${positive ? 'text-income' : 'text-expense'} mt-1`}>
         {mask(fmt(saved))}
       </p>
       <div className="flex items-center gap-1 mt-2">

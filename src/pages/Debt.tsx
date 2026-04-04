@@ -176,18 +176,18 @@ const Debt = () => {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt Tracker</h1>
           {creditDebts.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-primary-foreground/10 rounded-2xl p-3 backdrop-blur-sm">
-                <p className="text-primary-foreground/70 text-[11px] mb-0.5">Total Owed</p>
-                <p className="text-lg font-heading text-primary-foreground">{mask(fmt(totalOwed))}</p>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="bg-primary-foreground/10 rounded-2xl p-2.5 sm:p-3 backdrop-blur-sm">
+                <p className="text-primary-foreground/70 text-[10px] sm:text-[11px] mb-0.5">Total Owed</p>
+                <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalOwed))}</p>
               </div>
-              <div className="bg-primary-foreground/10 rounded-2xl p-3 backdrop-blur-sm">
-                <p className="text-primary-foreground/70 text-[11px] mb-0.5">Credit Limit</p>
-                <p className="text-lg font-heading text-primary-foreground">{mask(fmt(totalLimit))}</p>
+              <div className="bg-primary-foreground/10 rounded-2xl p-2.5 sm:p-3 backdrop-blur-sm">
+                <p className="text-primary-foreground/70 text-[10px] sm:text-[11px] mb-0.5">Credit Limit</p>
+                <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalLimit))}</p>
               </div>
-              <div className="bg-primary-foreground/10 rounded-2xl p-3 backdrop-blur-sm">
-                <p className="text-primary-foreground/70 text-[11px] mb-0.5">Utilization</p>
-                <p className={`text-lg font-heading ${overallUtil >= 30 ? 'text-warning' : 'text-primary-foreground'}`}>{overallUtil.toFixed(0)}%</p>
+              <div className="bg-primary-foreground/10 rounded-2xl p-2.5 sm:p-3 backdrop-blur-sm">
+                <p className="text-primary-foreground/70 text-[10px] sm:text-[11px] mb-0.5">Utilization</p>
+                <p className={`text-sm sm:text-lg font-heading ${overallUtil >= 30 ? 'text-warning' : 'text-primary-foreground'}`}>{overallUtil.toFixed(0)}%</p>
               </div>
             </div>
           ) : (

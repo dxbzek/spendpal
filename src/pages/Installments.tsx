@@ -225,25 +225,25 @@ const Installments = () => {
             <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">
               Update paid installments
             </p>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <p className="text-sm text-muted-foreground">
-                Use this when your CC statement covers one or more payments
+                Mark installments as paid when your CC statement arrives
               </p>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => updateProgress(livePlan, -1)}
                   disabled={livePlan.paidInstallments <= 0}
-                  className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center disabled:opacity-40"
+                  className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center disabled:opacity-40"
                 >
                   <Minus size={14} />
                 </button>
-                <span className="text-base font-heading font-bold w-16 text-center">
+                <span className="text-base font-heading font-bold min-w-[72px] text-center">
                   {livePlan.paidInstallments} / {livePlan.totalInstallments}
                 </span>
                 <button
                   onClick={() => updateProgress(livePlan, +1)}
                   disabled={livePlan.paidInstallments >= livePlan.totalInstallments}
-                  className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground disabled:opacity-40"
+                  className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground disabled:opacity-40"
                 >
                   <Plus size={14} />
                 </button>

@@ -190,12 +190,14 @@ const Budgets = () => {
 
   return (
     <div>
-      <div className="px-5 md:px-8 pt-12 pb-4 flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-heading mb-1">Budgets</h1>
-          <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
+      <div className="px-5 md:px-8 pt-12 pb-4">
+        <div className="flex items-end justify-between mb-2">
+          <div>
+            <h1 className="text-2xl font-heading mb-1">Budgets</h1>
+            <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-2 flex-wrap">
           {lastMonthBudgets.length > 0 && !hasCopiedLastMonth && (
             <>
               <button
@@ -347,10 +349,10 @@ const Budgets = () => {
                     <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
                       className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center mb-2">
-                    <div><p className="text-xs text-muted-foreground">Spent</p><p className="text-sm font-medium">{mask(fmt(b.spent))}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Remaining</p><p className={`text-sm font-medium ${remaining < 0 ? 'text-expense' : ''}`}>{mask(fmt(remaining))}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Daily left</p><p className="text-sm font-medium">{mask(fmt(dailyLeft))}</p></div>
+                  <div className="grid grid-cols-3 gap-1 text-center mb-2">
+                    <div><p className="text-[10px] sm:text-xs text-muted-foreground">Spent</p><p className="text-xs sm:text-sm font-medium truncate">{mask(fmt(b.spent))}</p></div>
+                    <div><p className="text-[10px] sm:text-xs text-muted-foreground">Remaining</p><p className={`text-xs sm:text-sm font-medium truncate ${remaining < 0 ? 'text-expense' : ''}`}>{mask(fmt(remaining))}</p></div>
+                    <div><p className="text-[10px] sm:text-xs text-muted-foreground">Daily left</p><p className="text-xs sm:text-sm font-medium truncate">{mask(fmt(dailyLeft))}</p></div>
                   </div>
                   {/* Velocity + last month */}
                   {daysElapsed > 0 && (

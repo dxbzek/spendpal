@@ -91,7 +91,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setIsRecurring(hasInst ? true : (editTransaction.isRecurring || false));
       setHasInstallments(hasInst);
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
-      setCurrentInstallment(String(editTransaction.currentInstallment || 1));
+      setCurrentInstallment(String(editTransaction.currentInstallment ?? 0));
       setLoanTotalAmount(editTransaction.loanTotalAmount ? String(editTransaction.loanTotalAmount) : '');
       setIsTrackingOnly(editTransaction.isTrackingOnly || false);
       setNote(editTransaction.note || '');
@@ -226,7 +226,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       note: note || null,
       isRecurring: isTransfer ? false : isRecurring,
       totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : null,
-      currentInstallment: (hasInstallments && isRecurring) ? (parseInt(currentInstallment) || 1) : null,
+      currentInstallment: (hasInstallments && isRecurring) ? Math.max(0, isNaN(parseInt(currentInstallment)) ? 0 : parseInt(currentInstallment)) : null,
       loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || null) : null,
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
     };

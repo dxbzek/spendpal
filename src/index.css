@@ -227,3 +227,25 @@
     display: none;
   }
 }
+
+/* Responsive: scale down financial text on narrow mobile screens */
+@media (max-width: 639px) {
+  .text-financial-hero {
+    font-size: 1.625rem;        /* 2.25rem → 1.625rem on mobile */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .text-financial-large {
+    font-size: 1.1rem;          /* 1.75rem → 1.1rem — fits currency+number in half-width card */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .text-financial-medium {
+    font-size: 1rem;            /* 1.375rem → 1rem on mobile */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
