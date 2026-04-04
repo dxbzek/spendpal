@@ -10,16 +10,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 const NAV_ITEMS_LEFT = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { path: '/transactions', label: 'Txns', icon: Receipt },
-  { path: '/accounts', label: 'Accounts', icon: Wallet },
 ];
 
 const NAV_ITEMS_RIGHT = [
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/debt', label: 'Debt', icon: CreditCard },
+  { path: '/accounts', label: 'Accounts', icon: Wallet },
+  { path: '/budgets', label: 'Budget', icon: PiggyBank },
 ];
 
 const MORE_ITEMS = [
-  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
+  { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/debt', label: 'Debt', icon: CreditCard },
   { path: '/goals', label: 'Goals', icon: Target },
   { path: '/installments', label: 'Installments', icon: Layers },
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
