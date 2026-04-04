@@ -90,6 +90,7 @@ export type Database = {
           category_icon: string
           created_at: string
           id: string
+          is_fixed: boolean
           month: string
           period: string
           updated_at: string
@@ -101,6 +102,7 @@ export type Database = {
           category_icon?: string
           created_at?: string
           id?: string
+          is_fixed?: boolean
           month: string
           period?: string
           updated_at?: string
@@ -112,6 +114,7 @@ export type Database = {
           category_icon?: string
           created_at?: string
           id?: string
+          is_fixed?: boolean
           month?: string
           period?: string
           updated_at?: string
@@ -236,6 +239,8 @@ export type Database = {
           date: string
           id: string
           is_recurring: boolean
+          is_tracking_only: boolean
+          loan_total_amount: number | null
           merchant: string
           note: string | null
           total_installments: number | null
@@ -254,6 +259,8 @@ export type Database = {
           date?: string
           id?: string
           is_recurring?: boolean
+          is_tracking_only?: boolean
+          loan_total_amount?: number | null
           merchant: string
           note?: string | null
           total_installments?: number | null
@@ -272,6 +279,8 @@ export type Database = {
           date?: string
           id?: string
           is_recurring?: boolean
+          is_tracking_only?: boolean
+          loan_total_amount?: number | null
           merchant?: string
           note?: string | null
           total_installments?: number | null
