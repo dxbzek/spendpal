@@ -139,24 +139,24 @@ const Reports = () => {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Reports</h1>
-          <p className="text-sm text-muted-foreground">Analytics &amp; financial insights</p>
+          <p className="text-sm text-muted-foreground">Analytics &amp; insights</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {hasData && (
             <button
               onClick={exportCsv}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
             >
-              <Download size={13} /> Export CSV
+              <Download size={13} /> <span className="hidden sm:inline">Export CSV</span>
             </button>
           )}
           <select
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="text-sm border border-border rounded-xl px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            className="text-xs sm:text-sm border border-border rounded-xl px-2 sm:px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring max-w-[130px] sm:max-w-none"
           >
             {months.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>

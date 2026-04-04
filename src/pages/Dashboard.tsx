@@ -236,13 +236,13 @@ const Dashboard = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex gap-1 p-0.5 bg-primary-foreground/10 rounded-lg">
+              <div className="flex gap-0.5 p-0.5 bg-primary-foreground/10 rounded-lg">
                 {(['all', 'month', 'year'] as const).map(p => (
                   <button key={p} onClick={() => setPeriod(p)}
-                    className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`px-2.5 sm:px-4 py-1.5 rounded-md text-[10px] sm:text-xs font-medium transition-all ${
                       period === p ? 'bg-primary-foreground/20 text-primary-foreground' : 'text-primary-foreground/60'
                     }`}>
-                    {p === 'all' ? 'All Time' : p === 'month' ? 'This Month' : 'This Year'}
+                    {p === 'all' ? 'All' : p === 'month' ? 'Month' : 'Year'}
                   </button>
                 ))}
               </div>
@@ -337,11 +337,11 @@ const Dashboard = () => {
                         const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-amber-500' : 'bg-primary';
                         return (
                           <div key={a.id} className="group">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl">{a.icon}</span>
-                                <div>
-                                  <p className="text-sm font-medium">{a.name}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="text-2xl shrink-0">{a.icon}</span>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{a.name}</p>
                                   {a.type === 'credit' && (
                                     <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
                                       {a.statementDate && a.statementDate > 0 && <span>Stmt: {a.statementDate}th</span>}
@@ -351,7 +351,7 @@ const Dashboard = () => {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 shrink-0">
                                 <div className="text-right">
                                   <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
                                   {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
