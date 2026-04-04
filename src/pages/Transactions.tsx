@@ -559,7 +559,8 @@ const Transactions = () => {
           /* Desktop: table layout */
           <div className="bg-card rounded-2xl card-shadow overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[150px_1fr_160px_110px_60px] gap-0 border-b border-border px-4 py-3">
+            <div className={`grid ${selectMode ? 'grid-cols-[28px_150px_1fr_160px_110px_60px]' : 'grid-cols-[150px_1fr_160px_110px_60px]'} gap-0 border-b border-border px-4 py-3`}>
+              {selectMode && <span />}
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Date</span>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Merchant / Category</span>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Account</span>
@@ -576,15 +577,34 @@ const Transactions = () => {
                     const pair = transferPairs.get(tx.id);
                     const isLinkedTransfer = !!pair;
                     const isDupe = duplicateIds.has(tx.id);
+                    const isSelected = selectedIds.has(tx.id);
                     const emojiOnly = (str: string) => {
                       const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
                       return match ? match[0] : str.charAt(0);
                     };
                     return (
                       <div key={tx.id}
-                        className={`grid grid-cols-[150px_1fr_160px_110px_60px] gap-0 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition-colors cursor-pointer group items-center ${isDupe ? 'bg-warning/5' : ''}`}
-                        onClick={() => openEditSheet(tx)}
+                        className={`grid ${selectMode ? 'grid-cols-[28px_150px_1fr_160px_110px_60px]' : 'grid-cols-[150px_1fr_160px_110px_60px]'} gap-0 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition-colors cursor-pointer group items-center ${isDupe ? 'bg-warning/5' : ''} ${isSelected ? 'bg-primary/5' : ''}`}
+                        onClick={() => {
+                          if (selectMode) {
+                            setSelectedIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(tx.id)) next.delete(tx.id);
+                              else next.add(tx.id);
+                              return next;
+                            });
+                          } else {
+                            openEditSheet(tx);
+                          }
+                        }}
                       >
+                        {selectMode && (
+                          <div className="flex items-center">
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border'}`}>
+                              {isSelected && <span className="text-primary-foreground text-[10px] leading-none">✓</span>}
+                            </div>
+                          </div>
+                        )}
                         <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</span>
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="text-xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
