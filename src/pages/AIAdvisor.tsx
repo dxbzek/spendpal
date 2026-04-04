@@ -603,22 +603,51 @@ const AIAdvisor = () => {
                 </div>
                 <Button
                   onClick={async () => {
-                    if (!analysis.suggestedEnvelopes) return;
+                    const income = financialData.monthlyIncome;
+                    // Build the list of budgets to apply based on the active method
+                    let toApply: Array<{ category: string; categoryIcon: string; amount: number }> = [];
+                    if (activeSimTab === '50-30-20') {
+                      if (income <= 0) {
+                        toast.error('No income recorded this month — add income transactions first');
+                        return;
+                      }
+                      toApply = [
+                        { category: 'Needs', categoryIcon: '🏠', amount: Math.round(income * 0.5) },
+                        { category: 'Wants', categoryIcon: '🎉', amount: Math.round(income * 0.3) },
+                        { category: 'Savings', categoryIcon: '💰', amount: Math.round(income * 0.2) },
+                      ];
+                    } else {
+                      if (!analysis.suggestedEnvelopes?.length) {
+                        toast.error('No budget envelopes available — run the AI analysis first');
+                        return;
+                      }
+                      toApply = analysis.suggestedEnvelopes.map(env => ({
+                        category: env.category,
+                        categoryIcon: env.icon,
+                        amount: env.amount,
+                      }));
+                    }
                     setApplyingEnvelopes(true);
                     try {
-                      for (const env of analysis.suggestedEnvelopes) {
-                        const existing = budgets.find(b => b.category === env.category && b.month === monthKey);
+                      let created = 0;
+                      for (const item of toApply) {
+                        const existing = budgets.find(b => b.category === item.category && b.month === monthKey);
                         if (!existing) {
                           await addBudget({
-                            category: env.category,
-                            categoryIcon: env.icon,
-                            amount: env.amount,
+                            category: item.category,
+                            categoryIcon: item.categoryIcon,
+                            amount: item.amount,
                             period: 'monthly',
                             month: monthKey,
                           });
+                          created++;
                         }
                       }
-                      toast.success(`${METHOD_LABELS[activeSimTab]?.name} budgets created!`);
+                      if (created === 0) {
+                        toast.info('Budgets already exist for this month — check your Budgets page');
+                      } else {
+                        toast.success(`${METHOD_LABELS[activeSimTab]?.name} budgets created!`);
+                      }
                       navigate('/budgets');
                     } catch {
                       toast.error('Failed to create budgets');
