@@ -57,6 +57,7 @@ const CategoryManager = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editDefaultName, setEditDefaultName] = useState<string | null>(null);
   const [defaultNewIcon, setDefaultNewIcon] = useState('');
+  const [defaultNewName, setDefaultNewName] = useState('');
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
@@ -75,16 +76,27 @@ const CategoryManager = () => {
 
   const handleOverrideDefault = async () => {
     if (!editDefaultName) return;
-    await overrideDefault(editDefaultName, defaultNewIcon);
+    await overrideDefault(editDefaultName, defaultNewIcon, defaultNewName || editDefaultName);
     setEditDefaultName(null);
+    setDefaultNewName('');
   };
 
   const defaultCategories = CATEGORIES.map(c => {
-    const custom = customCategories.find(cc => cc.name === c.name);
-    return { name: c.name, icon: custom ? custom.icon : c.icon, isOverridden: !!custom, customId: custom?.id };
+    // Find override by original name (renamed) or by same name (icon-only override)
+    const custom = customCategories.find(cc => cc.originalName === c.name || (cc.name === c.name && !cc.originalName));
+    return {
+      originalName: c.name,
+      name: custom ? custom.name : c.name,
+      icon: custom ? custom.icon : c.icon,
+      isOverridden: !!custom,
+      customId: custom?.id,
+    };
   });
 
-  const pureCustom = customCategories.filter(c => !CATEGORIES.some(d => d.name === c.name));
+  // Pure custom = not overriding any default (no original_name and name not matching a default)
+  const pureCustom = customCategories.filter(c =>
+    !c.originalName && !CATEGORIES.some(d => d.name === c.name)
+  );
   const allItems = [...pureCustom.map(c => ({ ...c, type: 'custom' as const })), ...defaultCategories.map(c => ({ ...c, type: 'default' as const }))];
   const visibleItems = showAll ? allItems : allItems.slice(0, PREVIEW_COUNT);
 
@@ -132,9 +144,15 @@ const CategoryManager = () => {
       {/* Preview / All categories */}
       <div className="space-y-1.5">
         {visibleItems.map(item => (
-          <div key={item.name} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted/40 group">
-            {(item.type === 'default' && editDefaultName === item.name) ? (
+          <div key={(item as { originalName?: string }).originalName ?? item.name} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted/40 group">
+            {(item.type === 'default' && editDefaultName === (item as { originalName?: string }).originalName) ? (
               <div className="flex-1 space-y-2">
+                <Input
+                  value={defaultNewName}
+                  onChange={e => setDefaultNewName(e.target.value)}
+                  placeholder={editDefaultName ?? ''}
+                  className="h-8 text-sm"
+                />
                 <div className="flex flex-wrap gap-1">
                   {EMOJI_SUGGESTIONS.slice(0, 20).map(emoji => (
                     <button key={emoji} onClick={() => setDefaultNewIcon(emoji)}
@@ -146,7 +164,7 @@ const CategoryManager = () => {
                   ))}
                 </div>
                 <div className="flex gap-1.5">
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditDefaultName(null)}>Cancel</Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setEditDefaultName(null); setDefaultNewName(''); }}>Cancel</Button>
                   <Button size="sm" className="h-7 text-xs" onClick={handleOverrideDefault}>Save</Button>
                 </div>
               </div>
@@ -186,8 +204,10 @@ const CategoryManager = () => {
                     const cat = customCategories.find(c => c.id === item.id);
                     setEditType(cat?.type ?? 'both');
                   } else {
-                    setEditDefaultName(item.name);
+                    const origName = (item as { originalName?: string }).originalName ?? item.name;
+                    setEditDefaultName(origName);
                     setDefaultNewIcon(item.icon);
+                    setDefaultNewName(item.name);
                   }
                 }}
                   className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">

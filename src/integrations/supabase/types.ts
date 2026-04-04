@@ -125,6 +125,7 @@ export type Database = {
           icon: string
           id: string
           name: string
+          original_name: string | null
           sort_order: number | null
           type: string
           user_id: string
@@ -134,6 +135,7 @@ export type Database = {
           icon: string
           id?: string
           name: string
+          original_name?: string | null
           sort_order?: number | null
           type?: string
           user_id: string
@@ -143,6 +145,7 @@ export type Database = {
           icon?: string
           id?: string
           name?: string
+          original_name?: string | null
           sort_order?: number | null
           type?: string
           user_id?: string

@@ -3,7 +3,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
@@ -97,6 +97,7 @@ const Budgets = () => {
   );
 
   const [copyingLastMonth, setCopyingLastMonth] = useState(false);
+  const [rollingOver, setRollingOver] = useState(false);
 
   const copyFromLastMonth = async () => {
     if (lastMonthBudgets.length === 0) return;
@@ -115,6 +116,28 @@ const Budgets = () => {
       toast.error('Failed to copy budgets');
     } finally {
       setCopyingLastMonth(false);
+    }
+  };
+
+  const copyWithRollover = async () => {
+    if (lastMonthBudgets.length === 0) return;
+    setRollingOver(true);
+    try {
+      let rolled = 0;
+      for (const b of lastMonthBudgets) {
+        const exists = budgets.some(cb => cb.month === currentMonthKey && cb.category === b.category);
+        if (!exists) {
+          const unspent = Math.max(0, b.amount - b.spent);
+          const newAmount = Math.round((b.amount + unspent) * 100) / 100;
+          await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: newAmount, period: b.period, month: currentMonthKey });
+          rolled++;
+        }
+      }
+      toast.success(rolled > 0 ? `Rolled over ${rolled} budget${rolled > 1 ? 's' : ''} with unspent amounts added` : 'All budgets already exist for this month');
+    } catch {
+      toast.error('Failed to roll over budgets');
+    } finally {
+      setRollingOver(false);
     }
   };
 
@@ -174,14 +197,26 @@ const Budgets = () => {
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {lastMonthBudgets.length > 0 && !hasCopiedLastMonth && (
-            <button
-              onClick={copyFromLastMonth}
-              disabled={copyingLastMonth}
-              className="text-xs text-primary font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
-            >
-              {copyingLastMonth ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
-              Copy {lastMonthLabel}
-            </button>
+            <>
+              <button
+                onClick={copyFromLastMonth}
+                disabled={copyingLastMonth}
+                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
+                title="Copy last month's budgets with the same amounts"
+              >
+                {copyingLastMonth ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
+                Copy {lastMonthLabel}
+              </button>
+              <button
+                onClick={copyWithRollover}
+                disabled={rollingOver}
+                className="text-xs text-income font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
+                title="Copy budgets and add any unspent balance from last month"
+              >
+                {rollingOver ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                Rollover
+              </button>
+            </>
           )}
           {budgets.length > 0 && (
             <button onClick={saveTemplate} className="text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
