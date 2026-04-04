@@ -199,16 +199,18 @@ const Installments = () => {
 
         {/* Progress card */}
         <div className="bg-card rounded-2xl border border-border p-5 mb-4 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Paid Till Now</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {hasLoan ? 'Principal Paid' : 'Paid Till Now'}
+          </p>
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-heading font-bold">{fmt(paidPrincipal)}</span>
-            <span className="text-sm text-muted-foreground">of {fmt(loanTotal)}</span>
+            <span className="text-3xl font-heading font-bold">{fmt(hasLoan ? paidPrincipal : paidPayments)}</span>
+            <span className="text-sm text-muted-foreground">of {fmt(hasLoan ? loanTotal : grossTotal)}</span>
           </div>
           <div className="h-2.5 bg-muted rounded-full overflow-hidden">
             <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPct}%` }} />
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            Remaining &nbsp;<span className="font-medium text-foreground">{fmt(remainingPrincipal)}</span>
+            Remaining &nbsp;<span className="font-medium text-foreground">{fmt(hasLoan ? remainingPrincipal : remainingPayments)}</span>
           </p>
         </div>
 
@@ -247,15 +249,17 @@ const Installments = () => {
 
         {/* Detail rows */}
         <div className="bg-card rounded-2xl border border-border divide-y divide-border mb-4">
-          <DetailRow label="Monthly installment amount" value={fmt(plan.amountPerInstallment)} />
+          <DetailRow label="Monthly installment" value={fmt(plan.amountPerInstallment)} />
           <DetailRow label="Repayment period" value={`${plan.totalInstallments} month${plan.totalInstallments !== 1 ? 's' : ''}`} />
-          <DetailRow label="Remaining payments" value={fmt(remainingPayments)} />
-          <DetailRow label="Paid payments (gross)" value={fmt(paidPayments)} />
-          <DetailRow label="Remaining Principal Amount" value={fmt(remainingPrincipal)} />
           <DetailRow label="Remaining installments" value={String(remainingInstallments)} />
-          {hasLoan && interestPerInstallment > 0 && (
-            <DetailRow label="Remaining Interest Amount" value={fmt(remainingInterest)} />
+          <DetailRow label="Remaining payments" value={fmt(remainingPayments)} />
+          {hasLoan && (
+            <DetailRow label="Remaining principal" value={fmt(remainingPrincipal)} />
           )}
+          {hasLoan && interestPerInstallment > 0 && (
+            <DetailRow label="Remaining interest" value={fmt(remainingInterest)} />
+          )}
+          <DetailRow label="Paid so far" value={fmt(paidPayments)} />
           {plan.note && <DetailRow label="Description" value={plan.note} />}
         </div>
 

@@ -11,6 +11,7 @@ export interface Category {
   isCustom?: boolean;
   id?: string;
   type?: 'expense' | 'income' | 'both';
+  originalName?: string | null;
 }
 
 export const useCategories = () => {
@@ -34,6 +35,7 @@ export const useCategories = () => {
         isCustom: true,
         id: r.id,
         type: (r.type as 'expense' | 'income' | 'both') ?? 'both',
+        originalName: r.original_name ?? null,
       })));
     }
     setLoading(false);
@@ -41,11 +43,16 @@ export const useCategories = () => {
 
   useEffect(() => { fetchCustom(); }, [fetchCustom]);
 
-  // Merge: custom categories override defaults with same name
+  // Names that shadow or replace a default (either same name or via original_name rename)
+  const shadowedDefaultNames = new Set([
+    ...customCategories.map(c => c.name),
+    ...customCategories.map(c => c.originalName).filter(Boolean) as string[],
+  ]);
+
+  // Merge: custom categories override defaults with same name (or via original_name rename)
   const allCategories: Category[] = (() => {
-    const customNames = new Set(customCategories.map(c => c.name));
     const defaults: Category[] = CATEGORIES
-      .filter(c => !customNames.has(c.name))
+      .filter(c => !shadowedDefaultNames.has(c.name))
       .map(c => ({ name: c.name, icon: c.icon, isCustom: false }));
     return [...customCategories, ...defaults];
   })();
@@ -86,39 +93,44 @@ export const useCategories = () => {
     await fetchCustom();
   }, [fetchCustom]);
 
-  // Override a default category (create custom with same name, different icon)
-  const overrideDefault = useCallback(async (name: string, newIcon: string) => {
+  // Override a default category — supports renaming (newName can differ from originalName)
+  const overrideDefault = useCallback(async (originalName: string, newIcon: string, newName?: string) => {
     if (!user) return;
-    const { error } = await supabase.from('custom_categories').insert({
-      user_id: user.id,
-      name,
-      icon: newIcon,
-      type: 'both',
-      sort_order: customCategories.length,
-    });
-    if (error) {
-      if (error.code === '23505') {
-        // Already overridden, update instead
-        const existing = customCategories.find(c => c.name === name);
-        if (existing?.id) {
-          await updateCategory(existing.id, name, newIcon);
-          return;
-        }
-      }
-      toast.error(error.message);
-      return;
+    const finalName = newName?.trim() || originalName;
+    const existing = customCategories.find(c => c.originalName === originalName || c.name === originalName);
+    if (existing?.id) {
+      // Update existing override
+      const { error } = await supabase.from('custom_categories')
+        .update({ name: finalName, icon: newIcon, original_name: originalName })
+        .eq('id', existing.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success('Category updated');
+    } else {
+      const { error } = await supabase.from('custom_categories').insert({
+        user_id: user.id,
+        name: finalName,
+        icon: newIcon,
+        type: 'both',
+        sort_order: customCategories.length,
+        original_name: finalName !== originalName ? originalName : null,
+      });
+      if (error) { toast.error(error.message); return; }
+      toast.success('Category updated');
     }
-    toast.success('Category icon updated');
     await fetchCustom();
-  }, [user, customCategories, fetchCustom, updateCategory]);
+  }, [user, customCategories, fetchCustom]);
 
   const getCategoriesForType = (type: TransactionType): Category[] => {
     const typeDefaults = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    const customNames = new Set(customCategories.map(c => c.name));
+    // Names shadowed by custom overrides (same name or renamed)
+    const shadowed = new Set([
+      ...customCategories.map(c => c.name),
+      ...customCategories.map(c => c.originalName).filter(Boolean) as string[],
+    ]);
     // Include custom categories that match the type (or are set to 'both')
     const filteredCustom = customCategories.filter(c => !c.type || c.type === 'both' || c.type === type);
     const defaults: Category[] = (typeDefaults as readonly { name: string; icon: string }[])
-      .filter(c => !customNames.has(c.name))
+      .filter(c => !shadowed.has(c.name))
       .map(c => ({ name: c.name, icon: c.icon, isCustom: false }));
     return [...filteredCustom, ...defaults];
   };

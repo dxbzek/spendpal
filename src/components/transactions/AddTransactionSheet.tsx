@@ -86,8 +86,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setAccountId(editTransaction.accountId);
       setMerchant(editTransaction.merchant === 'Transfer' ? '' : (editTransaction.merchant || ''));
       setDate(editTransaction.date);
-      setIsRecurring(editTransaction.isRecurring || false);
-      setHasInstallments(!!(editTransaction.totalInstallments && editTransaction.currentInstallment));
+      const hasInst = editTransaction.totalInstallments != null && editTransaction.totalInstallments > 0;
+      // Force isRecurring true if the transaction has installments (installments imply recurring)
+      setIsRecurring(hasInst ? true : (editTransaction.isRecurring || false));
+      setHasInstallments(hasInst);
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
       setCurrentInstallment(String(editTransaction.currentInstallment || 1));
       setLoanTotalAmount(editTransaction.loanTotalAmount ? String(editTransaction.loanTotalAmount) : '');
@@ -115,6 +117,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setIsRecurring(prefill.isRecurring);
     } else if (open && recurringMode) {
       setIsRecurring(true);
+      setHasInstallments(true);
     } else if (!open) {
       resetForm();
     }
@@ -374,10 +377,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Total Loan Amount ({currency}) — optional</label>
-                      <Input type="number" placeholder={`e.g. ${(perInstallment * totalInst).toFixed(2)}`}
+                      <label className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
+                      <Input type="number" placeholder="e.g. 1200 (before interest/fees)"
                         value={loanTotalAmount} onChange={e => setLoanTotalAmount(e.target.value)}
                         className="h-10" />
+                      <p className="text-[10px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
                     </div>
                     {amount && (
                       <div className="bg-primary/5 rounded-lg p-2.5 text-center">
