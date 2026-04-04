@@ -2,7 +2,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useMemo, useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addMonths, startOfMonth } from 'date-fns';
 import { CreditCard, CheckCircle2, ChevronLeft, Plus, Trash2, Pencil, Minus } from 'lucide-react';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import type { Transaction } from '@/types/finance';
@@ -160,6 +160,11 @@ const Installments = () => {
       : 0;
     const isDone = plan.paidInstallments >= plan.totalInstallments;
 
+    // Estimate start from latest date and how many installments have been paid
+    const startMonth = startOfMonth(parseISO(plan.latestDate));
+    const estimatedStartMonth = addMonths(startMonth, -(plan.paidInstallments - 1));
+    const estimatedEndMonth = addMonths(estimatedStartMonth, plan.totalInstallments - 1);
+
     // Use live plan data so progress stepper reflects real-time updates
     const livePlan = plans.find(p => p.key === plan.key) ?? plan;
 
@@ -251,6 +256,8 @@ const Installments = () => {
         <div className="bg-card rounded-2xl border border-border divide-y divide-border mb-4">
           <DetailRow label="Monthly installment" value={fmt(plan.amountPerInstallment)} />
           <DetailRow label="Repayment period" value={`${plan.totalInstallments} month${plan.totalInstallments !== 1 ? 's' : ''}`} />
+          <DetailRow label="Started" value={format(estimatedStartMonth, 'MMM yyyy')} />
+          {!isDone && <DetailRow label="Projected end" value={format(estimatedEndMonth, 'MMM yyyy')} />}
           <DetailRow label="Remaining installments" value={String(remainingInstallments)} />
           <DetailRow label="Remaining payments" value={fmt(remainingPayments)} />
           {hasLoan && (
@@ -326,14 +333,18 @@ const Installments = () => {
         <>
           {/* Summary */}
           {activePlans.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="bg-card rounded-2xl border border-border p-4 text-center">
                 <p className="text-2xl font-bold text-primary">{activePlans.length}</p>
                 <p className="text-xs text-muted-foreground">Active plans</p>
               </div>
               <div className="bg-card rounded-2xl border border-border p-4 text-center">
-                <p className="text-lg font-bold text-expense">{fmt(totalRemaining)}</p>
-                <p className="text-xs text-muted-foreground">Total remaining</p>
+                <p className="text-sm font-bold">{fmt(activePlans.reduce((s, p) => s + p.amountPerInstallment, 0))}</p>
+                <p className="text-xs text-muted-foreground">Monthly</p>
+              </div>
+              <div className="bg-card rounded-2xl border border-border p-4 text-center">
+                <p className="text-sm font-bold text-expense">{fmt(totalRemaining)}</p>
+                <p className="text-xs text-muted-foreground">Total left</p>
               </div>
             </div>
           )}
@@ -346,6 +357,7 @@ const Installments = () => {
                 const progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
                 const remainingCount = plan.totalInstallments - plan.paidInstallments;
                 const remainingAmt = round2(remainingCount * plan.amountPerInstallment);
+                const endMonth = addMonths(startOfMonth(parseISO(plan.latestDate)), remainingCount);
                 return (
                   <div key={plan.key} className="bg-card rounded-2xl border border-border p-4 space-y-3">
                     {/* Tappable top row → detail view */}
@@ -383,7 +395,7 @@ const Installments = () => {
                     {/* Bottom row: last payment + quick +1 button */}
                     <div className="flex items-center justify-between pt-1 border-t border-border">
                       <span className="text-xs text-muted-foreground">
-                        Last: {format(parseISO(plan.latestDate), 'MMM d, yyyy')} · <span className="text-expense font-medium">{fmt(remainingAmt)} left</span>
+                        Ends {format(endMonth, 'MMM yyyy')} · <span className="text-expense font-medium">{fmt(remainingAmt)} left</span>
                       </span>
                       <button
                         onClick={() => updateProgress(plan, +1)}

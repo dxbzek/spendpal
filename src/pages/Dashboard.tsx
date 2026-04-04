@@ -17,7 +17,7 @@ import { WORLD_CURRENCIES } from '@/utils/currencies';
 import { Eye, EyeOff, Plus, ChevronRight, Loader2, Trash2, Edit2, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
-import { format, differenceInDays, parseISO } from 'date-fns';
+import { format, differenceInDays, parseISO, addMonths } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -133,6 +133,33 @@ const Dashboard = () => {
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
+
+  // Installment plan summary for Planning widget
+  const installmentSummary = useMemo(() => {
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const installmentTxs = transactions.filter(tx => tx.totalInstallments != null && tx.currentInstallment != null);
+    const map: Record<string, typeof installmentTxs> = {};
+    installmentTxs.forEach(tx => {
+      const key = `${tx.merchant}|${tx.totalInstallments}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(tx);
+    });
+    const plans = Object.values(map).map(txs => {
+      const latest = [...txs].sort((a, b) => b.date.localeCompare(a.date))[0];
+      const paid = latest.currentInstallment ?? txs.length;
+      const total = latest.totalInstallments!;
+      const monthly = latest.amount;
+      const remaining = Math.max(0, total - paid);
+      return { paid, total, monthly, remaining, merchant: latest.merchant };
+    });
+    const active = plans.filter(p => p.paid < p.total);
+    return {
+      count: active.length,
+      monthlyTotal: round2(active.reduce((s, p) => s + p.monthly, 0)),
+      totalRemaining: round2(active.reduce((s, p) => s + p.remaining * p.monthly, 0)),
+    };
+  }, [transactions]);
+
   const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
   const _recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
   // Merge transfer pairs for recent transactions display (same logic as Transactions page)
@@ -527,6 +554,29 @@ const Dashboard = () => {
           <div className="col-span-2 lg:col-span-2">
             <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
           </div>
+
+          {installmentSummary.count > 0 && (
+            <Card className="col-span-2 lg:col-span-2">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-heading text-sm">Installment Plans</h2>
+                <button onClick={() => navigate('/installments')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-primary">{installmentSummary.count}</p>
+                  <p className="text-[11px] text-muted-foreground">Active plans</p>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">{mask(fmt(installmentSummary.monthlyTotal))}</p>
+                  <p className="text-[11px] text-muted-foreground">Monthly</p>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-expense">{mask(fmt(installmentSummary.totalRemaining))}</p>
+                  <p className="text-[11px] text-muted-foreground">Total left</p>
+                </div>
+              </div>
+            </Card>
+          )}
 
           <div className="col-span-2 lg:col-span-4">
             <RecurringTracker />
