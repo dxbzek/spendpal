@@ -109,7 +109,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
           </span>
         )}
       </div>
-      <p className="text-financial-large mt-1">
+      <p className="text-financial-large mt-1 min-w-0">
         {mask(fmt(netWorth))}
       </p>
       <div className="mt-2 space-y-1">

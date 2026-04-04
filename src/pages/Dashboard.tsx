@@ -271,15 +271,15 @@ const Dashboard = () => {
           <div className="col-span-1">
             <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
           </div>
-          <Card className="col-span-1">
+          <Card className="col-span-1 overflow-hidden">
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-financial-medium">{mask(fmt(income))}</p>
-            {sec(income) && <p className="text-[11px] text-muted-foreground">≈ {sec(income)}</p>}
+            {sec(income) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(income)}</p>}
           </Card>
-          <Card className="col-span-1">
+          <Card className="col-span-1 overflow-hidden">
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium">{mask(fmt(expenses))}</p>
-            {sec(expenses) && <p className="text-[11px] text-muted-foreground">≈ {sec(expenses)}</p>}
+            {sec(expenses) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(expenses)}</p>}
           </Card>
 
           {savingsRate !== null && (
