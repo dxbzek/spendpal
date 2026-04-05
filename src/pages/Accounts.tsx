@@ -58,8 +58,8 @@ const Accounts = () => {
     transactions.forEach(tx => {
       if (tx.date.slice(0, 7) !== thisMonth) return;
       if (!stats[tx.accountId]) stats[tx.accountId] = { income: 0, expenses: 0 };
-      if (tx.type === 'income') stats[tx.accountId].income += tx.amount;
-      else if (tx.type === 'expense') stats[tx.accountId].expenses += tx.amount;
+      if (tx.type === 'income' && tx.category !== 'Transfer') stats[tx.accountId].income += tx.amount;
+      else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) stats[tx.accountId].expenses += tx.amount;
     });
     return stats;
   }, [transactions]);

@@ -474,9 +474,12 @@ const Budgets = () => {
               disabled={deletingAll}
               onClick={async () => {
                 setDeletingAll(true);
-                await bulkRemoveBudgets(budgets.map(b => b.id));
-                setDeletingAll(false);
-                setShowDeleteAll(false);
+                try {
+                  await bulkRemoveBudgets(budgets.map(b => b.id));
+                  setShowDeleteAll(false);
+                } finally {
+                  setDeletingAll(false);
+                }
               }}
               className="bg-destructive text-destructive-foreground"
             >

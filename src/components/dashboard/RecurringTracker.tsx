@@ -74,7 +74,7 @@ const RecurringTracker = () => {
                   ? Math.max(0, item.totalInstallments! - item.currentInstallment!)
                   : null;
                 const remaining = remainingInstallments !== null
-                  ? remainingInstallments * item.amount
+                  ? Math.round(remainingInstallments * item.amount * 100) / 100
                   : null;
 
                 return (

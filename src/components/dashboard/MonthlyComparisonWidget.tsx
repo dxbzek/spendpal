@@ -33,7 +33,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
     const calcByType = (start: Date, end: Date) => {
       const totals: Record<string, number> = { cash: 0, debit: 0, credit: 0 };
       transactions
-        .filter(t => t.type === 'expense' && t.category !== 'Transfer' && isWithinInterval(parseISO(t.date), { start, end }))
+        .filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly && isWithinInterval(parseISO(t.date), { start, end }))
         .forEach(t => {
           const aType = accountTypeMap.get(t.accountId);
           if (aType && aType in totals) totals[aType] += t.amount;
