@@ -29,11 +29,11 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
       const monthTx = transactions.filter(t => t.date.startsWith(currentMonth));
-      const income = monthTx.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
-      const expenses = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const income = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
+      const expenses = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0);
 
       const categoryMap: Record<string, number> = {};
-      monthTx.filter(t => t.type === 'expense').forEach(t => {
+      monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfer').forEach(t => {
         categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
       });
 

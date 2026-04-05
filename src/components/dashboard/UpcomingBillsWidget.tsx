@@ -37,7 +37,17 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
 
     // Recurring transactions
     transactions.filter(t => t.isRecurring && t.type === 'expense').forEach(t => {
-      const nextDate = addMonths(parseISO(t.date), 1);
+      // Advance month-by-month from the original date until the next occurrence
+      // is in the future. Stepping from the original date (not the last computed
+      // date) preserves the day-of-month correctly across month-length boundaries
+      // (e.g. Jan 31 → Feb 28 → Mar 31, not Mar 28).
+      const origDate = parseISO(t.date);
+      let offset = 1;
+      let nextDate = addMonths(origDate, offset);
+      while (differenceInDays(nextDate, now) < 0 && offset < 13) {
+        offset++;
+        nextDate = addMonths(origDate, offset);
+      }
       const daysLeft = differenceInDays(nextDate, now);
       if (daysLeft >= 0 && daysLeft <= 30) {
         bills.push({
