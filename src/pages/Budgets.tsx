@@ -76,7 +76,7 @@ const Budgets = () => {
     transactions
       .filter(t => {
         const d = parseISO(t.date);
-        return t.type === 'expense' && getMonth(d) === pm && getYear(d) === py;
+        return t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly && getMonth(d) === pm && getYear(d) === py;
       })
       .forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
     return map;
@@ -142,7 +142,7 @@ const Budgets = () => {
   };
 
   const handleGenerateSuggestions = async () => {
-    const spendingData = transactions.filter(t => t.type === 'expense').map(t => ({ category: t.category, amount: t.amount, date: t.date }));
+    const spendingData = transactions.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).map(t => ({ category: t.category, amount: t.amount, date: t.date }));
     const result = await generateBudgetSuggestions(spendingData);
     if (result.length > 0) setSuggestions(result);
   };
