@@ -58,7 +58,7 @@ const Installments = () => {
       const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
       const latest = sorted[0];
       const totalInstallments = latest.totalInstallments!;
-      const paidInstallments = latest.currentInstallment ?? txs.length;
+      const paidInstallments = latest.currentInstallment ?? 0;
       const amountPerInstallment = latest.amount;
       const loanTotalAmount = latest.loanTotalAmount ?? null;
       const totalAmount = loanTotalAmount ?? round2(amountPerInstallment * totalInstallments);
