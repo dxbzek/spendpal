@@ -90,7 +90,7 @@ const Goals = () => {
 
   const getCompletionEstimate = (remaining: number): string | null => {
     if (remaining <= 0) return null;
-    if (monthlySavingsRate <= 0) return null;
+    if (monthlySavingsRate <= 0) return 'Add income transactions to estimate timeline';
     const months = remaining / monthlySavingsRate;
     if (months < 1) return 'Less than a month';
     if (months < 12) return `~${Math.ceil(months)} month${Math.ceil(months) > 1 ? 's' : ''}`;

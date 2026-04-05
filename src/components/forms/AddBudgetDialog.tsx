@@ -72,14 +72,15 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
     if (!isEdit) setIsFixed(FIXED_EXPENSE_CATEGORIES.has(category));
   }, [category]);
 
-  // When rollover toggles, update amount
+  // When rollover toggles (or unspent amount changes), update amount
   useEffect(() => {
-    if (!rollover || !lastMonthUnspent || !amount) return;
+    if (!rollover || !lastMonthUnspent || isEdit) return;
     const base = parseFloat(amount) || 0;
-    if (!isEdit && lastMonthUnspent > 0) {
+    if (lastMonthUnspent > 0) {
       setAmount((base + lastMonthUnspent).toFixed(2));
     }
-  }, [rollover]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rollover, lastMonthUnspent]);
 
   const handleSubmit = async () => {
     if (!category || !amount || submitting) return;

@@ -384,7 +384,12 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
                         <Input type="number" min="1" max={totalInstallments}
-                          value={currentInstallment} onChange={e => setCurrentInstallment(e.target.value)}
+                          value={currentInstallment}
+                          onChange={e => {
+                            const v = parseInt(e.target.value);
+                            const max = parseInt(totalInstallments) || 1;
+                            if (!isNaN(v) && v >= 1 && v <= max) setCurrentInstallment(String(v));
+                          }}
                           className="h-10" />
                       </div>
                     </div>

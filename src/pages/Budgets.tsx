@@ -165,13 +165,20 @@ const Budgets = () => {
     setApplyingTemplate(true);
     const monthKey = format(now, 'yyyy-MM');
     try {
+      let addedCount = 0;
+      let skippedCount = 0;
       for (const item of template.items) {
         const exists = budgets.find(b => b.category === item.category && b.month === monthKey);
-        if (!exists) {
-          await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as 'monthly' | 'weekly', month: monthKey });
-        }
+        if (exists) { skippedCount++; continue; }
+        await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as 'monthly' | 'weekly', month: monthKey });
+        addedCount++;
       }
-      toast.success(`Applied ${template.items.length} budgets from template`);
+      if (addedCount === 0 && skippedCount > 0) {
+        toast.info('All budgets from this template already exist for this month');
+      } else {
+        const skippedNote = skippedCount > 0 ? ` (${skippedCount} already existed)` : '';
+        toast.success(`Added ${addedCount} budget${addedCount !== 1 ? 's' : ''} from template${skippedNote}`);
+      }
     } catch {
       toast.error('Failed to apply template');
     } finally {
