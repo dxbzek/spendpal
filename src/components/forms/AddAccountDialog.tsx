@@ -51,6 +51,14 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       toast.error('Available limit cannot exceed credit limit');
       return;
     }
+    const parsedDueDate = type === 'credit' && dueDate ? parseInt(dueDate) : undefined;
+    const parsedStatementDate = type === 'credit' && statementDate ? parseInt(statementDate) : undefined;
+    if (parsedDueDate !== undefined && (isNaN(parsedDueDate) || parsedDueDate < 1 || parsedDueDate > 31)) {
+      toast.error('Due day must be between 1 and 31'); return;
+    }
+    if (parsedStatementDate !== undefined && (isNaN(parsedStatementDate) || parsedStatementDate < 1 || parsedStatementDate > 31)) {
+      toast.error('Statement day must be between 1 and 31'); return;
+    }
     setSubmitting(true);
     try {
       const data = {
@@ -60,8 +68,8 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
         currency,
         icon: ACCOUNT_ICONS[type],
         creditLimit: parsedCreditLimit,
-        dueDate: type === 'credit' && dueDate ? parseInt(dueDate) : undefined,
-        statementDate: type === 'credit' && statementDate ? parseInt(statementDate) : undefined,
+        dueDate: parsedDueDate,
+        statementDate: parsedStatementDate,
       };
       if (isEdit) {
         await updateAccount({ ...data, id: editAccount.id });

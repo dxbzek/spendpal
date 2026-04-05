@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { CURRENCY_MAP } from '@/utils/currencies';
+import { toast } from 'sonner';
 
 interface CurrencyContextType {
   currency: string;
@@ -45,11 +46,18 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (async () => {
       try {
         const res = await fetch(`${EXCHANGE_API}/${currency}`, { signal: controller.signal });
-        if (!res.ok) { setSecondaryRate(null); return; }
+        if (!res.ok) {
+          setSecondaryRate(null);
+          toast.warning('Could not fetch exchange rates. Secondary currency display unavailable.');
+          return;
+        }
         const data = await res.json() as { rates?: Record<string, number> };
         setSecondaryRate(data.rates?.[secondaryCurrency] ?? null);
-      } catch {
-        setSecondaryRate(null);
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          setSecondaryRate(null);
+          toast.warning('Could not fetch exchange rates. Secondary currency display unavailable.');
+        }
       }
     })();
     return () => controller.abort();
