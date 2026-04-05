@@ -18,8 +18,11 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
 
     // Credit card due dates
     accounts.filter(a => a.type === 'credit' && a.dueDate).forEach(cc => {
+      // Compare day-of-month numbers: if the due day has already passed this month, use next month.
+      // Using day comparison (not Date object comparison) avoids the midnight-vs-now false positive
+      // where a bill due today gets pushed to next month because midnight < current time.
       const dueDate = new Date(now.getFullYear(), now.getMonth(), cc.dueDate!);
-      if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
+      if (cc.dueDate! < now.getDate()) dueDate.setMonth(dueDate.getMonth() + 1);
       const spent = cc.creditLimit ? cc.creditLimit - cc.balance : 0;
       if (spent > 0) {
         bills.push({

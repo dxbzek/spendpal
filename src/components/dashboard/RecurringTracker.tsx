@@ -10,7 +10,7 @@ const RecurringTracker = () => {
   const { transactions } = useFinance();
   const { fmt } = useCurrency();
 
-  const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
+  const recurring = useMemo(() => transactions.filter(t => t.isRecurring && t.type === 'expense'), [transactions]);
   const monthlyTotal = recurring.reduce((s, t) => s + t.amount, 0);
   const yearlyTotal = monthlyTotal * 12;
 
