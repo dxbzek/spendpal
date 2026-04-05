@@ -18,8 +18,11 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
 
     // Credit card due dates
     accounts.filter(a => a.type === 'credit' && a.dueDate).forEach(cc => {
+      // Compare day-of-month numbers: if the due day has already passed this month, use next month.
+      // Using day comparison (not Date object comparison) avoids the midnight-vs-now false positive
+      // where a bill due today gets pushed to next month because midnight < current time.
       const dueDate = new Date(now.getFullYear(), now.getMonth(), cc.dueDate!);
-      if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
+      if (cc.dueDate! < now.getDate()) dueDate.setMonth(dueDate.getMonth() + 1);
       const spent = cc.creditLimit ? cc.creditLimit - cc.balance : 0;
       if (spent > 0) {
         bills.push({
@@ -34,7 +37,17 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
 
     // Recurring transactions
     transactions.filter(t => t.isRecurring && t.type === 'expense').forEach(t => {
-      const nextDate = addMonths(parseISO(t.date), 1);
+      // Advance month-by-month from the original date until the next occurrence
+      // is in the future. Stepping from the original date (not the last computed
+      // date) preserves the day-of-month correctly across month-length boundaries
+      // (e.g. Jan 31 → Feb 28 → Mar 31, not Mar 28).
+      const origDate = parseISO(t.date);
+      let offset = 1;
+      let nextDate = addMonths(origDate, offset);
+      while (differenceInDays(nextDate, now) < 0 && offset < 13) {
+        offset++;
+        nextDate = addMonths(origDate, offset);
+      }
       const daysLeft = differenceInDays(nextDate, now);
       if (daysLeft >= 0 && daysLeft <= 30) {
         bills.push({

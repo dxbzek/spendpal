@@ -84,7 +84,7 @@ const CalendarView = () => {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-5">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

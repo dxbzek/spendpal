@@ -18,8 +18,8 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden: _hidden, mas
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const monthTx = transactions.filter(t => t.date.startsWith(currentMonth));
-    const inc = monthTx.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
-    const exp = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const inc = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
+    const exp = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0);
     const sav = inc - exp;
     return { income: inc, expenses: exp, saved: sav, pct: inc > 0 ? Math.round((sav / inc) * 100) : 0 };
   }, [transactions, creditAccountIds]);

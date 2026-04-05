@@ -45,18 +45,18 @@ const Reports = () => {
 
   const income = useMemo(
     () => monthTxs
-      .filter(tx => tx.type === 'income' && !creditAccountIds.has(tx.accountId))
+      .filter(tx => tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId))
       .reduce((s, tx) => s + tx.amount, 0),
     [monthTxs, creditAccountIds]
   );
 
   const expenses = useMemo(
-    () => monthTxs.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0),
+    () => monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
     [monthTxs]
   );
 
   const prevExpenses = useMemo(
-    () => prevMonthTxs.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0),
+    () => prevMonthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
     [prevMonthTxs]
   );
 
@@ -81,7 +81,7 @@ const Reports = () => {
 
   const categoryData = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};
-    monthTxs.filter(tx => tx.type === 'expense').forEach(tx => {
+    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').forEach(tx => {
       if (!map[tx.category]) map[tx.category] = { value: 0, icon: tx.categoryIcon };
       map[tx.category].value += tx.amount;
     });
@@ -92,7 +92,7 @@ const Reports = () => {
 
   const topMerchants = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTxs.filter(tx => tx.type === 'expense').forEach(tx => {
+    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').forEach(tx => {
       map[tx.merchant] = (map[tx.merchant] || 0) + tx.amount;
     });
     return Object.entries(map)
@@ -137,7 +137,7 @@ const Reports = () => {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
