@@ -563,6 +563,8 @@ const Settings = () => {
                     if (monthlyIncome === '' || (!isNaN(val) && val >= 0)) {
                       localStorage.setItem('spendpal_monthly_income', monthlyIncome);
                       toast.success('Monthly income saved');
+                    } else {
+                      toast.error('Please enter a valid income amount');
                     }
                   }}
                 >

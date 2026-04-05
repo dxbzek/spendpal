@@ -27,7 +27,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
 
     const spentSoFar = transactions
       .filter(tx => {
-        if (tx.type !== 'expense' || tx.category === 'Transfer') return false;
+        if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return false;
         const d = new Date(tx.date);
         return d.getFullYear() === year && d.getMonth() === month;
       })
@@ -43,7 +43,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
 
     const lastMonthSpent = transactions
       .filter(tx => {
-        if (tx.type !== 'expense' || tx.category === 'Transfer') return false;
+        if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return false;
         const d = new Date(tx.date);
         const prevMonth = month === 0 ? 11 : month - 1;
         const prevYear = month === 0 ? year - 1 : year;
