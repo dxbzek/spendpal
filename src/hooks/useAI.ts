@@ -288,9 +288,14 @@ export const useAI = () => {
     }));
   }, [user]);
 
-  const deleteAdvisorSession = useCallback(async (id: string): Promise<void> => {
+  const deleteAdvisorSession = useCallback(async (id: string): Promise<boolean> => {
     const { error } = await supabase.from('advisor_sessions').delete().eq('id', id);
-    if (error) logger.error('Failed to delete advisor session', error);
+    if (error) {
+      logger.error('Failed to delete advisor session', error);
+      toast.error('Failed to delete session');
+      return false;
+    }
+    return true;
   }, []);
 
   const categorizeCSV = categorizeStatement;

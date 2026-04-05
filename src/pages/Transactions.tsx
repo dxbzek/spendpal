@@ -178,7 +178,7 @@ const Transactions = () => {
     if (!merchantProfile) return null;
     const txs = transactions.filter(tx => tx.merchant.toLowerCase() === merchantProfile.toLowerCase())
       .sort((a, b) => b.date.localeCompare(a.date));
-    const total = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const total = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
     const count = txs.length;
     return { txs: txs.slice(0, 20), total, count, icon: txs[0]?.categoryIcon || '🏪' };
   }, [merchantProfile, transactions]);
@@ -733,9 +733,12 @@ const Transactions = () => {
               disabled={deleting}
               onClick={async () => {
                 setDeleting(true);
-                await bulkRemoveTransactions(filtered.map(tx => tx.id));
-                setDeleting(false);
-                setShowDeleteAll(false);
+                try {
+                  await bulkRemoveTransactions(filtered.map(tx => tx.id));
+                  setShowDeleteAll(false);
+                } finally {
+                  setDeleting(false);
+                }
               }}
               className="bg-destructive text-destructive-foreground">
               {deleting ? 'Deleting...' : `Delete ${filtered.length} Transactions`}

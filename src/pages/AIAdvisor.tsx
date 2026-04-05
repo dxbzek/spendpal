@@ -295,8 +295,8 @@ const AIAdvisor = () => {
                     </button>
                     <button
                       onClick={async () => {
-                        await deleteAdvisorSession(session.id);
-                        setHistory(prev => prev.filter(s => s.id !== session.id));
+                        const ok = await deleteAdvisorSession(session.id);
+                        if (ok) setHistory(prev => prev.filter(s => s.id !== session.id));
                       }}
                       className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
                       <Trash2 size={13} />

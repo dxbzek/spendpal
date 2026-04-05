@@ -51,12 +51,12 @@ const Reports = () => {
   );
 
   const expenses = useMemo(
-    () => monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
+    () => monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly).reduce((s, tx) => s + tx.amount, 0),
     [monthTxs]
   );
 
   const prevExpenses = useMemo(
-    () => prevMonthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
+    () => prevMonthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly).reduce((s, tx) => s + tx.amount, 0),
     [prevMonthTxs]
   );
 
@@ -81,7 +81,7 @@ const Reports = () => {
 
   const categoryData = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};
-    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').forEach(tx => {
+    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly).forEach(tx => {
       if (!map[tx.category]) map[tx.category] = { value: 0, icon: tx.categoryIcon };
       map[tx.category].value += tx.amount;
     });
@@ -92,7 +92,7 @@ const Reports = () => {
 
   const topMerchants = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').forEach(tx => {
+    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly).forEach(tx => {
       map[tx.merchant] = (map[tx.merchant] || 0) + tx.amount;
     });
     return Object.entries(map)
@@ -108,7 +108,7 @@ const Reports = () => {
 
   const incomeBySource = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};
-    monthTxs.filter(tx => tx.type === 'income' && !creditAccountIds.has(tx.accountId)).forEach(tx => {
+    monthTxs.filter(tx => tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)).forEach(tx => {
       if (!map[tx.merchant]) map[tx.merchant] = { value: 0, icon: tx.categoryIcon };
       map[tx.merchant].value += tx.amount;
     });
@@ -118,7 +118,7 @@ const Reports = () => {
   const dayOfWeekData = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const totals = new Array(7).fill(0);
-    monthTxs.filter(tx => tx.type === 'expense').forEach(tx => {
+    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly).forEach(tx => {
       // getDay: 0=Sun, 1=Mon... convert to Mon=0
       const d = (getDay(parseISO(tx.date)) + 6) % 7;
       totals[d] += tx.amount;
