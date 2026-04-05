@@ -77,11 +77,11 @@ const Dashboard = () => {
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
   const income = useMemo(() => filtered.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
-  const expenses = useMemo(() => filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0), [filtered]);
+  const expenses = useMemo(() => filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0), [filtered]);
 
   const categorySpending = useMemo(() => {
     const map: Record<string, { icon: string; total: number }> = {};
-    filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer').forEach(t => {
+    filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).forEach(t => {
       if (!map[t.category]) map[t.category] = { icon: t.categoryIcon, total: 0 };
       map[t.category].total += t.amount;
     });
@@ -95,7 +95,7 @@ const Dashboard = () => {
       const d = parseISO(tx.date);
       if (d.getMonth() !== month || d.getFullYear() !== year) continue;
       if (tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
-      else if (tx.type === 'expense' && tx.category !== 'Transfer') exp += tx.amount;
+      else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) exp += tx.amount;
     }
     return [inc, exp];
   }, [transactions, now, creditAccountIds]);

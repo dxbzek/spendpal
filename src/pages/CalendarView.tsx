@@ -33,7 +33,7 @@ const CalendarView = () => {
   // Spending per day
   const dayTotals = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTxs.filter(tx => tx.type === 'expense').forEach(tx => {
+    monthTxs.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly).forEach(tx => {
       map[tx.date] = (map[tx.date] || 0) + tx.amount;
     });
     return map;
@@ -43,7 +43,7 @@ const CalendarView = () => {
   const dayIncome = useMemo(() => {
     const map: Record<string, number> = {};
     monthTxs
-      .filter(tx => tx.type === 'income' && !creditAccountIds.has(tx.accountId))
+      .filter(tx => tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId))
       .forEach(tx => { map[tx.date] = (map[tx.date] || 0) + tx.amount; });
     return map;
   }, [monthTxs, creditAccountIds]);
@@ -67,10 +67,10 @@ const CalendarView = () => {
   }, [selectedDay, monthTxs]);
 
   const totalIncome = useMemo(
-    () => monthTxs.filter(t => t.type === 'income' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0),
+    () => monthTxs.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0),
     [monthTxs, creditAccountIds]
   );
-  const totalExpenses = useMemo(() => monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0), [monthTxs]);
+  const totalExpenses = useMemo(() => monthTxs.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0), [monthTxs]);
 
   const dayColor = (total: number) => {
     if (!total) return '';

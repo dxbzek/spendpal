@@ -109,10 +109,10 @@ const AIAdvisor = () => {
       const d = parseISO(tx.date);
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
-    const income = monthlyTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expenses = monthlyTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const income = monthlyTx.filter(t => t.type === 'income' && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0);
+    const expenses = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
     const categories: Record<string, { total: number; icon: string; count: number }> = {};
-    monthlyTx.filter(t => t.type === 'expense').forEach(t => {
+    monthlyTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).forEach(t => {
       if (!categories[t.category]) categories[t.category] = { total: 0, icon: t.categoryIcon, count: 0 };
       categories[t.category].total += t.amount;
       categories[t.category].count++;
