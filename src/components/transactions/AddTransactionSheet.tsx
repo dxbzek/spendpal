@@ -168,12 +168,22 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const executeSubmit = async () => {
     if (isTransfer) {
-      if (!amount) { toast.error('Please enter an amount'); return; }
+      const parsedTransferAmount = parseFloat(amount);
+      if (!amount || isNaN(parsedTransferAmount) || parsedTransferAmount <= 0) { toast.error('Please enter a valid amount'); return; }
       if (!accountId) { toast.error('Please select an account'); return; }
       if (!toAccountId) { toast.error('Please select a destination account'); return; }
       if (accountId === toAccountId) { toast.error('Source and destination accounts must be different'); return; }
       if (isEditing) {
+        // Remove both halves of the original transfer pair to avoid orphaned transactions
+        const partner = transactions.find(t =>
+          t.type === 'income' &&
+          t.category === 'Transfer' &&
+          t.date === editTransaction.date &&
+          t.amount === editTransaction.amount &&
+          t.id !== editTransaction.id
+        );
         await removeTransaction(editTransaction.id);
+        if (partner) await removeTransaction(partner.id);
       }
       const transferNote = note || `Transfer to ${accounts.find(a => a.id === toAccountId)?.name || 'account'}`;
       const transferNoteIn = note || `Transfer from ${accounts.find(a => a.id === accountId)?.name || 'account'}`;
@@ -210,13 +220,14 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       return;
     }
 
-    if (!amount) { toast.error('Please enter an amount'); return; }
+    const parsedAmount = parseFloat(amount);
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return; }
     if (!category) { toast.error('Please select a category'); return; }
     if (!accountId) { toast.error('Please select an account'); return; }
 
     const txData = {
       type,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       currency,
       category,
       categoryIcon,
@@ -237,8 +248,9 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       await addTransaction(txData);
     }
 
-    if (allocateToGoal && goalAllocationId && parseFloat(goalAllocationAmount) > 0) {
-      await addGoalProgress(goalAllocationId, parseFloat(goalAllocationAmount));
+    const parsedGoalAmount = parseFloat(goalAllocationAmount);
+    if (allocateToGoal && goalAllocationId && !isNaN(parsedGoalAmount) && parsedGoalAmount > 0) {
+      await addGoalProgress(goalAllocationId, parsedGoalAmount);
     }
 
     resetForm();
