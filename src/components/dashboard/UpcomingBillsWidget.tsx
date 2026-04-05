@@ -1,6 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
 import { CalendarClock } from 'lucide-react';
-import { differenceInDays, addMonths, parseISO, format } from 'date-fns';
+import { differenceInDays, addMonths, parseISO, format, getDaysInMonth } from 'date-fns';
 import type { Transaction, Account } from '@/types/finance';
 import { memo, useMemo } from 'react';
 
@@ -21,8 +21,14 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
       // Compare day-of-month numbers: if the due day has already passed this month, use next month.
       // Using day comparison (not Date object comparison) avoids the midnight-vs-now false positive
       // where a bill due today gets pushed to next month because midnight < current time.
-      const dueDate = new Date(now.getFullYear(), now.getMonth(), cc.dueDate!);
-      if (cc.dueDate! < now.getDate()) dueDate.setMonth(dueDate.getMonth() + 1);
+      // Clamp the due day to the last day of the target month to avoid overflow
+      // (e.g. due day 31 in February must not become March 3)
+      const targetMonth = cc.dueDate! < now.getDate() ? now.getMonth() + 1 : now.getMonth();
+      const targetYear = targetMonth > 11 ? now.getFullYear() + 1 : now.getFullYear();
+      const normalizedMonth = targetMonth > 11 ? 0 : targetMonth;
+      const lastDay = getDaysInMonth(new Date(targetYear, normalizedMonth));
+      const clampedDay = Math.min(cc.dueDate!, lastDay);
+      const dueDate = new Date(targetYear, normalizedMonth, clampedDay);
       const spent = cc.creditLimit ? cc.creditLimit - cc.balance : 0;
       if (spent > 0) {
         bills.push({

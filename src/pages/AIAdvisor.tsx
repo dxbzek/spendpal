@@ -151,7 +151,7 @@ const AIAdvisor = () => {
     // Current month spending by category
     const curMap: Record<string, number> = {};
     transactions.forEach(tx => {
-      if (tx.type !== 'expense') return;
+      if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return;
       const d = parseISO(tx.date);
       if (d.getMonth() !== thisM || d.getFullYear() !== thisY) return;
       curMap[tx.category] = (curMap[tx.category] || 0) + tx.amount;
@@ -164,7 +164,7 @@ const AIAdvisor = () => {
       const pm = getMonth(prev), py = getYear(prev);
       const monthMap: Record<string, number> = {};
       transactions.forEach(tx => {
-        if (tx.type !== 'expense') return;
+        if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return;
         const d = parseISO(tx.date);
         if (d.getMonth() !== pm || d.getFullYear() !== py) return;
         monthMap[tx.category] = (monthMap[tx.category] || 0) + tx.amount;
