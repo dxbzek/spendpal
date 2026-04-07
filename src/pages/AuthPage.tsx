@@ -6,47 +6,28 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
-const toEmail = (username: string) => `${username.toLowerCase().trim()}@spendpal.app`;
-
 const AuthPage = () => {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [usernameError, setUsernameError] = useState('');
-
-  const handleUsernameChange = (val: string) => {
-    const cleaned = val.replace(/[^a-zA-Z0-9_]/g, '');
-    setUsername(cleaned);
-    if (mode === 'signup' && cleaned.length > 0 && cleaned.length < 3) {
-      setUsernameError('At least 3 characters');
-    } else {
-      setUsernameError('');
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) return;
+    if (!email || !password) return;
 
-    const email = toEmail(username);
     setLoading(true);
 
     if (mode === 'login') {
       const { error } = await signIn(email, password);
-      if (error) toast.error('Invalid username or password.');
+      if (error) toast.error('Invalid email or password.');
     } else {
-      if (username.length < 3) {
-        setUsernameError('At least 3 characters');
-        setLoading(false);
-        return;
-      }
-      const { error } = await signUp(email, password, username);
+      const { error } = await signUp(email, password);
       if (error) {
         if (error.message.includes('already registered')) {
-          toast.error('Username already taken. Try another.');
+          toast.error('Email already registered. Try signing in.');
         } else {
           toast.error(error.message);
         }
@@ -77,7 +58,7 @@ const AuthPage = () => {
             }}
           />
           {(['login', 'signup'] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); setUsernameError(''); }}
+            <button key={m} onClick={() => setMode(m)}
               className={`relative flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors z-10 ${
                 mode === m ? 'text-foreground' : 'text-muted-foreground'
               }`}>
@@ -88,22 +69,15 @@ const AuthPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Username</label>
+            <label className="text-sm font-medium mb-1.5 block">Email</label>
             <Input
-              placeholder="yourname"
-              value={username}
-              onChange={e => handleUsernameChange(e.target.value)}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               required
-              minLength={3}
-              maxLength={30}
-              autoComplete="username"
-              className={usernameError ? 'border-destructive focus-visible:ring-destructive' : ''}
+              autoComplete="email"
             />
-            {usernameError ? (
-              <p className="text-xs text-destructive mt-1">{usernameError}</p>
-            ) : mode === 'signup' && (
-              <p className="text-xs text-muted-foreground mt-1">Letters, numbers and _ only · min 3 chars</p>
-            )}
           </div>
           <div>
             <label className="text-sm font-medium mb-1.5 block">Password</label>
@@ -133,7 +107,7 @@ const AuthPage = () => {
           </div>
           <Button
             type="submit"
-            disabled={loading || !!usernameError}
+            disabled={loading}
             className="w-full h-12 text-base gradient-primary text-primary-foreground mt-2"
           >
             {loading
