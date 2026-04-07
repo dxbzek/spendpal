@@ -44,7 +44,7 @@ const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, recurringMode }: Props) => {
   const { accounts, transactions, goals, addTransaction, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
-  const { currency } = useCurrency();
+  const { currency, fmt } = useCurrency();
   const { getCategoriesForType, refresh: refreshCategories } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -297,7 +297,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     ? (loanTotal || perInstallment * totalInst)
     : perInstallment;
   const remainingInstCount = hasInstallments ? Math.max(0, totalInst - currentInst) : 0;
-  const remainingBalance = remainingInstCount * perInstallment;
+  const remainingBalance = Math.round(remainingInstCount * perInstallment * 100) / 100;
   const totalAmount = displayTotal;
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
@@ -409,10 +409,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       <div className="bg-primary/5 rounded-lg p-2.5 text-center">
                         <p className="text-xs text-muted-foreground">Total Cost</p>
                         <p className="text-sm font-heading text-foreground">
-                          {totalAmount.toLocaleString()} {currency} ({currentInstallment}/{totalInstallments})
+                          {fmt(totalAmount)} ({currentInstallment}/{totalInstallments})
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Remaining: {remainingBalance.toLocaleString()} {currency} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
+                          Remaining: {fmt(remainingBalance)} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
                         </p>
                       </div>
                     )}

@@ -130,7 +130,7 @@ const Accounts = () => {
       <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-5">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Total Net Worth</p>
         <p className={`text-3xl font-bold font-heading ${netWorth >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-          {mask(fmt(Math.abs(netWorth)))}
+          {netWorth < 0 ? '-' : ''}{mask(fmt(Math.abs(netWorth)))}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           {accounts.length} account{accounts.length !== 1 ? 's' : ''}
