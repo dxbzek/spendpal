@@ -16,7 +16,7 @@ interface Props {
   editGoal?: Goal | null;
 }
 
-const CUSTOM_GOAL_TYPE = CUSTOM_GOAL_TYPE as const;
+const CUSTOM_GOAL_TYPE = '__custom__' as const;
 
 const GOAL_TYPES = [
   { name: 'Emergency', icon: '🛡️' },
