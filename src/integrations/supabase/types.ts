@@ -204,6 +204,9 @@ export type Database = {
           currency: string
           display_name: string | null
           id: string
+          notify_email: boolean
+          notify_sms: boolean
+          phone_number: string | null
           updated_at: string
           user_id: string
         }
@@ -213,6 +216,9 @@ export type Database = {
           currency?: string
           display_name?: string | null
           id?: string
+          notify_email?: boolean
+          notify_sms?: boolean
+          phone_number?: string | null
           updated_at?: string
           user_id: string
         }
@@ -222,6 +228,9 @@ export type Database = {
           currency?: string
           display_name?: string | null
           id?: string
+          notify_email?: boolean
+          notify_sms?: boolean
+          phone_number?: string | null
           updated_at?: string
           user_id?: string
         }

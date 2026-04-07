@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
 import { useNavigate } from 'react-router-dom';
@@ -348,6 +348,80 @@ const DangerZoneCard = () => {
   );
 };
 
+const NotificationsCard = ({ userId }: { userId: string }) => {
+  const [notifyEmail, setNotifyEmail] = useState(false);
+  const [notifySms, setNotifySms] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.from('profiles').select('notify_email, notify_sms, phone_number').eq('user_id', userId).single().then(({ data }) => {
+      if (data) {
+        setNotifyEmail(data.notify_email ?? false);
+        setNotifySms(data.notify_sms ?? false);
+        setPhone(data.phone_number ?? '');
+      }
+    });
+  }, [userId]);
+
+  const handleSave = async () => {
+    if (notifySms && phone && !/^\+[1-9]\d{6,14}$/.test(phone)) {
+      toast.error('Enter a valid phone number in international format, e.g. +971501234567');
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from('profiles').update({
+      notify_email: notifyEmail,
+      notify_sms: notifySms,
+      phone_number: phone.trim() || null,
+    }).eq('user_id', userId);
+    if (error) {
+      toast.error('Failed to save notification settings');
+    } else {
+      toast.success('Notification settings saved!');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Email Alerts</p>
+          <p className="text-xs text-muted-foreground">Get budget alerts sent to your email</p>
+        </div>
+        <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">SMS / Text Alerts</p>
+          <p className="text-xs text-muted-foreground">Receive budget alerts as text messages</p>
+        </div>
+        <Switch checked={notifySms} onCheckedChange={setNotifySms} />
+      </div>
+
+      {notifySms && (
+        <div>
+          <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
+          <Input
+            type="tel"
+            placeholder="+971501234567"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            className="h-11"
+          />
+          <p className="text-xs text-muted-foreground mt-1">International format required (e.g. +971…)</p>
+        </div>
+      )}
+
+      <Button onClick={handleSave} disabled={saving} className="w-full h-11 gradient-primary text-primary-foreground">
+        {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save Notifications'}
+      </Button>
+    </div>
+  );
+};
+
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
@@ -573,6 +647,23 @@ const Settings = () => {
                 </Button>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Notifications */}
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Notifications</p>
+          <div className="bg-card rounded-2xl p-5 card-shadow mb-3">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                <Bell size={17} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Budget Alerts</p>
+                <p className="text-xs text-muted-foreground">Get notified by email or text when you approach or exceed a budget — even when the app is closed.</p>
+              </div>
+            </div>
+            <NotificationsCard userId={user!.id} />
           </div>
         </section>
 
