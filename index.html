@@ -31,7 +31,21 @@
 </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="app-shell-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;font-family:sans-serif;gap:12px">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2e9e6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+        <span style="color:#2e9e6b;font-size:14px">Loading…</span>
+      </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    <script>
+      window.addEventListener('error', function(e) {
+        var el = document.getElementById('app-shell-loader');
+        if (el) {
+          el.innerHTML = '<div style="max-width:400px;text-align:center;padding:24px"><p style="font-size:2rem">⚠️</p><p style="font-weight:600;margin:8px 0">Something went wrong</p><p style="color:#666;font-size:13px;word-break:break-all">' + e.message + '</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#2e9e6b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px">Reload</button></div>';
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

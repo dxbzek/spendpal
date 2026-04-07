@@ -12,6 +12,8 @@ Sentry.init({
   tracesSampleRate: 0.2,
 });
 
+document.getElementById('app-shell-loader')?.remove();
+
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <App />
