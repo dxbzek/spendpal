@@ -242,11 +242,16 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
     };
 
+    let txSucceeded: boolean;
     if (isEditing) {
-      await updateTransaction({ ...txData, id: editTransaction.id });
+      txSucceeded = await updateTransaction({ ...txData, id: editTransaction.id });
     } else {
-      await addTransaction(txData);
+      const result = await addTransaction(txData);
+      txSucceeded = result !== null;
     }
+
+    // Only allocate goal progress if the transaction was actually saved
+    if (!txSucceeded) return;
 
     const parsedGoalAmount = parseFloat(goalAllocationAmount);
     if (allocateToGoal && goalAllocationId && !isNaN(parsedGoalAmount) && parsedGoalAmount > 0) {

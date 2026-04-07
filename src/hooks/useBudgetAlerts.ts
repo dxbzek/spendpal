@@ -19,6 +19,14 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
       if (b.isFixed) return; // Fixed expenses always reach 100% — alerts are noise
       const pct = (b.spent / b.amount) * 100;
 
+      // Clear stale keys for thresholds the budget has fallen back below,
+      // so the alert re-fires if spending crosses the threshold again.
+      for (const threshold of THRESHOLDS) {
+        if (pct < threshold.pct) {
+          alerted.current.delete(`${b.id}-${threshold.pct}`);
+        }
+      }
+
       for (const threshold of THRESHOLDS) {
         const key = `${b.id}-${threshold.pct}`;
         if (pct >= threshold.pct && !alerted.current.has(key)) {

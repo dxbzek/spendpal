@@ -30,12 +30,23 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const { addBudget, updateBudget, budgets, transactions } = useFinance();
   const { currency, fmt } = useCurrency();
   const isEdit = !!editBudget;
-  const [category, setCategory] = useState(editBudget?.category || '');
-  const [amount, setAmount] = useState(editBudget?.amount?.toString() || '');
-  const [period, setPeriod] = useState<'monthly' | 'weekly'>(editBudget?.period || 'monthly');
+  const [category, setCategory] = useState('');
+  const [amount, setAmount] = useState('');
+  const [period, setPeriod] = useState<'monthly' | 'weekly'>('monthly');
   const [rollover, setRollover] = useState(false);
-  const [isFixed, setIsFixed] = useState(editBudget?.isFixed ?? false);
+  const [isFixed, setIsFixed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Reset form whenever the dialog opens or the target budget changes
+  useEffect(() => {
+    if (open) {
+      setCategory(editBudget?.category || '');
+      setAmount(editBudget?.amount?.toString() || '');
+      setPeriod(editBudget?.period || 'monthly');
+      setIsFixed(editBudget?.isFixed ?? false);
+      setRollover(false);
+    }
+  }, [open, editBudget]);
 
   const selectedCat = EXPENSE_CATEGORIES.find(c => c.name === category);
 

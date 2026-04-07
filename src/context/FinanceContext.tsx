@@ -118,11 +118,11 @@ interface FinanceContextType {
   updateAccount: (account: Account) => Promise<void>;
   removeAccount: (id: string) => Promise<void>;
   // Transactions
-  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<Transaction | null>;
   addTransfer: (transfer: TransferInput) => Promise<void>;
   bulkAddTransactions: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
   bulkUpdateCategory: (ids: string[], category: string, categoryIcon: string) => Promise<void>;
-  updateTransaction: (tx: Transaction) => Promise<void>;
+  updateTransaction: (tx: Transaction) => Promise<boolean>;
   removeTransaction: (id: string) => Promise<void>;
   bulkRemoveTransactions: (ids: string[]) => Promise<void>;
   // Budgets
@@ -230,8 +230,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ─── TRANSACTIONS ─────────────────────────────────────────────────────────
 
-  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>) => {
-    if (!user) return;
+  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>): Promise<Transaction | null> => {
+    if (!user) return null;
     const { data, error } = await supabase.from('transactions').insert({
       user_id: user.id,
       account_id: tx.accountId,
@@ -249,7 +249,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
     }).select().single();
-    if (error) { toast.error(`Failed to add transaction: ${error.message}`); return; }
+    if (error) { toast.error(`Failed to add transaction: ${error.message}`); return null; }
 
     const mapped = mapTransaction(data);
     if (mapped) {
@@ -271,6 +271,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         a.id === tx.accountId ? { ...a, balance: Number(freshAccount.balance) } : a
       ));
     }
+    return mapped ?? null;
   }, [user]);
 
   const addTransfer = useCallback(async (transfer: TransferInput) => {
@@ -364,7 +365,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, [user]);
 
-  const updateTransaction = useCallback(async (tx: Transaction) => {
+  const updateTransaction = useCallback(async (tx: Transaction): Promise<boolean> => {
     // Capture old accountId before update to refresh both accounts if it changed
     const oldTx = transactions.find(t => t.id === tx.id);
 
@@ -383,7 +384,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
     }).eq('id', tx.id);
-    if (error) { toast.error(`Failed to update transaction: ${error.message}`); return; }
+    if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
     setTransactions(prev => {
       const updated = prev.map(t => t.id === tx.id ? tx : t);
       setBudgets(b => {
@@ -403,6 +404,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return fresh ? { ...a, balance: Number(fresh.balance) } : a;
       }));
     }
+    return true;
   }, [transactions]);
 
   const removeTransaction = useCallback(async (id: string) => {
