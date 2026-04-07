@@ -41,12 +41,21 @@ async function invokeWithTimeout<T>(
   body: unknown,
   timeoutMs: number,
 ): Promise<T> {
+  // Explicitly fetch the session token — supabase.functions.invoke does not
+  // reliably auto-inject the Authorization header with newer publishable-key
+  // format clients, so we replicate the same pattern used by getAuthHeaders().
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Please sign in to use AI features');
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const { data, error } = await supabase.functions.invoke<T>(fnName, {
       body,
       signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     });
     if (error) {
       // FunctionsHttpError has a context property with the response
