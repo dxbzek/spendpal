@@ -19,6 +19,30 @@ interface CurrencyContextType {
 const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 const EXCHANGE_API = 'https://open.er-api.com/v6/latest';
+const RATE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function rateCacheKey(base: string, target: string) {
+  return `spendpal_rate_${base}_${target}`;
+}
+
+function getCachedRate(base: string, target: string): { rate: number; fresh: boolean } | null {
+  try {
+    const raw = localStorage.getItem(rateCacheKey(base, target));
+    if (!raw) return null;
+    const { rate, timestamp } = JSON.parse(raw) as { rate: number; timestamp: number };
+    return { rate, fresh: Date.now() - timestamp < RATE_CACHE_TTL_MS };
+  } catch {
+    return null;
+  }
+}
+
+function setCachedRate(base: string, target: string, rate: number) {
+  try {
+    localStorage.setItem(rateCacheKey(base, target), JSON.stringify({ rate, timestamp: Date.now() }));
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -42,20 +66,45 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setSecondaryRate(secondaryCurrency === currency ? 1 : null);
       return;
     }
+
+    // Use fresh cache if available — skip network request
+    const cached = getCachedRate(currency, secondaryCurrency);
+    if (cached?.fresh) {
+      setSecondaryRate(cached.rate);
+      return;
+    }
+
     const controller = new AbortController();
     (async () => {
       try {
         const res = await fetch(`${EXCHANGE_API}/${currency}`, { signal: controller.signal });
+
+        if (res.status === 429) {
+          // Rate-limited — fall back to stale cache if available
+          if (cached) {
+            setSecondaryRate(cached.rate);
+            toast.warning('Exchange rate API rate-limited. Using cached rate.');
+          } else {
+            setSecondaryRate(null);
+            toast.warning('Exchange rate temporarily unavailable.');
+          }
+          return;
+        }
+
         if (!res.ok) {
-          setSecondaryRate(null);
+          setSecondaryRate(cached?.rate ?? null);
           toast.warning('Could not fetch exchange rates. Secondary currency display unavailable.');
           return;
         }
         const data = await res.json() as { rates?: Record<string, number> };
-        setSecondaryRate(data.rates?.[secondaryCurrency] ?? null);
+        const rate = data.rates?.[secondaryCurrency] ?? null;
+        if (rate !== null) {
+          setCachedRate(currency, secondaryCurrency, rate);
+        }
+        setSecondaryRate(rate);
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
-          setSecondaryRate(null);
+          setSecondaryRate(cached?.rate ?? null);
           toast.warning('Could not fetch exchange rates. Secondary currency display unavailable.');
         }
       }

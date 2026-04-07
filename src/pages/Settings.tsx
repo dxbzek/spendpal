@@ -361,6 +361,7 @@ const Settings = () => {
   const [uploading, setUploading] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState(() => localStorage.getItem('spendpal_monthly_income') || '');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -608,7 +609,7 @@ const Settings = () => {
               Glossary & FAQ
             </button>
 
-            <button onClick={signOut}
+            <button onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive/10 transition-colors">
               <div className="w-8 h-8 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
                 <LogOut size={15} className="text-destructive" />
@@ -621,6 +622,19 @@ const Settings = () => {
         {/* Danger Zone */}
         <DangerZoneCard />
       </div>
+
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogDescription>You will be returned to the sign-in screen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={signOut} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Sign Out</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

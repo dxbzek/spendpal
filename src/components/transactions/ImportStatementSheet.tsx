@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -11,6 +12,16 @@ import { Upload, FileText, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+// Zod schema for AI-returned rows — validates before inserting to DB
+const AIRowSchema = z.object({
+  merchant: z.string().min(1),
+  amount: z.number().positive(),
+  date: z.string().min(1),
+  category: z.string().min(1),
+  categoryIcon: z.string().default('💳'),
+  type: z.enum(['expense', 'income']),
+});
 
 interface Props {
   open: boolean;
@@ -249,13 +260,28 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     const results = await categorizeStatement(textToProcess);
     if (results === null) return; // fetch/network error already shown by useAI
     if (results.length > 0) {
-      const rows = results.map((r: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
-        const normalized = { ...r, date: normalizeDate(r.date) };
+      const rows: ParsedRow[] = [];
+      let invalidCount = 0;
+      for (const r of results) {
+        const parsed = AIRowSchema.safeParse(r);
+        if (!parsed.success) {
+          invalidCount++;
+          logger.error('AI returned invalid row', { row: r, error: parsed.error.issues });
+          continue;
+        }
+        const normalized = { ...parsed.data, date: normalizeDate(parsed.data.date) };
         const isDup = isDuplicateTransaction(normalized);
-        return { ...normalized, selected: !isDup, isDuplicate: isDup };
-      });
+        rows.push({ ...normalized, selected: !isDup, isDuplicate: isDup });
+      }
+      if (invalidCount > 0) {
+        toast.warning(`${invalidCount} row${invalidCount > 1 ? 's' : ''} skipped — AI returned invalid data`);
+      }
+      if (rows.length === 0) {
+        toast.error('No valid transactions found after parsing.');
+        return;
+      }
       setParsed(rows);
-      const dupCount = rows.filter((r: ParsedRow) => r.isDuplicate).length;
+      const dupCount = rows.filter(r => r.isDuplicate).length;
       if (dupCount > 0) {
         toast.warning(`${dupCount} potential duplicate${dupCount > 1 ? 's' : ''} detected and deselected`);
       }
@@ -272,6 +298,11 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const handleImport = async () => {
     const selected = parsed.filter(r => r.selected);
     if (selected.length === 0) { toast.error('No transactions selected'); return; }
+
+    const selectedDupes = selected.filter(r => r.isDuplicate);
+    if (selectedDupes.length > 0) {
+      toast.warning(`Importing ${selectedDupes.length} row${selectedDupes.length > 1 ? 's' : ''} flagged as potential duplicates`);
+    }
 
     await bulkAddTransactions(selected.map(r => ({
       type: r.type,

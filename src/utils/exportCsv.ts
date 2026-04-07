@@ -25,6 +25,8 @@ export const exportTransactionsCsv = (transactions: Transaction[], accounts: { i
   const link = document.createElement('a');
   link.href = url;
   link.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };

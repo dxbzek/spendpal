@@ -43,6 +43,11 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const handleSubmit = async () => {
     if (!name.trim() || submitting) return;
     const parsedBalance = parseFloat(balance) || 0;
+    // For credit accounts, credit limit is required
+    if (type === 'credit' && !creditLimit.trim()) {
+      toast.error('Credit limit is required for credit accounts');
+      return;
+    }
     const parsedCreditLimit = type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined;
     // For non-credit accounts, disallow negative balances
     if (type !== 'credit' && parsedBalance < 0) { toast.error('Balance cannot be negative'); return; }

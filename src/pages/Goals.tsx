@@ -27,10 +27,11 @@ function saveLog(id: string, log: Contribution[]) {
 }
 
 const Goals = () => {
-  const { goals, transactions, accounts, addGoalProgress, removeGoal, updateGoal, loading } = useFinance();
+  const { goals, transactions, accounts, addGoalProgress, withdrawGoalProgress, removeGoal, updateGoal, loading } = useFinance();
   const { fmt } = useCurrency();
   const { hidden, mask } = useBalanceMask();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
+  const [progressMode, setProgressMode] = useState<'add' | 'withdraw'>('add');
   const [progressAmount, setProgressAmount] = useState('');
   const [progressNote, setProgressNote] = useState('');
   const [showLog, setShowLog] = useState<string | null>(null);
@@ -70,14 +71,19 @@ const Goals = () => {
     if (!progressGoalId || !progressAmount) return;
     const amount = parseFloat(progressAmount);
     if (isNaN(amount) || amount <= 0) return;
-    await addGoalProgress(progressGoalId, amount);
-    // Save to contribution log
-    const log = loadLog(progressGoalId);
-    log.unshift({ amount, note: progressNote.trim(), date: new Date().toISOString() });
-    saveLog(progressGoalId, log);
+    if (progressMode === 'withdraw') {
+      await withdrawGoalProgress(progressGoalId, amount);
+    } else {
+      await addGoalProgress(progressGoalId, amount);
+      // Save to contribution log (deposits only)
+      const log = loadLog(progressGoalId);
+      log.unshift({ amount, note: progressNote.trim(), date: new Date().toISOString() });
+      saveLog(progressGoalId, log);
+    }
     setProgressGoalId(null);
     setProgressAmount('');
     setProgressNote('');
+    setProgressMode('add');
   };
 
   const activeGoals = goals.filter(g => g.status === 'active');
@@ -223,7 +229,7 @@ const Goals = () => {
                           >
                             Log
                           </button>
-                          <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); }}
+                          <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); setProgressMode('add'); }}
                             className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add</button>
                         </>
                       )}
@@ -296,22 +302,41 @@ const Goals = () => {
         )}
       </div>
 
-      <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) { setProgressGoalId(null); setProgressAmount(''); setProgressNote(''); } }}>
+      <Dialog open={!!progressGoalId} onOpenChange={(open) => { if (!open) { setProgressGoalId(null); setProgressAmount(''); setProgressNote(''); setProgressMode('add'); } }}>
         <DialogContent className="max-w-sm mx-auto">
           <DialogHeader>
-            <DialogTitle>Add Progress</DialogTitle>
-            <p className="text-sm text-muted-foreground">Enter the amount to add to your goal.</p>
+            <DialogTitle>{progressMode === 'withdraw' ? 'Withdraw from Goal' : 'Add Progress'}</DialogTitle>
+            <p className="text-sm text-muted-foreground">{progressMode === 'withdraw' ? 'Enter the amount to withdraw from your goal.' : 'Enter the amount to add to your goal.'}</p>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            {/* Deposit / Withdraw toggle */}
+            <div className="flex p-0.5 bg-muted rounded-xl">
+              <button
+                onClick={() => setProgressMode('add')}
+                className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${progressMode === 'add' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+              >
+                Deposit
+              </button>
+              <button
+                onClick={() => setProgressMode('withdraw')}
+                className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${progressMode === 'withdraw' ? 'bg-card shadow-sm text-destructive' : 'text-muted-foreground'}`}
+              >
+                Withdraw
+              </button>
+            </div>
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Amount</label>
               <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} className="text-lg h-12" />
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
-              <Input placeholder="e.g. Monthly savings transfer" value={progressNote} onChange={e => setProgressNote(e.target.value)} className="h-10" />
-            </div>
-            <Button onClick={handleAddProgress} className="w-full gradient-primary text-primary-foreground">Save Progress</Button>
+            {progressMode === 'add' && (
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Note (optional)</label>
+                <Input placeholder="e.g. Monthly savings transfer" value={progressNote} onChange={e => setProgressNote(e.target.value)} className="h-10" />
+              </div>
+            )}
+            <Button onClick={handleAddProgress} className={`w-full ${progressMode === 'withdraw' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'gradient-primary text-primary-foreground'}`}>
+              {progressMode === 'withdraw' ? 'Withdraw' : 'Save Progress'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

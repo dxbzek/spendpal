@@ -118,11 +118,11 @@ interface FinanceContextType {
   updateAccount: (account: Account) => Promise<void>;
   removeAccount: (id: string) => Promise<void>;
   // Transactions
-  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<Transaction | null>;
   addTransfer: (transfer: TransferInput) => Promise<void>;
   bulkAddTransactions: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
   bulkUpdateCategory: (ids: string[], category: string, categoryIcon: string) => Promise<void>;
-  updateTransaction: (tx: Transaction) => Promise<void>;
+  updateTransaction: (tx: Transaction) => Promise<boolean>;
   removeTransaction: (id: string) => Promise<void>;
   bulkRemoveTransactions: (ids: string[]) => Promise<void>;
   // Budgets
@@ -135,6 +135,7 @@ interface FinanceContextType {
   updateGoal: (goal: Goal) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
   addGoalProgress: (goalId: string, amount: number) => Promise<void>;
+  withdrawGoalProgress: (goalId: string, amount: number) => Promise<void>;
   // Refresh
   refresh: () => Promise<void>;
 }
@@ -229,8 +230,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ─── TRANSACTIONS ─────────────────────────────────────────────────────────
 
-  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>) => {
-    if (!user) return;
+  const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>): Promise<Transaction | null> => {
+    if (!user) return null;
     const { data, error } = await supabase.from('transactions').insert({
       user_id: user.id,
       account_id: tx.accountId,
@@ -248,7 +249,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
     }).select().single();
-    if (error) { toast.error(`Failed to add transaction: ${error.message}`); return; }
+    if (error) { toast.error(`Failed to add transaction: ${error.message}`); return null; }
 
     const mapped = mapTransaction(data);
     if (mapped) {
@@ -270,6 +271,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         a.id === tx.accountId ? { ...a, balance: Number(freshAccount.balance) } : a
       ));
     }
+    return mapped ?? null;
   }, [user]);
 
   const addTransfer = useCallback(async (transfer: TransferInput) => {
@@ -363,7 +365,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, [user]);
 
-  const updateTransaction = useCallback(async (tx: Transaction) => {
+  const updateTransaction = useCallback(async (tx: Transaction): Promise<boolean> => {
+    // Capture old accountId before update to refresh both accounts if it changed
+    const oldTx = transactions.find(t => t.id === tx.id);
+
     const { error } = await supabase.from('transactions').update({
       account_id: tx.accountId,
       type: tx.type,
@@ -379,7 +384,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
     }).eq('id', tx.id);
-    if (error) { toast.error(`Failed to update transaction: ${error.message}`); return; }
+    if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
     setTransactions(prev => {
       const updated = prev.map(t => t.id === tx.id ? tx : t);
       setBudgets(b => {
@@ -388,10 +393,25 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       return updated;
     });
-  }, []);
+
+    // Refresh balances for the new account and the old one (if account changed)
+    const accountIdsToRefresh = [...new Set([tx.accountId, oldTx?.accountId].filter(Boolean) as string[])];
+    const { data: freshAccounts } = await supabase
+      .from('accounts').select('id, balance').in('id', accountIdsToRefresh);
+    if (freshAccounts) {
+      setAccounts(prev => prev.map(a => {
+        const fresh = freshAccounts.find(f => f.id === a.id);
+        return fresh ? { ...a, balance: Number(fresh.balance) } : a;
+      }));
+    }
+    return true;
+  }, [transactions]);
 
   const removeTransaction = useCallback(async (id: string) => {
-    const tx = transactions.find(t => t.id === id);
+    // Fetch the account_id from DB rather than relying on potentially stale closure state
+    const { data: txRow } = await supabase
+      .from('transactions').select('account_id').eq('id', id).single();
+
     const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) { toast.error(`Failed to delete transaction: ${error.message}`); return; }
 
@@ -405,16 +425,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     // Refresh account balance from DB (updated atomically by DB trigger)
-    if (tx) {
+    if (txRow?.account_id) {
       const { data: freshAccount } = await supabase
-        .from('accounts').select('balance').eq('id', tx.accountId).single();
+        .from('accounts').select('balance').eq('id', txRow.account_id).single();
       if (freshAccount) {
         setAccounts(prev => prev.map(a =>
-          a.id === tx.accountId ? { ...a, balance: Number(freshAccount.balance) } : a
+          a.id === txRow.account_id ? { ...a, balance: Number(freshAccount.balance) } : a
         ));
       }
     }
-  }, [transactions]);
+  }, []);
 
   const bulkRemoveTransactions = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -566,19 +586,38 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (isNowComplete) toast.success(`🎉 Goal "${goal.name}" completed!`);
   }, [goals]);
 
+  const withdrawGoalProgress = useCallback(async (goalId: string, amount: number) => {
+    if (amount <= 0) { toast.error('Withdrawal amount must be greater than zero'); return; }
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const newSaved = Math.max(0, goal.savedAmount - amount);
+    const wasCompleted = goal.status === 'completed';
+    const isNowIncomplete = wasCompleted && newSaved < goal.targetAmount;
+    const updates: Record<string, unknown> = { saved_amount: newSaved };
+    if (isNowIncomplete) updates.status = 'active';
+    const { error } = await supabase.from('goals').update(updates).eq('id', goalId);
+    if (error) { toast.error(`Failed to withdraw from goal: ${error.message}`); return; }
+    setGoals(prev => prev.map(g =>
+      g.id === goalId
+        ? { ...g, savedAmount: newSaved, status: isNowIncomplete ? 'active' : g.status }
+        : g
+    ));
+    toast.success(`Withdrew ${amount} from "${goal.name}"`);
+  }, [goals]);
+
   const contextValue = useMemo(() => ({
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
     addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
-    addGoal, updateGoal, removeGoal, addGoalProgress,
+    addGoal, updateGoal, removeGoal, addGoalProgress, withdrawGoalProgress,
     refresh: fetchAll,
   }), [
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
     addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
-    addGoal, updateGoal, removeGoal, addGoalProgress,
+    addGoal, updateGoal, removeGoal, addGoalProgress, withdrawGoalProgress,
     fetchAll,
   ]);
 

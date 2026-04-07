@@ -7,6 +7,7 @@ import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import type { Transaction } from '@/types/finance';
 import { EditTxContext } from '@/context/EditTxContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 export { useEditTransaction } from '@/context/EditTxContext';
 
 const AppLayout = () => {
@@ -44,15 +45,17 @@ const AppLayout = () => {
         <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto">
           <main className={isMobile ? 'pb-28' : 'pb-8'}>
             <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-              >
-                <Outlet />
-              </motion.div>
+              <ErrorBoundary>
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                >
+                  <Outlet />
+                </motion.div>
+              </ErrorBoundary>
             </AnimatePresence>
           </main>
         </div>

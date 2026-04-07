@@ -287,14 +287,29 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       requestBody.stream = false;
     }
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    const groqController = new AbortController();
+    const groqTimeout = setTimeout(() => groqController.abort(), 25000);
+    let response: Response;
+    try {
+      response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: groqController.signal,
+      });
+    } catch (fetchErr) {
+      clearTimeout(groqTimeout);
+      if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+        return new Response(JSON.stringify({ error: "AI request timed out. Please try again." }), {
+          status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw fetchErr;
+    }
+    clearTimeout(groqTimeout);
 
     if (!response.ok) {
       if (response.status === 429) {
