@@ -1,5 +1,6 @@
 import { PageSpinner } from '@/components/ui/spinner';
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
@@ -33,17 +34,33 @@ const Transactions = () => {
   const { hidden, mask } = useBalanceMask();
   const { openEditSheet } = useEditTransaction();
   const { categories: allCategories } = useCategories();
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('q') || '');
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [filterType, setFilterType] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterAccount, setFilterAccount] = useState<string>('all');
+
+  // Filter values derived from URL — enables shareable/persistent filter state
+  const filterType = searchParams.get('type') || 'all';
+  const filterCategory = searchParams.get('category') || 'all';
+  const filterAccount = searchParams.get('account') || 'all';
+  const dateFrom = searchParams.get('from') || '';
+  const dateTo = searchParams.get('to') || '';
+  const search = searchParams.get('q') || '';
+
+  const setFilter = useCallback((key: string, value: string) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!value || value === 'all' || value === '') {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const [showAccountFilter, setShowAccountFilter] = useState(false);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -73,15 +90,19 @@ const Transactions = () => {
     });
     setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
 
-    const timers = ids.map(id => {
-      const t = setTimeout(async () => {
-        await removeTransaction(id);
-        setPendingDeleteIds(prev => { const n = new Set(prev); n.delete(id); return n; });
-        pendingTimers.current.delete(id);
-      }, UNDO_DELAY_MS);
-      pendingTimers.current.set(id, t);
-      return t;
-    });
+    // Use a single timer for the batch — ensures transfer pairs are deleted atomically
+    const t = setTimeout(async () => {
+      if (ids.length > 1) {
+        await bulkRemoveTransactions(ids);
+      } else {
+        await removeTransaction(ids[0]);
+      }
+      setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
+      ids.forEach(id => pendingTimers.current.delete(id));
+    }, UNDO_DELAY_MS);
+
+    // Store the same timer reference under each ID so Undo can cancel it
+    ids.forEach(id => pendingTimers.current.set(id, t));
 
     toast(label, {
       duration: UNDO_DELAY_MS,
@@ -89,15 +110,14 @@ const Transactions = () => {
         label: 'Undo',
         onClick: () => {
           ids.forEach(id => {
-            const t = pendingTimers.current.get(id);
-            if (t) { clearTimeout(t); pendingTimers.current.delete(id); }
+            const timer = pendingTimers.current.get(id);
+            if (timer) { clearTimeout(timer); pendingTimers.current.delete(id); }
           });
           setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
-          timers.forEach(clearTimeout);
         },
       },
     });
-  }, [removeTransaction]);
+  }, [removeTransaction, bulkRemoveTransactions]);
 
   // Detect duplicates: same merchant + amount + type within 24h (O(n) algorithm)
   const duplicateIds = useMemo(() => detectDuplicates(transactions), [transactions]);
@@ -380,14 +400,14 @@ const Transactions = () => {
           <Input placeholder="Search merchant, category, notes…" value={searchInput} onChange={e => {
             setSearchInput(e.target.value);
             if (searchDebounce.current) clearTimeout(searchDebounce.current);
-            searchDebounce.current = setTimeout(() => setSearch(e.target.value), 250);
+            searchDebounce.current = setTimeout(() => setFilter('q', e.target.value), 250);
           }} className="pl-10 bg-card" />
         </div>
 
         <div className="relative mb-3">
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none pr-8">
             {['all', 'expense', 'income', 'transfer'].map(f => (
-              <button key={f} onClick={() => setFilterType(f)}
+              <button key={f} onClick={() => setFilter('type', f)}
                 className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                   filterType === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                 }`}>
@@ -421,14 +441,14 @@ const Transactions = () => {
 
         {showAccountFilter && (
           <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 flex-wrap">
-            <button onClick={() => { setFilterAccount('all'); setShowAccountFilter(false); }}
+            <button onClick={() => { setFilter('account', 'all'); setShowAccountFilter(false); }}
               className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                 filterAccount === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
               }`}>
               All Accounts
             </button>
             {accounts.map(acc => (
-              <button key={acc.id} onClick={() => { setFilterAccount(acc.id); setShowAccountFilter(false); }}
+              <button key={acc.id} onClick={() => { setFilter('account', acc.id); setShowAccountFilter(false); }}
                 className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                   filterAccount === acc.id ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
                 }`}>
@@ -440,14 +460,14 @@ const Transactions = () => {
 
         {showCategoryFilter && (
           <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 flex-wrap">
-            <button onClick={() => { setFilterCategory('all'); setShowCategoryFilter(false); }}
+            <button onClick={() => { setFilter('category', 'all'); setShowCategoryFilter(false); }}
               className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                 filterCategory === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
               }`}>
               All Categories
             </button>
             {allCategories.map(cat => (
-              <button key={cat.name} onClick={() => { setFilterCategory(cat.name); setShowCategoryFilter(false); }}
+              <button key={cat.name} onClick={() => { setFilter('category', cat.name); setShowCategoryFilter(false); }}
                 className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                   filterCategory === cat.name ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
                 }`}>
@@ -469,7 +489,7 @@ const Transactions = () => {
               ].map(preset => (
                 <button
                   key={preset.label}
-                  onClick={() => { setDateFrom(preset.from); setDateTo(preset.to); }}
+                  onClick={() => { setFilter('from', preset.from); setFilter('to', preset.to); }}
                   className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
                     dateFrom === preset.from && dateTo === preset.to
                       ? 'bg-primary text-primary-foreground'
@@ -485,7 +505,7 @@ const Transactions = () => {
                 <input
                   type="date"
                   value={dateFrom}
-                  onChange={e => setDateFrom(e.target.value)}
+                  onChange={e => setFilter('from', e.target.value)}
                   className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
@@ -494,13 +514,13 @@ const Transactions = () => {
                 <input
                   type="date"
                   value={dateTo}
-                  onChange={e => setDateTo(e.target.value)}
+                  onChange={e => setFilter('to', e.target.value)}
                   className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
               {(dateFrom || dateTo) && (
                 <button
-                  onClick={() => { setDateFrom(''); setDateTo(''); }}
+                  onClick={() => { setFilter('from', ''); setFilter('to', ''); }}
                   className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs hover:bg-destructive/10 hover:text-destructive transition-colors"
                 >
                   <X size={12} /> Clear

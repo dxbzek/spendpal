@@ -121,7 +121,7 @@ export const useAI = () => {
         method: 'POST',
         headers,
         body: JSON.stringify({ type: 'summary', data }),
-      }, 30_000);
+      }, 60_000);
 
       if (!resp.ok) {
         const err = await resp.json() as { error?: string };
@@ -177,7 +177,7 @@ export const useAI = () => {
       const body = await invokeWithTimeout<{ result?: string }>(
         'ai-finance',
         { type: 'budget-suggestions', data },
-        25_000,
+        60_000,
       );
       const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
       if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
@@ -195,25 +195,28 @@ export const useAI = () => {
   const categorizeStatement = useCallback(async (text: string): Promise<unknown[] | null> => {
     setLoading(true);
 
-    const attempt = () =>
+    const makeAttempt = () =>
       invokeWithTimeout<{ result?: string }>(
         'ai-finance',
         { type: 'categorize-csv', data: text },
-        45_000,
+        60_000,
       );
 
+    const isNetworkError = (err: unknown) =>
+      err instanceof TypeError ||
+      (err instanceof Error && err.message.includes('Failed to fetch'));
+
     try {
-      let body: { result?: string };
-      try {
-        body = await attempt();
-      } catch (firstErr) {
-        // Retry once on network-level failures (e.g. cold-start drop, transient error)
-        const isNetwork =
-          firstErr instanceof TypeError ||
-          (firstErr instanceof Error && firstErr.message.includes('Failed to fetch'));
-        if (!isNetwork) throw firstErr;
-        await new Promise(r => setTimeout(r, 2000));
-        body = await attempt();
+      let body: { result?: string } = { result: undefined };
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          body = await makeAttempt();
+          break; // success — exit retry loop
+        } catch (err) {
+          if (!isNetworkError(err) || attempt === 2) throw err;
+          // Exponential backoff: 2s, 4s
+          await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempt)));
+        }
       }
 
       const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
@@ -235,7 +238,7 @@ export const useAI = () => {
       const body = await invokeWithTimeout<{ result?: unknown }>(
         'ai-finance',
         { type: 'budget-advisor', data },
-        25_000,
+        60_000,
       );
       const result = body.result;
       let parsed: BudgetAnalysis | null = null;

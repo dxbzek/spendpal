@@ -33,14 +33,14 @@ function simulateStrategy(
   debts: Array<{ id: string; owed: number; apr: number; minPay: number }>,
   order: typeof debts,
   extraBudget: number
-): { totalInterest: number; months: number } {
+): { totalInterest: number; months: number; hitCap: boolean } {
   // Start with min payments for all, put extra towards priority card
   const states = debts.map(d => ({ ...d, balance: d.owed }));
   const minBudget = debts.reduce((s, d) => s + d.minPay, 0);
   const totalBudget = minBudget + extraBudget;
 
   let month = 0;
-  let totalInt = 0;
+  let prevTotalBalance = debts.reduce((s, d) => s + d.owed, 0);
 
   while (states.some(s => s.balance > 0) && month < 600) {
     month++;
@@ -60,9 +60,7 @@ function simulateStrategy(
       if (state.balance <= 0) continue;
       if (state.id === priorityId) continue;
       const pay = Math.min(state.minPay, state.balance);
-      const beforeBalance = state.balance;
       state.balance = Math.max(0, state.balance - pay);
-      totalInt += beforeBalance - state.balance - 0; // no int tracking needed, already added
       remaining -= pay;
     }
 
@@ -72,12 +70,20 @@ function simulateStrategy(
       const pay = Math.min(remaining, priorityState.balance);
       priorityState.balance = Math.max(0, priorityState.balance - pay);
     }
+
+    // Non-convergence guard: if total balance is not decreasing, payments can't cover interest
+    const newTotalBalance = states.reduce((s, st) => s + Math.max(0, st.balance), 0);
+    if (month > 1 && newTotalBalance >= prevTotalBalance) {
+      return { totalInterest: Infinity, months: Infinity, hitCap: true };
+    }
+    prevTotalBalance = newTotalBalance;
   }
 
+  const hitCap = month >= 600;
   // Compute total interest: (total paid) - (original principal)
   const totalPaid = totalBudget * month - states.reduce((s, st) => s + Math.max(0, st.balance), 0);
   const originalPrincipal = debts.reduce((s, d) => s + d.owed, 0);
-  return { totalInterest: Math.max(0, totalPaid - originalPrincipal), months: month };
+  return { totalInterest: Math.max(0, totalPaid - originalPrincipal), months: month, hitCap };
 }
 
 const Debt = () => {
@@ -388,7 +394,7 @@ const Debt = () => {
                         className="h-8 text-sm bg-background"
                       />
                     </div>
-                    {avalancheResult && snowballResult && (
+                    {avalancheResult && snowballResult && !avalancheResult.hitCap && !snowballResult.hitCap && (
                       <div className="text-right shrink-0">
                         <p className="text-[10px] text-muted-foreground">Avalanche saves</p>
                         <p className="text-sm font-heading text-income">
@@ -453,19 +459,26 @@ const Debt = () => {
 
                   {/* Strategy result */}
                   {activeResult && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-accent/50 rounded-xl p-3 text-center">
-                        <p className="text-[11px] text-muted-foreground mb-0.5">Total interest</p>
-                        <p className="text-sm font-heading text-expense">{mask(fmt(activeResult.totalInterest))}</p>
+                    activeResult.hitCap ? (
+                      <div className="bg-destructive/10 rounded-xl p-3 text-center">
+                        <p className="text-xs text-expense font-semibold">Payments don't cover interest — increase monthly budget</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Add more to extra monthly budget above to make progress</p>
                       </div>
-                      <div className="bg-accent/50 rounded-xl p-3 text-center">
-                        <p className="text-[11px] text-muted-foreground mb-0.5">Debt free in</p>
-                        <p className="text-sm font-heading">{activeResult.months} mo</p>
-                        <p className="text-[10px] text-muted-foreground">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-accent/50 rounded-xl p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-0.5">Total interest</p>
+                          <p className="text-sm font-heading text-expense">{mask(fmt(activeResult.totalInterest))}</p>
+                        </div>
+                        <div className="bg-accent/50 rounded-xl p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-0.5">Debt free in</p>
+                          <p className="text-sm font-heading">{activeResult.months} mo</p>
+                          <p className="text-[10px] text-muted-foreground">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
+                        </div>
                       </div>
-                    </div>
+                    )
                   )}
-                  {otherResult && activeResult && (
+                  {otherResult && activeResult && !activeResult.hitCap && !otherResult.hitCap && (
                     <p className="text-[10px] text-muted-foreground text-center mt-2">
                       {strategyTab === 'avalanche'
                         ? `Snowball would take ${otherResult.months} mo and cost ${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} more`
