@@ -114,7 +114,7 @@ const AuthPage = () => {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 className="pr-10"
               />
@@ -128,7 +128,7 @@ const AuthPage = () => {
               </button>
             </div>
             {mode === 'signup' && (
-              <p className="text-xs text-muted-foreground mt-1">Minimum 6 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">Minimum 8 characters</p>
             )}
           </div>
           <Button

@@ -145,7 +145,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
-            <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
+            <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Period</label>

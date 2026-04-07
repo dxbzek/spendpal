@@ -180,7 +180,13 @@ export const useAI = () => {
         60_000,
       );
       const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
+      if (jsonMatch) {
+        const raw = JSON.parse(jsonMatch[0]);
+        if (!Array.isArray(raw)) return [];
+        return raw
+          .filter((s: unknown) => s && typeof (s as Record<string, unknown>).category === 'string' && typeof (s as Record<string, unknown>).suggestedAmount === 'number')
+          .map((s: Record<string, unknown>) => ({ category: s.category, suggestedAmount: s.suggestedAmount, reasoning: s.reasoning ?? '' }));
+      }
       return [];
     } catch (e: unknown) {
       logger.error('generateBudgetSuggestions failed', e);
@@ -250,6 +256,12 @@ export const useAI = () => {
       }
       if (!parsed) throw new Error('Unexpected response format from AI advisor');
 
+      // Validate required fields exist before using the cast
+      const REQUIRED_FIELDS = ['recommendedMethod', 'healthScore', 'healthBreakdown', 'insights', 'suggestedEnvelopes', 'simulation', 'dynamicAdjustments'] as const;
+      for (const k of REQUIRED_FIELDS) {
+        if (!(k in (parsed as object))) throw new Error(`AI response missing field: ${k}`);
+      }
+
       // Persist to advisor_sessions for history
       if (user) {
         const { error: saveError } = await supabase.from('advisor_sessions').insert({
@@ -283,12 +295,11 @@ export const useAI = () => {
       logger.error('Failed to fetch advisor history', error);
       return [];
     }
-    return (data ?? []).map(row => ({
-      id: row.id,
-      session_type: row.session_type,
-      result: row.result as unknown as BudgetAnalysis,
-      created_at: row.created_at,
-    }));
+    return (data ?? []).flatMap(row => {
+      const result = row.result as unknown as BudgetAnalysis;
+      if (!result || typeof result !== 'object' || !('recommendedMethod' in (result as object))) return [];
+      return [{ id: row.id, session_type: row.session_type, result, created_at: row.created_at }];
+    });
   }, [user]);
 
   const deleteAdvisorSession = useCallback(async (id: string): Promise<boolean> => {

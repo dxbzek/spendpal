@@ -92,13 +92,17 @@ const Transactions = () => {
 
     // Use a single timer for the batch — ensures transfer pairs are deleted atomically
     const t = setTimeout(async () => {
-      if (ids.length > 1) {
-        await bulkRemoveTransactions(ids);
-      } else {
-        await removeTransaction(ids[0]);
+      try {
+        if (ids.length > 1) {
+          await bulkRemoveTransactions(ids);
+        } else {
+          await removeTransaction(ids[0]);
+        }
+      } catch { /* errors are already toasted inside the context functions */ }
+      finally {
+        setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
+        ids.forEach(id => pendingTimers.current.delete(id));
       }
-      setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
-      ids.forEach(id => pendingTimers.current.delete(id));
     }, UNDO_DELAY_MS);
 
     // Store the same timer reference under each ID so Undo can cancel it

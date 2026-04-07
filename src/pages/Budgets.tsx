@@ -324,7 +324,8 @@ const Budgets = () => {
             {budgets.map(b => {
               const pct = b.amount ? Math.round((b.spent / b.amount) * 100) : 0;
               const remaining = b.amount - b.spent;
-              const dailyLeft = daysLeft > 0 ? remaining / daysLeft : 0;
+              const periodDays = b.period === 'weekly' ? 7 : daysLeft;
+              const dailyLeft = periodDays > 0 ? remaining / periodDays : 0;
               // Velocity for this budget
               const dailyRate = daysElapsed > 0 ? b.spent / daysElapsed : 0;
               const projected = b.spent <= b.amount
@@ -339,7 +340,7 @@ const Budgets = () => {
                       <span className="text-2xl shrink-0">{b.categoryIcon}</span>
                       <div>
                         <p className="text-sm font-semibold">{b.category}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{b.period} · {daysLeft}d left</p>
+                        <p className="text-xs text-muted-foreground capitalize">{b.period} · {b.period === 'weekly' ? '7' : daysLeft}d left</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
