@@ -326,7 +326,7 @@ const Goals = () => {
             </div>
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Amount</label>
-              <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} className="text-lg h-12" />
+              <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={progressAmount} onChange={e => setProgressAmount(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddProgress(); }} className="text-lg h-12" />
             </div>
             {progressMode === 'add' && (
               <div>

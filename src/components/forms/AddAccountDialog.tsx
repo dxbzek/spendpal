@@ -97,7 +97,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" maxLength={50} />
+              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} className="h-9 text-sm" maxLength={50} />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Type</label>
