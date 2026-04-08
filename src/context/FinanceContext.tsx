@@ -144,6 +144,7 @@ const FinanceContext = createContext<FinanceContextType | null>(null);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -151,7 +152,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
-    if (!user) { setLoading(false); return; }
+    if (!userId) { setLoading(false); return; }
     setLoading(true);
     try {
       const [accRes, txRes, bgtRes, goalRes] = await Promise.all([
@@ -184,16 +185,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   // ─── ACCOUNTS ─────────────────────────────────────────────────────────────
 
   const addAccount = useCallback(async (account: Omit<Account, 'id'>) => {
-    if (!user) return;
+    if (!userId) return;
     const { data, error } = await supabase.from('accounts').insert({
-      user_id: user.id,
+      user_id: userId,
       name: account.name,
       type: account.type,
       balance: account.balance,
@@ -206,7 +207,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (error) { toast.error(`Failed to add account: ${error.message}`); return; }
     const mapped = mapAccount(data);
     if (mapped) setAccounts(prev => [...prev, mapped]);
-  }, [user]);
+  }, [userId]);
 
   const updateAccount = useCallback(async (account: Account) => {
     const { error } = await supabase.from('accounts').update({
@@ -231,9 +232,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // ─── TRANSACTIONS ─────────────────────────────────────────────────────────
 
   const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>): Promise<Transaction | null> => {
-    if (!user) return null;
+    if (!userId) return null;
     const { data, error } = await supabase.from('transactions').insert({
-      user_id: user.id,
+      user_id: userId,
       account_id: tx.accountId,
       type: tx.type,
       amount: tx.amount,
@@ -272,13 +273,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ));
     }
     return mapped ?? null;
-  }, [user]);
+  }, [userId]);
 
   const addTransfer = useCallback(async (transfer: TransferInput) => {
-    if (!user) return;
+    if (!userId) return;
     const rows = [
       {
-        user_id: user.id,
+        user_id: userId,
         account_id: transfer.fromAccountId,
         type: 'expense' as const,
         amount: transfer.amount,
@@ -293,7 +294,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         current_installment: null,
       },
       {
-        user_id: user.id,
+        user_id: userId,
         account_id: transfer.toAccountId,
         type: 'income' as const,
         amount: transfer.amount,
@@ -331,12 +332,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return fresh ? { ...a, balance: Number(fresh.balance) } : a;
       }));
     }
-  }, [user]);
+  }, [userId]);
 
   const bulkAddTransactions = useCallback(async (txs: Omit<Transaction, 'id'>[]) => {
-    if (!user || txs.length === 0) return;
+    if (!userId || txs.length === 0) return;
     const rows = txs.map(tx => ({
-      user_id: user.id,
+      user_id: userId,
       account_id: tx.accountId,
       type: tx.type,
       amount: tx.amount,
@@ -363,7 +364,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       return updated;
     });
-  }, [user]);
+  }, [userId]);
 
   const updateTransaction = useCallback(async (tx: Transaction): Promise<boolean> => {
     // Capture old accountId before update to refresh both accounts if it changed
@@ -490,9 +491,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // ─── BUDGETS ──────────────────────────────────────────────────────────────
 
   const addBudget = useCallback(async (budget: Omit<Budget, 'id' | 'spent'>) => {
-    if (!user) return;
+    if (!userId) return;
     const { data, error } = await supabase.from('budgets').insert({
-      user_id: user.id,
+      user_id: userId,
       category: budget.category,
       category_icon: budget.categoryIcon,
       amount: budget.amount,
@@ -534,9 +535,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // ─── GOALS ────────────────────────────────────────────────────────────────
 
   const addGoal = useCallback(async (goal: Omit<Goal, 'id'>) => {
-    if (!user) return;
+    if (!userId) return;
     const { data, error } = await supabase.from('goals').insert({
-      user_id: user.id,
+      user_id: userId,
       name: goal.name,
       icon: goal.icon,
       type: goal.type,
@@ -548,7 +549,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (error) { toast.error(`Failed to add goal: ${error.message}`); return; }
     const mapped = mapGoal(data);
     if (mapped) setGoals(prev => [...prev, mapped]);
-  }, [user]);
+  }, [userId]);
 
   const updateGoal = useCallback(async (goal: Goal) => {
     const { error } = await supabase.from('goals').update({
