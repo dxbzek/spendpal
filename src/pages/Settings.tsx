@@ -422,6 +422,55 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
   );
 };
 
+const EmailUpdateCard = ({ currentEmail }: { currentEmail: string }) => {
+  const [newEmail, setNewEmail] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleUpdate = async () => {
+    const trimmed = newEmail.trim();
+    if (!trimmed) {
+      toast.error('Please enter a new email address');
+      return;
+    }
+    if (trimmed === currentEmail) {
+      toast.error('New email must be different from your current email');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    setSending(true);
+    const { error } = await supabase.auth.updateUser({ email: trimmed });
+    if (error) {
+      toast.error('Failed to update email: ' + error.message);
+    } else {
+      toast.success('Confirmation sent! Check ' + trimmed + ' to confirm the change.');
+      setNewEmail('');
+    }
+    setSending(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium mb-1.5 block">Update Email</label>
+      <p className="text-xs text-muted-foreground">A confirmation link will be sent to the new address. Your email won't change until you click it.</p>
+      <div className="flex gap-2">
+        <Input
+          type="email"
+          placeholder={currentEmail}
+          value={newEmail}
+          onChange={e => setNewEmail(e.target.value)}
+          className="h-11 flex-1"
+        />
+        <Button onClick={handleUpdate} disabled={sending} variant="outline" className="h-11 px-4 shrink-0">
+          {sending ? <Loader2 size={15} className="animate-spin" /> : 'Update'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
@@ -575,6 +624,8 @@ const Settings = () => {
               <label className="text-sm font-medium mb-1.5 block">Display Name</label>
               <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" className="h-12" />
             </div>
+
+            <EmailUpdateCard currentEmail={user?.email ?? ''} />
 
             <div>
               <label className="text-sm font-medium mb-1.5 block">Preferred Currency</label>
