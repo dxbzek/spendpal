@@ -39,82 +39,123 @@ const AuthPage = () => {
   };
 
   return (
-    <main className="min-h-screen bg-background flex items-center justify-center px-5">
-      <div className="w-full max-w-sm">
-        {/* Logo/Brand */}
-        <div className="text-center mb-8">
-          <img src={logo} alt="SpendPal" className="w-20 h-20 object-contain mx-auto mb-4" />
-          <h1 className="text-2xl font-heading">SpendPal</h1>
-          <p className="text-sm text-muted-foreground mt-1">Your Personal Finance Companion</p>
+    <main className="min-h-[100dvh] bg-background flex flex-col items-center justify-center px-5 py-10">
+      {/* Decorative background blobs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-primary/6" />
+        <div className="absolute -bottom-14 -left-14 w-44 h-44 rounded-full bg-primary/5" />
+      </div>
+
+      <div className="relative w-full max-w-[22rem]">
+        {/* Logo / Brand */}
+        <div className="flex flex-col items-center mb-7">
+          <div className="flex items-center justify-center w-[68px] h-[68px] rounded-[20px] gradient-primary shadow-fab mb-4">
+            <img src={logo} alt="SpendPal" className="w-10 h-10 object-contain" />
+          </div>
+          <h1 className="text-[1.625rem] font-heading font-bold tracking-tight leading-none">
+            SpendPal
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1.5">Your Personal Finance Companion</p>
         </div>
 
-        {/* Toggle — animated active pill */}
-        <div className="relative flex p-1 bg-muted rounded-xl mb-6">
-          <div
-            className="absolute top-1 bottom-1 rounded-lg bg-card card-shadow transition-all duration-200"
-            style={{
-              left: mode === 'login' ? '4px' : '50%',
-              right: mode === 'login' ? '50%' : '4px',
-            }}
-          />
-          {(['login', 'signup'] as const).map(m => (
-            <button key={m} onClick={() => setMode(m)}
-              className={`relative flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors z-10 ${
-                mode === m ? 'text-foreground' : 'text-muted-foreground'
-              }`}>
-              {m === 'login' ? 'Sign In' : 'Sign Up'}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1.5 block">Email</label>
-            <Input
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoComplete="email"
+        {/* Form card */}
+        <div className="bg-card rounded-2xl border border-border/60 card-shadow p-5">
+          {/* Sign In / Sign Up toggle */}
+          <div className="relative flex p-1 bg-muted rounded-xl mb-5">
+            <div
+              className="absolute top-1 bottom-1 rounded-lg bg-card card-shadow transition-all duration-200"
+              style={{
+                left: mode === 'login' ? '4px' : '50%',
+                right: mode === 'login' ? '50%' : '4px',
+              }}
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1.5 block">Password</label>
-            <div className="relative">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="pr-10"
-              />
+            {(['login', 'signup'] as const).map(m => (
               <button
+                key={m}
                 type="button"
-                onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setMode(m)}
+                className={`relative flex-1 py-3 rounded-lg text-sm font-medium transition-colors z-10 touch-manipulation ${
+                  mode === m ? 'text-foreground' : 'text-muted-foreground'
+                }`}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {m === 'login' ? 'Sign In' : 'Sign Up'}
               </button>
-            </div>
-            {mode === 'signup' && (
-              <p className="text-xs text-muted-foreground mt-1">Minimum 8 characters</p>
-            )}
+            ))}
           </div>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-12 text-base gradient-primary text-primary-foreground mt-2"
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium block">Email</label>
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                inputMode="email"
+                className="h-12 rounded-xl px-4 text-[16px] placeholder:text-[15px]"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium block">Password</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  className="h-12 rounded-xl px-4 text-[16px] placeholder:text-[15px] pr-12"
+                />
+                {/* Full-size tap target for eye toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-0 top-0 h-12 w-12 flex items-center justify-center text-muted-foreground hover:text-foreground active:text-foreground transition-colors touch-manipulation"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {mode === 'signup' && (
+                <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
+              )}
+            </div>
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 text-[15px] font-semibold gradient-primary text-primary-foreground rounded-xl touch-manipulation mt-1"
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : mode === 'login' ? (
+                'Sign In'
+              ) : (
+                'Create Account'
+              )}
+            </Button>
+          </form>
+        </div>
+
+        {/* Mode switch link */}
+        <p className="text-center text-sm text-muted-foreground mt-5">
+          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+          <button
+            type="button"
+            onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+            className="text-primary font-semibold touch-manipulation"
           >
-            {loading
-              ? <Loader2 className="animate-spin" size={18} />
-              : mode === 'login' ? 'Sign In' : 'Create Account'}
-          </Button>
-        </form>
+            {mode === 'login' ? 'Sign Up' : 'Sign In'}
+          </button>
+        </p>
       </div>
     </main>
   );
