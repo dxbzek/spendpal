@@ -49,9 +49,7 @@ const AuthPage = () => {
       <div className="relative w-full max-w-[22rem]">
         {/* Logo / Brand */}
         <div className="flex flex-col items-center mb-7">
-          <div className="flex items-center justify-center w-[68px] h-[68px] rounded-[20px] gradient-primary shadow-fab mb-4">
-            <img src={logo} alt="SpendPal" className="w-10 h-10 object-contain" />
-          </div>
+          <img src={logo} alt="SpendPal" className="w-16 h-16 object-contain mb-4" />
           <h1 className="text-[1.625rem] font-heading font-bold tracking-tight leading-none">
             SpendPal
           </h1>
