@@ -4,9 +4,9 @@ import type { Budget } from '@/types/finance';
 import { supabase } from '@/integrations/supabase/client';
 
 const THRESHOLDS = [
-  { pct: 100, label: '🚨 Over budget', desc: (b: Budget) => `${b.categoryIcon} ${b.category} has exceeded its budget!` },
-  { pct: 90, label: '⚠️ Almost at limit', desc: (b: Budget) => `${b.categoryIcon} ${b.category} is at ${Math.round((b.spent / b.amount) * 100)}% of budget` },
-  { pct: 75, label: '📊 Heads up', desc: (b: Budget) => `${b.categoryIcon} ${b.category} has used 75%+ of its budget` },
+  { pct: 100, label: 'Over budget', desc: (b: Budget) => `${b.categoryIcon} ${b.category} has exceeded its budget!` },
+  { pct: 90, label: 'Almost at limit', desc: (b: Budget) => `${b.categoryIcon} ${b.category} is at ${Math.round((b.spent / b.amount) * 100)}% of budget` },
+  { pct: 75, label: 'Heads up', desc: (b: Budget) => `${b.categoryIcon} ${b.category} has used 75%+ of its budget` },
 ];
 
 async function sendBudgetNotification(label: string, description: string) {
