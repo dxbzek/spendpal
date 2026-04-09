@@ -21,8 +21,27 @@ async function sendBudgetNotification(label: string, description: string) {
   }
 }
 
+const STORAGE_KEY = 'spendpal-budget-alerted';
+
+function loadAlerted(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveAlerted(set: Set<string>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+  } catch {
+    // localStorage unavailable — degrade silently
+  }
+}
+
 export const useBudgetAlerts = (budgets: Budget[]) => {
-  const alerted = useRef<Set<string>>(new Set());
+  const alerted = useRef<Set<string>>(loadAlerted());
 
   useEffect(() => {
     if (budgets.length === 0) return;
@@ -44,6 +63,7 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
         const key = `${b.id}-${threshold.pct}`;
         if (pct >= threshold.pct && !alerted.current.has(key)) {
           alerted.current.add(key);
+          saveAlerted(alerted.current);
           const description = threshold.desc(b);
           toast(threshold.label, { description, duration: 5000 });
           sendBudgetNotification(threshold.label, description);
@@ -51,5 +71,7 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
         }
       }
     });
+
+    saveAlerted(alerted.current);
   }, [budgets]);
 };
