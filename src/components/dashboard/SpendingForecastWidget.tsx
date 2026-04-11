@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
-import { getDaysInMonth, getDate } from 'date-fns';
+import { getDaysInMonth, getDate, parseISO } from 'date-fns';
 import type { Transaction } from '@/types/finance';
 
 const INCOME_KEY = 'spendpal_monthly_income';
@@ -28,7 +28,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
     const spentSoFar = transactions
       .filter(tx => {
         if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return false;
-        const d = new Date(tx.date);
+        const d = parseISO(tx.date);
         return d.getFullYear() === year && d.getMonth() === month;
       })
       .reduce((sum, tx) => sum + tx.amount, 0);
@@ -44,7 +44,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
     const lastMonthSpent = transactions
       .filter(tx => {
         if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return false;
-        const d = new Date(tx.date);
+        const d = parseISO(tx.date);
         const prevMonth = month === 0 ? 11 : month - 1;
         const prevYear = month === 0 ? year - 1 : year;
         return d.getFullYear() === prevYear && d.getMonth() === prevMonth;

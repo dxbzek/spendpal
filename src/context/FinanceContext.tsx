@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -175,7 +176,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Older data can be fetched on demand (e.g., from the Reports page range picker).
       const thirteenMonthsAgo = new Date();
       thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
-      const cutoffDate = thirteenMonthsAgo.toISOString().slice(0, 10);
+      const cutoffDate = format(thirteenMonthsAgo, 'yyyy-MM-dd');
 
       const [accRes, txRes, bgtRes, goalRes] = await Promise.all([
         supabase.from('accounts').select('*').order('created_at'),
