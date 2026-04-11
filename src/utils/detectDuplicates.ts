@@ -1,3 +1,4 @@
+import { parseISO, subDays, format } from 'date-fns';
 import type { Transaction } from '@/types/finance';
 
 /**
@@ -48,7 +49,5 @@ export function detectDuplicates(transactions: Transaction[]): Set<string> {
 }
 
 function getPreviousDay(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return format(subDays(parseISO(dateStr), 1), 'yyyy-MM-dd');
 }
