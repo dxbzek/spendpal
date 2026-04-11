@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, BookOpen } from 'lucide-react';
+import { ChevronDown, BookOpen, Search } from 'lucide-react';
 
 interface FaqItem {
   term: string;
@@ -117,6 +117,16 @@ const FAQ_ITEMS: FaqItem[] = [
 
 const Glossary = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // L6: Search filter so users can find terms without scrolling all 40+ items
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return FAQ_ITEMS;
+    return FAQ_ITEMS.filter(item =>
+      item.term.toLowerCase().includes(q) || item.definition.toLowerCase().includes(q)
+    );
+  }, [search]);
 
   const toggle = (idx: number) => {
     setOpenIndex(prev => (prev === idx ? null : idx));
@@ -132,10 +142,24 @@ const Glossary = () => {
         <p className="text-primary-foreground/70 text-sm mt-2">
           Learn what every term in SpendPal means
         </p>
+        {/* L6: Inline search — visible right in the header */}
+        <div className="relative mt-4">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-foreground/50" />
+          <input
+            type="search"
+            placeholder="Search terms…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setOpenIndex(null); }}
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/50 border border-primary-foreground/20 outline-none focus:border-primary-foreground/50"
+          />
+        </div>
       </div>
 
       <div className="px-5 md:px-6 space-y-2">
-        {FAQ_ITEMS.map((item, idx) => (
+        {filtered.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-8">No terms match "{search}"</p>
+        )}
+        {filtered.map((item, idx) => (
           <div key={item.term} className="bg-card rounded-xl card-shadow overflow-hidden">
             <button
               onClick={() => toggle(idx)}

@@ -9,27 +9,30 @@ import { CurrencyProvider } from "@/context/CurrencyContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Loader2 } from "lucide-react";
+import { lazy, Suspense } from "react";
 
-import Dashboard from "@/pages/Dashboard";
-import Transactions from "@/pages/Transactions";
-import Budgets from "@/pages/Budgets";
-import Goals from "@/pages/Goals";
-import AIAdvisor from "@/pages/AIAdvisor";
-import Settings from "@/pages/Settings";
-import AuthPage from "@/pages/AuthPage";
-import Glossary from "@/pages/Glossary";
-import Accounts from "@/pages/Accounts";
-import Reports from "@/pages/Reports";
-import Debt from "@/pages/Debt";
-import Installments from "@/pages/Installments";
-import CalendarView from "@/pages/CalendarView";
-import NotFound from "@/pages/NotFound";
+// H1: Route-level code splitting — heavy pages (AIAdvisor, Reports, CalendarView)
+// are now loaded on demand, shrinking the initial JS bundle.
+const Dashboard     = lazy(() => import("@/pages/Dashboard"));
+const Transactions  = lazy(() => import("@/pages/Transactions"));
+const Budgets       = lazy(() => import("@/pages/Budgets"));
+const Goals         = lazy(() => import("@/pages/Goals"));
+const AIAdvisor     = lazy(() => import("@/pages/AIAdvisor"));
+const Settings      = lazy(() => import("@/pages/Settings"));
+const AuthPage      = lazy(() => import("@/pages/AuthPage"));
+const Glossary      = lazy(() => import("@/pages/Glossary"));
+const Accounts      = lazy(() => import("@/pages/Accounts"));
+const Reports       = lazy(() => import("@/pages/Reports"));
+const Debt          = lazy(() => import("@/pages/Debt"));
+const Installments  = lazy(() => import("@/pages/Installments"));
+const CalendarView  = lazy(() => import("@/pages/CalendarView"));
+const NotFound      = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },
 });
 
-const PageFallback = () => (
+export const PageFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
     <Loader2 className="animate-spin text-primary" size={32} />
   </div>
@@ -57,33 +60,34 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
-              <Route element={
-                <ProtectedRoute>
-                  <CurrencyProvider>
-                    <FinanceProvider>
-                      <AppLayout />
-                    </FinanceProvider>
-                  </CurrencyProvider>
-                </ProtectedRoute>
-              }>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/transactions" element={<Transactions />} />
-                <Route path="/budgets" element={<Budgets />} />
-                <Route path="/goals" element={<Goals />} />
-                <Route path="/accounts" element={<Accounts />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/recurring" element={<Navigate to="/installments" replace />} />
-                <Route path="/debt" element={<Debt />} />
-                <Route path="/installments" element={<Installments />} />
-                <Route path="/calendar" element={<CalendarView />} />
-                <Route path="/advisor" element={<AIAdvisor />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/glossary" element={<Glossary />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<PageFallback />}>
+              <Routes>
+                <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
+                <Route element={
+                  <ProtectedRoute>
+                    <CurrencyProvider>
+                      <FinanceProvider>
+                        <AppLayout />
+                      </FinanceProvider>
+                    </CurrencyProvider>
+                  </ProtectedRoute>
+                }>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/transactions" element={<Transactions />} />
+                  <Route path="/budgets" element={<Budgets />} />
+                  <Route path="/goals" element={<Goals />} />
+                  <Route path="/accounts" element={<Accounts />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/debt" element={<Debt />} />
+                  <Route path="/installments" element={<Installments />} />
+                  <Route path="/calendar" element={<CalendarView />} />
+                  <Route path="/advisor" element={<AIAdvisor />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/glossary" element={<Glossary />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>

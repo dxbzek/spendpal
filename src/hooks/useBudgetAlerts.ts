@@ -22,11 +22,25 @@ async function sendBudgetNotification(label: string, description: string) {
 }
 
 const STORAGE_KEY = 'spendpal-budget-alerted';
+// L10: Include current month in alert keys so January's fired alerts cannot
+// suppress February's. Keys also expire naturally — any key older than 2 months
+// is pruned on load to prevent unbounded localStorage growth.
+const CURRENT_MONTH = new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
 function loadAlerted(): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    if (!raw) return new Set();
+    const all = JSON.parse(raw) as string[];
+    // Prune keys from months more than 1 month ago
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const cutoff = twoMonthsAgo.toISOString().slice(0, 7);
+    const fresh = all.filter(k => {
+      const monthPart = k.match(/(\d{4}-\d{2})$/)?.[1];
+      return !monthPart || monthPart >= cutoff;
+    });
+    return new Set(fresh);
   } catch {
     return new Set();
   }
@@ -55,12 +69,13 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
       // so the alert re-fires if spending crosses the threshold again.
       for (const threshold of THRESHOLDS) {
         if (pct < threshold.pct) {
-          alerted.current.delete(`${b.id}-${threshold.pct}`);
+          alerted.current.delete(`${b.id}-${threshold.pct}-${CURRENT_MONTH}`);
         }
       }
 
       for (const threshold of THRESHOLDS) {
-        const key = `${b.id}-${threshold.pct}`;
+        // L10: Month-namespaced key prevents cross-month alert suppression
+        const key = `${b.id}-${threshold.pct}-${CURRENT_MONTH}`;
         if (pct >= threshold.pct && !alerted.current.has(key)) {
           alerted.current.add(key);
           saveAlerted(alerted.current);

@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag, ArrowUp, ArrowDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
@@ -16,12 +16,13 @@ import ImportStatementSheet from '@/components/transactions/ImportStatementSheet
 import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
 import { extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useEditTransaction } from '@/context/EditTxContext';
+import { useEditTransaction } from '@/components/layout/AppLayout';
 import { toast } from 'sonner';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const UNDO_DELAY_MS = 5000;
 
@@ -302,9 +303,11 @@ const Transactions = () => {
               {fmtSigned(tx.amount, 'transfer')}
             </p>
           ) : (
-            <p className={`text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
+            <span className={`flex items-center gap-0.5 text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
+              {tx.type === 'income' && <ArrowUp size={12} aria-hidden="true" />}
+              {tx.type === 'expense' && <ArrowDown size={12} aria-hidden="true" />}
               {fmtSigned(tx.amount, tx.type as 'income' | 'expense' | 'transfer')}
-            </p>
+            </span>
           )}
           <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(tx.id); }}
             className="text-muted-foreground hover:text-destructive transition-colors p-1">
@@ -315,7 +318,20 @@ const Transactions = () => {
     );
   };
 
-  if (loading) return <PageSpinner />;
+  // H3: Skeleton loader — maintains filter bar layout while transactions load
+  if (loading) {
+    return (
+      <div className="px-4 md:px-8 pt-12 pb-6 space-y-4">
+        <Skeleton className="h-8 w-40 rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <div className="space-y-2">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -540,16 +556,21 @@ const Transactions = () => {
         <div className="px-5 md:px-8 mb-3 -mt-1">
           <div className="flex items-center gap-3 px-4 py-2.5 bg-card rounded-xl card-shadow text-xs">
             <div className="flex items-center gap-1.5">
+              <ArrowUp size={11} className="text-income" aria-hidden="true" />
               <span className="text-muted-foreground">Income</span>
               <span className="font-semibold text-income">{mask(fmt(filteredIncome))}</span>
             </div>
             <div className="w-px h-3 bg-border" />
             <div className="flex items-center gap-1.5">
+              <ArrowDown size={11} className="text-expense" aria-hidden="true" />
               <span className="text-muted-foreground">Expenses</span>
               <span className="font-semibold text-expense">{mask(fmt(filteredExpenses))}</span>
             </div>
             <div className="w-px h-3 bg-border" />
             <div className="flex items-center gap-1.5">
+              {filteredNet >= 0
+                ? <ArrowUp size={11} className="text-income" aria-hidden="true" />
+                : <ArrowDown size={11} className="text-expense" aria-hidden="true" />}
               <span className="text-muted-foreground">Net</span>
               <span className={`font-semibold ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{hidden ? '••••••' : `${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`}</span>
             </div>

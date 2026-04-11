@@ -6,7 +6,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
 import SpendingPieChart from '@/components/charts/SpendingPieChart';
-import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank, Printer } from 'lucide-react';
 
 const Reports = () => {
   const { transactions, accounts, budgets, loading } = useFinance();
@@ -148,12 +148,22 @@ const Reports = () => {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {hasData && (
-            <button
-              onClick={exportCsv}
-              className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              <Download size={13} /> <span className="hidden sm:inline">Export CSV</span>
-            </button>
+            <>
+              {/* L5: Print-to-PDF button — uses the browser's built-in print dialog */}
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors print:hidden"
+                title="Print or save as PDF"
+              >
+                <Printer size={13} /> <span className="hidden sm:inline">Print PDF</span>
+              </button>
+              <button
+                onClick={exportCsv}
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors print:hidden"
+              >
+                <Download size={13} /> <span className="hidden sm:inline">Export CSV</span>
+              </button>
+            </>
           )}
           <select
             value={selectedMonth}

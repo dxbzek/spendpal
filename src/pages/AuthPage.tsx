@@ -84,8 +84,10 @@ const AuthPage = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium block">Email</label>
+              <label htmlFor="auth-email" className="text-sm font-medium block">Email address</label>
               <Input
+                id="auth-email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
@@ -99,9 +101,11 @@ const AuthPage = () => {
 
             {/* Password */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium block">Password</label>
+              <label htmlFor="auth-password" className="text-sm font-medium block">Password</label>
               <div className="relative">
                 <Input
+                  id="auth-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}

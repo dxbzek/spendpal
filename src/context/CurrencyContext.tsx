@@ -20,17 +20,26 @@ const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 const EXCHANGE_API = 'https://open.er-api.com/v6/latest';
 const RATE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+// L3: Maximum age beyond which a stale cached rate is not trusted as a fallback.
+// A months-old cached rate could mislead users significantly.
+const RATE_MAX_STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function rateCacheKey(base: string, target: string) {
   return `spendpal_rate_${base}_${target}`;
 }
 
-function getCachedRate(base: string, target: string): { rate: number; fresh: boolean } | null {
+function getCachedRate(base: string, target: string): { rate: number; fresh: boolean; tooStale: boolean } | null {
   try {
     const raw = localStorage.getItem(rateCacheKey(base, target));
     if (!raw) return null;
     const { rate, timestamp } = JSON.parse(raw) as { rate: number; timestamp: number };
-    return { rate, fresh: Date.now() - timestamp < RATE_CACHE_TTL_MS };
+    const age = Date.now() - timestamp;
+    return {
+      rate,
+      fresh: age < RATE_CACHE_TTL_MS,
+      // L3: Don't use cache older than 24h as a fallback — it may be wildly inaccurate
+      tooStale: age > RATE_MAX_STALE_MS,
+    };
   } catch {
     return null;
   }
@@ -80,10 +89,13 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const res = await fetch(`${EXCHANGE_API}/${currency}`, { signal: controller.signal });
 
         if (res.status === 429) {
-          // Rate-limited — fall back to stale cache if available
-          if (cached) {
+          // Rate-limited — fall back to stale cache if not too old
+          if (cached && !cached.tooStale) {
             setSecondaryRate(cached.rate);
             toast.warning('Exchange rate API rate-limited. Using cached rate.');
+          } else if (cached && cached.tooStale) {
+            setSecondaryRate(null);
+            toast.warning('Exchange rate data is too outdated to use. Conversion unavailable.');
           } else {
             setSecondaryRate(null);
             toast.warning('Exchange rate temporarily unavailable.');
@@ -92,7 +104,8 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
 
         if (!res.ok) {
-          setSecondaryRate(cached?.rate ?? null);
+          const usable = cached && !cached.tooStale ? cached.rate : null;
+          setSecondaryRate(usable);
           toast.warning('Could not fetch exchange rates. Secondary currency display unavailable.');
           return;
         }
@@ -104,7 +117,8 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setSecondaryRate(rate);
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
-          setSecondaryRate(cached?.rate ?? null);
+          const usable = cached && !cached.tooStale ? cached.rate : null;
+          setSecondaryRate(usable);
           toast.warning('Could not fetch exchange rates. Secondary currency display unavailable.');
         }
       }

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -115,13 +115,31 @@ export interface AdvisorSession {
   created_at: string;
 }
 
+// H7: Minimum interval between any AI requests to prevent Groq quota exhaustion.
+const AI_COOLDOWN_MS = 5_000;
+
 export const useAI = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState('');
+  const lastRequestAt = useRef<number>(0);
+
+  // H7: Shared cooldown guard — enforced before every AI call.
+  const checkCooldown = () => {
+    const now = Date.now();
+    const elapsed = now - lastRequestAt.current;
+    if (elapsed < AI_COOLDOWN_MS) {
+      const wait = Math.ceil((AI_COOLDOWN_MS - elapsed) / 1000);
+      toast.error(`Please wait ${wait}s before making another AI request.`);
+      return false;
+    }
+    lastRequestAt.current = now;
+    return true;
+  };
 
   // Streaming — uses raw fetch (supabase.functions.invoke doesn't support SSE)
   const generateSummary = useCallback(async (data: unknown) => {
+    if (!checkCooldown()) return;
     setLoading(true);
     setSummaryText('');
     try {
@@ -181,6 +199,7 @@ export const useAI = () => {
   }, []);
 
   const generateBudgetSuggestions = useCallback(async (data: unknown): Promise<unknown[]> => {
+    if (!checkCooldown()) return [];
     setLoading(true);
     try {
       const body = await invokeWithTimeout<{ result?: string }>(
@@ -248,6 +267,7 @@ export const useAI = () => {
   }, []);
 
   const generateBudgetAnalysis = useCallback(async (data: unknown): Promise<BudgetAnalysis | null> => {
+    if (!checkCooldown()) return null;
     setLoading(true);
     try {
       const body = await invokeWithTimeout<{ result?: unknown }>(

@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
+import { useState, useMemo, useEffect } from 'react';
+import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
 import { CATEGORY_CHART_COLORS, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
@@ -14,7 +14,7 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Loader2, Trash2, Edit2, Search } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Loader2, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO, addMonths } from 'date-fns';
@@ -30,6 +30,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const Dashboard = () => {
@@ -42,15 +43,10 @@ const Dashboard = () => {
     ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
     : WORLD_CURRENCIES;
   const navigate = useNavigate();
-  const [hidden, setHidden] = useState(() => localStorage.getItem('balanceHidden') === 'true');
-
-  const toggleHidden = () => {
-    setHidden(prev => {
-      const next = !prev;
-      dispatchBalanceMaskToggle(next);
-      return next;
-    });
-  };
+  // H4: Use the shared hook so Dashboard stays in sync with all other consumers.
+  // Previously Dashboard had its own useState which could desync from the hook.
+  const { hidden, mask } = useBalanceMask();
+  const toggleHidden = () => dispatchBalanceMaskToggle(!hidden);
   const [period, setPeriod] = useState<'month' | 'year' | 'all'>('all');
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
@@ -58,7 +54,6 @@ const Dashboard = () => {
   useBudgetAlerts(budgets);
 
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
-  const mask = (val: string) => hidden ? '••••••' : val;
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
   // Stable within session — the date object is computed once on mount.
@@ -189,10 +184,83 @@ const Dashboard = () => {
   );
 
 
+  // H3: Skeleton loaders — maintain layout shape while data loads so the page
+  // doesn't flash from blank to fully-populated in one jarring jump.
   if (dataLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
+      <div>
+        <div className="gradient-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl">
+          <Skeleton className="h-6 w-40 bg-primary-foreground/20 mb-4" />
+          <Skeleton className="h-10 w-48 bg-primary-foreground/20 mb-2" />
+          <Skeleton className="h-4 w-28 bg-primary-foreground/20" />
+        </div>
+        <div className="px-5 md:px-8 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+          <Skeleton className="col-span-2 lg:col-span-4 h-48 rounded-2xl" />
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i + 4} className="h-32 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // C4: First-run onboarding — shown when a new user has no accounts yet.
+  if (!dataLoading && accounts.length === 0) {
+    const steps = [
+      { icon: Wallet, label: 'Add your first account', hint: 'Cash, bank, or credit card', done: accounts.length > 0 },
+      { icon: Receipt, label: 'Record a transaction', hint: 'Income or expense', done: transactions.length > 0 },
+      { icon: PiggyBank, label: 'Create a budget', hint: 'Track spending by category', done: budgets.length > 0 },
+      { icon: Target, label: 'Set a savings goal', hint: 'Something to work toward', done: goals.length > 0 },
+    ];
+    return (
+      <div className="px-5 md:px-8 pt-12 pb-8 max-w-lg mx-auto">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 rounded-3xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <Wallet size={36} className="text-primary-foreground" />
+          </div>
+          <h1 className="text-2xl font-heading mb-2">Welcome to SpendPal!</h1>
+          <p className="text-muted-foreground text-sm">Get started in a few simple steps to take control of your finances.</p>
+        </div>
+
+        <div className="space-y-3 mb-8">
+          {steps.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl card-shadow transition-all ${step.done ? 'bg-income/5 border border-income/20' : 'bg-card'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${step.done ? 'bg-income/15' : 'bg-accent'}`}>
+                  {step.done
+                    ? <CheckCircle2 size={20} className="text-income" />
+                    : <Icon size={18} className="text-primary" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${step.done ? 'line-through text-muted-foreground' : ''}`}>{step.label}</p>
+                  <p className="text-xs text-muted-foreground">{step.hint}</p>
+                </div>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${step.done ? 'bg-income/15 text-income' : 'bg-muted text-muted-foreground'}`}>
+                  {step.done ? 'Done' : `Step ${i + 1}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => setShowAddAccount(true)}
+          className="w-full h-14 gradient-primary text-primary-foreground rounded-2xl font-semibold text-base flex items-center justify-center gap-2 shadow-fab active:scale-95 transition-transform"
+        >
+          <Plus size={20} />
+          Add Your First Account
+        </button>
+
+        <AddAccountDialog
+          open={showAddAccount}
+          onOpenChange={setShowAddAccount}
+          editAccount={editAccount}
+          onClear={() => setEditAccount(null)}
+        />
       </div>
     );
   }

@@ -199,6 +199,16 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // L8: Guard against large files being loaded into memory before the
+    // 512KB edge-function payload limit would reject the processed text.
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 10 MB.`);
+      e.target.value = '';
+      return;
+    }
+
     setFileName(file.name);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
 

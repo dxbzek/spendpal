@@ -1,5 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
@@ -15,21 +15,16 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
-const LOG_KEY = (id: string) => `spendpal_goal_log_${id}`;
-interface Contribution { amount: number; note: string; date: string; }
-
-function loadLog(id: string): Contribution[] {
-  try { return JSON.parse(localStorage.getItem(LOG_KEY(id)) || '[]'); } catch { return []; }
-}
-function saveLog(id: string, log: Contribution[]) {
-  localStorage.setItem(LOG_KEY(id), JSON.stringify(log.slice(0, 100)));
-}
+interface Contribution { id?: string; amount: number; note: string; date: string; }
 
 const Goals = () => {
   const { goals, transactions, accounts, addGoalProgress, withdrawGoalProgress, removeGoal, updateGoal, loading } = useFinance();
   const { fmt } = useCurrency();
   const { hidden, mask } = useBalanceMask();
+  const { user } = useAuth();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressMode, setProgressMode] = useState<'add' | 'withdraw'>('add');
   const [progressAmount, setProgressAmount] = useState('');
@@ -40,6 +35,40 @@ const Goals = () => {
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+
+  // C3: Contribution logs keyed by goal ID, loaded from Supabase.
+  const [contributionLogs, setContributionLogs] = useState<Record<string, Contribution[]>>({});
+
+  const fetchContributions = useCallback(async (goalId: string) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('goal_contributions')
+      .select('id, amount, note, created_at')
+      .eq('goal_id', goalId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (data) {
+      setContributionLogs(prev => ({
+        ...prev,
+        [goalId]: data.map(r => ({ id: r.id, amount: r.amount, note: r.note ?? '', date: r.created_at })),
+      }));
+    }
+  }, [user]);
+
+  const saveContribution = useCallback(async (goalId: string, amount: number, note: string) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('goal_contributions')
+      .insert({ goal_id: goalId, user_id: user.id, amount, note: note || null })
+      .select('id, amount, note, created_at')
+      .single();
+    if (data) {
+      setContributionLogs(prev => ({
+        ...prev,
+        [goalId]: [{ id: data.id, amount: data.amount, note: data.note ?? '', date: data.created_at }, ...(prev[goalId] ?? [])],
+      }));
+    }
+  }, [user]);
 
   const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
   const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0);
@@ -75,10 +104,8 @@ const Goals = () => {
       await withdrawGoalProgress(progressGoalId, amount);
     } else {
       await addGoalProgress(progressGoalId, amount);
-      // Save to contribution log (deposits only)
-      const log = loadLog(progressGoalId);
-      log.unshift({ amount, note: progressNote.trim(), date: new Date().toISOString() });
-      saveLog(progressGoalId, log);
+      // C3: Persist contribution to Supabase instead of localStorage
+      await saveContribution(progressGoalId, amount, progressNote.trim());
     }
     setProgressGoalId(null);
     setProgressAmount('');
@@ -224,7 +251,11 @@ const Goals = () => {
                       ) : (
                         <>
                           <button
-                            onClick={() => setShowLog(showLog === goal.id ? null : goal.id)}
+                            onClick={() => {
+                              const next = showLog === goal.id ? null : goal.id;
+                              setShowLog(next);
+                              if (next && !contributionLogs[next]) fetchContributions(next);
+                            }}
                             className="px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium"
                           >
                             Log
@@ -236,7 +267,7 @@ const Goals = () => {
                     </div>
                   </div>
                   {showLog === goal.id && (() => {
-                    const log = loadLog(goal.id);
+                    const log = contributionLogs[goal.id] ?? [];
                     const isShowingAll = showAllLog === goal.id;
                     const visible = isShowingAll ? log : log.slice(0, 5);
                     return (
