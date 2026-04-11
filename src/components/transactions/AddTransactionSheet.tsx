@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
-import { Target } from 'lucide-react';
+import { Target, ChevronDown } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useCategories } from '@/hooks/useCategories';
 import { type TransactionType } from '@/types/finance';
@@ -65,6 +65,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [goalAllocationId, setGoalAllocationId] = useState('');
   const [goalAllocationAmount, setGoalAllocationAmount] = useState('');
 
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   // Duplicate detection state
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicateMatch, setDuplicateMatch] = useState<Transaction | null>(null);
@@ -80,6 +82,9 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     if (editTransaction && open) {
       const isTransferTx = editTransaction.category === 'Transfer' && editTransaction.type === 'expense';
       setType(isTransferTx ? 'transfer' : editTransaction.type as TransactionType);
+      // Auto-expand advanced if the transaction has advanced fields set
+      const hasAdvanced = editTransaction.isRecurring || !!editTransaction.note;
+      if (hasAdvanced) setShowAdvanced(true);
       setAmount(String(editTransaction.amount));
       setCategory(editTransaction.category);
       setCategoryIcon(editTransaction.categoryIcon);
@@ -115,9 +120,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setCategoryIcon(prefill.categoryIcon);
       setMerchant(prefill.merchant);
       setIsRecurring(prefill.isRecurring);
+      if (prefill.isRecurring) setShowAdvanced(true);
     } else if (open && recurringMode) {
       setIsRecurring(true);
       setHasInstallments(true);
+      setShowAdvanced(true);
     } else if (!open) {
       resetForm();
     }
@@ -141,6 +148,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     setAllocateToGoal(false);
     setGoalAllocationId('');
     setGoalAllocationAmount('');
+    setShowAdvanced(false);
     setShowDuplicateWarning(false);
     setDuplicateMatch(null);
     setPendingSubmit(null);
@@ -336,91 +344,6 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                 className="text-3xl font-heading h-16 text-center tracking-tight" />
             </div>
 
-            {/* Recurring toggle - hidden for transfers */}
-            {!isTransfer && (
-              <div className="bg-muted/50 rounded-xl p-3 space-y-3">
-                {!recurringMode && (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Recurring</p>
-                      <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
-                    </div>
-                    <Switch checked={isRecurring} onCheckedChange={(v) => {
-                      setIsRecurring(v);
-                      if (v) setHasInstallments(true);
-                      if (!v) setHasInstallments(false);
-                    }} />
-                  </div>
-                )}
-
-                {isRecurring && (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Installment Plan</p>
-                      <p className="text-xs text-muted-foreground">Track payment progress</p>
-                    </div>
-                    <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
-                  </div>
-                )}
-
-                {hasInstallments && isRecurring && (
-                  <div className="space-y-3 pt-2 border-t border-border">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">Tracking Only</p>
-                        <p className="text-xs text-muted-foreground">From CC / Tabby — no balance deduction</p>
-                      </div>
-                      <Switch checked={isTrackingOnly} onCheckedChange={setIsTrackingOnly} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
-                        <Select value={totalInstallments} onValueChange={setTotalInstallments}>
-                          <SelectTrigger className="h-10">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {INSTALLMENT_OPTIONS.map(n => (
-                              <SelectItem key={n} value={String(n)}>{n} months</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
-                        <Input type="number" min="1" max={totalInstallments}
-                          value={currentInstallment}
-                          onChange={e => {
-                            const v = parseInt(e.target.value);
-                            const max = parseInt(totalInstallments) || 1;
-                            if (!isNaN(v) && v >= 1 && v <= max) setCurrentInstallment(String(v));
-                          }}
-                          className="h-10" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
-                      <Input type="number" placeholder="e.g. 1200 (before interest/fees)"
-                        value={loanTotalAmount} onChange={e => setLoanTotalAmount(e.target.value)}
-                        className="h-10" />
-                      <p className="text-[10px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
-                    </div>
-                    {amount && (
-                      <div className="bg-primary/5 rounded-lg p-2.5 text-center">
-                        <p className="text-xs text-muted-foreground">Total Cost</p>
-                        <p className="text-sm font-heading text-foreground">
-                          {fmt(totalAmount)} ({currentInstallment}/{totalInstallments})
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Remaining: {fmt(remainingBalance)} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Category - hidden for transfers */}
             {!isTransfer && (
               <div>
@@ -482,45 +405,147 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
               <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} maxLength={100} />
             </div>
 
-            {!isTransfer && (
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Note (optional)</label>
-                <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
-              </div>
-            )}
+            {/* Advanced options toggle */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(v => !v)}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-1"
+            >
+              <ChevronDown
+                size={15}
+                className={`transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
+              />
+              {showAdvanced ? 'Hide advanced options' : 'More options'}
+            </button>
 
-            {/* Allocate to Goal */}
-            {!isEditing && !hasInstallments && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
-              <div className="bg-muted/50 rounded-xl p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Target size={14} className="text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Allocate to Goal</p>
-                      <p className="text-xs text-muted-foreground">Add progress to a savings goal</p>
-                    </div>
+            {showAdvanced && (
+              <div className="space-y-5">
+                {/* Recurring toggle - hidden for transfers */}
+                {!isTransfer && (
+                  <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+                    {!recurringMode && (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Recurring</p>
+                          <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
+                        </div>
+                        <Switch checked={isRecurring} onCheckedChange={(v) => {
+                          setIsRecurring(v);
+                          if (v) setHasInstallments(true);
+                          if (!v) setHasInstallments(false);
+                        }} />
+                      </div>
+                    )}
+
+                    {isRecurring && (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Installment Plan</p>
+                          <p className="text-xs text-muted-foreground">Track payment progress</p>
+                        </div>
+                        <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
+                      </div>
+                    )}
+
+                    {hasInstallments && isRecurring && (
+                      <div className="space-y-3 pt-2 border-t border-border">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Tracking Only</p>
+                            <p className="text-xs text-muted-foreground">From CC / Tabby — no balance deduction</p>
+                          </div>
+                          <Switch checked={isTrackingOnly} onCheckedChange={setIsTrackingOnly} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
+                            <Select value={totalInstallments} onValueChange={setTotalInstallments}>
+                              <SelectTrigger className="h-10">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {INSTALLMENT_OPTIONS.map(n => (
+                                  <SelectItem key={n} value={String(n)}>{n} months</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
+                            <Input type="number" min="1" max={totalInstallments}
+                              value={currentInstallment}
+                              onChange={e => {
+                                const v = parseInt(e.target.value);
+                                const max = parseInt(totalInstallments) || 1;
+                                if (!isNaN(v) && v >= 1 && v <= max) setCurrentInstallment(String(v));
+                              }}
+                              className="h-10" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
+                          <Input type="number" placeholder="e.g. 1200 (before interest/fees)"
+                            value={loanTotalAmount} onChange={e => setLoanTotalAmount(e.target.value)}
+                            className="h-10" />
+                          <p className="text-[10px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
+                        </div>
+                        {amount && (
+                          <div className="bg-primary/5 rounded-lg p-2.5 text-center">
+                            <p className="text-xs text-muted-foreground">Total Cost</p>
+                            <p className="text-sm font-heading text-foreground">
+                              {fmt(totalAmount)} ({currentInstallment}/{totalInstallments})
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Remaining: {fmt(remainingBalance)} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <Switch checked={allocateToGoal} onCheckedChange={v => { setAllocateToGoal(v); if (!v) { setGoalAllocationId(''); setGoalAllocationAmount(''); }}} />
-                </div>
-                {allocateToGoal && (
-                  <div className="space-y-2 pt-1">
-                    <Select value={goalAllocationId} onValueChange={setGoalAllocationId}>
-                      <SelectTrigger><SelectValue placeholder="Select goal" /></SelectTrigger>
-                      <SelectContent>
-                        {goals.filter(g => g.status === 'active').map(g => (
-                          <SelectItem key={g.id} value={g.id}>
-                            {g.icon} {g.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      placeholder="Amount to allocate"
-                      value={goalAllocationAmount}
-                      onChange={e => setGoalAllocationAmount(e.target.value)}
-                      min="0.01"
-                    />
+                )}
+
+                {!isTransfer && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Note (optional)</label>
+                    <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
+                  </div>
+                )}
+
+                {/* Allocate to Goal */}
+                {!isEditing && !hasInstallments && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
+                  <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Target size={14} className="text-primary" />
+                        <div>
+                          <p className="text-sm font-medium">Allocate to Goal</p>
+                          <p className="text-xs text-muted-foreground">Add progress to a savings goal</p>
+                        </div>
+                      </div>
+                      <Switch checked={allocateToGoal} onCheckedChange={v => { setAllocateToGoal(v); if (!v) { setGoalAllocationId(''); setGoalAllocationAmount(''); }}} />
+                    </div>
+                    {allocateToGoal && (
+                      <div className="space-y-2 pt-1">
+                        <Select value={goalAllocationId} onValueChange={setGoalAllocationId}>
+                          <SelectTrigger><SelectValue placeholder="Select goal" /></SelectTrigger>
+                          <SelectContent>
+                            {goals.filter(g => g.status === 'active').map(g => (
+                              <SelectItem key={g.id} value={g.id}>
+                                {g.icon} {g.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          placeholder="Amount to allocate"
+                          value={goalAllocationAmount}
+                          onChange={e => setGoalAllocationAmount(e.target.value)}
+                          min="0.01"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

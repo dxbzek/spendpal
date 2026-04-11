@@ -151,13 +151,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // M7: Memoized budget spending — computed once from the transactions array,
+  // not recalculated inside every mutation's nested state setter.
+  const spentByCategory = useMemo(
+    () => computeSpentByCategory(transactions),
+    [transactions]
+  );
+
+  // Apply the memoized spending map to budgets whenever either changes.
+  // This replaces the pattern of calling setBudgets inside setTransactions.
+  useEffect(() => {
+    setBudgets(prev =>
+      prev.map(b => ({ ...b, spent: spentByCategory[b.category] ?? 0 }))
+    );
+  }, [spentByCategory]);
+
   const fetchAll = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
     try {
+      // C1: Load transactions from the last 13 months by default (covers current +
+      // previous year for Reports), instead of loading every transaction ever recorded.
+      // Older data can be fetched on demand (e.g., from the Reports page range picker).
+      const thirteenMonthsAgo = new Date();
+      thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
+      const cutoffDate = thirteenMonthsAgo.toISOString().slice(0, 10);
+
       const [accRes, txRes, bgtRes, goalRes] = await Promise.all([
         supabase.from('accounts').select('*').order('created_at'),
-        supabase.from('transactions').select('*').order('date', { ascending: false }),
+        supabase.from('transactions').select('*').gte('date', cutoffDate).order('date', { ascending: false }),
         supabase.from('budgets').select('*').order('created_at'),
         supabase.from('goals').select('*').order('created_at'),
       ]);
@@ -254,14 +276,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const mapped = mapTransaction(data);
     if (mapped) {
-      setTransactions(prev => {
-        const updated = [mapped, ...prev];
-        setBudgets(b => {
-          const spentByCategory = computeSpentByCategory(updated);
-          return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
-        });
-        return updated;
-      });
+      // M7: Simply prepend — the useMemo+useEffect in FinanceProvider will
+      // recompute spentByCategory and update budgets on the next render.
+      setTransactions(prev => [mapped, ...prev]);
     }
 
     // Refresh account balance from DB (updated atomically by DB trigger)
@@ -313,14 +330,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (error) { toast.error(`Failed to add transfer: ${error.message}`); return; }
 
     const mapped = (data ?? []).map(mapTransaction).filter(Boolean) as Transaction[];
-    setTransactions(prev => {
-      const updated = [...mapped, ...prev];
-      setBudgets(b => {
-        const spentByCategory = computeSpentByCategory(updated);
-        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
-      });
-      return updated;
-    });
+    setTransactions(prev => [...mapped, ...prev]);
 
     // Refresh both account balances from DB (updated atomically by DB trigger)
     const accountIds = [transfer.fromAccountId, transfer.toAccountId];
@@ -356,14 +366,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const { data, error } = await supabase.from('transactions').insert(rows).select();
     if (error) { toast.error(`Failed to import transactions: ${error.message}`); return; }
     const mapped = (data ?? []).map(mapTransaction).filter(Boolean) as Transaction[];
-    setTransactions(prev => {
-      const updated = [...mapped, ...prev];
-      setBudgets(b => {
-        const spentByCategory = computeSpentByCategory(updated);
-        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
-      });
-      return updated;
-    });
+    setTransactions(prev => [...mapped, ...prev]);
   }, [userId]);
 
   const updateTransaction = useCallback(async (tx: Transaction): Promise<boolean> => {
@@ -386,14 +389,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_tracking_only: tx.isTrackingOnly ?? false,
     }).eq('id', tx.id);
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
-    setTransactions(prev => {
-      const updated = prev.map(t => t.id === tx.id ? tx : t);
-      setBudgets(b => {
-        const spentByCategory = computeSpentByCategory(updated);
-        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
-      });
-      return updated;
-    });
+    setTransactions(prev => prev.map(t => t.id === tx.id ? tx : t));
 
     // Refresh balances for the new account and the old one (if account changed)
     const accountIdsToRefresh = [...new Set([tx.accountId, oldTx?.accountId].filter(Boolean) as string[])];
@@ -416,14 +412,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) { toast.error(`Failed to delete transaction: ${error.message}`); return; }
 
-    setTransactions(prev => {
-      const updated = prev.filter(t => t.id !== id);
-      setBudgets(b => {
-        const spentByCategory = computeSpentByCategory(updated);
-        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
-      });
-      return updated;
-    });
+    setTransactions(prev => prev.filter(t => t.id !== id));
 
     // Refresh account balance from DB (updated atomically by DB trigger)
     if (txRow?.account_id) {
@@ -447,14 +436,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const { error } = await supabase.from('transactions').delete().in('id', ids);
     if (error) { toast.error(`Failed to delete transactions: ${error.message}`); return; }
 
-    setTransactions(prev => {
-      const updated = prev.filter(t => !ids.includes(t.id));
-      setBudgets(b => {
-        const spentByCategory = computeSpentByCategory(updated);
-        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
-      });
-      return updated;
-    });
+    setTransactions(prev => prev.filter(t => !ids.includes(t.id)));
 
     // Refresh balances for all affected accounts (updated by DB trigger)
     if (affectedAccountIds.length > 0) {
@@ -476,16 +458,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .update({ category, category_icon: categoryIcon })
       .in('id', ids);
     if (error) { toast.error(`Failed to update categories: ${error.message}`); return; }
-    setTransactions(prev => {
-      const updated = prev.map(t =>
-        ids.includes(t.id) ? { ...t, category, categoryIcon } : t
-      );
-      setBudgets(b => {
-        const spentByCategory = computeSpentByCategory(updated);
-        return b.map(bgt => ({ ...bgt, spent: spentByCategory[bgt.category] ?? 0 }));
-      });
-      return updated;
-    });
+    setTransactions(prev =>
+      prev.map(t => ids.includes(t.id) ? { ...t, category, categoryIcon } : t)
+    );
   }, []);
 
   // ─── BUDGETS ──────────────────────────────────────────────────────────────
@@ -502,10 +477,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_fixed: budget.isFixed ?? false,
     }).select().single();
     if (error) { toast.error(`Failed to add budget: ${error.message}`); return; }
-    const spentByCategory = computeSpentByCategory(transactions);
+    // Use the memoized spentByCategory from the outer scope
     const mapped = mapBudget(data, spentByCategory);
     if (mapped) setBudgets(prev => [...prev, mapped]);
-  }, [user, transactions]);
+  }, [userId, spentByCategory]);
 
   const updateBudget = useCallback(async (budget: Budget) => {
     const { error } = await supabase.from('budgets').update({

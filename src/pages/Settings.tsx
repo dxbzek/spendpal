@@ -38,7 +38,11 @@ const SecondaryCurrencyCard = () => {
       <div>
         <p className="text-sm font-medium mb-1">Secondary Currency</p>
         <p className="text-xs text-muted-foreground mb-3">Show converted values alongside your primary currency</p>
-        <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+        <Select value={secondaryCurrency || '__none__'} onValueChange={v => {
+          const next = v === '__none__' ? null : v;
+          setSecondaryCurrency(next);
+          toast.success(next ? `Secondary currency set to ${next}` : 'Secondary currency disabled');
+        }}>
           <SelectTrigger className="h-12">
             <SelectValue placeholder="None" />
           </SelectTrigger>

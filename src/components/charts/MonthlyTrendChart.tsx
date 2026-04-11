@@ -38,8 +38,18 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
     return String(n);
   };
 
+  const ariaLabel = `Monthly income and expenses trend: ${data.map(d => `${d.month}: income ${d.Income}, expenses ${d.Expenses}`).join('; ')}`;
+
   return (
     <div>
+      {/* H6: Accessible chart wrapper with sr-only data table */}
+      <figure aria-label={ariaLabel} role="img">
+      <table className="sr-only" aria-label="Monthly income and expenses data">
+        <thead><tr><th>Month</th><th>Income</th><th>Expenses</th></tr></thead>
+        <tbody>{data.map(d => (
+          <tr key={d.month}><td>{d.month}</td><td>{d.Income}</td><td>{d.Expenses}</td></tr>
+        ))}</tbody>
+      </table>
       <ResponsiveContainer width="100%" height={220}>
         <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
           <defs>
@@ -83,6 +93,7 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
           />
         </AreaChart>
       </ResponsiveContainer>
+      </figure>
       {/* Custom legend */}
       <div className="flex items-center justify-center gap-5 mt-1">
         <div className="flex items-center gap-1.5">

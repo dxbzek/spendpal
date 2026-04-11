@@ -12,9 +12,15 @@ const SpendingPieChart = memo(({ data }: Props) => {
 
   if (data.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No expense data to visualize</p>;
 
+  const topCategories = data.slice(0, 5);
+  const totalValue = data.reduce((s, d) => s + d.value, 0);
+  const ariaLabel = `Spending by category: ${topCategories.map(d => `${d.name} ${((d.value / totalValue) * 100).toFixed(0)}%`).join(', ')}`;
+
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4">
       <div className="w-full max-w-[180px] shrink-0">
+        {/* H6: Accessible chart wrapper — screen readers get the summary label */}
+        <figure aria-label={ariaLabel} role="img">
         <ResponsiveContainer width="100%" aspect={1}>
           <PieChart>
             <Pie
@@ -41,7 +47,15 @@ const SpendingPieChart = memo(({ data }: Props) => {
             />
           </PieChart>
         </ResponsiveContainer>
+        </figure>
       </div>
+      {/* H6: Visually-hidden data table so screen readers can access the values */}
+      <table className="sr-only" aria-label="Spending by category data">
+        <thead><tr><th>Category</th><th>Amount</th></tr></thead>
+        <tbody>{topCategories.map(item => (
+          <tr key={item.name}><td>{item.name}</td><td>{item.value}</td></tr>
+        ))}</tbody>
+      </table>
       <div className="flex-1 space-y-1.5 overflow-hidden w-full">
         {data.slice(0, 5).map((item, i) => (
           <div key={item.name} className="flex items-center justify-between text-xs">

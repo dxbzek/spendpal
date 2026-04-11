@@ -91,7 +91,12 @@ const AIAdvisor = () => {
   const loadHistory = useCallback(async () => {
     const sessions = await fetchAdvisorHistory();
     setHistory(sessions);
-  }, [fetchAdvisorHistory]);
+    // M11: Pre-load the most recent session so users don't need to re-run
+    // an expensive AI analysis just to see their last results.
+    if (sessions.length > 0 && !analysis) {
+      setAnalysis(sessions[0].result);
+    }
+  }, [fetchAdvisorHistory, analysis]);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav from './BottomNav';
@@ -6,9 +6,14 @@ import DesktopSidebar from './DesktopSidebar';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import type { Transaction } from '@/types/finance';
-import { EditTxContext } from '@/context/EditTxContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-export { useEditTransaction } from '@/context/EditTxContext';
+
+interface EditTxContextType {
+  openEditSheet: (tx: Transaction) => void;
+}
+
+const EditTxContext = createContext<EditTxContextType>({ openEditSheet: () => {} });
+export const useEditTransaction = () => useContext(EditTxContext);
 
 const AppLayout = () => {
   const [showAdd, setShowAdd] = useState(false);

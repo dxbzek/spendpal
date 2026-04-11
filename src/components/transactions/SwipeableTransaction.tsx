@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import { Trash2, Tag } from 'lucide-react';
+import { Trash2, Tag, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Props {
   children: React.ReactNode;
@@ -23,7 +29,7 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
 
   const [_dragging, setDragging] = useState(false);
 
-  const handleDragEnd = (_: any, info: PanInfo) => {
+  const handleDragEnd = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
     setDragging(false);
     if (info.offset.x < -SWIPE_THRESHOLD) {
       onDelete();
@@ -33,7 +39,7 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
   };
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative overflow-hidden group/tx">
       {/* Delete background (right side) */}
       <motion.div
         className="absolute inset-0 flex items-center justify-end pr-6 bg-destructive rounded-xl"
@@ -70,6 +76,30 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
       >
         {children}
       </motion.div>
+
+      {/* H5: Keyboard/pointer fallback — overflow menu for non-touch users */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/tx:opacity-100 focus-within:opacity-100 transition-opacity">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="p-1.5 rounded-lg bg-card border border-border shadow-sm text-muted-foreground hover:text-foreground"
+              aria-label="Transaction actions"
+            >
+              <MoreVertical size={14} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[120px]">
+            {onCategorize && (
+              <DropdownMenuItem onClick={onCategorize} className="gap-2 text-xs">
+                <Tag size={12} /> Categorize
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={onDelete} className="gap-2 text-xs text-destructive focus:text-destructive">
+              <Trash2 size={12} /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 };
