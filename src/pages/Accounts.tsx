@@ -53,7 +53,8 @@ const Accounts = () => {
   }, [accounts]);
 
   const accountStats = useMemo(() => {
-    const thisMonth = new Date().toISOString().slice(0, 7);
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const stats: Record<string, { income: number; expenses: number }> = {};
     transactions.forEach(tx => {
       if (tx.date.slice(0, 7) !== thisMonth) return;
