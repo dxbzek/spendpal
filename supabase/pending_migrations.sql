@@ -132,3 +132,65 @@ ALTER TABLE public.budgets
 
 ALTER TABLE public.custom_categories
   ADD COLUMN IF NOT EXISTS original_name TEXT NULL;
+
+
+-- ── 9. Notification preferences (20260407000001) ─────────────
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS phone_number  TEXT,
+  ADD COLUMN IF NOT EXISTS notify_email  BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS notify_sms    BOOLEAN NOT NULL DEFAULT false;
+
+
+-- ── 10. goal_contributions table (20260411000001) ────────────
+
+CREATE TABLE IF NOT EXISTS public.goal_contributions (
+  id         UUID    NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  goal_id    UUID    NOT NULL REFERENCES public.goals(id) ON DELETE CASCADE,
+  amount     NUMERIC NOT NULL CHECK (amount > 0),
+  note       TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.goal_contributions ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'goal_contributions' AND policyname = 'Users can view own goal contributions') THEN
+    CREATE POLICY "Users can view own goal contributions"
+      ON public.goal_contributions FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'goal_contributions' AND policyname = 'Users can insert own goal contributions') THEN
+    CREATE POLICY "Users can insert own goal contributions"
+      ON public.goal_contributions FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'goal_contributions' AND policyname = 'Users can delete own goal contributions') THEN
+    CREATE POLICY "Users can delete own goal contributions"
+      ON public.goal_contributions FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal
+  ON public.goal_contributions(goal_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_goal_contributions_user
+  ON public.goal_contributions(user_id, created_at DESC);
+
+
+-- ── 11. Missing performance indexes ──────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id
+  ON public.profiles(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_custom_categories_user_id
+  ON public.custom_categories(user_id);
+
+-- Composite for type-filtered transaction queries (Reports, Dashboard period filters)
+CREATE INDEX IF NOT EXISTS idx_transactions_user_type_date
+  ON public.transactions(user_id, type, date DESC);

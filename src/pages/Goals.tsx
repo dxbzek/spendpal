@@ -41,12 +41,13 @@ const Goals = () => {
 
   const fetchContributions = useCallback(async (goalId: string) => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('goal_contributions')
       .select('id, amount, note, created_at')
       .eq('goal_id', goalId)
       .order('created_at', { ascending: false })
       .limit(100);
+    if (error) { toast.error('Could not load contribution history'); return; }
     if (data) {
       setContributionLogs(prev => ({
         ...prev,
@@ -57,11 +58,12 @@ const Goals = () => {
 
   const saveContribution = useCallback(async (goalId: string, amount: number, note: string) => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('goal_contributions')
       .insert({ goal_id: goalId, user_id: user.id, amount, note: note || null })
       .select('id, amount, note, created_at')
       .single();
+    if (error) { toast.error('Could not save contribution'); return; }
     if (data) {
       setContributionLogs(prev => ({
         ...prev,
@@ -107,6 +109,7 @@ const Goals = () => {
       // C3: Persist contribution to Supabase instead of localStorage
       await saveContribution(progressGoalId, amount, progressNote.trim());
     }
+    toast.success(progressMode === 'withdraw' ? 'Withdrawal recorded' : 'Progress saved!');
     setProgressGoalId(null);
     setProgressAmount('');
     setProgressNote('');

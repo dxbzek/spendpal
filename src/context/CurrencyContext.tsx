@@ -84,9 +84,11 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const controller = new AbortController();
+    let cancelled = false;
     (async () => {
       try {
         const res = await fetch(`${EXCHANGE_API}/${currency}`, { signal: controller.signal });
+        if (cancelled) return;
 
         if (res.status === 429) {
           // Rate-limited — fall back to stale cache if not too old
@@ -110,20 +112,21 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return;
         }
         const data = await res.json() as { rates?: Record<string, number> };
+        if (cancelled) return;
         const rate = data.rates?.[secondaryCurrency] ?? null;
         if (rate !== null) {
           setCachedRate(currency, secondaryCurrency, rate);
         }
         setSecondaryRate(rate);
       } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
+        if (!cancelled && err instanceof Error && err.name !== 'AbortError') {
           const usable = cached && !cached.tooStale ? cached.rate : null;
           setSecondaryRate(usable);
           toast.warning('Could not fetch exchange rates. Secondary currency display unavailable.');
         }
       }
     })();
-    return () => controller.abort();
+    return () => { cancelled = true; controller.abort(); };
   }, [currency, secondaryCurrency]);
 
   const setSecondaryCurrency = (code: string | null) => {

@@ -125,6 +125,8 @@ export const useAI = () => {
   const lastRequestAt = useRef<number>(0);
 
   // H7: Shared cooldown guard — enforced before every AI call.
+  // Advances the timer only when called, so a failed request still starts the cooldown
+  // (prevents rapid-fire retries) but a rejected cooldown check does not reset it.
   const checkCooldown = () => {
     const now = Date.now();
     const elapsed = now - lastRequestAt.current;
@@ -227,6 +229,7 @@ export const useAI = () => {
   }, []);
 
   const categorizeStatement = useCallback(async (text: string): Promise<unknown[] | null> => {
+    if (!checkCooldown()) return null;
     setLoading(true);
 
     const makeAttempt = () =>

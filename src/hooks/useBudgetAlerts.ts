@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { format, subMonths } from 'date-fns';
 import { toast } from 'sonner';
 import type { Budget } from '@/types/finance';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,7 @@ const STORAGE_KEY = 'spendpal-budget-alerted';
 // L10: Include current month in alert keys so January's fired alerts cannot
 // suppress February's. Keys also expire naturally — any key older than 2 months
 // is pruned on load to prevent unbounded localStorage growth.
-const CURRENT_MONTH = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+const CURRENT_MONTH = format(new Date(), 'yyyy-MM');
 
 function loadAlerted(): Set<string> {
   try {
@@ -33,9 +34,7 @@ function loadAlerted(): Set<string> {
     if (!raw) return new Set();
     const all = JSON.parse(raw) as string[];
     // Prune keys from months more than 1 month ago
-    const twoMonthsAgo = new Date();
-    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-    const cutoff = twoMonthsAgo.toISOString().slice(0, 7);
+    const cutoff = format(subMonths(new Date(), 2), 'yyyy-MM');
     const fresh = all.filter(k => {
       const monthPart = k.match(/(\d{4}-\d{2})$/)?.[1];
       return !monthPart || monthPart >= cutoff;
@@ -48,7 +47,10 @@ function loadAlerted(): Set<string> {
 
 function saveAlerted(set: Set<string>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+    let arr = [...set];
+    // Hard cap: keep only the 200 most recently added keys to bound storage size
+    if (arr.length > 200) arr = arr.slice(arr.length - 200);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
   } catch {
     // localStorage unavailable — degrade silently
   }
