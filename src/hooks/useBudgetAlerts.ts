@@ -47,7 +47,10 @@ function loadAlerted(): Set<string> {
 
 function saveAlerted(set: Set<string>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+    let arr = [...set];
+    // Hard cap: keep only the 200 most recently added keys to bound storage size
+    if (arr.length > 200) arr = arr.slice(arr.length - 200);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
   } catch {
     // localStorage unavailable — degrade silently
   }

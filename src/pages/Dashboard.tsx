@@ -156,7 +156,6 @@ const Dashboard = () => {
   }, [transactions]);
 
   const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
-  const _recurringTotal = recurring.reduce((s, t) => s + t.amount, 0);
   // Merge transfer pairs for recent transactions display (same logic as Transactions page)
   const recentTx = useMemo(() => {
     const pairedIds = new Set<string>();

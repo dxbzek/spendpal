@@ -1,15 +1,16 @@
 import { parseISO, subDays, format } from 'date-fns';
 import type { Transaction } from '@/types/finance';
 
+// Window size: index each transaction under its own date plus N prior days.
+// 3 days catches re-imports where the same statement is uploaded on different days,
+// while being narrow enough to avoid flagging monthly recurring charges as duplicates.
+const DUPLICATE_WINDOW_DAYS = 3;
+
 /**
  * Detects potential duplicate transactions in O(n) time using date-bucket hashing.
  *
  * Two transactions are considered duplicates if they share the same type, amount,
- * and merchant name (case-insensitive) and fall within a 24-hour window.
- *
- * Strategy: bucket by day. For cross-midnight cases, each transaction is indexed
- * under its own date AND the previous day's date, so a transaction at 23:55 and
- * one at 00:05 the next day will both land in the same bucket.
+ * and merchant name (case-insensitive) and fall within a 3-day window.
  */
 export function detectDuplicates(transactions: Transaction[]): Set<string> {
   // Map<bucketKey, transactionId[]>
@@ -27,18 +28,18 @@ export function detectDuplicates(transactions: Transaction[]): Set<string> {
   for (const tx of transactions) {
     const day = tx.date.slice(0, 10); // 'YYYY-MM-DD'
     const merchant = tx.merchant.toLowerCase();
-    const key = `${tx.type}|${tx.amount}|${merchant}|${day}`;
-    addToBucket(key, tx.id);
-
-    // Also index under the previous day to catch cross-midnight duplicates
-    const prev = getPreviousDay(day);
-    const prevKey = `${tx.type}|${tx.amount}|${merchant}|${prev}`;
-    addToBucket(prevKey, tx.id);
+    // Index under own date
+    addToBucket(`${tx.type}|${tx.amount}|${merchant}|${day}`, tx.id);
+    // Also index under prior days to catch re-imports and cross-midnight duplicates
+    for (let offset = 1; offset <= DUPLICATE_WINDOW_DAYS; offset++) {
+      const prior = format(subDays(parseISO(day), offset), 'yyyy-MM-dd');
+      addToBucket(`${tx.type}|${tx.amount}|${merchant}|${prior}`, tx.id);
+    }
   }
 
   const dupes = new Set<string>();
   for (const ids of buckets.values()) {
-    // Deduplicate IDs within a bucket (a tx may appear twice due to prev-day indexing)
+    // Deduplicate IDs within a bucket (a tx may appear in multiple buckets)
     const uniqueIds = [...new Set(ids)];
     if (uniqueIds.length > 1) {
       uniqueIds.forEach(id => dupes.add(id));
@@ -46,8 +47,4 @@ export function detectDuplicates(transactions: Transaction[]): Set<string> {
   }
 
   return dupes;
-}
-
-function getPreviousDay(dateStr: string): string {
-  return format(subDays(parseISO(dateStr), 1), 'yyyy-MM-dd');
 }

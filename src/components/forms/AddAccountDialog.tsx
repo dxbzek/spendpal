@@ -42,7 +42,8 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
 
   const handleSubmit = async () => {
     if (!name.trim() || submitting) return;
-    const parsedBalance = parseFloat(balance) || 0;
+    const parsedBalance = balance.trim() === '' ? 0 : parseFloat(balance);
+    if (isNaN(parsedBalance)) { toast.error('Balance must be a valid number'); return; }
     // For credit accounts, credit limit is required
     if (type === 'credit' && !creditLimit.trim()) {
       toast.error('Credit limit is required for credit accounts');
