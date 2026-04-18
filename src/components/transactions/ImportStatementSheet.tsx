@@ -15,11 +15,11 @@ import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 // Zod schema for AI-returned rows — validates before inserting to DB
 const AIRowSchema = z.object({
-  merchant: z.string().min(1),
-  amount: z.number().positive(),
+  merchant: z.string().min(1).max(200),
+  amount: z.number().positive().max(10_000_000),
   date: z.string().min(1),
-  category: z.string().min(1),
-  categoryIcon: z.string().default('💳'),
+  category: z.string().min(1).max(100),
+  categoryIcon: z.string().min(1).default('💳'),
   type: z.enum(['expense', 'income']),
 });
 
