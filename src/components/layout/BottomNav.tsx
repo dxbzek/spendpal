@@ -91,7 +91,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="fixed bottom-[76px] left-0 right-0 z-50 mx-3 mb-1 bg-card border border-border rounded-3xl shadow-overlay overflow-hidden safe-bottom"
+              className="fixed bottom-[76px] left-0 right-0 z-50 mx-3 mb-1 bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[70vh] safe-bottom"
             >
               <div className="flex items-center justify-between px-5 pt-4 pb-2">
                 <span className="text-sm font-semibold text-foreground">More</span>

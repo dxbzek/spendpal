@@ -48,7 +48,7 @@ const AppLayout = () => {
         )}
 
         <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto">
-          <main className={isMobile ? 'pb-28' : 'pb-8'}>
+          <main className={isMobile ? 'pb-[calc(7rem+env(safe-area-inset-bottom))]' : 'pb-8'}>
             <AnimatePresence mode="wait">
               <ErrorBoundary>
                 <motion.div

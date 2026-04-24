@@ -460,16 +460,16 @@ const Transactions = () => {
         </div>
 
         {showAccountFilter && (
-          <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 flex-wrap">
+          <div className="flex gap-1.5 mb-4 flex-wrap">
             <button onClick={() => { setFilter('account', 'all'); setShowAccountFilter(false); }}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+              className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                 filterAccount === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
               }`}>
               All Accounts
             </button>
             {accounts.map(acc => (
               <button key={acc.id} onClick={() => { setFilter('account', acc.id); setShowAccountFilter(false); }}
-                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all max-w-full truncate ${
                   filterAccount === acc.id ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
                 }`}>
                 {acc.icon} {acc.name}
@@ -479,16 +479,16 @@ const Transactions = () => {
         )}
 
         {showCategoryFilter && (
-          <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 flex-wrap">
+          <div className="flex gap-1.5 mb-4 flex-wrap">
             <button onClick={() => { setFilter('category', 'all'); setShowCategoryFilter(false); }}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+              className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                 filterCategory === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
               }`}>
               All Categories
             </button>
             {allCategories.map(cat => (
               <button key={cat.name} onClick={() => { setFilter('category', cat.name); setShowCategoryFilter(false); }}
-                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all max-w-full truncate ${
                   filterCategory === cat.name ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted/70 text-muted-foreground'
                 }`}>
                 {cat.icon} {cat.name}
@@ -554,25 +554,25 @@ const Transactions = () => {
       {/* Totals bar */}
       {filtered.length > 0 && (
         <div className="px-5 md:px-8 mb-3 -mt-1">
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-card rounded-xl card-shadow text-xs">
-            <div className="flex items-center gap-1.5">
-              <ArrowUp size={11} className="text-income" aria-hidden="true" />
-              <span className="text-muted-foreground">Income</span>
-              <span className="font-semibold text-income">{mask(fmt(filteredIncome))}</span>
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3 px-3 sm:px-4 py-2.5 bg-card rounded-xl card-shadow text-xs">
+            <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0">
+              <ArrowUp size={11} className="text-income shrink-0" aria-hidden="true" />
+              <span className="text-muted-foreground hidden sm:inline">Income</span>
+              <span className="font-semibold text-income truncate">{mask(fmt(filteredIncome))}</span>
             </div>
-            <div className="w-px h-3 bg-border" />
-            <div className="flex items-center gap-1.5">
-              <ArrowDown size={11} className="text-expense" aria-hidden="true" />
-              <span className="text-muted-foreground">Expenses</span>
-              <span className="font-semibold text-expense">{mask(fmt(filteredExpenses))}</span>
+            <div className="w-px h-3 bg-border hidden sm:block" />
+            <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0 border-x sm:border-x-0 border-border">
+              <ArrowDown size={11} className="text-expense shrink-0" aria-hidden="true" />
+              <span className="text-muted-foreground hidden sm:inline">Expenses</span>
+              <span className="font-semibold text-expense truncate">{mask(fmt(filteredExpenses))}</span>
             </div>
-            <div className="w-px h-3 bg-border" />
-            <div className="flex items-center gap-1.5">
+            <div className="w-px h-3 bg-border hidden sm:block" />
+            <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0">
               {filteredNet >= 0
-                ? <ArrowUp size={11} className="text-income" aria-hidden="true" />
-                : <ArrowDown size={11} className="text-expense" aria-hidden="true" />}
-              <span className="text-muted-foreground">Net</span>
-              <span className={`font-semibold ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{hidden ? '••••••' : `${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`}</span>
+                ? <ArrowUp size={11} className="text-income shrink-0" aria-hidden="true" />
+                : <ArrowDown size={11} className="text-expense shrink-0" aria-hidden="true" />}
+              <span className="text-muted-foreground hidden sm:inline">Net</span>
+              <span className={`font-semibold truncate ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{hidden ? '••••••' : `${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`}</span>
             </div>
           </div>
         </div>

@@ -50,7 +50,8 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
           <tr key={d.month}><td>{d.month}</td><td>{d.Income}</td><td>{d.Expenses}</td></tr>
         ))}</tbody>
       </table>
-      <ResponsiveContainer width="100%" height={220}>
+      <div className="h-[180px] sm:h-[200px] lg:h-[220px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
           <defs>
             <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
@@ -93,6 +94,7 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
           />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
       </figure>
       {/* Custom legend */}
       <div className="flex items-center justify-center gap-5 mt-1">
