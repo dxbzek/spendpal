@@ -269,6 +269,46 @@ export const useAI = () => {
     }
   }, []);
 
+  const categorizeImage = useCallback(async (imageDataUrl: string, hint?: string): Promise<unknown[] | null> => {
+    if (!checkCooldown()) return null;
+    setLoading(true);
+
+    const makeAttempt = () =>
+      invokeWithTimeout<{ result?: string }>(
+        'ai-finance',
+        { type: 'categorize-image', data: { imageDataUrl, hint } },
+        90_000,
+      );
+
+    const isNetworkError = (err: unknown) =>
+      err instanceof TypeError ||
+      (err instanceof Error && err.message.includes('Failed to fetch'));
+
+    try {
+      let body: { result?: string } = { result: undefined };
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          body = await makeAttempt();
+          break;
+        } catch (err) {
+          if (!isNetworkError(err) || attempt === 2) throw err;
+          await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempt)));
+        }
+      }
+
+      const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
+      return [];
+    } catch (e: unknown) {
+      logger.error('categorizeImage failed', e);
+      const msg = e instanceof Error ? e.message : 'AI advisor is unavailable. Please try again later.';
+      toast.error(msg);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const generateBudgetAnalysis = useCallback(async (data: unknown): Promise<BudgetAnalysis | null> => {
     if (!checkCooldown()) return null;
     setLoading(true);
@@ -348,7 +388,7 @@ export const useAI = () => {
 
   return {
     loading, summaryText,
-    generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV, generateBudgetAnalysis,
+    generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV, categorizeImage, generateBudgetAnalysis,
     fetchAdvisorHistory, deleteAdvisorSession,
   };
 };
