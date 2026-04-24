@@ -3,7 +3,8 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine } from 'lucide-react';
+import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
@@ -49,6 +50,7 @@ const Budgets = () => {
   const [templates, setTemplates] = useState<BudgetTemplate[]>(() => loadTemplates());
   const [showTemplates, setShowTemplates] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [showScan, setShowScan] = useState(false);
 
   const now = useMemo(() => new Date(), []);
   const daysLeft = differenceInDays(endOfMonth(now), now);
@@ -237,6 +239,9 @@ const Budgets = () => {
               <FolderOpen size={12} /> Templates
             </button>
           )}
+          <button onClick={() => setShowScan(true)} className="text-xs text-primary font-medium flex items-center gap-1 hover:underline" title="Scan a budget screenshot">
+            <ScanLine size={12} /> Scan
+          </button>
           {budgets.length > 0 && (
             <button onClick={() => setShowDeleteAll(true)} className="text-xs text-destructive font-medium flex items-center gap-1 hover:underline">
               <Trash2 size={12} /> Delete All
@@ -450,6 +455,8 @@ const Budgets = () => {
       </div>
 
       <AddBudgetDialog open={showAddBudget} onOpenChange={setShowAddBudget} editBudget={editBudget} />
+
+      <ScanScreenshotSheet open={showScan} onOpenChange={setShowScan} target="budget" />
 
       <AlertDialog open={!!deleteBudgetId} onOpenChange={(o) => { if (!o) setDeleteBudgetId(null); }}>
         <AlertDialogContent className="max-w-sm">

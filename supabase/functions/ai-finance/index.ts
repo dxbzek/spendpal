@@ -47,13 +47,14 @@ serve(async (req) => {
 
     const { type, data } = JSON.parse(body);
 
-    if (type !== "categorize-image" && body.length > 512_000) {
+    const IMAGE_TYPES = new Set(["categorize-image", "categorize-image-budgets", "categorize-image-goals"]);
+    if (!IMAGE_TYPES.has(type) && body.length > 512_000) {
       return new Response(JSON.stringify({ error: "Payload too large" }), {
         status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const ALLOWED_TYPES = ["summary", "budget-suggestions", "categorize-csv", "categorize-image", "monthly-report", "budget-advisor"] as const;
+    const ALLOWED_TYPES = ["summary", "budget-suggestions", "categorize-csv", "categorize-image", "categorize-image-budgets", "categorize-image-goals", "monthly-report", "budget-advisor"] as const;
     type AllowedType = typeof ALLOWED_TYPES[number];
     if (!ALLOWED_TYPES.includes(type as AllowedType)) {
       return new Response(JSON.stringify({ error: "Invalid request type" }), {
@@ -164,6 +165,61 @@ Icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom,
 
 Return: [{ merchant, amount, date, category, categoryIcon, type }]`;
       // userPrompt is unused for this type — content is built below as multimodal.
+      userPrompt = "";
+
+    } else if (type === "categorize-image-budgets") {
+      // Extract monthly budget allocations from a screenshot (spreadsheet, plan
+      // screenshot, labelled list of numbers, envelope planner, etc.)
+      systemPrompt = `You are a budget-plan analyzer. Extract every category + monthly budget amount visible in the image and return ONLY a JSON array — no prose, no markdown fences.
+
+WHAT TO LOOK FOR:
+- Rows that pair a category/label with an amount (e.g. "Rent 5000", "Groceries — 1,200", "Dining 800 AED/mo")
+- Budget spreadsheets, envelope plans, allocation pies, category-named cards with a number
+- If the image shows totals and subtotals, emit ONLY the leaf-level categories (skip "Total", "Sum", "Net savings", etc.)
+
+AMOUNT HANDLING:
+- Strip currency symbols (AED, د.إ, $, €, £, ₹) and "/mo", "monthly", "per month" suffixes
+- Always output a positive number
+- If the row is annotated as weekly or yearly, convert to monthly: weekly × 4.33, yearly ÷ 12
+
+CATEGORY MAPPING — prefer these standard names when the label clearly maps:
+  Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Utilities, Insurance, Fitness, Personal Care, Gift, Other.
+  Otherwise keep the user's original category label verbatim (trimmed).
+
+ICONS — pick one emoji that matches the category:
+  ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, ⚡ Utilities, 🛡️ Insurance, 🏋️ Fitness, 💇 Personal Care, 🎁 Gift.
+  For categories not in the list, pick the single most relevant emoji, or fall back to 📌.
+
+SKIP: header rows, running totals, "Income", "Savings goal" (those go in a separate screen), dashes, empty cells.
+
+Return: [{ category, categoryIcon, amount }]`;
+      userPrompt = "";
+
+    } else if (type === "categorize-image-goals") {
+      // Extract savings goals from a screenshot (goal list, vision board, spreadsheet).
+      systemPrompt = `You are a savings-goal analyzer. Extract every savings goal visible in the image and return ONLY a JSON array — no prose, no markdown fences.
+
+WHAT TO LOOK FOR:
+- Rows that pair a goal name with a target amount (e.g. "Emergency fund: 50,000", "New laptop — 6,000 AED", "Vacation 2027 — 15 000 / Dec 2027")
+- Ignore current-balance or progress columns unless clearly labelled; the amount you emit is the TARGET, not current saved.
+
+AMOUNT HANDLING:
+- Strip currency symbols and punctuation. Output a positive number.
+- If the screenshot shows both "target" and "saved" values for the same goal, the target is the larger one (or the one labelled "goal", "target", "needed").
+
+DEADLINE (optional):
+- If a due date is visible for a goal, emit as YYYY-MM-DD.
+- Accept DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, "Mon YYYY", "YYYY". For "Mon YYYY" use the last day of that month. For a bare year use Dec 31.
+- If no date is visible, omit the deadline field.
+
+ICON — one emoji per goal. Good picks:
+  🏖️ vacation/travel, 🚗 car, 🏠 home/house, 💍 wedding, 🎓 education, 💻 laptop/tech, 🛡️ emergency fund, 🐾 pet, 👶 baby, 🎁 gift, 🏦 savings, 📈 investment, 🎯 generic goal.
+
+TYPE — one of: emergency, vacation, purchase, wedding, home, education, vehicle, retirement, other.
+
+SKIP: header rows, totals, "net worth", category sums, anything that isn't a goal.
+
+Return: [{ name, icon, type, targetAmount, deadline? }]`;
       userPrompt = "";
 
     } else if (type === "monthly-report") {
@@ -315,7 +371,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
 
     }
 
-    const isImage = type === "categorize-image";
+    const isImage = IMAGE_TYPES.has(type);
 
     // Build the user message. For image requests, use OpenAI-compatible
     // multimodal content with a data-URL image_url part.
@@ -337,12 +393,16 @@ For simulation, estimate monthly savings potential if the user adopted each budg
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const taskLabel =
+        type === "categorize-image-budgets" ? "Extract every budget category and its monthly amount from this screenshot." :
+        type === "categorize-image-goals"   ? "Extract every savings goal and its target amount from this screenshot." :
+                                              "Extract all transactions from this screenshot.";
       userMessageContent = [
         {
           type: "text",
           text: hint && typeof hint === "string" && hint.length < 500
-            ? `Extract all transactions from this screenshot. Context from the user: ${hint}`
-            : "Extract all transactions from this screenshot.",
+            ? `${taskLabel} Context from the user: ${hint}`
+            : taskLabel,
         },
         { type: "image_url", image_url: { url } },
       ];
