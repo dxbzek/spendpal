@@ -1,12 +1,14 @@
 import { PageSpinner } from '@/components/ui/spinner';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, lazy, Suspense } from 'react';
 import { format, parseISO, subMonths, getDay } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
-import SpendingPieChart from '@/components/charts/SpendingPieChart';
+const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
+const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
 import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank, Printer } from 'lucide-react';
+
+const ChartSkeleton = () => <div className="h-[220px] w-full rounded-xl bg-muted/30 animate-pulse" />;
 
 const Reports = () => {
   const { transactions, accounts, budgets, loading } = useFinance();
@@ -213,14 +215,18 @@ const Reports = () => {
       {/* 6-Month Trend */}
       <div className="bg-card rounded-2xl border border-border p-4">
         <h2 className="font-semibold text-sm mb-3">6-Month Trend</h2>
-        <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
+        <Suspense fallback={<ChartSkeleton />}>
+          <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
+        </Suspense>
       </div>
 
       {/* Spending by Category */}
       {categoryData.length > 0 && (
         <div className="bg-card rounded-2xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Spending by Category</h2>
-          <SpendingPieChart data={categoryData} />
+          <Suspense fallback={<ChartSkeleton />}>
+            <SpendingPieChart data={categoryData} />
+          </Suspense>
           <div className="mt-3 space-y-1.5">
             {categoryData.map(cat => (
               <button

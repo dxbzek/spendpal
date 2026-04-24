@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
@@ -23,9 +23,15 @@ import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
-import SpendingPieChart from '@/components/charts/SpendingPieChart';
-import MonthlyTrendChart from '@/components/charts/MonthlyTrendChart';
+// Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
+// paint doesn't block on that graph code.
+const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
+const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
 import type { Account } from '@/types/finance';
+
+const ChartSkeleton = ({ height = 'h-[220px]' }: { height?: string }) => (
+  <div className={`${height} w-full rounded-xl bg-muted/30 animate-pulse`} />
+);
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -510,14 +516,18 @@ const Dashboard = () => {
           {categorySpending.length > 0 && (
             <Card className="col-span-2 lg:col-span-2">
               <h2 className="font-heading text-sm mb-3">Breakdown</h2>
-              <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
+              <Suspense fallback={<ChartSkeleton height="aspect-square max-w-[180px]" />}>
+                <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
+              </Suspense>
             </Card>
           )}
 
           {transactions.length > 0 && (
             <Card className="col-span-2 lg:col-span-2">
               <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
-              <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
+              <Suspense fallback={<ChartSkeleton />}>
+                <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
+              </Suspense>
             </Card>
           )}
 

@@ -7,6 +7,22 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(() => ({
   build: {
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/react-router')) return 'react-vendor';
+          if (id.includes('/@supabase/')) return 'supabase';
+          if (id.includes('/@sentry/')) return 'sentry';
+          if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('/victory-vendor/')) return 'recharts';
+          if (id.includes('/framer-motion/')) return 'framer';
+          if (id.includes('/@radix-ui/')) return 'radix';
+          if (id.includes('/date-fns/')) return 'date-fns';
+          if (id.includes('/lucide-react/')) return 'lucide';
+          if (id.includes('/@tanstack/')) return 'tanstack';
+        },
+      },
+    },
   },
   server: {
     host: "0.0.0.0",
