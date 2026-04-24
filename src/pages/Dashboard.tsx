@@ -286,7 +286,7 @@ const Dashboard = () => {
             {/* Secondary currency + period selector */}
             <div className={`${isMobile ? 'flex flex-col items-center gap-3 mt-4' : 'flex flex-col items-end gap-3'}`}>
               <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-                <SelectTrigger className="h-7 w-auto min-w-[100px] max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
+                <SelectTrigger className="h-7 w-auto min-w-[90px] max-w-[120px] sm:max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
                   <SelectValue placeholder="2nd currency" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[240px]">
@@ -532,9 +532,12 @@ const Dashboard = () => {
                   const barColor = CATEGORY_CHART_COLORS[cat] || CATEGORY_CHART_COLORS._default(idx);
                   return (
                     <div key={cat}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: barColor }} /> {cat}</span>
-                        <span className="text-sm font-medium">{fmt(data.total)}</span>
+                      <div className="flex items-center justify-between mb-1 gap-2">
+                        <span className="text-sm flex items-center gap-2 min-w-0" title={cat}>
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
+                          <span className="truncate">{cat}</span>
+                        </span>
+                        <span className="text-sm font-medium shrink-0">{fmt(data.total)}</span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
@@ -578,9 +581,9 @@ const Dashboard = () => {
               const pct = Math.min(Math.round((b.spent / b.amount) * 100), 100);
               return (
                 <div key={b.id} className="mb-2 last:mb-0">
-                  <div className="flex items-center justify-between text-xs mb-0.5">
-                    <span className="text-muted-foreground truncate max-w-[120px]">{b.category}</span>
-                    <span className={`font-medium ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
+                  <div className="flex items-center justify-between text-xs mb-0.5 gap-2">
+                    <span className="text-muted-foreground truncate min-w-0" title={b.category}>{b.category}</span>
+                    <span className={`font-medium shrink-0 ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
                   </div>
                   <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}

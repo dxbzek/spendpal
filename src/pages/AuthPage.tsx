@@ -46,11 +46,11 @@ const AuthPage = () => {
         <div className="absolute -bottom-14 -left-14 w-44 h-44 rounded-full bg-primary/5" />
       </div>
 
-      <div className="relative w-full max-w-[22rem]">
+      <div className="relative w-full max-w-[min(22rem,calc(100vw-2.5rem))]">
         {/* Logo / Brand */}
         <div className="flex flex-col items-center mb-7">
-          <img src={logo} alt="SpendPal" className="w-16 h-16 object-contain mb-4" />
-          <h1 className="text-[1.625rem] font-heading font-bold tracking-tight leading-none">
+          <img src={logo} alt="SpendPal" className="w-14 h-14 sm:w-16 sm:h-16 object-contain mb-4" />
+          <h1 className="text-2xl sm:text-[1.625rem] font-heading font-bold tracking-tight leading-none">
             SpendPal
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5">Your Personal Finance Companion</p>

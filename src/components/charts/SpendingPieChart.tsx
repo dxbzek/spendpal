@@ -18,7 +18,7 @@ const SpendingPieChart = memo(({ data }: Props) => {
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4">
-      <div className="w-full max-w-[180px] shrink-0">
+      <div className="w-full max-w-[140px] sm:max-w-[180px] shrink-0">
         {/* H6: Accessible chart wrapper — screen readers get the summary label */}
         <figure aria-label={ariaLabel} role="img">
         <ResponsiveContainer width="100%" aspect={1}>
