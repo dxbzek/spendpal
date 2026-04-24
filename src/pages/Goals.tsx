@@ -3,7 +3,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown, Pause, Play, Trophy } from 'lucide-react';
+import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown, Pause, Play, Trophy, ScanLine } from 'lucide-react';
+import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ const Goals = () => {
   const [showLog, setShowLog] = useState<string | null>(null);
   const [showAllLog, setShowAllLog] = useState<string | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
+  const [showScan, setShowScan] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -143,10 +145,17 @@ const Goals = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
-            <button onClick={() => { setEditGoal(null); setShowAddGoal(true); }}
-              className="bg-primary-foreground/20 rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
-              <Plus size={14} /> New Goal
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowScan(true)}
+                className="bg-primary-foreground/20 rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1"
+                title="Scan a goals screenshot">
+                <ScanLine size={14} /> Scan
+              </button>
+              <button onClick={() => { setEditGoal(null); setShowAddGoal(true); }}
+                className="bg-primary-foreground/20 rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
+                <Plus size={14} /> New Goal
+              </button>
+            </div>
           </div>
           <div className="bg-primary-foreground/10 rounded-2xl p-4 backdrop-blur-sm">
             <p className="text-primary-foreground/70 text-xs mb-1">Total Progress</p>
@@ -376,6 +385,8 @@ const Goals = () => {
       </Dialog>
 
       <AddGoalDialog open={showAddGoal} onOpenChange={setShowAddGoal} editGoal={editGoal} />
+
+      <ScanScreenshotSheet open={showScan} onOpenChange={setShowScan} target="goal" />
 
       <AlertDialog open={!!deleteGoalId} onOpenChange={(o) => { if (!o) setDeleteGoalId(null); }}>
         <AlertDialogContent className="max-w-sm">

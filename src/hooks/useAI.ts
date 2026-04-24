@@ -269,14 +269,21 @@ export const useAI = () => {
     }
   }, []);
 
-  const categorizeImage = useCallback(async (imageDataUrl: string, hint?: string): Promise<unknown[] | null> => {
+  // Internal helper — all three image extractors share the same shape
+  // (retry, cooldown, JSON-array parse) and only differ by the edge function
+  // `type` they send.
+  const runImageExtract = useCallback(async (
+    kind: 'categorize-image' | 'categorize-image-budgets' | 'categorize-image-goals',
+    imageDataUrl: string,
+    hint?: string,
+  ): Promise<unknown[] | null> => {
     if (!checkCooldown()) return null;
     setLoading(true);
 
     const makeAttempt = () =>
       invokeWithTimeout<{ result?: string }>(
         'ai-finance',
-        { type: 'categorize-image', data: { imageDataUrl, hint } },
+        { type: kind, data: { imageDataUrl, hint } },
         90_000,
       );
 
@@ -300,7 +307,7 @@ export const useAI = () => {
       if (jsonMatch) return JSON.parse(jsonMatch[0]) as unknown[];
       return [];
     } catch (e: unknown) {
-      logger.error('categorizeImage failed', e);
+      logger.error(`${kind} failed`, e);
       const msg = e instanceof Error ? e.message : 'AI advisor is unavailable. Please try again later.';
       toast.error(msg);
       return null;
@@ -308,6 +315,21 @@ export const useAI = () => {
       setLoading(false);
     }
   }, []);
+
+  const categorizeImage = useCallback(
+    (imageDataUrl: string, hint?: string) => runImageExtract('categorize-image', imageDataUrl, hint),
+    [runImageExtract],
+  );
+
+  const extractBudgetsFromImage = useCallback(
+    (imageDataUrl: string, hint?: string) => runImageExtract('categorize-image-budgets', imageDataUrl, hint),
+    [runImageExtract],
+  );
+
+  const extractGoalsFromImage = useCallback(
+    (imageDataUrl: string, hint?: string) => runImageExtract('categorize-image-goals', imageDataUrl, hint),
+    [runImageExtract],
+  );
 
   const generateBudgetAnalysis = useCallback(async (data: unknown): Promise<BudgetAnalysis | null> => {
     if (!checkCooldown()) return null;
@@ -388,7 +410,9 @@ export const useAI = () => {
 
   return {
     loading, summaryText,
-    generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV, categorizeImage, generateBudgetAnalysis,
+    generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV,
+    categorizeImage, extractBudgetsFromImage, extractGoalsFromImage,
+    generateBudgetAnalysis,
     fetchAdvisorHistory, deleteAdvisorSession,
   };
 };
