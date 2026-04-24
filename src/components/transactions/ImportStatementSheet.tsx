@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useFinance } from '@/context/FinanceContext';
 import { useAI } from '@/hooks/useAI';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Upload, FileText, Loader2, Check } from 'lucide-react';
+import { Upload, FileText, Loader2, Check, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -80,6 +80,40 @@ async function extractPdfText(file: File): Promise<string> {
   }
 
   return pages.join('\n\n');
+}
+
+/**
+ * Downscale an image to fit within maxDim pixels on the longest side and
+ * re-encode as JPEG. Keeps the base64 payload well under the edge function's
+ * 4 MB cap while preserving legibility of transaction rows. Returns a data URL.
+ */
+async function downscaleImage(file: File, maxDim = 1600, quality = 0.85): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Failed to read image'));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('Failed to decode image'));
+    el.src = dataUrl;
+  });
+
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D unavailable');
+  ctx.drawImage(img, 0, 0, w, h);
+
+  return canvas.toDataURL('image/jpeg', quality);
 }
 
 async function extractExcelText(file: File): Promise<string> {
@@ -182,17 +216,20 @@ function normalizeDate(d: string): string {
 
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, transactions, bulkAddTransactions, updateAccount } = useFinance();
-  const { loading, categorizeStatement } = useAI();
+  const { loading, categorizeStatement, categorizeImage } = useAI();
   const { currency, symbol, fmt } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
   const [statementText, setStatementText] = useState('');
   const [fileName, setFileName] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [accountId, setAccountId] = useState('');
   const [step, setStep] = useState<'upload' | 'review'>('upload');
-  const [inputMode, setInputMode] = useState<'file' | 'paste'>('file');
+  const [inputMode, setInputMode] = useState<'file' | 'paste' | 'screenshot'>('file');
   const [pasteText, setPasteText] = useState('');
+  const [imageDataUrl, setImageDataUrl] = useState('');
+  const [imageName, setImageName] = useState('');
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState('');
 
@@ -242,6 +279,46 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     }
   };
 
+  const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, HEIC).');
+      e.target.value = '';
+      return;
+    }
+
+    // Pre-downscale guard. HEIC and very large phone shots can exceed browser
+    // decode limits; 20 MB is a comfortable ceiling.
+    const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error(`Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 20 MB.`);
+      e.target.value = '';
+      return;
+    }
+
+    setImageName(file.name);
+    setParsing(true);
+    try {
+      const dataUrl = await downscaleImage(file);
+      setImageDataUrl(dataUrl);
+    } catch (err) {
+      logger.error('Image process error', err);
+      toast.error('Could not read that image. Try a PNG or JPG screenshot.');
+      setImageName('');
+      setImageDataUrl('');
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const clearImage = () => {
+    setImageDataUrl('');
+    setImageName('');
+    if (imageRef.current) imageRef.current.value = '';
+  };
+
   const isDuplicateTransaction = (row: Omit<ParsedRow, 'selected' | 'isDuplicate'>) => {
     return transactions.some(t =>
       t.accountId === accountId &&
@@ -253,21 +330,36 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   };
 
   const handleParse = async () => {
-    const raw = inputMode === 'paste' ? pasteText : statementText;
-    if (!raw || !accountId) {
-      toast.error(inputMode === 'paste' ? 'Please paste some text and select an account' : 'Please upload a file and select an account');
+    if (!accountId) {
+      toast.error('Please select an account');
       return;
     }
-    const textToProcess = cleanStatementText(raw);
-    if (textToProcess.replace(/\s/g, '').length < 30) {
-      if (inputMode === 'file') {
-        toast.error('Could not extract text from this PDF. If it is a scanned/image PDF, open it in your browser, select all (Ctrl+A), copy, then use the Paste Text tab.');
-      } else {
-        toast.error('The pasted content looks like a footer or table border — no transaction rows found. Copy the full statement table including dates and amounts, not just the bottom of the page.');
+
+    let results: unknown[] | null;
+    if (inputMode === 'screenshot') {
+      if (!imageDataUrl) {
+        toast.error('Please upload a screenshot');
+        return;
       }
-      return;
+      results = await categorizeImage(imageDataUrl);
+    } else {
+      const raw = inputMode === 'paste' ? pasteText : statementText;
+      if (!raw) {
+        toast.error(inputMode === 'paste' ? 'Please paste some text' : 'Please upload a file');
+        return;
+      }
+      const textToProcess = cleanStatementText(raw);
+      if (textToProcess.replace(/\s/g, '').length < 30) {
+        if (inputMode === 'file') {
+          toast.error('Could not extract text from this PDF. If it is a scanned/image PDF, use the Screenshot tab instead.');
+        } else {
+          toast.error('The pasted content looks like a footer or table border — no transaction rows found. Copy the full statement table including dates and amounts, not just the bottom of the page.');
+        }
+        return;
+      }
+      results = await categorizeStatement(textToProcess);
     }
-    const results = await categorizeStatement(textToProcess);
+
     if (results === null) return; // fetch/network error already shown by useAI
     if (results.length > 0) {
       const rows: ParsedRow[] = [];
@@ -352,11 +444,15 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
 
   const resetAndClose = () => {
     setStatementText(''); setFileName(''); setParsed([]); setStep('upload'); setPasteText('');
+    setImageDataUrl(''); setImageName('');
     onOpenChange(false);
   };
 
   const handleClose = (open: boolean) => {
-    if (!open) { setStep('upload'); setParsed([]); setStatementText(''); setFileName(''); setPasteText(''); }
+    if (!open) {
+      setStep('upload'); setParsed([]); setStatementText(''); setFileName(''); setPasteText('');
+      setImageDataUrl(''); setImageName('');
+    }
     onOpenChange(open);
   };
 
@@ -376,17 +472,23 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                   onClick={() => setInputMode('file')}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${inputMode === 'file' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
                 >
-                  Upload File
+                  File
                 </button>
                 <button
                   onClick={() => setInputMode('paste')}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${inputMode === 'paste' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
                 >
-                  Paste Text
+                  Paste
+                </button>
+                <button
+                  onClick={() => setInputMode('screenshot')}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${inputMode === 'screenshot' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Screenshot
                 </button>
               </div>
 
-              {inputMode === 'file' ? (
+              {inputMode === 'file' && (
                 <div>
                   <input ref={fileRef} type="file" accept=".csv,.txt,.pdf,.xlsx,.xls" onChange={handleFile} className="hidden" />
                   <button onClick={() => fileRef.current?.click()}
@@ -400,7 +502,9 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     )}
                   </button>
                 </div>
-              ) : (
+              )}
+
+              {inputMode === 'paste' && (
                 <div>
                   <label className="text-sm text-muted-foreground mb-1 block">Paste bank statement text</label>
                   <textarea
@@ -410,6 +514,40 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     rows={7}
                     className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary resize-none"
                   />
+                </div>
+              )}
+
+              {inputMode === 'screenshot' && (
+                <div>
+                  <input ref={imageRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
+                  {imageDataUrl ? (
+                    <div className="relative w-full rounded-2xl border border-border overflow-hidden bg-muted/30">
+                      <img src={imageDataUrl} alt={imageName || 'Screenshot preview'} className="w-full max-h-64 object-contain" />
+                      <button
+                        onClick={clearImage}
+                        aria-label="Remove screenshot"
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/90 hover:bg-background border border-border flex items-center justify-center"
+                      >
+                        <X size={14} />
+                      </button>
+                      <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border bg-card">
+                        {imageName || 'Screenshot ready'} — AI will extract transactions next
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => imageRef.current?.click()}
+                      className="w-full py-8 rounded-2xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
+                      {parsing ? (
+                        <><Loader2 size={32} className="text-primary animate-spin" /><span className="text-sm text-muted-foreground">Processing image…</span></>
+                      ) : (
+                        <>
+                          <ImageIcon size={32} className="text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Upload a screenshot of your statement</span>
+                          <span className="text-xs text-muted-foreground">PNG, JPG, HEIC · auto-downscaled before upload</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -424,7 +562,12 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
               </div>
               <Button
                 onClick={handleParse}
-                disabled={(inputMode === 'file' ? !statementText : !pasteText) || !accountId || loading || parsing}
+                disabled={
+                  (inputMode === 'file' && !statementText) ||
+                  (inputMode === 'paste' && !pasteText) ||
+                  (inputMode === 'screenshot' && !imageDataUrl) ||
+                  !accountId || loading || parsing
+                }
                 className="w-full h-12 text-base gradient-primary text-primary-foreground"
               >
                 {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing with AI…</> : 'Parse & Categorize'}

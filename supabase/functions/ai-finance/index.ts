@@ -37,7 +37,9 @@ serve(async (req) => {
     // --- End auth check ---
 
     const body = await req.text();
-    if (body.length > 512000) {
+    // Larger cap for image payloads (base64-encoded screenshots). Text types are
+    // still validated against the original 512KB limit below.
+    if (body.length > 4_194_304) {
       return new Response(JSON.stringify({ error: "Payload too large" }), {
         status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -45,7 +47,13 @@ serve(async (req) => {
 
     const { type, data } = JSON.parse(body);
 
-    const ALLOWED_TYPES = ["summary", "budget-suggestions", "categorize-csv", "monthly-report", "budget-advisor"] as const;
+    if (type !== "categorize-image" && body.length > 512_000) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), {
+        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const ALLOWED_TYPES = ["summary", "budget-suggestions", "categorize-csv", "categorize-image", "monthly-report", "budget-advisor"] as const;
     type AllowedType = typeof ALLOWED_TYPES[number];
     if (!ALLOWED_TYPES.includes(type as AllowedType)) {
       return new Response(JSON.stringify({ error: "Invalid request type" }), {
@@ -122,6 +130,41 @@ Icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom,
 
 Return: [{ merchant, amount, date, category, categoryIcon, type }]`;
       userPrompt = `Here is my bank statement:\n${data}`;
+
+    } else if (type === "categorize-image") {
+      // Vision-based extraction from a screenshot of a bank statement,
+      // transaction list, or similar tabular financial data.
+      systemPrompt = `You are a financial screenshot analyzer. Extract every transaction visible in the image and return ONLY a JSON array — no prose, no markdown fences.
+
+WHAT TO LOOK FOR:
+- Rows with a date, a merchant/description, and an amount
+- Bank statement screenshots, mobile banking app transaction lists, receipts with line items, budget spreadsheets, or plain labelled lists of numbers
+- If the screenshot contains a single receipt (one merchant, multiple line items), emit one row per line item using the receipt's store name as the merchant and the store's date
+- If no date is visible anywhere in the image, use today's date
+
+DATE HANDLING — always output YYYY-MM-DD:
+  • DD/MM/YYYY, DD-MM-YYYY                e.g. 23/03/2026
+  • MM/DD/YYYY                             e.g. 03/23/2026
+  • YYYY-MM-DD or YYYY/MM/DD              e.g. 2026-03-23
+  • DD Mon YYYY, DD-Mon-YYYY              e.g. 23 Mar 2026
+  • Mon DD, YYYY or Month DD YYYY         e.g. Mar 23, 2026
+  • 2-digit years → treat as 20XX
+  • Relative dates ("Today", "Yesterday") → infer from any other dates in the image, or leave as today
+  When ambiguous (e.g. 05/06/2026), prefer DD/MM/YYYY unless other dates in the image clearly use MM/DD.
+
+TYPE:
+- Amounts shown as income/credit/refund/deposit/salary, or with a + sign, or in green, or tagged CR → type="income"
+- Everything else → type="expense"
+- Strip currency symbols from the amount (AED, د.إ, $, €, £, ₹) — output a positive number only
+
+SKIP: opening/closing balances, running totals, section headers, "available balance", totals, subtotals, "remaining principal", footer text.
+
+Categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Other.
+Icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
+
+Return: [{ merchant, amount, date, category, categoryIcon, type }]`;
+      // userPrompt is unused for this type — content is built below as multimodal.
+      userPrompt = "";
 
     } else if (type === "monthly-report") {
       systemPrompt = `You are a personal finance analyst for a UAE resident. Generate a comprehensive monthly financial report. Structure it with clear sections using markdown-style headers:
@@ -272,11 +315,46 @@ For simulation, estimate monthly savings potential if the user adopted each budg
 
     }
 
+    const isImage = type === "categorize-image";
+
+    // Build the user message. For image requests, use OpenAI-compatible
+    // multimodal content with a data-URL image_url part.
+    let userMessageContent: unknown = userPrompt;
+    if (isImage) {
+      const { imageDataUrl, imageUrl, hint } =
+        (data ?? {}) as { imageDataUrl?: string; imageUrl?: string; hint?: string };
+      const url = imageDataUrl ?? imageUrl;
+      if (!url || typeof url !== "string") {
+        return new Response(JSON.stringify({ error: "Missing image data" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Only accept data URLs (base64 client upload) or https URLs.
+      const isDataUrl = url.startsWith("data:image/");
+      const isHttpsUrl = url.startsWith("https://");
+      if (!isDataUrl && !isHttpsUrl) {
+        return new Response(JSON.stringify({ error: "Invalid image URL" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userMessageContent = [
+        {
+          type: "text",
+          text: hint && typeof hint === "string" && hint.length < 500
+            ? `Extract all transactions from this screenshot. Context from the user: ${hint}`
+            : "Extract all transactions from this screenshot.",
+        },
+        { type: "image_url", image_url: { url } },
+      ];
+    }
+
     const requestBody: any = {
-      model: "llama-3.3-70b-versatile",
+      // Vision requests use Groq's Llama 4 Scout (multimodal). Text requests
+      // stay on the text-only 3.3-70B model, which is cheaper and faster.
+      model: isImage ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        { role: "user", content: userMessageContent },
       ],
       stream: type === "summary" || type === "monthly-report",
     };
