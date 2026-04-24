@@ -71,8 +71,8 @@ serve(async (req) => {
     let systemPrompt = "";
     let userPrompt = "";
     let useToolCalling = false;
-    let tools: any[] = [];
-    let toolChoice: any = undefined;
+    let tools: unknown[] = [];
+    let toolChoice: unknown = undefined;
 
     if (type === "summary") {
       systemPrompt = `You are a personal finance assistant for a UAE resident. Analyze their financial data and write a clear, friendly, 3-4 paragraph monthly summary in plain English. Include:
@@ -348,7 +348,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       ];
     }
 
-    const requestBody: any = {
+    const requestBody: Record<string, unknown> = {
       // Vision requests use Groq's Llama 4 Scout (multimodal). Text requests
       // stay on the text-only 3.3-70B model, which is cheaper and faster.
       model: isImage ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile",

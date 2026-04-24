@@ -1,5 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 interface Contribution { id?: string; amount: number; note: string; date: string; }
 

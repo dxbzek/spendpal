@@ -146,9 +146,15 @@ const DataBackupCard = () => {
       if (data.accounts.length) {
         const { error } = await supabase.from('accounts').insert(
           data.accounts.map((a) => ({
-            user_id: user.id, name: a.name, type: a.type, balance: a.balance,
-            currency: a.currency, icon: a.icon, credit_limit: a.creditLimit ?? null,
-            due_date: a.dueDate ?? null, statement_date: a.statementDate ?? null,
+            user_id: user.id,
+            name: String(a.name),
+            type: a.type as 'cash' | 'debit' | 'credit',
+            balance: Number(a.balance),
+            currency: String(a.currency),
+            icon: String(a.icon),
+            credit_limit: a.creditLimit != null ? Number(a.creditLimit) : null,
+            due_date: a.dueDate != null ? Number(a.dueDate) : null,
+            statement_date: a.statementDate != null ? Number(a.statementDate) : null,
           }))
         );
         if (error) throw error;
@@ -171,14 +177,21 @@ const DataBackupCard = () => {
         const mapped = data.transactions
           .filter((t) => accountMap[t.accountId as string])
           .map((t) => ({
-            user_id: user.id, account_id: accountMap[t.accountId as string], type: t.type,
-            amount: t.amount, currency: t.currency, category: t.category,
-            category_icon: t.categoryIcon, merchant: t.merchant, date: t.date,
-            note: t.note ?? null, is_recurring: t.isRecurring ?? false,
-            total_installments: t.totalInstallments ?? null,
-            current_installment: t.currentInstallment ?? null,
-            is_tracking_only: t.isTrackingOnly ?? false,
-            loan_total_amount: t.loanTotalAmount ?? null,
+            user_id: user.id,
+            account_id: accountMap[t.accountId as string],
+            type: t.type as 'expense' | 'income' | 'transfer',
+            amount: Number(t.amount),
+            currency: String(t.currency),
+            category: String(t.category),
+            category_icon: String(t.categoryIcon),
+            merchant: String(t.merchant),
+            date: String(t.date),
+            note: (t.note as string | null | undefined) ?? null,
+            is_recurring: Boolean(t.isRecurring ?? false),
+            total_installments: t.totalInstallments != null ? Number(t.totalInstallments) : null,
+            current_installment: t.currentInstallment != null ? Number(t.currentInstallment) : null,
+            is_tracking_only: Boolean(t.isTrackingOnly ?? false),
+            loan_total_amount: t.loanTotalAmount != null ? Number(t.loanTotalAmount) : null,
           }));
         if (mapped.length) {
           const { error } = await supabase.from('transactions').insert(mapped);
@@ -190,8 +203,12 @@ const DataBackupCard = () => {
       if (data.budgets?.length) {
         const { error } = await supabase.from('budgets').insert(
           data.budgets.map((b) => ({
-            user_id: user.id, category: b.category, category_icon: b.categoryIcon,
-            amount: b.amount, period: b.period, month: b.month,
+            user_id: user.id,
+            category: String(b.category),
+            category_icon: String(b.categoryIcon),
+            amount: Number(b.amount),
+            period: b.period as 'monthly' | 'weekly',
+            month: String(b.month),
           }))
         );
         if (error) throw error;
@@ -201,9 +218,14 @@ const DataBackupCard = () => {
       if (data.goals?.length) {
         const { error } = await supabase.from('goals').insert(
           data.goals.map((g) => ({
-            user_id: user.id, name: g.name, icon: g.icon, type: g.type,
-            target_amount: g.targetAmount, saved_amount: g.savedAmount,
-            deadline: g.deadline ?? null, status: g.status,
+            user_id: user.id,
+            name: String(g.name),
+            icon: String(g.icon),
+            type: String(g.type),
+            target_amount: Number(g.targetAmount),
+            saved_amount: Number(g.savedAmount),
+            deadline: (g.deadline as string | null | undefined) ?? null,
+            status: g.status as 'active' | 'completed' | 'paused',
           }))
         );
         if (error) throw error;
@@ -492,14 +514,18 @@ const Settings = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('profiles').select('*').eq('user_id', user.id).single().then(({ data }) => {
-      if (data) {
-        setDisplayName(data.display_name || '');
-        setCurrency(data.currency || 'AED');
-        setAvatarUrl(data.avatar_url);
+    (async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+        if (data) {
+          setDisplayName(data.display_name || '');
+          setCurrency(data.currency || 'AED');
+          setAvatarUrl(data.avatar_url);
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    })();
   }, [user]);
 
   const filteredCurrencies = currencySearch

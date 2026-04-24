@@ -140,9 +140,9 @@ async function extractExcelText(file: File): Promise<string> {
  */
 function cleanStatementText(text: string): string {
   const allLines = text.split('\n').map(l => l.trim());
-  const txDateRe = /\b(?:\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/](?:\d{2}|\d{4})|\d{1,2}[-\s](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)[-,\s]\d{2,4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)[\s,]+\d{1,2}[\s,]+\d{2,4})(?:[\sT]\d{1,2}:\d{2}(?::\d{2})?)?\b/i;
+  const txDateRe = /\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/](?:\d{2}|\d{4})|\d{1,2}[-\s](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)[-,\s]\d{2,4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)[\s,]+\d{1,2}[\s,]+\d{2,4})(?:[\sT]\d{1,2}:\d{2}(?::\d{2})?)?\b/i;
   const amountOnlyRe = /^[\d,]+\.\d{2}\s*(CR|DR|AED|USD|EUR|GBP)?\s*$/i;
-  const borderRe = /^[\+\-\=\|\*\~\_\.\s]+$/;
+  const borderRe = /^[+=|*~_.\s-]+$/;
 
   const hasDate = allLines.map(l => txDateRe.test(l));
 
@@ -200,15 +200,15 @@ function normalizeDate(d: string): string {
   if (mdtSpace) { const mo = MONTHS[mdtSpace[1].toLowerCase()]; if (mo) return `${toYear(mdtSpace[3])}-${mo}-${pad(mdtSpace[2])}`; }
 
   // DD/MM/YYYY or DD-MM-YYYY (strict 2-digit day+month, 4-digit year) — DMY
-  const dmy4 = stripped.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+  const dmy4 = stripped.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
   if (dmy4) return `${dmy4[3]}-${dmy4[2]}-${dmy4[1]}`;
 
   // DD/MM/YY or DD-MM-YY (2-digit year) — DMY
-  const dmy2 = stripped.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{2})$/);
+  const dmy2 = stripped.match(/^(\d{2})[/-](\d{2})[/-](\d{2})$/);
   if (dmy2) return `${toYear(dmy2[3])}-${dmy2[2]}-${dmy2[1]}`;
 
   // D/M/YYYY or D/M/YY with single-digit day or month — DMY fallback
-  const dmyLoose = stripped.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  const dmyLoose = stripped.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
   if (dmyLoose) return `${toYear(dmyLoose[3])}-${pad(dmyLoose[2])}-${pad(dmyLoose[1])}`;
 
   return stripped;

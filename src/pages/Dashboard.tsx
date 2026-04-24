@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
-import { CATEGORY_CHART_COLORS, extractEmoji } from '@/utils/categoryColors';
+import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
@@ -14,10 +14,10 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Loader2, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
-import { format, differenceInDays, parseISO, addMonths } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -155,7 +155,6 @@ const Dashboard = () => {
     };
   }, [transactions]);
 
-  const recurring = useMemo(() => transactions.filter(t => t.isRecurring), [transactions]);
   // Merge transfer pairs for recent transactions display (same logic as Transactions page)
   const recentTx = useMemo(() => {
     const pairedIds = new Set<string>();
@@ -256,9 +255,8 @@ const Dashboard = () => {
 
         <AddAccountDialog
           open={showAddAccount}
-          onOpenChange={setShowAddAccount}
+          onOpenChange={(open) => { setShowAddAccount(open); if (!open) setEditAccount(null); }}
           editAccount={editAccount}
-          onClear={() => setEditAccount(null)}
         />
       </div>
     );
@@ -529,7 +527,7 @@ const Dashboard = () => {
               <div className="space-y-2.5">
                 {categorySpending.slice(0, 5).map(([cat, data], idx) => {
                   const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
-                  const barColor = CATEGORY_CHART_COLORS[cat] || CATEGORY_CHART_COLORS._default(idx);
+                  const barColor = getCategoryChartColor(cat, idx);
                   return (
                     <div key={cat}>
                       <div className="flex items-center justify-between mb-1 gap-2">

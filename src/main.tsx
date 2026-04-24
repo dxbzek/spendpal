@@ -21,8 +21,8 @@ Sentry.init({
         else if (typeof val === 'string' && /\d/.test(val)) { event.extra[key] = '[redacted]'; }
       }
     }
-    if (event.breadcrumbs?.values) {
-      event.breadcrumbs.values = event.breadcrumbs.values.map(b => ({
+    if (event.breadcrumbs) {
+      event.breadcrumbs = event.breadcrumbs.map(b => ({
         ...b,
         message: b.message?.replace(/\d[\d,. ]*/g, '[amount]'),
         data: b.data ? Object.fromEntries(

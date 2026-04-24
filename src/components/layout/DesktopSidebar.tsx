@@ -3,6 +3,7 @@ import logo from '@/assets/logo.png';
 import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wallet, BarChart3, CreditCard, Layers, CalendarDays } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { LucideIcon } from 'lucide-react';
 
 const NAV_SECTIONS = [
   {
@@ -40,7 +41,7 @@ interface DesktopSidebarProps {
 }
 
 const NavButton = ({ path: _path, label, icon: Icon, active, onClick, collapsed }: {
-  path: string; label: string; icon: any; active: boolean; onClick: () => void; collapsed?: boolean;
+  path: string; label: string; icon: LucideIcon; active: boolean; onClick: () => void; collapsed?: boolean;
 }) => {
   if (collapsed) {
     return (
