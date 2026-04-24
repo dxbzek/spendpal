@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useCurrency } from '@/context/CurrencyContext';
-import { CATEGORY_CHART_COLORS } from '@/utils/categoryColors';
+import { getCategoryChartColor } from '@/utils/categoryColors';
 
 interface Props {
   data: { name: string; value: number; icon: string }[];
@@ -38,7 +38,7 @@ const SpendingPieChart = memo(({ data }: Props) => {
               animationEasing="ease-out"
             >
               {data.map((entry, i) => (
-                <Cell key={entry.name} fill={CATEGORY_CHART_COLORS[entry.name] || CATEGORY_CHART_COLORS._default(i)} />
+                <Cell key={entry.name} fill={getCategoryChartColor(entry.name, i)} />
               ))}
             </Pie>
             <Tooltip
@@ -60,7 +60,7 @@ const SpendingPieChart = memo(({ data }: Props) => {
         {data.slice(0, 5).map((item, i) => (
           <div key={item.name} className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 truncate">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_CHART_COLORS[item.name] || CATEGORY_CHART_COLORS._default(i) }} />
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getCategoryChartColor(item.name, i) }} />
               <span className="truncate">{item.name}</span>
             </div>
             <span className="font-medium shrink-0 ml-2">{fmt(item.value)}</span>

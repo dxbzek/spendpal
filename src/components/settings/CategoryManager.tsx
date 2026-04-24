@@ -191,7 +191,7 @@ const CategoryManager = () => {
               <>
                 <span className="text-lg">{item.icon}</span>
                 <span className="text-xs truncate flex-1">{item.name}</span>
-                {item.type === 'custom' && item.type !== 'default' && (() => {
+                {item.type === 'custom' && (() => {
                   const cat = customCategories.find(c => c.id === (item as { id?: string }).id);
                   const badge = cat?.type && cat.type !== 'both' ? TYPE_BADGE[cat.type] : null;
                   return badge ? <span className="text-xs shrink-0">{badge}</span> : null;

@@ -7,14 +7,14 @@ export const AccountRowSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
   type: z.enum(['cash', 'debit', 'credit']),
-  balance: z.union([z.number(), z.string()]).transform(Number),
+  balance: z.union([z.number(), z.string()]).transform(Number).pipe(z.number()),
   currency: z.string().min(1),
   icon: z.string(),
-  credit_limit: z.union([z.number(), z.string(), z.null()]).optional().transform(v =>
+  credit_limit: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | undefined =>
     v != null ? Number(v) : undefined
   ),
-  due_date: z.number().nullable().optional().transform(v => v ?? undefined),
-  statement_date: z.number().nullable().optional().transform(v => v ?? undefined),
+  due_date: z.number().nullable().optional().transform((v): number | undefined => v ?? undefined),
+  statement_date: z.number().nullable().optional().transform((v): number | undefined => v ?? undefined),
 });
 
 export const TransactionRowSchema = z.object({
@@ -27,11 +27,11 @@ export const TransactionRowSchema = z.object({
   merchant: z.string(),
   account_id: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
-  note: z.string().nullable().optional().transform(v => v ?? undefined),
+  note: z.string().nullable().optional().transform((v): string | undefined => v ?? undefined),
   is_recurring: z.boolean().optional().default(false),
   total_installments: z.number().nullable().optional(),
   current_installment: z.number().nullable().optional(),
-  loan_total_amount: z.union([z.number(), z.string(), z.null()]).optional().transform(v =>
+  loan_total_amount: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | null =>
     v != null && v !== '' ? Number(v) : null
   ),
   is_tracking_only: z.boolean().optional().default(false),
@@ -54,7 +54,7 @@ export const GoalRowSchema = z.object({
   type: z.string().min(1),
   target_amount: z.union([z.number(), z.string()]).transform(Number).pipe(z.number().positive()),
   saved_amount: z.union([z.number(), z.string()]).transform(Number).pipe(z.number().min(0)),
-  deadline: z.string().nullable().optional().transform(v => v ?? undefined),
+  deadline: z.string().nullable().optional().transform((v): string | undefined => v ?? undefined),
   status: z.enum(['active', 'completed', 'paused']),
 });
 
@@ -65,11 +65,11 @@ export type TransactionRow = z.infer<typeof TransactionRowSchema>;
 export type BudgetRow = z.infer<typeof BudgetRowSchema>;
 export type GoalRow = z.infer<typeof GoalRowSchema>;
 
-export function safeParseRow<T>(
-  schema: z.ZodType<T>,
+export function safeParseRow<S extends z.ZodTypeAny>(
+  schema: S,
   row: unknown,
   label: string
-): T | null {
+): z.infer<S> | null {
   const result = schema.safeParse(row);
   if (!result.success) {
     logger.warn(`Invalid ${label} row`, result.error.flatten());

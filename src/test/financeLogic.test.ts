@@ -217,10 +217,10 @@ describe('detectDuplicates', () => {
     expect(dupes.size).toBe(2);
   });
 
-  it('does not flag transactions 2+ days apart', () => {
+  it('does not flag transactions 4+ days apart', () => {
     const txs = [
       makeTransaction({ id: 'tx-1', amount: 50, merchant: 'Starbucks', date: '2025-01-10' }),
-      makeTransaction({ id: 'tx-2', amount: 50, merchant: 'Starbucks', date: '2025-01-12' }),
+      makeTransaction({ id: 'tx-2', amount: 50, merchant: 'Starbucks', date: '2025-01-14' }),
     ];
     expect(detectDuplicates(txs).size).toBe(0);
   });

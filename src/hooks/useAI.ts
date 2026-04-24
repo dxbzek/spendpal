@@ -38,7 +38,7 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 /** Invoke a Supabase edge function with a timeout via AbortController. */
 async function invokeWithTimeout<T>(
   fnName: string,
-  body: unknown,
+  body: Record<string, unknown>,
   timeoutMs: number,
 ): Promise<T> {
   // Explicitly fetch the session token — supabase.functions.invoke does not
@@ -200,7 +200,7 @@ export const useAI = () => {
     }
   }, []);
 
-  const generateBudgetSuggestions = useCallback(async (data: unknown): Promise<unknown[]> => {
+  const generateBudgetSuggestions = useCallback(async (data: unknown): Promise<Array<{ category: string; suggestedAmount: number; reasoning: string }>> => {
     if (!checkCooldown()) return [];
     setLoading(true);
     try {
@@ -215,7 +215,11 @@ export const useAI = () => {
         if (!Array.isArray(raw)) return [];
         return raw
           .filter((s: unknown) => s && typeof (s as Record<string, unknown>).category === 'string' && typeof (s as Record<string, unknown>).suggestedAmount === 'number')
-          .map((s: Record<string, unknown>) => ({ category: s.category, suggestedAmount: s.suggestedAmount, reasoning: s.reasoning ?? '' }));
+          .map((s: Record<string, unknown>) => ({
+            category: s.category as string,
+            suggestedAmount: s.suggestedAmount as number,
+            reasoning: (s.reasoning as string) ?? '',
+          }));
       }
       return [];
     } catch (e: unknown) {

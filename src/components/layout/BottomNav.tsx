@@ -5,6 +5,7 @@ import {
   MoreHorizontal, PiggyBank, Target, Layers, CalendarDays,
   Brain, Settings, CreditCard, X,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS_LEFT = [
@@ -34,7 +35,7 @@ interface BottomNavProps {
 }
 
 const NavButton = ({ path, label, icon: Icon, active, onClick }: {
-  path: string; label: string; icon: React.ComponentType<{ size: number; className?: string }>; active: boolean; onClick: () => void;
+  path: string; label: string; icon: LucideIcon; active: boolean; onClick: () => void;
 }) => (
   <button
     onClick={onClick}

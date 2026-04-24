@@ -242,11 +242,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       merchant: merchant || category,
       accountId,
       date,
-      note: note || null,
+      note: note || undefined,
       isRecurring: isTransfer ? false : isRecurring,
-      totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : null,
-      currentInstallment: (hasInstallments && isRecurring) ? Math.max(0, isNaN(parseInt(currentInstallment)) ? 0 : parseInt(currentInstallment)) : null,
-      loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || null) : null,
+      totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : undefined,
+      currentInstallment: (hasInstallments && isRecurring) ? Math.max(0, isNaN(parseInt(currentInstallment)) ? 0 : parseInt(currentInstallment)) : undefined,
+      loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || undefined) : undefined,
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
     };
 
