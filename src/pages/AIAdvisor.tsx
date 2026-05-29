@@ -91,8 +91,7 @@ const AIAdvisor = () => {
   const loadHistory = useCallback(async () => {
     const sessions = await fetchAdvisorHistory();
     setHistory(sessions);
-    // M11: Pre-load the most recent session so users don't need to re-run
-    // an expensive AI analysis just to see their last results.
+    // Pre-load the most recent session so the last results show without re-running.
     if (sessions.length > 0 && !analysis) {
       setAnalysis(sessions[0].result);
     }
@@ -100,15 +99,14 @@ const AIAdvisor = () => {
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
-  // monthKey is stable for the lifetime of the session — the month won't change
-  // while the user has the app open, so an empty dep array is correct here.
+  // monthKey is fixed for the session, so the empty dep array is intentional.
   const monthKey = useMemo(() => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
   }, []);
   const now = useMemo(() => new Date(), []);
 
-  // Build financial summary for AI
+  // Build the financial summary sent to the model.
   const financialData = useMemo(() => {
     const monthlyTx = transactions.filter(tx => {
       const d = parseISO(tx.date);
@@ -148,7 +146,7 @@ const AIAdvisor = () => {
     };
   }, [transactions, accounts, budgets, goals, currency, now]);
 
-  // Spending anomaly detection — categories where this month's spend is 2x+ the 3-month average
+  // Flag categories where this month's spend is 2x+ the 3-month average.
   const anomalies = useMemo(() => {
     const n = new Date();
     const thisM = n.getMonth(), thisY = n.getFullYear();
@@ -313,7 +311,7 @@ const AIAdvisor = () => {
           </div>
         )}
 
-        {/* Spending Anomalies — always visible */}
+        {/* Spending Anomalies */}
         {anomalies.length > 0 && (
           <div className="bg-card rounded-2xl p-5 card-shadow">
             <div className="flex items-center gap-2 mb-3">
@@ -372,7 +370,7 @@ const AIAdvisor = () => {
           </div>
         )}
 
-        {/* Loading skeleton — shown while first analysis is running */}
+        {/* Loading skeleton */}
         {loading && !analysis && (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (

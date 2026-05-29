@@ -38,7 +38,7 @@ const Transactions = () => {
   const [searchInput, setSearchInput] = useState(() => searchParams.get('q') || '');
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Filter values derived from URL — enables shareable/persistent filter state
+  // Filter values come from the URL so they stay shareable and persistent.
   const filterType = searchParams.get('type') || 'all';
   const filterCategory = searchParams.get('category') || 'all';
   const filterAccount = searchParams.get('account') || 'all';
@@ -90,7 +90,7 @@ const Transactions = () => {
     });
     setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
 
-    // Use a single timer for the batch — ensures transfer pairs are deleted atomically
+    // Single timer for the batch so transfer pairs delete together.
     const t = setTimeout(async () => {
       try {
         if (ids.length > 1) {
@@ -317,7 +317,7 @@ const Transactions = () => {
     );
   };
 
-  // H3: Skeleton loader — maintains filter bar layout while transactions load
+  // Skeleton keeps the filter bar layout while transactions load.
   if (loading) {
     return (
       <div className="px-4 md:px-8 pt-12 pb-6 space-y-4">

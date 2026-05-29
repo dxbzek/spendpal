@@ -131,7 +131,7 @@ const DataBackupCard = () => {
     }
 
     try {
-      // 2. Delete existing data — check each result for errors
+      // 2. Delete existing data, checking each result for errors.
       const [delTx, delBgt, delGoal, delAcc] = await Promise.all([
         supabase.from('transactions').delete().eq('user_id', user.id),
         supabase.from('budgets').delete().eq('user_id', user.id),
@@ -296,14 +296,10 @@ const DangerZoneCard = () => {
     if (!user) return;
     setDeleting(true);
     try {
-      // Delete sequentially in FK-safe order. transactions must go before
-      // accounts: deleting an account cascades to its transactions and fires
-      // the balance-sync trigger (UPDATE accounts ...) on the rows being
-      // removed — running that concurrently with the transactions delete
-      // deadlocks. Doing it in order keeps the trigger pointed at rows that
-      // still exist. We also check each result's error (supabase-js resolves
-      // with { error } instead of throwing), otherwise a failed delete would
-      // be reported as success.
+      // Delete in FK-safe order (transactions before accounts): deleting an
+      // account cascades to its transactions and fires the balance trigger,
+      // which deadlocks against a concurrent transactions delete. Check each
+      // result since supabase-js returns { error } rather than throwing.
       const tables = ['transactions', 'budgets', 'goals', 'accounts'] as const;
       for (const table of tables) {
         const { error } = await supabase.from(table).delete().eq('user_id', user.id);
@@ -621,7 +617,7 @@ const Settings = () => {
               {initials}
             </AvatarFallback>
           </Avatar>
-          {/* Larger touch target — 44px */}
+          {/* 44px touch target */}
           <label className="absolute bottom-0 right-0 w-11 h-11 rounded-full gradient-primary flex items-center justify-center cursor-pointer shadow-fab active:scale-95 transition-transform">
             {uploading ? <Loader2 size={16} className="animate-spin text-primary-foreground" /> : <Camera size={16} className="text-primary-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />

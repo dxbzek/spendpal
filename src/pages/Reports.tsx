@@ -151,7 +151,7 @@ const Reports = () => {
         <div className="flex items-center gap-2 shrink-0">
           {hasData && (
             <>
-              {/* L5: Print-to-PDF button — uses the browser's built-in print dialog */}
+              {/* Print-to-PDF button */}
               <button
                 onClick={() => window.print()}
                 className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors print:hidden"

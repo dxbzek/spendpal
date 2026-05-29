@@ -117,7 +117,7 @@ const FAQ_ITEMS: FaqItem[] = [
 
 const Glossary = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  // L6: Search filter so users can find terms without scrolling all 40+ items
+  // Search filter for the term list.
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -142,7 +142,7 @@ const Glossary = () => {
         <p className="text-primary-foreground/70 text-sm mt-2">
           Learn what every term in SpendPal means
         </p>
-        {/* L6: Inline search — visible right in the header */}
+        {/* Inline search */}
         <div className="relative mt-4">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-foreground/50" />
           <input
