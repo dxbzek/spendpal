@@ -11,7 +11,7 @@ Sentry.init({
   integrations: [Sentry.browserTracingIntegration()],
   tracesSampleRate: 0.2,
   sendDefaultPii: false,
-  // L7: Strip financial PII from error traces — amounts, merchants, and
+  // Strip financial PII from error traces - amounts, merchants, and
   // category names must not appear in Sentry breadcrumbs or extra context.
   beforeSend(event) {
     if (event.extra) {

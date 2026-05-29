@@ -59,7 +59,7 @@ const RecurringTracker = () => {
       {/* Items grouped by category */}
       <div className="space-y-1">
         {byCategory.map(([cat, data], catIdx) => {
-          // Use category + first item id for uniqueness — category name alone is not
+          // Use category + first item id for uniqueness - category name alone is not
           // guaranteed unique when users have custom categories with duplicate names.
           const catKey = `${cat}-${data.items[0]?.id ?? catIdx}`;
           return (

@@ -164,7 +164,7 @@ Categories: Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, E
 Icons: ☕ Coffee, 🛒 Groceries, 🚗 Transport, 🍽️ Dining, 📱 Telecom, 🚇 Metro/Taxi, ✈️ Travel, 🎬 Entertainment, 🤲 Charity, 📦 Delivery, 💡 DEWA, 🏠 Rent, 🛍️ Shopping, 🏥 Health, 📚 Education, 🔄 Subscriptions, 💰 Salary, 💻 Freelance, 🔁 Transfer, 📌 Other.
 
 Return: [{ merchant, amount, date, category, categoryIcon, type }]`;
-      // userPrompt is unused for this type — content is built below as multimodal.
+      // userPrompt is unused for this type - content is built below as multimodal.
       userPrompt = "";
 
     } else if (type === "categorize-image-budgets") {

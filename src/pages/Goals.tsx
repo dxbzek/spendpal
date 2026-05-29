@@ -39,7 +39,7 @@ const Goals = () => {
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  // C3: Contribution logs keyed by goal ID, loaded from Supabase.
+  // Contribution logs keyed by goal ID.
   const [contributionLogs, setContributionLogs] = useState<Record<string, Contribution[]>>({});
 
   const fetchContributions = useCallback(async (goalId: string) => {
@@ -109,7 +109,7 @@ const Goals = () => {
       await withdrawGoalProgress(progressGoalId, amount);
     } else {
       await addGoalProgress(progressGoalId, amount);
-      // C3: Persist contribution to Supabase instead of localStorage
+      // Persist the contribution to Supabase.
       await saveContribution(progressGoalId, amount, progressNote.trim());
     }
     toast.success(progressMode === 'withdraw' ? 'Withdrawal recorded' : 'Progress saved!');

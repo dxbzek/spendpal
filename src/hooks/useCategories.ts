@@ -93,7 +93,7 @@ export const useCategories = () => {
     await fetchCustom();
   }, [fetchCustom]);
 
-  // Override a default category — supports renaming (newName can differ from originalName)
+  // Override a default category - supports renaming (newName can differ from originalName)
   const overrideDefault = useCallback(async (originalName: string, newIcon: string, newName?: string) => {
     if (!user) return;
     const finalName = newName?.trim() || originalName;

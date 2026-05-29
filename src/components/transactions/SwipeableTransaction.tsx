@@ -19,11 +19,11 @@ const SWIPE_THRESHOLD = 80;
 const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
   const x = useMotionValue(0);
 
-  // Left-swipe (delete) — red background on right
+  // Left-swipe (delete) - red background on right
   const deleteBgOpacity = useTransform(x, [-120, -60, 0], [1, 0.8, 0]);
   const deleteIconScale = useTransform(x, [-120, -60, 0], [1, 0.8, 0.5]);
 
-  // Right-swipe (categorize) — accent background on left
+  // Right-swipe (categorize) - accent background on left
   const categorizeBgOpacity = useTransform(x, [0, 60, 120], [0, 0.8, 1]);
   const categorizeIconScale = useTransform(x, [0, 60, 120], [0.5, 0.8, 1]);
 
@@ -77,7 +77,7 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
         {children}
       </motion.div>
 
-      {/* H5: Keyboard/pointer fallback — overflow menu for non-touch users */}
+      {/* Keyboard/pointer fallback - overflow menu for non-touch users */}
       <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/tx:opacity-100 focus-within:opacity-100 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

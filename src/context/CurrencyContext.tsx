@@ -20,7 +20,7 @@ const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 const EXCHANGE_API = 'https://open.er-api.com/v6/latest';
 const RATE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-// L3: Maximum age beyond which a stale cached rate is not trusted as a fallback.
+// Maximum age beyond which a stale cached rate is not trusted as a fallback.
 // A months-old cached rate could mislead users significantly.
 const RATE_MAX_STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -37,7 +37,7 @@ function getCachedRate(base: string, target: string): { rate: number; fresh: boo
     return {
       rate,
       fresh: age < RATE_CACHE_TTL_MS,
-      // L3: Don't use cache older than 24h as a fallback — it may be wildly inaccurate
+      // Don't use cache older than 24h as a fallback - it may be wildly inaccurate
       tooStale: age > RATE_MAX_STALE_MS,
     };
   } catch {
@@ -76,7 +76,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
 
-    // Use fresh cache if available — skip network request
+    // Use fresh cache if available - skip network request
     const cached = getCachedRate(currency, secondaryCurrency);
     if (cached?.fresh) {
       setSecondaryRate(cached.rate);
@@ -91,7 +91,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (cancelled) return;
 
         if (res.status === 429) {
-          // Rate-limited — fall back to stale cache if not too old
+          // Rate-limited - fall back to stale cache if not too old
           if (cached && !cached.tooStale) {
             setSecondaryRate(cached.rate);
             toast.warning('Exchange rate API rate-limited. Using cached rate.');
@@ -142,7 +142,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const info = CURRENCY_MAP[currency] || CURRENCY_MAP.AED;
   const secondaryInfo = secondaryCurrency ? CURRENCY_MAP[secondaryCurrency] : null;
 
-  // \u202A/\u202C = LTR embedding/pop — prevents Arabic currency symbols (د.إ etc.)
+  // \u202A/\u202C = LTR embedding/pop - prevents Arabic currency symbols (د.إ etc.)
   // from triggering the Unicode bidi algorithm and flipping number layout.
   const fmt = (n: number) => `\u202A${info.symbol} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
 

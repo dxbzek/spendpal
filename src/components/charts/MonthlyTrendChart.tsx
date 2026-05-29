@@ -42,7 +42,7 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
 
   return (
     <div>
-      {/* H6: Accessible chart wrapper with sr-only data table */}
+      {/* Accessible chart wrapper with sr-only data table */}
       <figure aria-label={ariaLabel} role="img">
       <table className="sr-only" aria-label="Monthly income and expenses data">
         <thead><tr><th>Month</th><th>Income</th><th>Expenses</th></tr></thead>

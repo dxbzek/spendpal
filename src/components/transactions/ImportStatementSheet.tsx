@@ -14,7 +14,7 @@ import { logger } from '@/lib/logger';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { downscaleImage } from '@/utils/downscaleImage';
 
-// Zod schema for AI-returned rows — validates before inserting to DB
+// Zod schema for AI-returned rows - validates before inserting to DB
 const AIRowSchema = z.object({
   merchant: z.string().min(1).max(200),
   amount: z.number().positive().max(10_000_000),
@@ -98,11 +98,11 @@ async function extractExcelText(file: File): Promise<string> {
  *  1. A transaction row containing a date (DD/MM/YYYY)
  *  2. Within 12 lines of a date-bearing line (catches merchants, amounts,
  *     FX conversion notes that appear near transaction rows)
- *  3. A standalone amount line (e.g. "43.76" or "2,900.00CR") — needed for
+ *  3. A standalone amount line (e.g. "43.76" or "2,900.00CR") - needed for
  *     column-format PDFs where amounts appear on their own line
  *
- * Everything else — legal disclaimers, conditions, bank contact info,
- * marketing text — is far from any transaction date and gets dropped.
+ * Everything else - legal disclaimers, conditions, bank contact info,
+ * marketing text - is far from any transaction date and gets dropped.
  * This keeps the payload small and focused for the AI.
  */
 function cleanStatementText(text: string): string {
@@ -166,15 +166,15 @@ function normalizeDate(d: string): string {
   const mdtSpace = stripped.match(/^([A-Za-z]+)\s+(\d{1,2})[,\s]+(\d{2,4})$/);
   if (mdtSpace) { const mo = MONTHS[mdtSpace[1].toLowerCase()]; if (mo) return `${toYear(mdtSpace[3])}-${mo}-${pad(mdtSpace[2])}`; }
 
-  // DD/MM/YYYY or DD-MM-YYYY (strict 2-digit day+month, 4-digit year) — DMY
+  // DD/MM/YYYY or DD-MM-YYYY (strict 2-digit day+month, 4-digit year) - DMY
   const dmy4 = stripped.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
   if (dmy4) return `${dmy4[3]}-${dmy4[2]}-${dmy4[1]}`;
 
-  // DD/MM/YY or DD-MM-YY (2-digit year) — DMY
+  // DD/MM/YY or DD-MM-YY (2-digit year) - DMY
   const dmy2 = stripped.match(/^(\d{2})[/-](\d{2})[/-](\d{2})$/);
   if (dmy2) return `${toYear(dmy2[3])}-${dmy2[2]}-${dmy2[1]}`;
 
-  // D/M/YYYY or D/M/YY with single-digit day or month — DMY fallback
+  // D/M/YYYY or D/M/YY with single-digit day or month - DMY fallback
   const dmyLoose = stripped.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
   if (dmyLoose) return `${toYear(dmyLoose[3])}-${pad(dmyLoose[2])}-${pad(dmyLoose[1])}`;
 
@@ -204,7 +204,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // L8: Guard against large files being loaded into memory before the
+    // Guard against large files being loaded into memory before the
     // 512KB edge-function payload limit would reject the processed text.
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
     if (file.size > MAX_FILE_SIZE) {

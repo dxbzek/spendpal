@@ -49,8 +49,7 @@ const Dashboard = () => {
     ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
     : WORLD_CURRENCIES;
   const navigate = useNavigate();
-  // H4: Use the shared hook so Dashboard stays in sync with all other consumers.
-  // Previously Dashboard had its own useState which could desync from the hook.
+  // Shared hook keeps the balance mask in sync across the app.
   const { hidden, mask } = useBalanceMask();
   const toggleHidden = () => dispatchBalanceMaskToggle(!hidden);
   const [period, setPeriod] = useState<'month' | 'year' | 'all'>('all');
@@ -62,7 +61,6 @@ const Dashboard = () => {
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
-  // Stable within session — the date object is computed once on mount.
   const now = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => {
@@ -188,8 +186,7 @@ const Dashboard = () => {
   );
 
 
-  // H3: Skeleton loaders — maintain layout shape while data loads so the page
-  // doesn't flash from blank to fully-populated in one jarring jump.
+  // Skeleton keeps the layout stable while data loads.
   if (dataLoading) {
     return (
       <div>
@@ -211,7 +208,7 @@ const Dashboard = () => {
     );
   }
 
-  // C4: First-run onboarding — shown when a new user has no accounts yet.
+  // First-run onboarding when the user has no accounts yet.
   if (!dataLoading && accounts.length === 0) {
     const steps = [
       { icon: Wallet, label: 'Add your first account', hint: 'Cash, bank, or credit card', done: accounts.length > 0 },
