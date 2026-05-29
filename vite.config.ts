@@ -11,15 +11,23 @@ export default defineConfig(() => ({
       output: {
         manualChunks: (id) => {
           if (!id.includes('node_modules')) return;
-          if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/react-router')) return 'react-vendor';
+          // Heavy, self-contained libraries that do NOT contain React's core.
+          // These are safe to isolate because nothing in react-vendor imports
+          // back from them, so no circular chunk dependency can form.
+          if (id.includes('/xlsx/')) return 'xlsx';
+          if (id.includes('/pdfjs-dist/')) return 'pdf';
           if (id.includes('/@supabase/')) return 'supabase';
-          if (id.includes('/@sentry/')) return 'sentry';
+          // recharts (+ its d3 deps) is large and only loaded lazily by chart
+          // components, so keep it out of the eager react-vendor bundle.
           if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('/victory-vendor/')) return 'recharts';
-          if (id.includes('/framer-motion/')) return 'framer';
-          if (id.includes('/@radix-ui/')) return 'radix';
-          if (id.includes('/date-fns/')) return 'date-fns';
-          if (id.includes('/lucide-react/')) return 'lucide';
-          if (id.includes('/@tanstack/')) return 'tanstack';
+          // React core and EVERY library that consumes it must stay together.
+          // Splitting them (e.g. a separate "radix" or "framer" chunk) lets
+          // Rollup scatter the shared CommonJS interop helpers — which React's
+          // CJS build relies on — across chunks. That creates circular chunk
+          // imports (react-vendor <-> radix), and whichever evaluates first
+          // sees React still undefined, crashing with errors like
+          // "Cannot read properties of undefined (reading 'forwardRef')".
+          return 'react-vendor';
         },
       },
     },
