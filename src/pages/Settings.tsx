@@ -296,12 +296,19 @@ const DangerZoneCard = () => {
     if (!user) return;
     setDeleting(true);
     try {
-      await Promise.all([
-        supabase.from('transactions').delete().eq('user_id', user.id),
-        supabase.from('budgets').delete().eq('user_id', user.id),
-        supabase.from('goals').delete().eq('user_id', user.id),
-        supabase.from('accounts').delete().eq('user_id', user.id),
-      ]);
+      // Delete sequentially in FK-safe order. transactions must go before
+      // accounts: deleting an account cascades to its transactions and fires
+      // the balance-sync trigger (UPDATE accounts ...) on the rows being
+      // removed — running that concurrently with the transactions delete
+      // deadlocks. Doing it in order keeps the trigger pointed at rows that
+      // still exist. We also check each result's error (supabase-js resolves
+      // with { error } instead of throwing), otherwise a failed delete would
+      // be reported as success.
+      const tables = ['transactions', 'budgets', 'goals', 'accounts'] as const;
+      for (const table of tables) {
+        const { error } = await supabase.from(table).delete().eq('user_id', user.id);
+        if (error) throw error;
+      }
       // Clear localStorage snapshots
       localStorage.removeItem('spendpal_networth_history');
       localStorage.removeItem('spendpal_rollover_cats');
