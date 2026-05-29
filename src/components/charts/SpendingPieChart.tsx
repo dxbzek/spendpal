@@ -19,7 +19,7 @@ const SpendingPieChart = memo(({ data }: Props) => {
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4">
       <div className="w-full max-w-[140px] sm:max-w-[180px] shrink-0">
-        {/* H6: Accessible chart wrapper — screen readers get the summary label */}
+        {/* Accessible chart wrapper - screen readers get the summary label */}
         <figure aria-label={ariaLabel} role="img">
         <ResponsiveContainer width="100%" aspect={1}>
           <PieChart>
@@ -49,7 +49,7 @@ const SpendingPieChart = memo(({ data }: Props) => {
         </ResponsiveContainer>
         </figure>
       </div>
-      {/* H6: Visually-hidden data table so screen readers can access the values */}
+      {/* Visually-hidden data table so screen readers can access the values */}
       <table className="sr-only" aria-label="Spending by category data">
         <thead><tr><th>Category</th><th>Amount</th></tr></thead>
         <tbody>{topCategories.map(item => (

@@ -1,4 +1,4 @@
-// Pure data — no imports, no side effects.
+// Pure data - no imports, no side effects.
 // Kept in its own file so Rollup initialises it before any complex module
 // that depends on it, avoiding a cross-chunk TDZ race in production bundles.
 

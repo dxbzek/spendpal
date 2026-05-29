@@ -20,7 +20,7 @@ interface Props {
   target: Target;
 }
 
-// Two discriminated row shapes — the review UI branches on `target`.
+// Two discriminated row shapes - the review UI branches on `target`.
 interface BudgetRow {
   category: string;
   categoryIcon: string;
@@ -172,7 +172,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
           await addCategory(row.category, row.categoryIcon, 'expense');
           createdCategories++;
         } catch (e) {
-          // Non-fatal — the budget still writes even if the category create fails
+          // Non-fatal - the budget still writes even if the category create fails
           logger.error('addCategory failed during scan', e);
         }
       }

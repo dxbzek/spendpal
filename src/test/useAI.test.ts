@@ -1,5 +1,5 @@
 /**
- * Tests for the useAI hook — mocks the Supabase client and fetch to isolate
+ * Tests for the useAI hook - mocks the Supabase client and fetch to isolate
  * the hook's parsing, retry, and error-handling logic.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -121,7 +121,7 @@ describe('supabase.functions.invoke — mock scenarios', () => {
     try {
       result = await mockInvoke('ai-finance', { body: { type: 'categorize-csv', data: 'csv...' } });
     } catch (_e) {
-      // First attempt failed — retry
+      // First attempt failed - retry
       await new Promise(r => setTimeout(r, 10)); // minimal delay
       result = await mockInvoke('ai-finance', { body: { type: 'categorize-csv', data: 'csv...' } });
     }

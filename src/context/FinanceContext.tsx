@@ -152,7 +152,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // M7: Memoized budget spending — computed once from the transactions array,
+  // Memoized budget spending - computed once from the transactions array,
   // not recalculated inside every mutation's nested state setter.
   const spentByCategory = useMemo(
     () => computeSpentByCategory(transactions),
@@ -171,7 +171,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!userId) { setLoading(false); return; }
     setLoading(true);
     try {
-      // C1: Load transactions from the last 13 months by default (covers current +
+      // Load transactions from the last 13 months by default (covers current +
       // previous year for Reports), instead of loading every transaction ever recorded.
       // Older data can be fetched on demand (e.g., from the Reports page range picker).
       const thirteenMonthsAgo = new Date();
@@ -277,7 +277,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const mapped = mapTransaction(data);
     if (mapped) {
-      // M7: Simply prepend — the useMemo+useEffect in FinanceProvider will
+      // Simply prepend - the useMemo+useEffect in FinanceProvider will
       // recompute spentByCategory and update budgets on the next render.
       setTransactions(prev => [mapped, ...prev]);
     }

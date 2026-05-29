@@ -41,7 +41,7 @@ async function invokeWithTimeout<T>(
   body: Record<string, unknown>,
   timeoutMs: number,
 ): Promise<T> {
-  // Explicitly fetch the session token — supabase.functions.invoke does not
+  // Explicitly fetch the session token - supabase.functions.invoke does not
   // reliably auto-inject the Authorization header with newer publishable-key
   // format clients, so we replicate the same pattern used by getAuthHeaders().
   const { data: { session } } = await supabase.auth.getSession();
@@ -115,7 +115,7 @@ export interface AdvisorSession {
   created_at: string;
 }
 
-// H7: Minimum interval between any AI requests to prevent Groq quota exhaustion.
+// Minimum interval between any AI requests to prevent Groq quota exhaustion.
 const AI_COOLDOWN_MS = 5_000;
 
 export const useAI = () => {
@@ -124,7 +124,7 @@ export const useAI = () => {
   const [summaryText, setSummaryText] = useState('');
   const lastRequestAt = useRef<number>(0);
 
-  // H7: Shared cooldown guard — enforced before every AI call.
+  // Shared cooldown guard - enforced before every AI call.
   // Advances the timer only when called, so a failed request still starts the cooldown
   // (prevents rapid-fire retries) but a rejected cooldown check does not reset it.
   const checkCooldown = () => {
@@ -139,7 +139,7 @@ export const useAI = () => {
     return true;
   };
 
-  // Streaming — uses raw fetch (supabase.functions.invoke doesn't support SSE)
+  // Streaming - uses raw fetch (supabase.functions.invoke doesn't support SSE)
   const generateSummary = useCallback(async (data: unknown) => {
     if (!checkCooldown()) return;
     setLoading(true);
@@ -252,7 +252,7 @@ export const useAI = () => {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           body = await makeAttempt();
-          break; // success — exit retry loop
+          break; // success - exit retry loop
         } catch (err) {
           if (!isNetworkError(err) || attempt === 2) throw err;
           // Exponential backoff: 2s, 4s
@@ -273,7 +273,7 @@ export const useAI = () => {
     }
   }, []);
 
-  // Internal helper — all three image extractors share the same shape
+  // Internal helper - all three image extractors share the same shape
   // (retry, cooldown, JSON-array parse) and only differ by the edge function
   // `type` they send.
   const runImageExtract = useCallback(async (

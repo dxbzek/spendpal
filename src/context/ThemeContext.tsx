@@ -11,7 +11,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    // v2: light-first — only honour an explicit user toggle, not a system-preference default
+    // v2: light-first - only honour an explicit user toggle, not a system-preference default
     const stored = localStorage.getItem('theme');
     const userChose = localStorage.getItem('theme-user-set') === '1';
     if (userChose && (stored === 'dark' || stored === 'light')) return stored;

@@ -11,7 +11,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense } from "react";
 
-// H1: Route-level code splitting — heavy pages (AIAdvisor, Reports, CalendarView)
+// Route-level code splitting - heavy pages (AIAdvisor, Reports, CalendarView)
 // are now loaded on demand, shrinking the initial JS bundle.
 const Dashboard     = lazy(() => import("@/pages/Dashboard"));
 const Transactions  = lazy(() => import("@/pages/Transactions"));
