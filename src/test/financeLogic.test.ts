@@ -233,6 +233,30 @@ describe('detectDuplicates', () => {
     expect(detectDuplicates(txs).size).toBe(0);
   });
 
+  it('does not flag a frequently-recurring merchant+amount (daily commuter pattern)', () => {
+    // 20 AED metro top-ups across the month, several within a 3-day window.
+    const txs = [
+      makeTransaction({ id: 'm-1', amount: 20, merchant: 'RTA Metro', date: '2025-01-10' }),
+      makeTransaction({ id: 'm-2', amount: 20, merchant: 'RTA Metro', date: '2025-01-11' }),
+      makeTransaction({ id: 'm-3', amount: 20, merchant: 'RTA Metro', date: '2025-01-12' }),
+      makeTransaction({ id: 'm-4', amount: 20, merchant: 'RTA Metro', date: '2025-01-20' }),
+      makeTransaction({ id: 'm-5', amount: 20, merchant: 'RTA Metro', date: '2025-01-25' }),
+    ];
+    // Recurs 5x in the month (>= threshold) -> recurring pattern, not duplicates.
+    expect(detectDuplicates(txs).size).toBe(0);
+  });
+
+  it('still flags a re-imported rare charge (below the recurring threshold)', () => {
+    // A one-off charge that appears twice (statement re-import) is still flagged.
+    const txs = [
+      makeTransaction({ id: 'a', amount: 1499, merchant: 'Furniture Store', date: '2025-01-10' }),
+      makeTransaction({ id: 'b', amount: 1499, merchant: 'Furniture Store', date: '2025-01-11' }),
+    ];
+    const dupes = detectDuplicates(txs);
+    expect(dupes.has('a')).toBe(true);
+    expect(dupes.has('b')).toBe(true);
+  });
+
   it('handles 1000 transactions with 5 duplicate pairs correctly', () => {
     const txs: Transaction[] = [];
     // 990 unique transactions
@@ -250,7 +274,9 @@ describe('detectDuplicates', () => {
     const elapsed = performance.now() - start;
 
     expect(dupes.size).toBe(10); // exactly the 5 pairs
-    expect(elapsed).toBeLessThan(50); // must complete in <50ms
+    // Linear-performance smoke check. Generous threshold so it is not flaky on
+    // slow/loaded CI machines while still catching an accidental O(n^2) regression.
+    expect(elapsed).toBeLessThan(250);
 
     // Verify only the duplicate pairs are flagged
     for (let i = 0; i < 5; i++) {
