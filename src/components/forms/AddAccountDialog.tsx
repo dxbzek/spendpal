@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { AmountInput } from '@/components/ui/AmountInput';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinance } from '@/context/FinanceContext';
@@ -97,13 +98,13 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
         <div className="space-y-3">
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-              <Input placeholder="e.g., Emirates NBD" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} className="h-9 text-sm" maxLength={50} />
+              <label className="text-sm font-medium text-foreground/80 mb-1 block">Name</label>
+              <Input placeholder="e.g., Main Checking" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} className="h-11 text-base" maxLength={50} />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+              <label className="text-sm font-medium text-foreground/80 mb-1 block">Type</label>
               <Select value={type} onValueChange={v => setType(v as AccountType)}>
-                <SelectTrigger className="h-9 text-sm w-[110px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 text-base w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">💵 Cash</SelectItem>
                   <SelectItem value="debit">💳 Debit</SelectItem>
@@ -113,30 +114,36 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             </div>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+            <label className="text-sm font-medium text-foreground/80 mb-1 block">
               {type === 'credit' ? 'Available Limit' : 'Balance'} ({currency})
             </label>
-            <Input type="number" placeholder="0.00" value={balance} onChange={e => setBalance(e.target.value)} className="h-9 text-sm" />
+            <AmountInput value={balance} onChange={setBalance} className="h-11" />
+            {type === 'credit' && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                This is what you can still spend, not your total credit limit. Example: 20,000 limit
+                with 5,000 already used = 15,000 available.
+              </p>
+            )}
           </div>
           {type === 'credit' && (
             <div className="space-y-2.5 rounded-lg bg-muted/50 p-2.5">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Credit Limit ({currency})</label>
-                <Input type="number" placeholder="20,000" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} className="h-9 text-sm" />
+                <label className="text-sm font-medium text-foreground/80 mb-1 block">Credit Limit ({currency})</label>
+                <AmountInput value={creditLimit} onChange={setCreditLimit} placeholder="20,000" className="h-11" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Statement Day</label>
-                  <Input type="number" placeholder="1" min="1" max="31" value={statementDate} onChange={e => setStatementDate(e.target.value)} className="h-9 text-sm" />
+                  <label className="text-sm font-medium text-foreground/80 mb-1 block">Statement Day</label>
+                  <Input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="1" value={statementDate} onChange={e => setStatementDate(e.target.value.replace(/[^0-9]/g, ''))} className="h-11 text-base" maxLength={2} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Due Day</label>
-                  <Input type="number" placeholder="15" min="1" max="31" value={dueDate} onChange={e => setDueDate(e.target.value)} className="h-9 text-sm" />
+                  <label className="text-sm font-medium text-foreground/80 mb-1 block">Due Day</label>
+                  <Input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="15" value={dueDate} onChange={e => setDueDate(e.target.value.replace(/[^0-9]/g, ''))} className="h-11 text-base" maxLength={2} />
                 </div>
               </div>
             </div>
           )}
-          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-9 text-sm gradient-primary text-primary-foreground">
+          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-11 text-base gradient-primary text-primary-foreground">
             {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Add Account'}
           </Button>

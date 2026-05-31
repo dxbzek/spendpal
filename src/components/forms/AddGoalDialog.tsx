@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { AmountInput } from '@/components/ui/AmountInput';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -145,7 +146,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Target Amount ({currency})</label>
-            <Input type="number" placeholder="10000" min="0.01" step="0.01" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} />
+            <AmountInput placeholder="10000" value={targetAmount} onChange={setTargetAmount} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Deadline (optional)</label>
