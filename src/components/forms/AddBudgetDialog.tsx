@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Loader2, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { AmountInput } from '@/components/ui/AmountInput';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -145,7 +146,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
-            <Input type="number" placeholder="0.00" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} />
+            <AmountInput placeholder="0.00" value={amount} onChange={setAmount} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Period</label>
