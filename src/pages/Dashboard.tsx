@@ -331,12 +331,6 @@ const Dashboard = () => {
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="col-span-1">
-            <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
-          </div>
-          <div className="col-span-1">
-            <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
-          </div>
           <Card className="col-span-1 overflow-hidden">
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-financial-medium">{mask(fmt(income))}</p>
