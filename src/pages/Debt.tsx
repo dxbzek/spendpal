@@ -106,17 +106,24 @@ const Debt = () => {
           <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt Tracker</h1>
           {creditDebts.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="bg-primary-foreground/10 rounded-2xl p-2.5 sm:p-3 backdrop-blur-sm">
-                <p className="text-primary-foreground/70 text-[10px] sm:text-[11px] mb-0.5">Total Owed</p>
+              <div className="min-w-0 bg-primary-foreground/15 border border-primary-foreground/20 rounded-2xl p-3 backdrop-blur-sm">
+                <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Total Owed</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalOwed))}</p>
               </div>
-              <div className="bg-primary-foreground/10 rounded-2xl p-2.5 sm:p-3 backdrop-blur-sm">
-                <p className="text-primary-foreground/70 text-[10px] sm:text-[11px] mb-0.5">Credit Limit</p>
+              <div className="min-w-0 bg-primary-foreground/15 border border-primary-foreground/20 rounded-2xl p-3 backdrop-blur-sm">
+                <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Credit Limit</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalLimit))}</p>
               </div>
-              <div className="bg-primary-foreground/10 rounded-2xl p-2.5 sm:p-3 backdrop-blur-sm">
-                <p className="text-primary-foreground/70 text-[10px] sm:text-[11px] mb-0.5">Utilization</p>
-                <p className={`text-sm sm:text-lg font-heading ${overallUtil >= 30 ? 'text-warning' : 'text-primary-foreground'}`}>{overallUtil.toFixed(0)}%</p>
+              <div className="min-w-0 bg-primary-foreground/15 border border-primary-foreground/20 rounded-2xl p-3 backdrop-blur-sm">
+                <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Utilization</p>
+                <div className="flex items-baseline gap-1.5">
+                  <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
+                  {overallUtil >= 30 && (
+                    <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-foreground/25 text-primary-foreground shrink-0">
+                      {overallUtil >= 75 ? 'High' : 'Watch'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
