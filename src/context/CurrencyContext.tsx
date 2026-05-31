@@ -144,17 +144,17 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // \u202A/\u202C = LTR embedding/pop - prevents Arabic currency symbols (د.إ etc.)
   // from triggering the Unicode bidi algorithm and flipping number layout.
-  const fmt = (n: number) => `\u202A${info.symbol} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
+  const fmt = (n: number) => `\u202A${info.symbol} ${n.toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
 
   const fmtSigned = (n: number, type: 'income' | 'expense' | 'transfer') => {
     const prefix = type === 'income' ? '+' : type === 'expense' ? '-' : '';
-    return `\u202A${prefix}${info.symbol} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
+    return `\u202A${prefix}${info.symbol} ${n.toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
   };
 
   const fmtSecondary = (n: number): string | null => {
     if (!secondaryCurrency || !secondaryInfo || secondaryRate === null) return null;
     const converted = n * secondaryRate;
-    return `\u202A${secondaryInfo.symbol} ${converted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
+    return `\u202A${secondaryInfo.symbol} ${converted.toLocaleString(secondaryInfo.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
   };
 
   const setCurrency = (code: string) => {

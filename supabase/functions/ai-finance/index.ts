@@ -45,7 +45,12 @@ serve(async (req) => {
       });
     }
 
-    const { type, data } = JSON.parse(body);
+    const { type, data, currency } = JSON.parse(body);
+    // Sanitize the optional currency code from the client (defends the prompt
+    // against injection) and fall back to neutral, region-agnostic wording.
+    const userCurrency = typeof currency === "string" && /^[A-Za-z]{2,4}$/.test(currency)
+      ? currency.toUpperCase()
+      : "the user's local currency";
 
     const IMAGE_TYPES = new Set(["categorize-image", "categorize-image-budgets", "categorize-image-goals"]);
     if (!IMAGE_TYPES.has(type) && body.length > 512_000) {
@@ -76,18 +81,18 @@ serve(async (req) => {
     let toolChoice: unknown = undefined;
 
     if (type === "summary") {
-      systemPrompt = `You are a personal finance assistant for a UAE resident. Analyze their financial data and write a clear, friendly, 3-4 paragraph monthly summary in plain English. Include:
+      systemPrompt = `You are a personal finance assistant for the user. Analyze their financial data and write a clear, friendly, 3-4 paragraph monthly summary in plain English. Include:
 - Total income vs expenses and net savings
 - Top spending categories and notable patterns
 - Any concerning trends or positive highlights
 - A brief actionable tip
-Use AED (د.إ) currency. Keep it concise and conversational.`;
+Use ${userCurrency} for all amounts. Keep it concise and conversational.`;
       userPrompt = `Here is my financial data for this month:\n${JSON.stringify(data)}`;
 
     } else if (type === "budget-suggestions") {
-      systemPrompt = `You are a personal finance advisor for a UAE resident. Based on their spending history, suggest optimal monthly budget amounts for each spending category. Be realistic and practical.
+      systemPrompt = `You are a personal finance advisor for the user. Based on their spending history, suggest optimal monthly budget amounts for each spending category. Be realistic and practical.
 Return your response as a JSON array of objects with: category, suggestedAmount, reasoning.
-Use AED amounts. Only return the JSON array, no other text.`;
+Use ${userCurrency} amounts. Only return the JSON array, no other text.`;
       userPrompt = `Here is my spending data:\n${JSON.stringify(data)}`;
 
     } else if (type === "categorize-csv") {
@@ -122,7 +127,7 @@ DATE FORMATS YOU MAY ENCOUNTER — always output as YYYY-MM-DD regardless of inp
 RULES:
 - Amounts ending in CR (e.g. "2,900.00CR") are income/payments received, type="income"
 - All other amounts are expenses, type="expense"
-- For foreign currency lines like "11.55 USD / (1 AED = USD 0.26394) / 43.76" use the AED amount (43.76)
+- For foreign currency lines like "11.55 USD / (1 AED = USD 0.26394) / 43.76" use the settled local-currency amount (43.76)
 - Skip: opening/closing balance lines, "Remaining Principle Balance", statement summary rows, installment plan headers
 - Dates: ALWAYS output as YYYY-MM-DD
 
@@ -223,7 +228,7 @@ Return: [{ name, icon, type, targetAmount, deadline? }]`;
       userPrompt = "";
 
     } else if (type === "monthly-report") {
-      systemPrompt = `You are a personal finance analyst for a UAE resident. Generate a comprehensive monthly financial report. Structure it with clear sections using markdown-style headers:
+      systemPrompt = `You are a personal finance analyst for the user. Generate a comprehensive monthly financial report. Structure it with clear sections using markdown-style headers:
 
 ## 📊 Monthly Overview
 Summarize income, expenses, net savings with percentage changes.
@@ -240,7 +245,7 @@ Summarize progress toward savings goals.
 ## 💡 Key Insights & Recommendations
 3-4 actionable tips based on the data.
 
-Use AED (د.إ) currency. Be specific with numbers. Keep tone professional but friendly.`;
+Use ${userCurrency} for all amounts. Be specific with numbers. Keep tone professional but friendly.`;
       userPrompt = `Generate my monthly financial report:\n${JSON.stringify(data)}`;
 
     } else if (type === "budget-advisor") {

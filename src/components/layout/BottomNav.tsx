@@ -14,17 +14,17 @@ const NAV_ITEMS_LEFT = [
 ];
 
 const NAV_ITEMS_RIGHT = [
-  { path: '/accounts', label: 'Accounts', icon: Wallet },
-  { path: '/budgets', label: 'Budget', icon: PiggyBank },
+  { path: '/goals', label: 'Goals', icon: Target },
+  { path: '/advisor', label: 'Advisor', icon: Brain },
 ];
 
 const MORE_ITEMS = [
+  { path: '/accounts', label: 'Accounts', icon: Wallet },
+  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/debt', label: 'Debt', icon: CreditCard },
-  { path: '/goals', label: 'Goals', icon: Target },
   { path: '/installments', label: 'Installments', icon: Layers },
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { path: '/advisor', label: 'AI Advisor', icon: Brain },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

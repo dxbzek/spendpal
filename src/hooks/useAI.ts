@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { logger } from '@/lib/logger';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -120,6 +121,11 @@ const AI_COOLDOWN_MS = 5_000;
 
 export const useAI = () => {
   const { user } = useAuth();
+  // Pass the user's primary currency to the AI prompts. Read via a ref so the
+  // memoized callbacks below stay stable (no dependency churn / stale closure).
+  const { currency } = useCurrency();
+  const currencyRef = useRef(currency);
+  currencyRef.current = currency;
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const lastRequestAt = useRef<number>(0);
@@ -149,7 +155,7 @@ export const useAI = () => {
       const resp = await fetchWithTimeout(FUNC_URL, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ type: 'summary', data }),
+        body: JSON.stringify({ type: 'summary', data, currency: currencyRef.current }),
       }, 60_000);
 
       if (!resp.ok) {
@@ -206,7 +212,7 @@ export const useAI = () => {
     try {
       const body = await invokeWithTimeout<{ result?: string }>(
         'ai-finance',
-        { type: 'budget-suggestions', data },
+        { type: 'budget-suggestions', data, currency: currencyRef.current },
         60_000,
       );
       const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
@@ -341,7 +347,7 @@ export const useAI = () => {
     try {
       const body = await invokeWithTimeout<{ result?: unknown }>(
         'ai-finance',
-        { type: 'budget-advisor', data },
+        { type: 'budget-advisor', data, currency: currencyRef.current },
         60_000,
       );
       const result = body.result;
