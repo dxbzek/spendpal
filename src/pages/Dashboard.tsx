@@ -3,6 +3,8 @@ import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMas
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
+import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
+import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
 import SpendingForecastWidget from '@/components/dashboard/SpendingForecastWidget';
 import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWidget';
