@@ -3,8 +3,6 @@ import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMas
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
-import NetWorthWidget from '@/components/dashboard/NetWorthWidget';
-import MoneySavedWidget from '@/components/dashboard/MoneySavedWidget';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
 import SpendingForecastWidget from '@/components/dashboard/SpendingForecastWidget';
 import CreditUtilizationWidget from '@/components/dashboard/CreditUtilizationWidget';
@@ -333,12 +331,6 @@ const Dashboard = () => {
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="col-span-1">
-            <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
-          </div>
-          <div className="col-span-1">
-            <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
-          </div>
           <Card className="col-span-1 overflow-hidden">
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-financial-medium">{mask(fmt(income))}</p>
