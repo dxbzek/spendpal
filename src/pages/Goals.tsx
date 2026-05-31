@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown, Pause, Play, Trophy, ScanLine } from 'lucide-react';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
 import { motion } from 'framer-motion';
@@ -37,6 +38,7 @@ const Goals = () => {
   const [showScan, setShowScan] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
+  const { scheduleDelete: scheduleGoalDelete } = useUndoableDelete({ deleteOne: removeGoal });
   const [showCompleted, setShowCompleted] = useState(false);
 
   // Contribution logs keyed by goal ID.
@@ -391,10 +393,10 @@ const Goals = () => {
 
       <AlertDialog open={!!deleteGoalId} onOpenChange={(o) => { if (!o) setDeleteGoalId(null); }}>
         <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader><AlertDialogTitle>Delete Goal?</AlertDialogTitle><AlertDialogDescription>This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Delete this goal?</AlertDialogTitle><AlertDialogDescription>This deletes the goal and its saved-progress history. We'll hold it for a few seconds so you can undo.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteGoalId) removeGoal(deleteGoalId); setDeleteGoalId(null); }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+            <AlertDialogAction onClick={() => { if (deleteGoalId) scheduleGoalDelete([deleteGoalId], 'Goal deleted'); setDeleteGoalId(null); }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
