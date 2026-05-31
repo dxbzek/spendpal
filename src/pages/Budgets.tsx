@@ -3,6 +3,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine } from 'lucide-react';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,7 @@ const Budgets = () => {
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
+  const { scheduleDelete: scheduleBudgetDelete } = useUndoableDelete({ deleteOne: removeBudget });
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
@@ -460,10 +462,10 @@ const Budgets = () => {
 
       <AlertDialog open={!!deleteBudgetId} onOpenChange={(o) => { if (!o) setDeleteBudgetId(null); }}>
         <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader><AlertDialogTitle>Delete Budget?</AlertDialogTitle><AlertDialogDescription>This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Delete this budget?</AlertDialogTitle><AlertDialogDescription>This removes the budget limit only — your transactions and spending history are unaffected. We'll hold it for a few seconds so you can undo.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteBudgetId) removeBudget(deleteBudgetId); setDeleteBudgetId(null); }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+            <AlertDialogAction onClick={() => { if (deleteBudgetId) scheduleBudgetDelete([deleteBudgetId], 'Budget deleted'); setDeleteBudgetId(null); }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

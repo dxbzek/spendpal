@@ -9,20 +9,13 @@
     <link rel="apple-touch-icon" href="/pwa-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
-    <!-- TODO: Set the document title to the name of your application -->
     <title>Spend Pal</title>
     <meta name="description" content="Spend Pal is a Personal Finance Tracker">
-    <meta name="author" content="Lovable" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/qxJn6hIPm2QAlp84mbu8UO0V0x73/social-images/social-1772991603977-Untitled_design.webp">
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/qxJn6hIPm2QAlp84mbu8UO0V0x73/social-images/social-1772991603977-Untitled_design.webp">
     <meta property="og:title" content="Spend Pal">
   <meta name="twitter:title" content="Spend Pal">
@@ -41,9 +34,30 @@
     <script>
       window.addEventListener('error', function(e) {
         var el = document.getElementById('app-shell-loader');
-        if (el) {
-          el.innerHTML = '<div style="max-width:400px;text-align:center;padding:24px"><p style="font-size:2rem">⚠️</p><p style="font-weight:600;margin:8px 0">Something went wrong</p><p style="color:#666;font-size:13px;word-break:break-all">' + e.message + '</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#2e9e6b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px">Reload</button></div>';
-        }
+        if (!el) return;
+        // Build with DOM APIs + textContent so the (untrusted) error message
+        // can never inject markup into the shell.
+        el.textContent = '';
+        var box = document.createElement('div');
+        box.style.cssText = 'max-width:400px;text-align:center;padding:24px';
+        var icon = document.createElement('p');
+        icon.style.fontSize = '2rem';
+        icon.textContent = '⚠️';
+        var title = document.createElement('p');
+        title.style.cssText = 'font-weight:600;margin:8px 0';
+        title.textContent = 'Something went wrong';
+        var msg = document.createElement('p');
+        msg.style.cssText = 'color:#666;font-size:13px;word-break:break-all';
+        msg.textContent = (e && e.message) ? String(e.message) : '';
+        var btn = document.createElement('button');
+        btn.style.cssText = 'margin-top:16px;padding:8px 20px;background:#2e9e6b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px';
+        btn.textContent = 'Reload';
+        btn.addEventListener('click', function() { location.reload(); });
+        box.appendChild(icon);
+        box.appendChild(title);
+        box.appendChild(msg);
+        box.appendChild(btn);
+        el.appendChild(box);
       });
     </script>
     <script type="module" src="/src/main.tsx"></script>

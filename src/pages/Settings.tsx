@@ -287,13 +287,15 @@ const DataBackupCard = () => {
 };
 
 const DangerZoneCard = () => {
-  const { accounts, transactions, budgets, goals } = useFinance();
+  const { accounts, transactions, budgets, goals, refresh } = useFinance();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
 
   const handleDeleteAll = async () => {
-    if (!user) return;
+    if (!user || confirmText !== 'DELETE') return;
     setDeleting(true);
     try {
       // Delete in FK-safe order (transactions before accounts): deleting an
@@ -310,13 +312,15 @@ const DangerZoneCard = () => {
       localStorage.removeItem('spendpal_rollover_cats');
       localStorage.removeItem('spendpal_monthly_income');
       toast.success('All data deleted');
-      window.location.reload();
+      await refresh();
+      navigate('/');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error('Delete failed: ' + msg);
     } finally {
       setDeleting(false);
       setShowConfirm(false);
+      setConfirmText('');
     }
   };
 
@@ -349,7 +353,7 @@ const DangerZoneCard = () => {
         </div>
       </section>
 
-      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+      <AlertDialog open={showConfirm} onOpenChange={o => { setShowConfirm(o); if (!o) setConfirmText(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-2">
@@ -357,13 +361,26 @@ const DangerZoneCard = () => {
               <AlertDialogTitle>Delete All Data?</AlertDialogTitle>
             </div>
             <AlertDialogDescription>
-              This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals. This action <span className="font-semibold text-foreground">cannot be undone</span>.
+              This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals. This action <span className="font-semibold text-foreground">cannot be undone</span> — there is no Undo for Delete All.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="mt-1">
+            <label className="text-xs text-muted-foreground">
+              Type <span className="font-semibold text-foreground">DELETE</span> to confirm
+            </label>
+            <Input
+              value={confirmText}
+              onChange={e => setConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoComplete="off"
+              autoCapitalize="characters"
+              className="mt-1 h-11 text-base"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={deleting}
+              disabled={deleting || confirmText !== 'DELETE'}
               onClick={handleDeleteAll}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
