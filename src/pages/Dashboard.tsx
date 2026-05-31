@@ -98,34 +98,6 @@ const Dashboard = () => {
   }, [transactions, now, creditAccountIds]);
   const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
 
-  const healthScore = useMemo(() => {
-    const hasActivity = thisMonthIncome > 0 || thisMonthExpenses > 0;
-    // Need at least some financial activity to produce a meaningful score
-    if (!hasActivity && budgets.length === 0) return null;
-
-    // Savings rate (0-30): only score if there is actual income this month
-    const sr = savingsRate ?? null;
-    const savingsScore = sr === null ? 0 : sr >= 20 ? 30 : sr >= 10 ? 20 : sr >= 0 ? 10 : 0;
-
-    // Budget adherence (0-30): only score if budgets exist
-    const budgetScore = budgets.length === 0 ? 0 : Math.round(
-      (budgets.filter(b => b.spent <= b.amount).length / budgets.length) * 30
-    );
-
-    // Debt / credit utilization (0-20)
-    const creditAccs = accounts.filter(a => a.type === 'credit' && a.creditLimit);
-    const avgUtil = creditAccs.length
-      ? creditAccs.reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / creditAccs.length
-      : 0;
-    // No credit cards = neutral 10 (only when there IS other activity to score)
-    const debtScore = creditAccs.length === 0 ? 10 : avgUtil < 0.3 ? 20 : avgUtil < 0.5 ? 14 : avgUtil < 0.75 ? 8 : 3;
-
-    // Net worth positive (0-20)
-    const nwScore = totalBalance > 0 ? Math.min(20, Math.round((totalBalance / Math.max(thisMonthExpenses || 1, 1)) * 2)) : 0;
-
-    return Math.min(100, savingsScore + budgetScore + debtScore + nwScore);
-  }, [savingsRate, thisMonthIncome, thisMonthExpenses, budgets, accounts, totalBalance]);
-
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
@@ -331,20 +303,14 @@ const Dashboard = () => {
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="col-span-1">
-            <NetWorthWidget accounts={accounts} hidden={hidden} mask={mask} />
-          </div>
-          <div className="col-span-1">
-            <MoneySavedWidget transactions={transactions} creditAccountIds={creditAccountIds} hidden={hidden} mask={mask} />
-          </div>
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <p className="text-xs text-muted-foreground mb-1">Income</p>
-            <p className="text-financial-medium">{mask(fmt(income))}</p>
+            <p className="text-financial-medium text-income">{mask(fmt(income))}</p>
             {sec(income) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(income)}</p>}
           </Card>
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
-            <p className="text-financial-medium">{mask(fmt(expenses))}</p>
+            <p className="text-financial-medium text-expense">{mask(fmt(expenses))}</p>
             {sec(expenses) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(expenses)}</p>}
           </Card>
 
@@ -374,14 +340,14 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* ── ACCOUNTS & HEALTH ── */}
+        {/* ── ACCOUNTS ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Accounts & Health</span>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Accounts</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <Card className="col-span-2 lg:col-span-3">
+          <Card className="col-span-2 lg:col-span-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Accounts</h2>
               <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
@@ -455,50 +421,6 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          <Card className="col-span-2 lg:col-span-1">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading text-sm">Financial Health</h2>
-              {healthScore !== null && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  healthScore >= 75 ? 'bg-income/10 text-income' : healthScore >= 50 ? 'bg-warning/10 text-warning' : 'bg-expense/10 text-expense'
-                }`}>
-                  {healthScore >= 75 ? 'Good' : healthScore >= 50 ? 'Fair' : 'Needs Work'}
-                </span>
-              )}
-            </div>
-            {healthScore === null ? (
-              <p className="text-xs text-muted-foreground py-2">Add transactions, budgets, or accounts to see your score.</p>
-            ) : (
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative w-20 h-20 shrink-0">
-                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="32" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-                    <circle cx="40" cy="40" r="32" fill="none"
-                      stroke={healthScore >= 75 ? 'hsl(var(--income))' : healthScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--expense))'}
-                      strokeWidth="6"
-                      strokeDasharray={`${(healthScore / 100) * 201} 201`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl font-heading">{hidden ? '—' : healthScore}</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5 w-full text-xs">
-                  {[
-                    { label: 'Savings rate', val: savingsRate !== null ? `${savingsRate}%` : 'No data', ok: (savingsRate ?? -1) >= 10 },
-                    { label: 'Budget adherence', val: budgets.length ? `${budgets.filter(b => b.spent <= b.amount).length}/${budgets.length} on track` : 'No budgets', ok: budgets.length === 0 || budgets.every(b => b.spent <= b.amount) },
-                    { label: 'Credit utilization', val: accounts.some(a => a.type === 'credit') ? `${Math.round(accounts.filter(a => a.type === 'credit' && a.creditLimit).reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / Math.max(accounts.filter(a => a.type === 'credit' && a.creditLimit).length, 1) * 100)}%` : 'No credit', ok: true },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{item.label}</span>
-                      <span className={`font-medium ${item.ok ? 'text-income' : 'text-warning'}`}>{hidden ? '••' : item.val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Card>
         </div>
 
         {/* ── SPENDING ── */}
