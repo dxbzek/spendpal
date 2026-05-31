@@ -7,6 +7,7 @@ import { type Account } from '@/types/finance';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, addDays } from 'date-fns';
 import {
@@ -42,6 +43,7 @@ const Accounts = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { scheduleDelete, isPending } = useUndoableDelete({ deleteOne: removeAccount });
 
   const netWorth = useMemo(() => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
@@ -102,11 +104,24 @@ const Accounts = () => {
     return { pts, startBalance, endBalance: end, change };
   }, [accounts, transactions]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteId) return;
-    await removeAccount(deleteId);
+    const acct = accounts.find(a => a.id === deleteId);
+    scheduleDelete([deleteId], `${acct?.name ?? 'Account'} deleted`);
     setDeleteId(null);
   };
+
+  // Hide accounts that are pending deletion so they disappear immediately
+  // (the Undo toast restores them within the window).
+  const visibleAccounts = accounts.filter(a => !isPending(a.id));
+
+  // Stats for the delete-confirmation copy.
+  const deleteAccount = deleteId ? accounts.find(a => a.id === deleteId) : null;
+  const deleteTxs = deleteId ? transactions.filter(t => t.accountId === deleteId) : [];
+  const deleteTxCount = deleteTxs.length;
+  const deleteTxSpend = deleteTxs
+    .filter(t => t.type === 'expense' && !t.isTrackingOnly)
+    .reduce((s, t) => s + t.amount, 0);
 
   if (loading) return <PageSpinner />;
 
@@ -134,12 +149,12 @@ const Accounts = () => {
           {netWorth < 0 ? '-' : ''}{mask(fmt(Math.abs(netWorth)))}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          {accounts.length} account{accounts.length !== 1 ? 's' : ''}
+          {visibleAccounts.length} account{visibleAccounts.length !== 1 ? 's' : ''}
         </p>
       </div>
 
       {/* Account Cards */}
-      {accounts.length === 0 ? (
+      {visibleAccounts.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Wallet size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">No accounts yet</p>
@@ -147,7 +162,7 @@ const Accounts = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {accounts.map(account => {
+          {visibleAccounts.map(account => {
             const stats = accountStats[account.id] || { income: 0, expenses: 0 };
             const utilization =
               account.type === 'credit' && account.creditLimit
@@ -172,17 +187,17 @@ const Accounts = () => {
                   <div className="flex gap-1">
                     <button
                       onClick={() => { setEditAccount(account); setAddOpen(true); }}
-                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="Edit account"
                     >
-                      <Pencil size={15} />
+                      <Pencil size={16} />
                     </button>
                     <button
                       onClick={() => setDeleteId(account.id)}
-                      className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                       aria-label="Delete account"
                     >
-                      <Trash2 size={15} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
@@ -334,9 +349,17 @@ const Accounts = () => {
       <AlertDialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Account?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {deleteAccount?.name ?? 'account'}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes the account. Existing transactions linked to it will remain but may show an unknown account.
+              {deleteTxCount > 0 ? (
+                <>
+                  This deletes the account and all {deleteTxCount} transaction{deleteTxCount !== 1 ? 's' : ''} on it
+                  {deleteTxSpend > 0 ? <>, totaling {fmt(deleteTxSpend)} in spending history</> : null}.
+                  Balances on other accounts are unaffected. We'll hold the delete for a few seconds so you can undo.
+                </>
+              ) : (
+                <>This deletes the account. It has no transactions. We'll hold the delete for a few seconds so you can undo.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -345,7 +368,7 @@ const Accounts = () => {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Delete {deleteAccount?.name ?? 'account'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
