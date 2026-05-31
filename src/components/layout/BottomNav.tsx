@@ -92,12 +92,17 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="fixed bottom-[76px] left-0 right-0 z-50 mx-3 mb-1 bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[70vh] safe-bottom"
+              className="fixed bottom-[76px] left-0 right-0 z-[60] mx-3 mb-1 bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[70vh] safe-bottom"
             >
-              <div className="flex items-center justify-between px-5 pt-4 pb-2">
+              <div className="flex items-center justify-between pl-5 pr-3 pt-3 pb-2">
                 <span className="text-sm font-semibold text-foreground">More</span>
-                <button onClick={() => setShowMore(false)} className="p-1 rounded-full hover:bg-muted text-muted-foreground">
-                  <X size={16} />
+                <button
+                  type="button"
+                  onClick={() => setShowMore(false)}
+                  aria-label="Close menu"
+                  className="flex items-center justify-center w-9 h-9 -mr-1 rounded-full hover:bg-muted active:scale-95 text-muted-foreground transition-colors"
+                >
+                  <X size={18} />
                 </button>
               </div>
               <div className="grid grid-cols-4 gap-1 px-3 pb-4">

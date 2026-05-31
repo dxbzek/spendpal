@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { format, subMonths } from 'date-fns';
-import { toast } from 'sonner';
 import type { Budget } from '@/types/finance';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -81,10 +80,11 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
         if (pct >= threshold.pct && !alerted.current.has(key)) {
           alerted.current.add(key);
           saveAlerted(alerted.current);
-          const description = threshold.desc(b);
-          toast(threshold.label, { description, duration: 5000 });
-          sendBudgetNotification(threshold.label, description);
-          break; // only show highest threshold
+          // In-app toast pop-ups were removed by request - they fired one per
+          // budget on every dashboard load, which felt spammy. Budget alerts
+          // are still delivered via the opt-in push/email notification below.
+          sendBudgetNotification(threshold.label, threshold.desc(b));
+          break; // only fire highest threshold
         }
       }
     });
