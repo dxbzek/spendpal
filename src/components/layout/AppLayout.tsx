@@ -52,7 +52,7 @@ const AppLayout = () => {
             ? 'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[calc(7rem+env(safe-area-inset-bottom))]'
             : 'pb-8'}>
             <AnimatePresence mode="wait">
-              <ErrorBoundary>
+              <ErrorBoundary key={location.pathname}>
                 <motion.div
                   key={location.pathname}
                   initial={{ opacity: 0, y: 8 }}
