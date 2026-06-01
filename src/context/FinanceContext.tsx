@@ -312,6 +312,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         is_recurring: false,
         total_installments: null,
         current_installment: null,
+        loan_total_amount: null,
+        is_tracking_only: false,
       },
       {
         user_id: userId,
@@ -327,6 +329,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         is_recurring: false,
         total_installments: null,
         current_installment: null,
+        loan_total_amount: null,
+        is_tracking_only: false,
       },
     ];
     const { data, error } = await supabase.from('transactions').insert(rows).select();

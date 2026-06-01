@@ -151,7 +151,10 @@ const AIAdvisor = () => {
       // Exclude future-dated transactions — not yet earned/spent.
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && d <= now;
     });
-    const income = monthlyTx.filter(t => t.type === 'income' && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0);
+    // Exclude income posted to credit-card accounts (e.g. refunds) so the
+    // model isn't fed inflated income — matches the Dashboard/Reports rule.
+    const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
+    const income = monthlyTx.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
     const expenses = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
     const categories: Record<string, { total: number; icon: string; count: number }> = {};
     monthlyTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).forEach(t => {
@@ -336,11 +339,12 @@ const AIAdvisor = () => {
                       </div>
                     </button>
                     <button
+                      aria-label="Delete analysis"
                       onClick={async () => {
                         const ok = await deleteAdvisorSession(session.id);
                         if (ok) setHistory(prev => prev.filter(s => s.id !== session.id));
                       }}
-                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                      className="flex items-center justify-center min-w-[40px] min-h-[40px] text-muted-foreground hover:text-destructive transition-colors">
                       <Trash2 size={13} />
                     </button>
                   </div>

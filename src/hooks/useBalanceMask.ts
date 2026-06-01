@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'balanceHidden';
 const EVENT_NAME = 'balanceMaskToggle';
@@ -20,7 +20,9 @@ export function useBalanceMask() {
     };
   }, []);
 
-  const mask = (val: string) => (hidden ? '••••••' : val);
+  // Stable across renders (changes only when `hidden` flips) so memoized
+  // consumers that receive `mask` as a prop aren't re-rendered needlessly.
+  const mask = useCallback((val: string) => (hidden ? '••••••' : val), [hidden]);
   return { hidden, mask };
 }
 

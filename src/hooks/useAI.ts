@@ -360,10 +360,19 @@ export const useAI = () => {
       }
       if (!parsed) throw new Error('Unexpected response format from AI advisor');
 
-      // Validate required fields exist before using the cast
-      const REQUIRED_FIELDS = ['recommendedMethod', 'healthScore', 'healthBreakdown', 'insights', 'suggestedEnvelopes', 'simulation', 'dynamicAdjustments'] as const;
-      for (const k of REQUIRED_FIELDS) {
-        if (!(k in (parsed as object))) throw new Error(`AI response missing field: ${k}`);
+      // Validate field presence AND shape before using the cast — a malformed
+      // LLM payload (e.g. insights returned as null) would otherwise crash the
+      // results page when it calls .map on a non-array.
+      const p = parsed as unknown as Record<string, unknown>;
+      const ARRAY_FIELDS = ['insights', 'suggestedEnvelopes', 'dynamicAdjustments'] as const;
+      const OBJECT_FIELDS = ['healthBreakdown', 'simulation'] as const;
+      if (typeof p.recommendedMethod !== 'string') throw new Error('AI response missing field: recommendedMethod');
+      if (typeof p.healthScore !== 'number' || !Number.isFinite(p.healthScore)) throw new Error('AI response missing field: healthScore');
+      for (const k of ARRAY_FIELDS) {
+        if (!Array.isArray(p[k])) throw new Error(`AI response field "${k}" is not an array`);
+      }
+      for (const k of OBJECT_FIELDS) {
+        if (!p[k] || typeof p[k] !== 'object' || Array.isArray(p[k])) throw new Error(`AI response field "${k}" is not an object`);
       }
 
       // Persist to advisor_sessions for history

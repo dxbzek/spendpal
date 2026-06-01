@@ -92,7 +92,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="fixed bottom-[76px] left-0 right-0 z-[60] mx-3 mb-1 bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[70vh] safe-bottom"
+              className="fixed left-1/2 -translate-x-1/2 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] w-[calc(100%-1.5rem)] max-w-lg bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
             >
               <div className="flex items-center justify-between pl-5 pr-3 pt-3 pb-2">
                 <span className="text-sm font-semibold text-foreground">More</span>
@@ -113,12 +113,12 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                     <button
                       key={item.path}
                       onClick={() => handleMoreItem(item.path)}
-                      className={`flex flex-col items-center gap-1 py-3 px-1 rounded-2xl transition-colors active:scale-95 ${
+                      className={`flex flex-col items-center justify-center gap-1.5 py-3.5 px-1 min-h-[64px] rounded-2xl transition-colors active:scale-95 ${
                         active ? 'bg-accent text-primary' : 'hover:bg-muted text-muted-foreground'
                       }`}
                     >
                       <Icon size={22} className={active ? 'text-primary' : 'text-muted-foreground'} />
-                      <span className={`text-[10px] font-medium leading-tight text-center ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                      <span className={`text-[11px] font-medium leading-tight text-center ${active ? 'text-primary' : 'text-muted-foreground'}`}>
                         {item.label}
                       </span>
                     </button>

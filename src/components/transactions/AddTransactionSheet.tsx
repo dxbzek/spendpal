@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -310,14 +312,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || '';
 
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg">{isEditing ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
-          </DialogHeader>
-
+  const isMobile = useIsMobile();
+  const title = isEditing ? 'Edit Transaction' : 'Add Transaction';
+  // Shared form body — rendered inside a bottom Sheet on mobile (keyboard-safe,
+  // thumb-reachable) and a centered Dialog on desktop.
+  const formBody = (
           <div className="space-y-5 mt-4">
             <div className="flex gap-1 p-1 bg-muted rounded-xl">
               {TYPES.filter(t => !recurringMode || t.value !== 'transfer').map(t => (
@@ -555,8 +554,29 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
               {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+  );
+
+  return (
+    <>
+      {isMobile ? (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent side="bottom" className="rounded-t-2xl">
+            <SheetHeader className="text-left mb-1">
+              <SheetTitle className="text-lg">{title}</SheetTitle>
+            </SheetHeader>
+            {formBody}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-lg w-full">
+            <DialogHeader>
+              <DialogTitle className="text-lg">{title}</DialogTitle>
+            </DialogHeader>
+            {formBody}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Duplicate transaction warning */}
       <AlertDialog open={showDuplicateWarning} onOpenChange={(o) => { if (!o) { setShowDuplicateWarning(false); setPendingSubmit(null); setDuplicateMatch(null); } }}>
