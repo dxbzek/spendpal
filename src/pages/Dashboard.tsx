@@ -318,44 +318,32 @@ const Dashboard = () => {
             </button>
           </div>
 
-          <div className={`${isMobile ? 'text-center' : 'flex items-center justify-between gap-8'}`}>
-            <div className={isMobile ? '' : 'text-left'}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
               <p className="text-primary-foreground/70 text-xs uppercase tracking-wider mb-1">Total Balance</p>
               <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
               {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
             </div>
 
-            {/* Secondary currency + period selector */}
-            <div className={`${isMobile ? 'flex flex-col items-center gap-3 mt-4' : 'flex flex-col items-end gap-3'}`}>
-              <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-                <SelectTrigger className="h-7 w-auto min-w-[90px] max-w-[120px] sm:max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
-                  <SelectValue placeholder="2nd currency" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[240px]">
-                  <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
-                    <div className="relative">
-                      <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
-                        className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
-                    </div>
+            {/* Secondary currency */}
+            <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
+                <SelectValue placeholder="2nd currency" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[240px]">
+                <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
+                      className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
                   </div>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
-                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-0.5 p-0.5 bg-primary-foreground/10 rounded-lg">
-                {(['all', 'month', 'year'] as const).map(p => (
-                  <button key={p} onClick={() => setPeriod(p)}
-                    className={`px-2.5 sm:px-4 py-1.5 rounded-md text-[10px] sm:text-xs font-medium transition-all ${
-                      period === p ? 'bg-primary-foreground/20 text-primary-foreground' : 'text-primary-foreground/60'
-                    }`}>
-                    {p === 'all' ? 'All' : p === 'month' ? 'Month' : 'Year'}
-                  </button>
+                </div>
+                <SelectItem value="__none__">None</SelectItem>
+                {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
+                  <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
                 ))}
-              </div>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
 
           {statusLine && (
@@ -398,6 +386,16 @@ const Dashboard = () => {
           <div className="col-span-2 lg:col-span-4 flex items-center gap-3 pt-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
             <div className="flex-1 h-px bg-border" />
+            <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
+              {(['all', 'month', 'year'] as const).map(p => (
+                <button key={p} onClick={() => setPeriod(p)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                    period === p ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
+                  }`}>
+                  {p === 'all' ? 'All' : p === 'month' ? 'Month' : 'Year'}
+                </button>
+              ))}
+            </div>
           </div>
 
           <Card className="col-span-1 overflow-hidden">
