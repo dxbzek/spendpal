@@ -5,6 +5,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
+import { activeBudgets } from '@/utils/budgets';
 import { format, parseISO, subMonths, getMonth, getYear } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -147,7 +148,8 @@ const AIAdvisor = () => {
   const financialData = useMemo(() => {
     const monthlyTx = transactions.filter(tx => {
       const d = parseISO(tx.date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      // Exclude future-dated transactions — not yet earned/spent.
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && d <= now;
     });
     const income = monthlyTx.filter(t => t.type === 'income' && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0);
     const expenses = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
@@ -176,12 +178,12 @@ const AIAdvisor = () => {
         creditLimit: c.creditLimit,
         utilization: c.creditLimit ? Math.round(((c.creditLimit - c.balance) / c.creditLimit) * 100) : 0,
       })),
-      existingBudgets: budgets.map(b => ({ category: b.category, amount: b.amount, spent: b.spent })),
+      existingBudgets: activeBudgets(budgets, monthKey).map(b => ({ category: b.category, amount: b.amount, spent: b.spent })),
       goals: goals.map(g => ({ name: g.name, target: g.targetAmount, saved: g.savedAmount, type: g.type })),
       transactionCount: transactions.length,
       accountCount: accounts.length,
     };
-  }, [transactions, accounts, budgets, goals, currency, now]);
+  }, [transactions, accounts, budgets, goals, currency, now, monthKey]);
 
   // Flag categories where this month's spend is 2x+ the 3-month average.
   const anomalies = useMemo(() => {
