@@ -159,6 +159,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
                 type="number"
                 min="1"
                 autoFocus
+                aria-label="Net worth goal amount"
                 placeholder="Set goal…"
                 defaultValue={goal ?? ''}
                 className="flex-1 text-xs bg-muted rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary"

@@ -39,6 +39,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 
 
+// Hoisted out of the component so it's a stable type — defining it inline in
+// render made React remount every card (and re-run their effects) each render.
+const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+  <div className={`bg-card rounded-2xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
+);
+
 // Small progress ring used on the "Safe to spend today" hero card.
 const SafeRing = ({ pct }: { pct: number }) => {
   const size = 62, stroke = 6;
@@ -88,11 +94,12 @@ const Dashboard = () => {
   const now = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => {
-    if (period === 'all') return transactions;
     const month = now.getMonth();
     const year = now.getFullYear();
     return transactions.filter(tx => {
       const d = parseISO(tx.date);
+      if (d > now) return false; // skip future-dated transactions — not spent/earned yet
+      if (period === 'all') return true;
       if (period === 'month') return d.getMonth() === month && d.getFullYear() === year;
       return d.getFullYear() === year;
     });
@@ -215,10 +222,6 @@ const Dashboard = () => {
     }
     return mergedList.slice(0, 5);
   }, [transactions]);
-
-  const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <div className={`bg-card rounded-2xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
-  );
 
 
   // Skeleton keeps the layout stable while data loads.
@@ -463,7 +466,7 @@ const Dashboard = () => {
                       {group.map(a => {
                         const spent = a.type === 'credit' && a.creditLimit ? a.creditLimit - a.balance : 0;
                         const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((spent / a.creditLimit) * 100), 100) : 0;
-                        const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-amber-500' : 'bg-primary';
+                        const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-warning' : 'bg-primary';
                         return (
                           <div key={a.id} className="group">
                             <div className="flex items-center justify-between gap-2">

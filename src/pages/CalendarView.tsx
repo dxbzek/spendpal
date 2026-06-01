@@ -92,11 +92,11 @@ const CalendarView = () => {
           <p className="text-sm text-muted-foreground">Spending by day</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setCurrent(d => subMonths(d, 1))} className="p-2 rounded-xl hover:bg-muted transition-colors">
+          <button onClick={() => setCurrent(d => subMonths(d, 1))} aria-label="Previous month" className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl hover:bg-muted transition-colors">
             <ChevronLeft size={18} />
           </button>
           <span className="text-sm font-semibold min-w-[110px] text-center">{format(current, 'MMMM yyyy')}</span>
-          <button onClick={() => setCurrent(d => addMonths(d, 1))} className="p-2 rounded-xl hover:bg-muted transition-colors">
+          <button onClick={() => setCurrent(d => addMonths(d, 1))} aria-label="Next month" className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl hover:bg-muted transition-colors">
             <ChevronRight size={18} />
           </button>
         </div>
