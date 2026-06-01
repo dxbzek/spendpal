@@ -27,7 +27,9 @@ const Debt = () => {
       .filter(a => a.type === 'credit')
       .map(a => ({
         ...a,
-        owed: a.creditLimit ? Math.max(0, a.creditLimit - a.balance) : 0,
+        // With a limit, balance is available credit (owed = limit - balance).
+        // Without a limit, balance itself is the amount owed.
+        owed: a.creditLimit ? Math.max(0, a.creditLimit - a.balance) : Math.max(0, a.balance),
         utilization: a.creditLimit ? ((a.creditLimit - a.balance) / a.creditLimit) * 100 : 0,
       }))
       .filter(a => a.owed > 0)

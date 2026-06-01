@@ -1,6 +1,7 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
+import { activeBudgets } from '@/utils/budgets';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -118,6 +119,7 @@ const Dashboard = () => {
     for (const tx of transactions) {
       const d = parseISO(tx.date);
       if (d.getMonth() !== month || d.getFullYear() !== year) continue;
+      if (d > now) continue; // skip future-dated transactions — not spent/earned yet
       if (tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
       else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) exp += tx.amount;
     }
@@ -127,8 +129,14 @@ const Dashboard = () => {
   // Note: the financial-health score now lives solely on the AI Advisor page,
   // where it is actually computed — per the SpendPal design handoff.
 
-  const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
-  const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
+  // Budgets that apply to the current month (carried forward if none created
+  // yet), so the Safe-to-spend hero and status line reflect one consistent month.
+  const activeBudgetsList = useMemo(
+    () => activeBudgets(budgets, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`),
+    [budgets, now]
+  );
+  const totalBudgeted = activeBudgetsList.reduce((s, b) => s + b.amount, 0);
+  const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
 

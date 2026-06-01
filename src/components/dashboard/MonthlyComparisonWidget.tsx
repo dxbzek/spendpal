@@ -24,7 +24,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
   const comparison = useMemo(() => {
     const now = new Date();
     const thisMonthStart = startOfMonth(now);
-    const thisMonthEnd = endOfMonth(now);
+    const thisMonthEnd = now; // cap at today so future-dated transactions aren't counted
     const lastMonthStart = startOfMonth(subMonths(now, 1));
     const lastMonthEnd = endOfMonth(subMonths(now, 1));
 
