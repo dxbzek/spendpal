@@ -98,6 +98,17 @@ const Dashboard = () => {
   }, [transactions, now, creditAccountIds]);
   const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
 
+  // Overall credit utilization = total balances used / total limits (pooled).
+  // This is the standard definition and keeps the health panel consistent with
+  // the Credit Utilization widget, which uses the same pooled calculation.
+  const creditUtilization = useMemo(() => {
+    const creditAccs = accounts.filter(a => a.type === 'credit' && a.creditLimit);
+    if (!creditAccs.length) return null;
+    const totalLimit = creditAccs.reduce((s, a) => s + a.creditLimit!, 0);
+    const totalUsed = creditAccs.reduce((s, a) => s + (a.creditLimit! - a.balance), 0);
+    return totalLimit > 0 ? totalUsed / totalLimit : null;
+  }, [accounts]);
+
   const healthScore = useMemo(() => {
     const hasActivity = thisMonthIncome > 0 || thisMonthExpenses > 0;
     // Need at least some financial activity to produce a meaningful score
@@ -113,18 +124,14 @@ const Dashboard = () => {
     );
 
     // Debt / credit utilization (0-20)
-    const creditAccs = accounts.filter(a => a.type === 'credit' && a.creditLimit);
-    const avgUtil = creditAccs.length
-      ? creditAccs.reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / creditAccs.length
-      : 0;
     // No credit cards = neutral 10 (only when there IS other activity to score)
-    const debtScore = creditAccs.length === 0 ? 10 : avgUtil < 0.3 ? 20 : avgUtil < 0.5 ? 14 : avgUtil < 0.75 ? 8 : 3;
+    const debtScore = creditUtilization === null ? 10 : creditUtilization < 0.3 ? 20 : creditUtilization < 0.5 ? 14 : creditUtilization < 0.75 ? 8 : 3;
 
     // Net worth positive (0-20)
     const nwScore = totalBalance > 0 ? Math.min(20, Math.round((totalBalance / Math.max(thisMonthExpenses || 1, 1)) * 2)) : 0;
 
     return Math.min(100, savingsScore + budgetScore + debtScore + nwScore);
-  }, [savingsRate, thisMonthIncome, thisMonthExpenses, budgets, accounts, totalBalance]);
+  }, [savingsRate, thisMonthIncome, thisMonthExpenses, budgets, creditUtilization, totalBalance]);
 
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
@@ -482,7 +489,7 @@ const Dashboard = () => {
                   {[
                     { label: 'Savings rate', val: savingsRate !== null ? `${savingsRate}%` : 'No data', ok: (savingsRate ?? -1) >= 10 },
                     { label: 'Budget adherence', val: budgets.length ? `${budgets.filter(b => b.spent <= b.amount).length}/${budgets.length} on track` : 'No budgets', ok: budgets.length === 0 || budgets.every(b => b.spent <= b.amount) },
-                    { label: 'Credit utilization', val: accounts.some(a => a.type === 'credit') ? `${Math.round(accounts.filter(a => a.type === 'credit' && a.creditLimit).reduce((s, a) => s + ((a.creditLimit! - a.balance) / a.creditLimit!), 0) / Math.max(accounts.filter(a => a.type === 'credit' && a.creditLimit).length, 1) * 100)}%` : 'No credit', ok: true },
+                    { label: 'Credit utilization', val: creditUtilization !== null ? `${Math.round(creditUtilization * 100)}%` : 'No credit', ok: creditUtilization === null || creditUtilization < 0.3 },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between">
                       <span className="text-muted-foreground">{item.label}</span>
