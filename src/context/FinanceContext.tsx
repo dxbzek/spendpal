@@ -88,7 +88,9 @@ const mapGoal = (row: unknown): Goal | null => {
 function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const monthExpenses = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && t.date.startsWith(currentMonth));
+  const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`;
+  // Exclude future-dated transactions: they haven't been spent yet.
+  const monthExpenses = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && t.date.startsWith(currentMonth) && t.date <= today);
   const spent: Record<string, number> = {};
   for (const t of monthExpenses) {
     spent[t.category] = (spent[t.category] ?? 0) + t.amount;

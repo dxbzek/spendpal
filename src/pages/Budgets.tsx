@@ -13,6 +13,7 @@ import { useAI } from '@/hooks/useAI';
 import { toast } from 'sonner';
 import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
+import { activeBudgets } from '@/utils/budgets';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -59,8 +60,13 @@ const Budgets = () => {
   const totalDays = getDaysInMonth(now);
   const daysElapsed = totalDays - daysLeft;
 
-  const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
-  const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
+  const currentMonthKey = format(now, 'yyyy-MM');
+  // Active set for "This Month": current-month budgets, or the latest month's
+  // budgets carried forward if none exist yet for the current month.
+  const thisMonthBudgets = useMemo(() => activeBudgets(budgets, currentMonthKey), [budgets, currentMonthKey]);
+
+  const totalBudgeted = thisMonthBudgets.reduce((s, b) => s + b.amount, 0);
+  const totalSpent = thisMonthBudgets.reduce((s, b) => s + b.spent, 0);
   const overallPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
 
   // Projected spend at current daily rate, capped at budget when within budget
@@ -88,7 +94,6 @@ const Budgets = () => {
 
   const lastMonthLabel = format(subMonths(now, 1), 'MMMM');
   const lastMonthKey = format(subMonths(now, 1), 'yyyy-MM');
-  const currentMonthKey = format(now, 'yyyy-MM');
 
   const lastMonthBudgets = useMemo(
     () => budgets.filter(b => b.month === lastMonthKey),
@@ -328,7 +333,7 @@ const Budgets = () => {
           </div>
         ) : tab === 'this' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {budgets.map(b => {
+            {thisMonthBudgets.map(b => {
               const pct = b.amount ? Math.round((b.spent / b.amount) * 100) : 0;
               const remaining = b.amount - b.spent;
               const periodDays = b.period === 'weekly' ? 7 : daysLeft;
@@ -388,7 +393,7 @@ const Budgets = () => {
         ) : (
           /* Last Month view */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {budgets.map(b => {
+            {lastMonthBudgets.map(b => {
               const lastSpent = lastMonthData[b.category] ?? 0;
               const pct = b.amount ? Math.round((lastSpent / b.amount) * 100) : 0;
               const diff = lastSpent - b.spent;

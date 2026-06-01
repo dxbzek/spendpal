@@ -48,8 +48,10 @@ const Accounts = () => {
   const netWorth = useMemo(() => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
     const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
-      const spent = a.creditLimit ? a.creditLimit - a.balance : 0;
-      return s + spent;
+      // With a limit, balance is available credit (owed = limit - balance).
+      // Without a limit, balance itself is the amount owed.
+      const owed = a.creditLimit ? a.creditLimit - a.balance : a.balance;
+      return s + owed;
     }, 0);
     return assets - liabilities;
   }, [accounts]);
@@ -57,9 +59,11 @@ const Accounts = () => {
   const accountStats = useMemo(() => {
     const now = new Date();
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const today = `${thisMonth}-${String(now.getDate()).padStart(2, '0')}`;
     const stats: Record<string, { income: number; expenses: number }> = {};
     transactions.forEach(tx => {
       if (tx.date.slice(0, 7) !== thisMonth) return;
+      if (tx.date > today) return; // skip future-dated transactions
       if (!stats[tx.accountId]) stats[tx.accountId] = { income: 0, expenses: 0 };
       if (tx.type === 'income' && tx.category !== 'Transfer') stats[tx.accountId].income += tx.amount;
       else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) stats[tx.accountId].expenses += tx.amount;
