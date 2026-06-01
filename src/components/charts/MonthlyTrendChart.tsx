@@ -15,10 +15,17 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
   const data = useMemo(() => {
     const map: Record<string, { income: number; expenses: number }> = {};
     transactions.forEach(tx => {
+      // Mirror the canonical income/expense convention used by the Dashboard
+      // summary cards: exclude transfers (stored as paired income+expense rows)
+      // so they aren't double-counted, and skip tracking-only expenses.
+      if (tx.category === 'Transfer') return;
+      const isIncome = tx.type === 'income' && !creditAccountIds.has(tx.accountId);
+      const isExpense = tx.type === 'expense' && !tx.isTrackingOnly;
+      if (!isIncome && !isExpense) return;
       const month = format(parseISO(tx.date), 'yyyy-MM');
       if (!map[month]) map[month] = { income: 0, expenses: 0 };
-      if (tx.type === 'income' && !creditAccountIds.has(tx.accountId)) map[month].income += tx.amount;
-      else if (tx.type === 'expense') map[month].expenses += tx.amount;
+      if (isIncome) map[month].income += tx.amount;
+      else map[month].expenses += tx.amount;
     });
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
