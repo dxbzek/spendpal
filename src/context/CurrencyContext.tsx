@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { CURRENCY_MAP } from '@/utils/currencies';
@@ -129,7 +129,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => { cancelled = true; controller.abort(); };
   }, [currency, secondaryCurrency]);
 
-  const setSecondaryCurrency = (code: string | null) => {
+  const setSecondaryCurrency = useCallback((code: string | null) => {
     setSecondaryCurrencyState(code);
     if (code) {
       localStorage.setItem('secondaryCurrency', code);
@@ -137,35 +137,42 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.removeItem('secondaryCurrency');
       setSecondaryRate(null);
     }
-  };
+  }, []);
 
   const info = CURRENCY_MAP[currency] || CURRENCY_MAP.AED;
   const secondaryInfo = secondaryCurrency ? CURRENCY_MAP[secondaryCurrency] : null;
 
   // \u202A/\u202C = LTR embedding/pop - prevents Arabic currency symbols (د.إ etc.)
   // from triggering the Unicode bidi algorithm and flipping number layout.
-  const fmt = (n: number) => `\u202A${info.symbol} ${n.toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
+  // Memoized so consumers (and their React.memo children) don't re-render on
+  // every provider render; non-finite input falls back to 0 rather than "NaN".
+  const fmt = useCallback(
+    (n: number) => `\u202A${info.symbol} ${(Number.isFinite(n) ? n : 0).toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`,
+    [info]
+  );
 
-  const fmtSigned = (n: number, type: 'income' | 'expense' | 'transfer') => {
+  const fmtSigned = useCallback((n: number, type: 'income' | 'expense' | 'transfer') => {
     const prefix = type === 'income' ? '+' : type === 'expense' ? '-' : '';
-    return `\u202A${prefix}${info.symbol} ${n.toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
-  };
+    return `\u202A${prefix}${info.symbol} ${(Number.isFinite(n) ? n : 0).toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
+  }, [info]);
 
-  const fmtSecondary = (n: number): string | null => {
+  const fmtSecondary = useCallback((n: number): string | null => {
     if (!secondaryCurrency || !secondaryInfo || secondaryRate === null) return null;
-    const converted = n * secondaryRate;
+    const converted = (Number.isFinite(n) ? n : 0) * secondaryRate;
     return `\u202A${secondaryInfo.symbol} ${converted.toLocaleString(secondaryInfo.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
-  };
+  }, [secondaryCurrency, secondaryInfo, secondaryRate]);
 
-  const setCurrency = (code: string) => {
+  const setCurrency = useCallback((code: string) => {
     setCurrencyState(code);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    currency, symbol: info.symbol, fmt, fmtSigned, setCurrency,
+    secondaryCurrency, setSecondaryCurrency, fmtSecondary, secondaryRate,
+  }), [currency, info.symbol, fmt, fmtSigned, setCurrency, secondaryCurrency, setSecondaryCurrency, fmtSecondary, secondaryRate]);
 
   return (
-    <CurrencyContext.Provider value={{
-      currency, symbol: info.symbol, fmt, fmtSigned, setCurrency,
-      secondaryCurrency, setSecondaryCurrency, fmtSecondary, secondaryRate,
-    }}>
+    <CurrencyContext.Provider value={value}>
       {children}
     </CurrencyContext.Provider>
   );

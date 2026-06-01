@@ -5,6 +5,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag, ArrowUp, ArrowDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
@@ -208,8 +209,8 @@ const Transactions = () => {
   }, [merchantProfile, transactions]);
 
   const filteredIncome = useMemo(() =>
-    filtered.filter(tx => tx.type === 'income' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
-    [filtered]
+    filtered.filter(tx => tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)).reduce((s, tx) => s + tx.amount, 0),
+    [filtered, creditAccountIds]
   );
   const filteredExpenses = useMemo(() =>
     filtered.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
@@ -387,30 +388,28 @@ const Transactions = () => {
               className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors">
               Select all {filtered.length}
             </button>
-            <div className="relative">
-              <button
-                onClick={() => setBulkCategoryOpen(o => !o)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
-                Change Category
-              </button>
-              {bulkCategoryOpen && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-card border border-border rounded-xl shadow-lg p-2 max-h-64 overflow-y-auto">
-                  {allCategories.map(cat => (
-                    <button
-                      key={cat.name}
-                      onClick={async () => {
-                        await bulkUpdateCategory([...selectedIds], cat.name, cat.icon);
-                        setBulkCategoryOpen(false);
-                        setSelectedIds(new Set());
-                        setSelectMode(false);
-                      }}
-                      className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground text-xs transition-colors">
-                      <span>{cat.icon}</span> {cat.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Popover open={bulkCategoryOpen} onOpenChange={setBulkCategoryOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
+                  Change Category
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-2 max-h-64 overflow-y-auto">
+                {allCategories.map(cat => (
+                  <button
+                    key={cat.name}
+                    onClick={async () => {
+                      await bulkUpdateCategory([...selectedIds], cat.name, cat.icon);
+                      setBulkCategoryOpen(false);
+                      setSelectedIds(new Set());
+                      setSelectMode(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground text-xs transition-colors">
+                    <span>{cat.icon}</span> {cat.name}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
           </div>
         )}
 
@@ -778,7 +777,14 @@ const Transactions = () => {
               onClick={async () => {
                 setDeleting(true);
                 try {
-                  await bulkRemoveTransactions(filtered.map(tx => tx.id));
+                  // Expand transfer pairs so the income half isn't orphaned
+                  // (filtered only carries the expense half of each transfer).
+                  await bulkRemoveTransactions(
+                    filtered.flatMap(tx => {
+                      const pair = transferPairs.get(tx.id);
+                      return pair ? [tx.id, pair.to.id] : [tx.id];
+                    })
+                  );
                   setShowDeleteAll(false);
                 } finally {
                   setDeleting(false);

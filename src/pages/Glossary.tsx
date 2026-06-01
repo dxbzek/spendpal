@@ -147,6 +147,7 @@ const Glossary = () => {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-foreground/50" />
           <input
             type="search"
+            aria-label="Search glossary terms"
             placeholder="Search terms…"
             value={search}
             onChange={e => { setSearch(e.target.value); setOpenIndex(null); }}

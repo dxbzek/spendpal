@@ -548,7 +548,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                 <p className="text-sm text-muted-foreground">{parsed.filter(r => r.selected).length} of {parsed.length} selected</p>
                 <div className="flex items-center gap-2">
                   {parsed.some(r => r.isDuplicate) && (
-                    <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">
+                    <Badge variant="outline" className="text-xs text-warning border-warning/40">
                       {parsed.filter(r => r.isDuplicate).length} duplicates
                     </Badge>
                   )}

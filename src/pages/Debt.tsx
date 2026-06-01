@@ -354,7 +354,7 @@ const Debt = () => {
                         strategyTab === 'snowball' ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
                       }`}
                     >
-                      <Snowflake size={12} className={strategyTab === 'snowball' ? 'text-blue-400' : ''} />
+                      <Snowflake size={12} className={strategyTab === 'snowball' ? 'text-info' : ''} />
                       Snowball
                     </button>
                   </div>

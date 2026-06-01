@@ -42,7 +42,7 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
     <div className="relative overflow-hidden group/tx">
       {/* Delete background (right side) */}
       <motion.div
-        className="absolute inset-0 flex items-center justify-end pr-6 bg-destructive rounded-xl"
+        className="absolute inset-0 flex items-center justify-end pr-6 bg-destructive"
         style={{ opacity: deleteBgOpacity }}
       >
         <motion.div style={{ scale: deleteIconScale }}>
@@ -53,7 +53,7 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
       {/* Categorize background (left side) */}
       {onCategorize && (
         <motion.div
-          className="absolute inset-0 flex items-center justify-start pl-6 bg-primary rounded-xl"
+          className="absolute inset-0 flex items-center justify-start pl-6 bg-primary"
           style={{ opacity: categorizeBgOpacity }}
         >
           <motion.div style={{ scale: categorizeIconScale }}>
