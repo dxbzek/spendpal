@@ -1,6 +1,7 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
+import { activeBudgets } from '@/utils/budgets';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -91,6 +92,7 @@ const Dashboard = () => {
     for (const tx of transactions) {
       const d = parseISO(tx.date);
       if (d.getMonth() !== month || d.getFullYear() !== year) continue;
+      if (d > now) continue; // skip future-dated transactions — not spent/earned yet
       if (tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
       else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) exp += tx.amount;
     }
@@ -109,6 +111,13 @@ const Dashboard = () => {
     return totalLimit > 0 ? totalUsed / totalLimit : null;
   }, [accounts]);
 
+  // Budgets that apply to the current month (carried forward if none created yet),
+  // so adherence reflects one consistent month rather than every stored budget.
+  const activeBudgetsList = useMemo(
+    () => activeBudgets(budgets, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`),
+    [budgets, now]
+  );
+
   const healthScore = useMemo(() => {
     const hasActivity = thisMonthIncome > 0 || thisMonthExpenses > 0;
     // Need at least some financial activity to produce a meaningful score
@@ -119,8 +128,8 @@ const Dashboard = () => {
     const savingsScore = sr === null ? 0 : sr >= 20 ? 30 : sr >= 10 ? 20 : sr >= 0 ? 10 : 0;
 
     // Budget adherence (0-30): only score if budgets exist
-    const budgetScore = budgets.length === 0 ? 0 : Math.round(
-      (budgets.filter(b => b.spent <= b.amount).length / budgets.length) * 30
+    const budgetScore = activeBudgetsList.length === 0 ? 0 : Math.round(
+      (activeBudgetsList.filter(b => b.spent <= b.amount).length / activeBudgetsList.length) * 30
     );
 
     // Debt / credit utilization (0-20)
@@ -131,10 +140,10 @@ const Dashboard = () => {
     const nwScore = totalBalance > 0 ? Math.min(20, Math.round((totalBalance / Math.max(thisMonthExpenses || 1, 1)) * 2)) : 0;
 
     return Math.min(100, savingsScore + budgetScore + debtScore + nwScore);
-  }, [savingsRate, thisMonthIncome, thisMonthExpenses, budgets, creditUtilization, totalBalance]);
+  }, [savingsRate, thisMonthIncome, thisMonthExpenses, activeBudgetsList, budgets.length, creditUtilization, totalBalance]);
 
-  const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
-  const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
+  const totalBudgeted = activeBudgetsList.reduce((s, b) => s + b.amount, 0);
+  const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
 
@@ -488,7 +497,7 @@ const Dashboard = () => {
                 <div className="space-y-1.5 w-full text-xs">
                   {[
                     { label: 'Savings rate', val: savingsRate !== null ? `${savingsRate}%` : 'No data', ok: (savingsRate ?? -1) >= 10 },
-                    { label: 'Budget adherence', val: budgets.length ? `${budgets.filter(b => b.spent <= b.amount).length}/${budgets.length} on track` : 'No budgets', ok: budgets.length === 0 || budgets.every(b => b.spent <= b.amount) },
+                    { label: 'Budget adherence', val: activeBudgetsList.length ? `${activeBudgetsList.filter(b => b.spent <= b.amount).length}/${activeBudgetsList.length} on track` : 'No budgets', ok: activeBudgetsList.length === 0 || activeBudgetsList.every(b => b.spent <= b.amount) },
                     { label: 'Credit utilization', val: creditUtilization !== null ? `${Math.round(creditUtilization * 100)}%` : 'No credit', ok: creditUtilization === null || creditUtilization < 0.3 },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between">

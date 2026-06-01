@@ -31,7 +31,11 @@ const Reports = () => {
   }, []);
 
   const monthTxs = useMemo(
-    () => transactions.filter(tx => tx.date.startsWith(selectedMonth)),
+    () => {
+      // Exclude future-dated transactions (only relevant when viewing the current month).
+      const today = format(new Date(), 'yyyy-MM-dd');
+      return transactions.filter(tx => tx.date.startsWith(selectedMonth) && tx.date <= today);
+    },
     [transactions, selectedMonth]
   );
 
