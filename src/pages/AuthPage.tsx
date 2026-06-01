@@ -49,7 +49,7 @@ const AuthPage = () => {
       <div className="relative w-full max-w-[min(22rem,calc(100vw-2.5rem))]">
         {/* Logo / Brand */}
         <div className="flex flex-col items-center mb-7">
-          <img src={logo} alt="SpendPal" className="w-14 h-14 sm:w-16 sm:h-16 object-contain mb-4" />
+          <img src={logo} alt="SpendPal" className="w-16 h-16 sm:w-[4.75rem] sm:h-[4.75rem] object-contain mb-4 animate-float motion-reduce:animate-none" />
           <h1 className="text-2xl sm:text-[1.625rem] font-heading font-bold tracking-tight leading-none">
             SpendPal
           </h1>
