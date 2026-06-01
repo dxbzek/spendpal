@@ -40,6 +40,8 @@ const Goals = () => {
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
   const { scheduleDelete: scheduleGoalDelete } = useUndoableDelete({ deleteOne: removeGoal });
   const [showCompleted, setShowCompleted] = useState(false);
+  // Goal id currently playing the completion celebration (confetti + pulse).
+  const [celebratingId, setCelebratingId] = useState<string | null>(null);
 
   // Contribution logs keyed by goal ID.
   const [contributionLogs, setContributionLogs] = useState<Record<string, Contribution[]>>({});
@@ -168,11 +170,6 @@ const Goals = () => {
             <div className="h-3.5 bg-primary-foreground/20 rounded-full overflow-hidden">
               <motion.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
             </div>
-            {monthlySavingsRate > 0 && (
-              <p className="text-primary-foreground/60 text-[11px] mt-2 flex items-center gap-1">
-                <TrendingUp size={11} /> Avg monthly savings: {mask(fmt(monthlySavingsRate))}
-              </p>
-            )}
           </div>
         </div>
       </div>
@@ -194,7 +191,10 @@ const Goals = () => {
               const daysLeft = getDaysRemaining(goal.deadline);
               const estimate = getCompletionEstimate(remaining);
               return (
-                <div key={goal.id} className={`bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''}`}>
+                <div key={goal.id} className={`relative overflow-hidden bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''} ${celebratingId === goal.id ? 'animate-celebrate-pulse' : ''}`}>
+                  {celebratingId === goal.id && (
+                    <span className="pointer-events-none absolute -top-1 right-3 text-2xl z-10 animate-confetti-pop motion-reduce:hidden">🎉</span>
+                  )}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
@@ -259,7 +259,14 @@ const Goals = () => {
                     <div className="flex items-center gap-2">
                       {pct >= 100 ? (
                         <button
-                          onClick={() => updateGoal({ ...goal, status: 'completed' })}
+                          onClick={() => {
+                            setCelebratingId(goal.id);
+                            // Let the confetti + pulse play, then mark the goal complete.
+                            window.setTimeout(() => {
+                              setCelebratingId(null);
+                              updateGoal({ ...goal, status: 'completed' });
+                            }, 800);
+                          }}
                           className="px-3 py-1.5 rounded-lg bg-income/10 text-income text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform">
                           <CheckCircle2 size={12} /> Complete
                         </button>

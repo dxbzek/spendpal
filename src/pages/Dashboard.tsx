@@ -12,7 +12,8 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2, ArrowUpRight, ArrowDown } from 'lucide-react';
+import logo from '@/assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -36,6 +37,30 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
+
+// Small progress ring used on the "Safe to spend today" hero card.
+const SafeRing = ({ pct }: { pct: number }) => {
+  const size = 62, stroke = 6;
+  const r = (size - stroke) / 2 - 2;
+  const circ = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(100, pct));
+  const color = clamped >= 75 ? 'hsl(var(--income))' : clamped >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--expense))';
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={`${(clamped / 100) * circ} ${circ}`}
+          style={{ transition: 'stroke-dasharray 0.7s ease-out' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center font-heading font-bold" style={{ fontSize: size * 0.26, color }}>
+        {Math.round(clamped)}
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = () => {
   const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
@@ -75,6 +100,8 @@ const Dashboard = () => {
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
   const income = useMemo(() => filtered.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
   const expenses = useMemo(() => filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0), [filtered]);
+  const animatedIncome = useCountUp(income, 700);
+  const animatedExpenses = useCountUp(expenses, 700);
 
   const categorySpending = useMemo(() => {
     const map: Record<string, { icon: string; total: number }> = {};
@@ -97,46 +124,41 @@ const Dashboard = () => {
     return [inc, exp];
   }, [transactions, now, creditAccountIds]);
   const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
-
-  // Overall credit utilization = total balances used / total limits (pooled).
-  // This is the standard definition and keeps the health panel consistent with
-  // the Credit Utilization widget, which uses the same pooled calculation.
-  const creditUtilization = useMemo(() => {
-    const creditAccs = accounts.filter(a => a.type === 'credit' && a.creditLimit);
-    if (!creditAccs.length) return null;
-    const totalLimit = creditAccs.reduce((s, a) => s + a.creditLimit!, 0);
-    const totalUsed = creditAccs.reduce((s, a) => s + (a.creditLimit! - a.balance), 0);
-    return totalLimit > 0 ? totalUsed / totalLimit : null;
-  }, [accounts]);
-
-  const healthScore = useMemo(() => {
-    const hasActivity = thisMonthIncome > 0 || thisMonthExpenses > 0;
-    // Need at least some financial activity to produce a meaningful score
-    if (!hasActivity && budgets.length === 0) return null;
-
-    // Savings rate (0-30): only score if there is actual income this month
-    const sr = savingsRate ?? null;
-    const savingsScore = sr === null ? 0 : sr >= 20 ? 30 : sr >= 10 ? 20 : sr >= 0 ? 10 : 0;
-
-    // Budget adherence (0-30): only score if budgets exist
-    const budgetScore = budgets.length === 0 ? 0 : Math.round(
-      (budgets.filter(b => b.spent <= b.amount).length / budgets.length) * 30
-    );
-
-    // Debt / credit utilization (0-20)
-    // No credit cards = neutral 10 (only when there IS other activity to score)
-    const debtScore = creditUtilization === null ? 10 : creditUtilization < 0.3 ? 20 : creditUtilization < 0.5 ? 14 : creditUtilization < 0.75 ? 8 : 3;
-
-    // Net worth positive (0-20)
-    const nwScore = totalBalance > 0 ? Math.min(20, Math.round((totalBalance / Math.max(thisMonthExpenses || 1, 1)) * 2)) : 0;
-
-    return Math.min(100, savingsScore + budgetScore + debtScore + nwScore);
-  }, [savingsRate, thisMonthIncome, thisMonthExpenses, budgets, creditUtilization, totalBalance]);
+  // Note: the financial-health score now lives solely on the AI Advisor page,
+  // where it is actually computed — per the SpendPal design handoff.
 
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
   const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
+
+  // ── Safe-to-spend (the flagship "understandable in one glance" hero) ──
+  // Envelope is the user's monthly budget; if none is set, fall back to this
+  // month's income so the card stays meaningful for budget-free users.
+  const monthlyBudget = totalBudgeted > 0 ? totalBudgeted : thisMonthIncome;
+  const leftThisMonth = monthlyBudget - thisMonthExpenses;
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
+  const safeToday = Math.max(0, leftThisMonth / daysLeft);
+  const todayKey = format(now, 'yyyy-MM-dd');
+  const spentToday = useMemo(() => transactions
+    .filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly && t.date.slice(0, 10) === todayKey)
+    .reduce((s, t) => s + t.amount, 0), [transactions, todayKey]);
+  const safeLeft = Math.max(0, safeToday - spentToday);
+  const todayPct = safeToday > 0 ? Math.min(100, Math.round((spentToday / safeToday) * 100)) : 0;
+  const animatedSafe = useCountUp(safeLeft, 700);
+  const showSafeCard = monthlyBudget > 0;
+
+  // Plain-language status sentence shown in the header band.
+  const overBudget = totalBudgeted > 0 && leftThisMonth < 0;
+  const budgetPart = totalBudgeted > 0
+    ? (overBudget ? `${fmt(-leftThisMonth)} over budget` : `${fmt(leftThisMonth)} left of budget`)
+    : null;
+  const statusLine = savingsRate !== null && budgetPart
+    ? `Saving ${savingsRate}% · ${budgetPart}`
+    : savingsRate !== null
+      ? `Saving ${savingsRate}% this month`
+      : budgetPart;
 
   // Installment plan summary for Planning widget
   const installmentSummary = useMemo(() => {
@@ -275,8 +297,14 @@ const Dashboard = () => {
       {/* Header */}
       <div className={`gradient-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-3xl' : 'pt-8 pb-6'}`}>
         <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
-          <div className={`flex items-center ${isMobile ? 'justify-between mb-6' : 'justify-between mb-4'}`}>
-            <h1 className="text-xl text-primary-foreground font-heading">Financial Overview</h1>
+          <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-4'}`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-foreground/20 p-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-base font-heading font-bold text-primary-foreground leading-tight">Overview</p>
+                <p className="text-[11.5px] text-primary-foreground/70 mt-0.5">Financial overview</p>
+              </div>
+            </div>
             <button onClick={toggleHidden} className="text-primary-foreground/80 p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -321,10 +349,36 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+
+          {statusLine && (
+            <div className="mt-3.5 inline-flex bg-primary-foreground/15 backdrop-blur-sm rounded-xl px-3 py-2 text-[12.5px] leading-snug text-primary-foreground">
+              {statusLine}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="px-5 md:px-8 -mt-4 pb-8">
+        {/* Safe to spend today — the flagship "at a glance" hero */}
+        {showSafeCard && (
+          <Card className="border border-primary/20 mb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-semibold text-muted-foreground mb-1">Safe to spend today</p>
+                <p className="text-financial-large text-primary tabular-nums">{hidden ? '••••••' : fmt(animatedSafe)}</p>
+              </div>
+              <SafeRing pct={Math.max(0, 100 - todayPct)} />
+            </div>
+            <div className="mt-2.5 h-[7px] bg-muted rounded-full overflow-hidden">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${todayPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
+            </div>
+            <p className="flex items-center justify-between text-[11.5px] text-muted-foreground mt-2.5">
+              <span className="truncate">{hidden ? '••••' : fmt(spentToday)} spent of {hidden ? '••••' : fmt(safeToday)} daily allowance</span>
+              <span className="font-semibold text-foreground shrink-0 ml-2">{daysLeft}d left</span>
+            </p>
+          </Card>
+        )}
+
         {/* Alerts */}
         <div className="mb-4">
           <RecurringDueBanner transactions={transactions} />
@@ -339,13 +393,15 @@ const Dashboard = () => {
           </div>
 
           <Card className="col-span-1 overflow-hidden">
+            <div className="w-[26px] h-[26px] rounded-lg bg-income/[0.12] text-income flex items-center justify-center mb-2"><ArrowUpRight size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
-            <p className="text-financial-medium">{mask(fmt(income))}</p>
+            <p className="text-financial-medium text-income tabular-nums">{mask(fmt(animatedIncome))}</p>
             {sec(income) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(income)}</p>}
           </Card>
           <Card className="col-span-1 overflow-hidden">
+            <div className="w-[26px] h-[26px] rounded-lg bg-expense/[0.12] text-expense flex items-center justify-center mb-2"><ArrowDown size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
-            <p className="text-financial-medium">{mask(fmt(expenses))}</p>
+            <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
             {sec(expenses) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(expenses)}</p>}
           </Card>
 
@@ -360,7 +416,7 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
                   <p>Saved: {mask(fmt(thisMonthIncome - thisMonthExpenses))}</p>
-                  <p className="text-[11px]">{savingsRate >= 20 ? '🎯 On track' : savingsRate >= 10 ? '📈 Getting there' : savingsRate < 0 ? '⚠️ Overspending' : '💡 Room to save'}</p>
+                  <p className="text-[11px]">{savingsRate >= 20 ? 'On track' : savingsRate < 0 ? 'Overspending' : 'Room to save'}</p>
                 </div>
               </div>
               {!hidden && (
@@ -375,14 +431,14 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* ── ACCOUNTS & HEALTH ── */}
+        {/* ── ACCOUNTS ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Accounts & Health</span>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Accounts</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <Card className="col-span-2 lg:col-span-3">
+          <Card className="col-span-2 lg:col-span-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Accounts</h2>
               <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
@@ -454,51 +510,6 @@ const Dashboard = () => {
               })}
               {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet. Add one to get started!</p>}
             </div>
-          </Card>
-
-          <Card className="col-span-2 lg:col-span-1">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading text-sm">Financial Health</h2>
-              {healthScore !== null && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  healthScore >= 75 ? 'bg-income/10 text-income' : healthScore >= 50 ? 'bg-warning/10 text-warning' : 'bg-expense/10 text-expense'
-                }`}>
-                  {healthScore >= 75 ? 'Good' : healthScore >= 50 ? 'Fair' : 'Needs Work'}
-                </span>
-              )}
-            </div>
-            {healthScore === null ? (
-              <p className="text-xs text-muted-foreground py-2">Add transactions, budgets, or accounts to see your score.</p>
-            ) : (
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative w-20 h-20 shrink-0">
-                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="32" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-                    <circle cx="40" cy="40" r="32" fill="none"
-                      stroke={healthScore >= 75 ? 'hsl(var(--income))' : healthScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--expense))'}
-                      strokeWidth="6"
-                      strokeDasharray={`${(healthScore / 100) * 201} 201`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl font-heading">{hidden ? '—' : healthScore}</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5 w-full text-xs">
-                  {[
-                    { label: 'Savings rate', val: savingsRate !== null ? `${savingsRate}%` : 'No data', ok: (savingsRate ?? -1) >= 10 },
-                    { label: 'Budget adherence', val: budgets.length ? `${budgets.filter(b => b.spent <= b.amount).length}/${budgets.length} on track` : 'No budgets', ok: budgets.length === 0 || budgets.every(b => b.spent <= b.amount) },
-                    { label: 'Credit utilization', val: creditUtilization !== null ? `${Math.round(creditUtilization * 100)}%` : 'No credit', ok: creditUtilization === null || creditUtilization < 0.3 },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{item.label}</span>
-                      <span className={`font-medium ${item.ok ? 'text-income' : 'text-warning'}`}>{hidden ? '••' : item.val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </Card>
         </div>
 

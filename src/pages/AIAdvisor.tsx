@@ -75,6 +75,43 @@ const INSIGHT_COLORS = {
   suggestion: 'bg-primary/5 border-primary/20 border-l-4 border-l-primary',
 };
 
+// Budget Health Score ring with a count-up arc + number on mount.
+// Honors prefers-reduced-motion by landing on the final value immediately.
+const HealthScoreRing = ({ score, colorClass }: { score: number; colorClass: string }) => {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setVal(score);
+      return;
+    }
+    let raf = 0;
+    let start: number | null = null;
+    const dur = 900;
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    const tick = (ts: number) => {
+      if (start === null) start = ts;
+      const p = Math.min((ts - start) / dur, 1);
+      setVal(score * ease(p));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const safety = window.setTimeout(() => setVal(score), dur + 450);
+    return () => { cancelAnimationFrame(raf); clearTimeout(safety); };
+  }, [score]);
+  return (
+    <div className="relative w-28 h-28 shrink-0">
+      <svg className="w-28 h-28 -rotate-90" viewBox="0 0 112 112">
+        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--primary))" strokeWidth="8"
+          strokeDasharray={`${(val / 100) * 289.0} 289.0`} strokeLinecap="round" />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className={`text-2xl font-heading ${colorClass}`}>{Math.round(val)}</span>
+      </div>
+    </div>
+  );
+};
+
 const AIAdvisor = () => {
   const navigate = useNavigate();
   const { transactions, accounts, budgets, goals, addBudget } = useFinance();
@@ -414,17 +451,7 @@ const AIAdvisor = () => {
                 <div className="bg-card rounded-2xl p-5 card-shadow">
                   <h3 className="font-heading text-sm mb-3">Budget Health Score</h3>
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="relative w-28 h-28 shrink-0">
-                      <svg className="w-28 h-28 -rotate-90" viewBox="0 0 112 112">
-                        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
-                        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--primary))" strokeWidth="8"
-                          strokeDasharray={`${(analysis.healthScore / 100) * 289.0} 289.0`}
-                          strokeLinecap="round" />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className={`text-2xl font-heading ${scoreColor(analysis.healthScore)}`}>{analysis.healthScore}</span>
-                      </div>
-                    </div>
+                    <HealthScoreRing score={analysis.healthScore} colorClass={scoreColor(analysis.healthScore)} />
                     <div>
                       <p className={`text-lg font-heading ${scoreColor(analysis.healthScore)}`}>{scoreLabel(analysis.healthScore)}</p>
                       <p className="text-xs text-muted-foreground mb-2">out of 100</p>
