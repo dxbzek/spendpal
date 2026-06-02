@@ -92,7 +92,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="fixed left-1/2 -translate-x-1/2 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] w-[calc(100%-1.5rem)] max-w-lg bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
+              className="fixed left-0 right-0 mx-auto bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] w-[calc(100%-1.5rem)] max-w-lg bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
             >
               <div className="flex items-center justify-between pl-5 pr-3 pt-3 pb-2">
                 <span className="text-sm font-semibold text-foreground">More</span>
