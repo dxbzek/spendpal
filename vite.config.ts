@@ -43,6 +43,11 @@ export default defineConfig(() => ({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      // We register the service worker ourselves in main.tsx so we can
+      // reload the page as soon as a new build activates. Without that
+      // reload, clients keep running the previously cached bundle
+      // indefinitely and never pick up shipped fixes.
+      injectRegister: false,
       includeAssets: ["favicon.ico", "pwa-192.png", "pwa-512.png"],
       workbox: {
         clientsClaim: true,
