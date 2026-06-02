@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Receipt, Wallet, BarChart3, Plus,
@@ -70,65 +71,75 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
   return (
     <>
-      {/* More overlay */}
-      <AnimatePresence>
-        {showMore && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-              onClick={() => setShowMore(false)}
-            />
+      {/* More overlay — rendered in a portal on document.body so no ancestor
+          stacking/overflow/transform context can clip or offset it, and
+          centered with flexbox (not margin-auto) so a transform on the
+          animating panel can never knock it off-centre. */}
+      {createPortal(
+        <AnimatePresence>
+          {showMore && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                key="backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+                onClick={() => setShowMore(false)}
+              />
 
-            {/* Panel */}
-            <motion.div
-              key="more-panel"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="fixed left-0 right-0 mx-auto bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] w-[calc(100%-1.5rem)] max-w-lg bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
-            >
-              <div className="flex items-center justify-between pl-5 pr-3 pt-3 pb-2">
-                <span className="text-sm font-semibold text-foreground">More</span>
-                <button
-                  type="button"
-                  onClick={() => setShowMore(false)}
-                  aria-label="Close menu"
-                  className="flex items-center justify-center w-9 h-9 -mr-1 rounded-full hover:bg-muted active:scale-95 text-muted-foreground transition-colors"
+              {/* Centering wrapper: full-width, pinned just above the nav bar.
+                  pointer-events-none so taps in the side gutters fall through
+                  to the backdrop; the panel re-enables pointer events. */}
+              <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] flex justify-center px-3 pointer-events-none">
+                <motion.div
+                  key="more-panel"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
                 >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="grid grid-cols-4 gap-1 px-3 pb-4">
-                {MORE_ITEMS.map(item => {
-                  const Icon = item.icon;
-                  const active = location.pathname === item.path;
-                  return (
+                  <div className="flex items-center justify-between pl-5 pr-3 pt-3 pb-2">
+                    <span className="text-sm font-semibold text-foreground">More</span>
                     <button
-                      key={item.path}
-                      onClick={() => handleMoreItem(item.path)}
-                      className={`flex flex-col items-center justify-center gap-1.5 py-3.5 px-1 min-h-[64px] rounded-2xl transition-colors active:scale-95 ${
-                        active ? 'bg-accent text-primary' : 'hover:bg-muted text-muted-foreground'
-                      }`}
+                      type="button"
+                      onClick={() => setShowMore(false)}
+                      aria-label="Close menu"
+                      className="flex items-center justify-center w-9 h-9 -mr-1 rounded-full hover:bg-muted active:scale-95 text-muted-foreground transition-colors"
                     >
-                      <Icon size={22} className={active ? 'text-primary' : 'text-muted-foreground'} />
-                      <span className={`text-[11px] font-medium leading-tight text-center ${active ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {item.label}
-                      </span>
+                      <X size={18} />
                     </button>
-                  );
-                })}
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 px-3 pb-4">
+                    {MORE_ITEMS.map(item => {
+                      const Icon = item.icon;
+                      const active = location.pathname === item.path;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => handleMoreItem(item.path)}
+                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 px-1 min-h-[64px] rounded-2xl transition-colors active:scale-95 ${
+                            active ? 'bg-accent text-primary' : 'hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          <Icon size={22} className={active ? 'text-primary' : 'text-muted-foreground'} />
+                          <span className={`text-[11px] font-medium leading-tight text-center ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
 
       {/* Bottom bar */}
       <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
