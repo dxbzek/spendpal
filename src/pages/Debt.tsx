@@ -12,7 +12,7 @@ import { DEFAULT_APR, monthsToPayoff, minPayment, simulateStrategy } from '@/lib
 const Debt = () => {
   const { accounts, loading } = useFinance();
   const { fmt } = useCurrency();
-  const { hidden, mask } = useBalanceMask();
+  const { mask } = useBalanceMask();
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aprs, setAprs] = useState<Record<string, number>>({});

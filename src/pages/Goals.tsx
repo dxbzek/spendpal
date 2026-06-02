@@ -26,7 +26,7 @@ interface Contribution { id?: string; amount: number; note: string; date: string
 const Goals = () => {
   const { goals, transactions, accounts, addGoalProgress, withdrawGoalProgress, removeGoal, updateGoal, loading } = useFinance();
   const { fmt } = useCurrency();
-  const { hidden, mask } = useBalanceMask();
+  const { mask } = useBalanceMask();
   const { user } = useAuth();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressMode, setProgressMode] = useState<'add' | 'withdraw'>('add');
