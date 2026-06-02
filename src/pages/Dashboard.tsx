@@ -86,12 +86,18 @@ const Dashboard = () => {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
-  useBudgetAlerts(budgets);
+  const now = useMemo(() => new Date(), []);
+  // Budgets that apply to the current month (carried forward if none created
+  // yet) — used for the Safe-to-spend hero, status line, and budget alerts.
+  const activeBudgetsList = useMemo(
+    () => activeBudgets(budgets, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`),
+    [budgets, now]
+  );
+  useBudgetAlerts(activeBudgetsList);
 
   const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
-  const now = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => {
     const month = now.getMonth();
@@ -136,12 +142,6 @@ const Dashboard = () => {
   // Note: the financial-health score now lives solely on the AI Advisor page,
   // where it is actually computed — per the SpendPal design handoff.
 
-  // Budgets that apply to the current month (carried forward if none created
-  // yet), so the Safe-to-spend hero and status line reflect one consistent month.
-  const activeBudgetsList = useMemo(
-    () => activeBudgets(budgets, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`),
-    [budgets, now]
-  );
   const totalBudgeted = activeBudgetsList.reduce((s, b) => s + b.amount, 0);
   const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
