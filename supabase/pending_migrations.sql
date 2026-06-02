@@ -393,7 +393,25 @@ CREATE INDEX IF NOT EXISTS idx_notification_log_user_created
   ON public.notification_log(user_id, channel, created_at DESC);
 
 
--- ── 15. Manual step (not SQL) ────────────────────────────────
---    Advisor: "Leaked Password Protection Disabled". Enable in the
---    Supabase Dashboard → Authentication → Policies → Password security
---    → toggle "Check against HaveIBeenPwned". No SQL equivalent.
+-- ── 15. Drop redundant duplicate indexes (advisor 0005 unused_index) ──
+--    Three of the five flagged indexes are exact duplicates of a UNIQUE
+--    constraint's leading-column index, so they can never win a plan and are
+--    pure write overhead. The other two (idx_goals_user_id,
+--    idx_notification_log_user_created) are the SOLE index for their access
+--    path and read as "unused" only because the table is young — kept on
+--    purpose. Runs last so the budgets composite (section 14) already exists.
+DROP INDEX IF EXISTS public.idx_profiles_user_id;            -- dup of profiles_user_id_key (user_id UNIQUE)
+DROP INDEX IF EXISTS public.idx_custom_categories_user_id;   -- dup of UNIQUE(user_id, name)
+DROP INDEX IF EXISTS public.idx_budgets_user_id;             -- dup of uniq_budgets_user_category_month
+
+
+-- ── 16. Manual steps (not SQL) ───────────────────────────────
+--    a) Advisor: "Leaked Password Protection Disabled". Enable in the
+--       Supabase Dashboard → Authentication → Policies → Password security
+--       → toggle "Check against HaveIBeenPwned". No SQL equivalent.
+--    b) Advisor: "Auth DB Connection Strategy is not Percentage"
+--       (auth_db_connections_absolute). Auth is pinned to an absolute 10 DB
+--       connections, so scaling the instance up won't help Auth. Switch to a
+--       percentage-based allocation in Dashboard → Project Settings →
+--       Database. No SQL equivalent.
+--       https://supabase.com/docs/guides/deployment/going-into-prod
