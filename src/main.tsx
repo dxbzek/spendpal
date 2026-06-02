@@ -1,8 +1,16 @@
 import * as Sentry from '@sentry/react';
 import { createRoot } from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import "./index.css";
+
+// Keep installed/mobile clients on the latest build. In autoUpdate mode this
+// activates a freshly deployed service worker and reloads the page so users
+// stop running a stale cached bundle (which made shipped UI fixes look like
+// they "never landed"). The reload only happens on an actual update, not the
+// first install.
+registerSW({ immediate: true });
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
