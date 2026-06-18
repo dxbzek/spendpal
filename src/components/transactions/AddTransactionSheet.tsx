@@ -336,10 +336,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">
+              <label htmlFor="tx-amount" className="text-sm font-medium mb-1.5 block">
                 {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
               </label>
-              <Input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
+              <Input id="tx-amount" type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
                 className="text-3xl font-heading h-16 text-center tracking-tight" />
             </div>
 
@@ -368,7 +368,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                 {isTransfer ? 'From Account' : 'Account'}
               </label>
               <Select value={accountId} onValueChange={setAccountId}>
-                <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
+                <SelectTrigger aria-label={isTransfer ? 'From account' : 'Account'}><SelectValue placeholder="Select account" /></SelectTrigger>
                 <SelectContent>
                   {accounts.map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
@@ -381,7 +381,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
               <div>
                 <label className="text-sm font-medium mb-1.5 block">To Account</label>
                 <Select value={toAccountId} onValueChange={setToAccountId}>
-                  <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
+                  <SelectTrigger aria-label="To account"><SelectValue placeholder="Select destination" /></SelectTrigger>
                   <SelectContent>
                     {accounts.filter(a => a.id !== accountId).map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
@@ -392,16 +392,16 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
             )}
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Date</label>
-              <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <label htmlFor="tx-date" className="text-sm font-medium mb-1.5 block">Date</label>
+              <Input id="tx-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
 
             {/* Merchant / Recipient */}
             <div>
-              <label className="text-sm font-medium mb-1.5 block">
+              <label htmlFor="tx-merchant" className="text-sm font-medium mb-1.5 block">
                 {isTransfer ? 'Recipient / Note (optional)' : 'Merchant (optional)'}
               </label>
-              <Input placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} maxLength={100} />
+              <Input id="tx-merchant" placeholder={isTransfer ? 'e.g., Mom, Ahmed' : 'e.g., Starbucks'} value={merchant} onChange={e => setMerchant(e.target.value)} maxLength={100} />
             </div>
 
             {/* Advanced options toggle */}
@@ -459,7 +459,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                           <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Total Installments</label>
                             <Select value={totalInstallments} onValueChange={setTotalInstallments}>
-                              <SelectTrigger className="h-10">
+                              <SelectTrigger className="h-10" aria-label="Total installments">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -470,8 +470,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                             </Select>
                           </div>
                           <div>
-                            <label className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
-                            <Input type="number" min="1" max={totalInstallments}
+                            <label htmlFor="tx-current-installment" className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
+                            <Input id="tx-current-installment" type="number" min="1" max={totalInstallments}
                               value={currentInstallment}
                               onChange={e => {
                                 const v = parseInt(e.target.value);
@@ -482,8 +482,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
-                          <Input type="number" placeholder="e.g. 1200 (before interest/fees)"
+                          <label htmlFor="tx-loan-total" className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
+                          <Input id="tx-loan-total" type="number" placeholder="e.g. 1200 (before interest/fees)"
                             value={loanTotalAmount} onChange={e => setLoanTotalAmount(e.target.value)}
                             className="h-10" />
                           <p className="text-[10px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
@@ -506,8 +506,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
                 {!isTransfer && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">Note (optional)</label>
-                    <Input placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
+                    <label htmlFor="tx-note" className="text-sm font-medium mb-1.5 block">Note (optional)</label>
+                    <Input id="tx-note" placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
                   </div>
                 )}
 

@@ -40,6 +40,12 @@ const AppLayout = () => {
   return (
     <EditTxContext.Provider value={{ openEditSheet }}>
       <div className="h-screen bg-background flex overflow-hidden">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+        >
+          Skip to content
+        </a>
         {!isMobile && (
           <DesktopSidebar
             onAddClick={() => { setEditTx(null); setShowAdd(true); }}
@@ -48,7 +54,7 @@ const AppLayout = () => {
         )}
 
         <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto bg-[hsl(142,32%,96.5%)] dark:bg-background">
-          <main className={isMobile
+          <main id="main-content" className={isMobile
             ? 'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[calc(7rem+env(safe-area-inset-bottom))]'
             : 'pb-8'}>
             <AnimatePresence mode="wait">

@@ -335,7 +335,9 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
         const parsed = AIRowSchema.safeParse(r);
         if (!parsed.success) {
           invalidCount++;
-          logger.error('AI returned invalid row', { row: r, error: parsed.error.issues });
+          // Log only the validation error shape — never the raw AI row, which
+          // can contain merchant names/PII that would reach Sentry.
+          logger.error('AI returned invalid row', { error: parsed.error.issues });
           continue;
         }
         const normalized = { ...parsed.data, date: normalizeDate(parsed.data.date) };

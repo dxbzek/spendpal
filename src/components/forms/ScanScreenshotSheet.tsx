@@ -248,7 +248,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
               </button>
             ) : (
               <div className="relative border border-border rounded-2xl p-3 flex items-center gap-3">
-                <img src={imageDataUrl} alt="preview" className="w-16 h-16 rounded-xl object-cover" />
+                <img src={imageDataUrl} alt={imageName ? `Preview of ${imageName}` : 'Receipt screenshot preview'} className="w-16 h-16 rounded-xl object-cover" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{imageName}</p>
                   <p className="text-xs text-muted-foreground">Ready to scan</p>
