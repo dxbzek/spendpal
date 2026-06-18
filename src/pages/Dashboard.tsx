@@ -18,7 +18,7 @@ import logo from '@/assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -369,7 +369,7 @@ const Dashboard = () => {
               <SafeRing pct={Math.max(0, 100 - todayPct)} />
             </div>
             <div className="mt-2.5 h-[7px] bg-muted rounded-full overflow-hidden">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${todayPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
+              <m.div initial={{ width: 0 }} animate={{ width: `${todayPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
             </div>
             <p className="flex items-center justify-between text-[11.5px] text-muted-foreground mt-2.5">
               <span className="truncate">{hidden ? '••••' : fmt(spentToday)} spent of {hidden ? '••••' : fmt(safeToday)} daily allowance</span>
@@ -564,7 +564,7 @@ const Dashboard = () => {
                         <span className="text-sm font-medium shrink-0">{fmt(data.total)}</span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
+                        <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full" style={{ backgroundColor: barColor }} />
                       </div>
                     </div>
                   );
@@ -598,7 +598,7 @@ const Dashboard = () => {
               <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
             </div>
             <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
+              <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
                 className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
             </div>
             {budgets.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
@@ -610,7 +610,7 @@ const Dashboard = () => {
                     <span className={`font-medium shrink-0 ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
                   </div>
                   <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                    <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
                       className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                 </div>

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { useRef, useState } from 'react';
 import { Trash2, Tag, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
@@ -15,67 +14,124 @@ interface Props {
 }
 
 const SWIPE_THRESHOLD = 80;
+const MAX_LEFT = -140;
+const AXIS_LOCK_SLOP = 8; // px of movement before we commit to a horizontal swipe
 
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+
+/**
+ * Swipe-to-act row. Reimplemented on native Pointer Events (previously
+ * framer-motion `drag`) so the app can ship framer-motion's lighter
+ * `domAnimation` feature set instead of the full `domMax` that drag requires.
+ * Behaviour is preserved: left past the threshold deletes, right categorizes,
+ * vertical movement scrolls the list untouched, and the overflow menu remains
+ * the accessible fallback for keyboard / non-touch users.
+ */
 const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
-  const x = useMotionValue(0);
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dxRef = useRef(0);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const axis = useRef<null | 'x' | 'y'>(null);
+  const activePointer = useRef<number | null>(null);
 
-  // Left-swipe (delete) - red background on right
-  const deleteBgOpacity = useTransform(x, [-120, -60, 0], [1, 0.8, 0]);
-  const deleteIconScale = useTransform(x, [-120, -60, 0], [1, 0.8, 0.5]);
+  const maxRight = onCategorize ? 140 : 0;
 
-  // Right-swipe (categorize) - accent background on left
-  const categorizeBgOpacity = useTransform(x, [0, 60, 120], [0, 0.8, 1]);
-  const categorizeIconScale = useTransform(x, [0, 60, 120], [0.5, 0.8, 1]);
+  const setOffset = (n: number) => { dxRef.current = n; setDx(n); };
 
-  const [_dragging, setDragging] = useState(false);
-
-  const handleDragEnd = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
+  const reset = () => {
+    setOffset(0);
     setDragging(false);
-    if (info.offset.x < -SWIPE_THRESHOLD) {
-      onDelete();
-    } else if (info.offset.x > SWIPE_THRESHOLD && onCategorize) {
-      onCategorize();
-    }
+    axis.current = null;
+    activePointer.current = null;
   };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    activePointer.current = e.pointerId;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    axis.current = null;
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointer.current !== e.pointerId) return;
+    const deltaX = e.clientX - startX.current;
+    const deltaY = e.clientY - startY.current;
+
+    // Commit to an axis once movement clears the slop, so vertical scrolls are
+    // left to the browser and never get hijacked as a swipe.
+    if (axis.current === null) {
+      if (Math.abs(deltaX) < AXIS_LOCK_SLOP && Math.abs(deltaY) < AXIS_LOCK_SLOP) return;
+      axis.current = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+      if (axis.current === 'x') {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setDragging(true);
+      }
+    }
+    if (axis.current !== 'x') return;
+
+    // Rubber-band beyond the constraints, matching the old dragElastic feel.
+    let next = deltaX;
+    if (next < MAX_LEFT) next = MAX_LEFT + (next - MAX_LEFT) * 0.2;
+    else if (next > maxRight) next = maxRight + (next - maxRight) * 0.2;
+    setOffset(next);
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointer.current !== e.pointerId) return;
+    const finalDx = dxRef.current;
+    const wasHorizontal = axis.current === 'x';
+    reset();
+    if (!wasHorizontal) return;
+    if (finalDx < -SWIPE_THRESHOLD) onDelete();
+    else if (finalDx > SWIPE_THRESHOLD && onCategorize) onCategorize();
+  };
+
+  const deleteProgress = dx < 0 ? clamp01(-dx / 120) : 0;
+  const categorizeProgress = dx > 0 ? clamp01(dx / 120) : 0;
 
   return (
     <div className="relative overflow-hidden group/tx">
       {/* Delete background (right side) */}
-      <motion.div
+      <div
         className="absolute inset-0 flex items-center justify-end pr-6 bg-destructive"
-        style={{ opacity: deleteBgOpacity }}
+        style={{ opacity: deleteProgress }}
       >
-        <motion.div style={{ scale: deleteIconScale }}>
+        <div style={{ transform: `scale(${0.5 + deleteProgress * 0.5})` }}>
           <Trash2 size={20} className="text-destructive-foreground" />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Categorize background (left side) */}
       {onCategorize && (
-        <motion.div
+        <div
           className="absolute inset-0 flex items-center justify-start pl-6 bg-primary"
-          style={{ opacity: categorizeBgOpacity }}
+          style={{ opacity: categorizeProgress }}
         >
-          <motion.div style={{ scale: categorizeIconScale }}>
+          <div style={{ transform: `scale(${0.5 + categorizeProgress * 0.5})` }}>
             <Tag size={20} className="text-primary-foreground" />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       )}
 
       {/* Swipeable content */}
-      <motion.div
-        drag="x"
+      <div
         role="listitem"
-        aria-label={onCategorize ? "Swipe left to delete, right to categorize" : "Swipe left to delete"}
-        dragConstraints={{ left: -140, right: onCategorize ? 140 : 0 }}
-        dragElastic={0.1}
-        onDragStart={() => setDragging(true)}
-        onDragEnd={handleDragEnd}
-        style={{ x }}
-        className="relative bg-card z-10 touch-pan-y"
+        aria-label={onCategorize ? 'Swipe left to delete, right to categorize' : 'Swipe left to delete'}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={reset}
+        style={{
+          transform: `translateX(${dx}px)`,
+          transition: dragging ? 'none' : 'transform 0.2s ease-out',
+          touchAction: 'pan-y',
+        }}
+        className="relative bg-card z-10"
       >
         {children}
-      </motion.div>
+      </div>
 
       {/* Keyboard/pointer fallback - overflow menu for non-touch users */}
       <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/tx:opacity-100 focus-within:opacity-100 transition-opacity">

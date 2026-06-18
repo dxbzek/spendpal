@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { ChevronDown, BookOpen, Search } from 'lucide-react';
 
 interface FaqItem {
@@ -167,16 +167,16 @@ const Glossary = () => {
               className="w-full flex items-center justify-between px-4 py-3.5 text-left"
             >
               <span className="text-sm font-heading">{item.term}</span>
-              <motion.div
+              <m.div
                 animate={{ rotate: openIndex === idx ? 180 : 0 }}
                 transition={{ duration: 0.2 }}
               >
                 <ChevronDown size={16} className="text-muted-foreground" />
-              </motion.div>
+              </m.div>
             </button>
             <AnimatePresence>
               {openIndex === idx && (
-                <motion.div
+                <m.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -186,7 +186,7 @@ const Glossary = () => {
                   <p className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed">
                     {item.definition}
                   </p>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>

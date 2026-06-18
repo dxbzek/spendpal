@@ -7,7 +7,7 @@ import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
 import { activeBudgets } from '@/utils/budgets';
 import { format, parseISO, subMonths, getMonth, getYear } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink, Info,
@@ -430,7 +430,7 @@ const AIAdvisor = () => {
         {/* Results */}
         <AnimatePresence>
           {analysis && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <m.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
 
               {/* Refresh button */}
               <div className="flex justify-end">
@@ -717,7 +717,7 @@ const AIAdvisor = () => {
                   ))}
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import BottomNav from './BottomNav';
 import DesktopSidebar from './DesktopSidebar';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
@@ -59,7 +59,7 @@ const AppLayout = () => {
             : 'pb-8'}>
             <AnimatePresence mode="wait">
               <ErrorBoundary key={location.pathname}>
-                <motion.div
+                <m.div
                   key={location.pathname}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -67,7 +67,7 @@ const AppLayout = () => {
                   transition={{ duration: 0.2, ease: 'easeOut' }}
                 >
                   <Outlet />
-                </motion.div>
+                </m.div>
               </ErrorBoundary>
             </AnimatePresence>
           </main>
