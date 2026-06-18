@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo.png';
 import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wallet, BarChart3, CreditCard, Layers, CalendarDays } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { LucideIcon } from 'lucide-react';
 
@@ -66,7 +66,7 @@ const NavButton = ({ path: _path, label, icon: Icon, active, onClick, collapsed 
   return (
     <div className="relative">
       {active && (
-        <motion.div
+        <m.div
           layoutId="sidebar-indicator"
           className="absolute -left-3 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-primary"
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}

@@ -7,7 +7,7 @@ import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine } from 'lucide-react';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
 import { Badge } from '@/components/ui/badge';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
 import { useAI } from '@/hooks/useAI';
 import { toast } from 'sonner';
@@ -290,7 +290,7 @@ const Budgets = () => {
             <span>{mask(fmt(totalSpent))}</span><span>{mask(fmt(totalBudgeted))}</span>
           </div>
           <div className="h-4 bg-muted rounded-full overflow-hidden mb-2">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(overallPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
+            <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(overallPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
               className={`h-full rounded-full ${overallPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
           </div>
           {/* Velocity row */}
@@ -366,7 +366,7 @@ const Budgets = () => {
                     </div>
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                    <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(pct, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
                       className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                   <div className="grid grid-cols-3 gap-1 text-center mb-2">

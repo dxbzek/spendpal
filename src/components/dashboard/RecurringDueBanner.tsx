@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { getMonth, getYear, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import type { Transaction } from '@/types/finance';
@@ -46,7 +46,7 @@ const RecurringDueBanner = ({ transactions }: Props) => {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
@@ -63,7 +63,7 @@ const RecurringDueBanner = ({ transactions }: Props) => {
           </p>
         </div>
         <span className="text-xs text-primary font-medium shrink-0 mt-0.5">Log now →</span>
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 };

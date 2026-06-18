@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { CreditCard } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import type { Account } from '@/types/finance';
 
 interface Props {
@@ -38,7 +38,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
           <span className={`text-sm font-heading ${overallColor}`}>{overallUtil}%</span>
         </div>
         <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
-          <motion.div
+          <m.div
             initial={{ width: 0 }}
             animate={{ width: `${overallUtil}%` }}
             transition={{ duration: 0.6 }}
@@ -68,7 +68,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
                 <span className="text-xs text-muted-foreground">{util}%</span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                <motion.div
+                <m.div
                   initial={{ width: 0 }}
                   animate={{ width: `${util}%` }}
                   transition={{ duration: 0.6, delay: 0.1 }}

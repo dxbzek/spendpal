@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { PieChart } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import type { Account, Transaction } from '@/types/finance';
 
 interface Props {
@@ -62,7 +62,7 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, m
                 </div>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <motion.div
+                <m.div
                   initial={{ width: 0 }}
                   animate={{ width: `${pct}%` }}
                   transition={{ duration: 0.6 }}

@@ -6,7 +6,7 @@ import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown, Pause, Play, Trophy, ScanLine } from 'lucide-react';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -168,7 +168,7 @@ const Goals = () => {
               {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {mask(fmt(totalTarget))}</span>
             </p>
             <div className="h-3.5 bg-primary-foreground/20 rounded-full overflow-hidden">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
+              <m.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
             </div>
           </div>
         </div>
@@ -237,7 +237,7 @@ const Goals = () => {
                     </div>
                   </div>
                   <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full gradient-primary" />
+                    <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full gradient-primary" />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>

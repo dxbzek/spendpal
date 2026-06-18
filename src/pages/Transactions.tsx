@@ -11,7 +11,7 @@ import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { detectDuplicates } from '@/utils/detectDuplicates';
 import { Input } from '@/components/ui/input';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
 import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
 import { extractEmoji } from '@/utils/categoryColors';
@@ -586,7 +586,7 @@ const Transactions = () => {
         ) : isMobile ? (
           <AnimatePresence>
             {grouped.map(([date, txs]) => (
-              <motion.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
+              <m.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
                 <div className="bg-card rounded-2xl card-shadow overflow-hidden divide-y divide-border">
                   {txs.map((tx, idx) => (
@@ -595,7 +595,7 @@ const Transactions = () => {
                     </SwipeableTransaction>
                   ))}
                 </div>
-              </motion.div>
+              </m.div>
             ))}
           </AnimatePresence>
         ) : (
@@ -612,7 +612,7 @@ const Transactions = () => {
             </div>
             <AnimatePresence>
               {grouped.map(([date, txs]) => (
-                <motion.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <m.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <div className="px-4 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border">
                     {date}
                   </div>
@@ -677,7 +677,7 @@ const Transactions = () => {
                       </div>
                     );
                   })}
-                </motion.div>
+                </m.div>
               ))}
             </AnimatePresence>
           </div>

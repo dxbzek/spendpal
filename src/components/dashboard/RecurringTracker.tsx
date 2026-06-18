@@ -4,7 +4,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { getCategoryChartColor } from '@/utils/categoryColors';
 import { CalendarClock } from 'lucide-react';
 import { parseISO, addMonths, format } from 'date-fns';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 
 const RecurringTracker = () => {
   const { transactions } = useFinance();
@@ -105,7 +105,7 @@ const RecurringTracker = () => {
                     {hasInstallments && (
                       <div className="mt-1.5 ml-11">
                         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <motion.div
+                          <m.div
                             initial={{ width: 0 }}
                             animate={{ width: `${paidPct}%` }}
                             transition={{ duration: 0.6 }}

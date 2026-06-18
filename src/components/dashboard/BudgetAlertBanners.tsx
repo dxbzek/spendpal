@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Budget } from '@/types/finance';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 
 interface Props {
   budgets: Budget[];
@@ -25,7 +25,7 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
     <div className="space-y-2">
       <AnimatePresence>
         {alerts.map(a => (
-          <motion.div
+          <m.div
             key={a.id}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -49,7 +49,7 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
                 {a.over ? 'Over budget!' : `${a.pct}% used`} — {fmt(a.spent)} / {fmt(a.amount)}
               </span>
             </div>
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
     </div>

@@ -4,7 +4,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, ChevronUp, Zap, Snowflake } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { format, addMonths, getDate } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_APR, monthsToPayoff, minPayment, simulateStrategy } from '@/lib/finance/debtPayoff';
@@ -239,7 +239,7 @@ const Debt = () => {
                   {/* Expanded payoff calculator */}
                   <AnimatePresence>
                     {isExpanded && (
-                      <motion.div
+                      <m.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
@@ -299,7 +299,7 @@ const Debt = () => {
                             </div>
                           )}
                         </div>
-                      </motion.div>
+                      </m.div>
                     )}
                   </AnimatePresence>
                 </div>

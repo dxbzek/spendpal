@@ -7,7 +7,7 @@ import {
   Brain, Settings, CreditCard, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS_LEFT = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
@@ -44,7 +44,7 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
     className="flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95"
   >
     {active && (
-      <motion.div
+      <m.div
         layoutId={`nav-indicator-${path}`}
         className="absolute inset-0 rounded-2xl bg-accent"
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
@@ -80,7 +80,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           {showMore && (
             <>
               {/* Backdrop */}
-              <motion.div
+              <m.div
                 key="backdrop"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -94,7 +94,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                   pointer-events-none so taps in the side gutters fall through
                   to the backdrop; the panel re-enables pointer events. */}
               <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] flex justify-center px-3 pointer-events-none">
-                <motion.div
+                <m.div
                   key="more-panel"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -133,7 +133,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                       );
                     })}
                   </div>
-                </motion.div>
+                </m.div>
               </div>
             </>
           )}
@@ -167,7 +167,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
             className={`flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95 ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
           >
             {(showMore || isMoreActive) && (
-              <motion.div
+              <m.div
                 layoutId="nav-indicator-more"
                 className="absolute inset-0 rounded-2xl bg-accent"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
