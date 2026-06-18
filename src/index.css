@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-
+/* Fonts are loaded via a non-blocking <link> in index.html, not a CSS @import
+   (an @import here is fetched late and blocks first render). */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -22,7 +22,9 @@
     --secondary-foreground: 220 20% 10%;
 
     --muted: 142 20% 95%;
-    --muted-foreground: 220 10% 40%;
+    /* Darkened from 40% -> 32% lightness so secondary/small text clears WCAG AA
+       (4.5:1) on white and on the light --muted background. */
+    --muted-foreground: 220 12% 32%;
 
     --accent: 142 60% 94%;
     --accent-foreground: 142 72% 28%;
