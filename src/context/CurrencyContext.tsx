@@ -63,7 +63,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('profiles').select('currency').eq('user_id', user.id).single().then(({ data }) => {
+    supabase.from('profiles').select('currency').eq('user_id', user.id).maybeSingle().then(({ data }) => {
       if (data?.currency) setCurrencyState(data.currency);
     });
   }, [user]);
