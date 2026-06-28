@@ -124,7 +124,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                       type="button"
                       onClick={() => setShowMore(false)}
                       aria-label="Close menu"
-                      className="flex items-center justify-center w-9 h-9 -mr-1 rounded-full hover:bg-muted active:scale-95 text-muted-foreground transition-colors"
+                      className="flex items-center justify-center w-11 h-11 -mr-1.5 rounded-full hover:bg-muted active:scale-95 text-muted-foreground transition-colors"
                     >
                       <X size={18} />
                     </button>
