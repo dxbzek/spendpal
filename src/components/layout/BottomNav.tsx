@@ -181,7 +181,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           <button
             onClick={() => setShowMore(v => !v)}
             aria-expanded={showMore}
-            aria-label={showMore ? 'Close menu' : 'More options'}
+            aria-label="More options"
             className={`flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95 ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
           >
             {(showMore || isMoreActive) && (
