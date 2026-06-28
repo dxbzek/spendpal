@@ -112,13 +112,22 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[62] flex justify-center px-3 pointer-events-none">
                 <m.div
                   key="more-panel"
+                  drag="y"
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={{ top: 0, bottom: 0.3 }}
+                  onDragEnd={(_e, info) => {
+                    if (info.offset.y > 80 || info.velocity.y > 500) setShowMore(false);
+                  }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
+                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh] cursor-grab active:cursor-grabbing"
                 >
-                  <div className="flex items-center justify-between pl-5 pr-3 pt-3 pb-2">
+                  <div className="flex justify-center pt-2 pb-0.5">
+                    <div className="w-9 h-1 rounded-full bg-border" />
+                  </div>
+                  <div className="flex items-center justify-between pl-5 pr-3 pt-1 pb-2">
                     <span className="text-sm font-semibold text-foreground">More</span>
                     <button
                       type="button"
@@ -159,7 +168,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
       {/* Bottom bar */}
       <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[54] bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
-        <div className="flex items-end justify-around max-w-lg mx-auto h-[68px] px-2 pb-1">
+        <div className="flex items-end justify-evenly max-w-lg mx-auto h-[68px] px-2 pb-1">
           {NAV_ITEMS_LEFT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
