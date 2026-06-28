@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -64,7 +64,23 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
   const isMoreActive = ALL_MORE_PATHS.includes(location.pathname);
 
+  // Close on route change
+  useEffect(() => { setShowMore(false); }, [location.pathname]);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!showMore) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowMore(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [showMore]);
+
   const handleMoreItem = (path: string) => {
+    setShowMore(false);
+    navigate(path);
+  };
+
+  const handleNavClick = (path: string) => {
     setShowMore(false);
     navigate(path);
   };
@@ -86,14 +102,14 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-                onClick={() => setShowMore(false)}
+                className="fixed inset-0 z-[52] bg-black/30 backdrop-blur-sm"
+                onPointerDown={(e) => { e.stopPropagation(); setShowMore(false); }}
               />
 
               {/* Centering wrapper: full-width, pinned just above the nav bar.
                   pointer-events-none so taps in the side gutters fall through
                   to the backdrop; the panel re-enables pointer events. */}
-              <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] flex justify-center px-3 pointer-events-none">
+              <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[62] flex justify-center px-3 pointer-events-none">
                 <m.div
                   key="more-panel"
                   initial={{ opacity: 0, y: 20 }}
@@ -142,10 +158,10 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
       )}
 
       {/* Bottom bar */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[54] bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
         <div className="flex items-end justify-around max-w-lg mx-auto h-[68px] px-2 pb-1">
           {NAV_ITEMS_LEFT.map(item => (
-            <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => navigate(item.path)} />
+            <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
 
           {/* FAB */}
@@ -158,12 +174,14 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           </button>
 
           {NAV_ITEMS_RIGHT.map(item => (
-            <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => navigate(item.path)} />
+            <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
 
           {/* More button */}
           <button
             onClick={() => setShowMore(v => !v)}
+            aria-expanded={showMore}
+            aria-label="More options"
             className={`flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95 ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
           >
             {(showMore || isMoreActive) && (
