@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,12 +8,29 @@ import { Badge } from '@/components/ui/badge';
 import { useFinance } from '@/context/FinanceContext';
 import { useAI } from '@/hooks/useAI';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Upload, FileText, Loader2, Check, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, FileText, Loader2, Check, Image as ImageIcon, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { downscaleImage } from '@/utils/downscaleImage';
 import { normalizeDate } from '@/lib/finance/normalizeDate';
+
+// Chunk large statement text into ~10k-char pieces split on line boundaries.
+function chunkText(text: string, maxChunkSize = 10_000): string[] {
+  if (text.length <= maxChunkSize) return [text];
+  const lines = text.split('\n');
+  const chunks: string[] = [];
+  let current = '';
+  for (const line of lines) {
+    if (current.length + line.length + 1 > maxChunkSize && current.length > 0) {
+      chunks.push(current);
+      current = '';
+    }
+    current += (current ? '\n' : '') + line;
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
 
 // Zod schema for AI-returned rows - validates before inserting to DB
 const AIRowSchema = z.object({
@@ -41,7 +58,7 @@ interface ParsedRow {
   isDuplicate?: boolean;
 }
 
-async function extractPdfText(file: File): Promise<string> {
+async function extractPdfText(file: File, onPageProgress?: (current: number, total: number) => void): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
 
   // Use the statically-imported worker URL so Vite bundles and serves the
@@ -56,6 +73,7 @@ async function extractPdfText(file: File): Promise<string> {
   const pageCount = Math.min(pdf.numPages, 30);
 
   for (let i = 1; i <= pageCount; i++) {
+    onPageProgress?.(i, pageCount);
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
 
@@ -137,13 +155,15 @@ function cleanStatementText(text: string): string {
 
 const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const { accounts, transactions, bulkAddTransactions, updateAccount } = useFinance();
-  const { loading, categorizeStatement, categorizeImage } = useAI();
+  const { loading, categorizeStatement, categorizeStatementBatch, categorizeImage } = useAI();
   const { currency, symbol, fmt } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const [statementText, setStatementText] = useState('');
   const [fileName, setFileName] = useState('');
   const [parsing, setParsing] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
+  const [chunkProgress, setChunkProgress] = useState<{ current: number; total: number } | null>(null);
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [accountId, setAccountId] = useState('');
   const [step, setStep] = useState<'upload' | 'review'>('upload');
@@ -153,6 +173,15 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const [imageName, setImageName] = useState('');
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState('');
+  const [lastFailedText, setLastFailedText] = useState<string | null>(null);
+  const [lastFailedImage, setLastFailedImage] = useState<string | null>(null);
+
+  // Pre-warm PDF and XLSX workers when the dialog opens while the user picks an account.
+  useEffect(() => {
+    if (!open) return;
+    import('pdfjs-dist').catch(() => {/* intentional fire-and-forget */});
+    import('xlsx').catch(() => {/* intentional fire-and-forget */});
+  }, [open]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -174,7 +203,9 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     try {
       let text = '';
       if (ext === 'pdf') {
-        text = await extractPdfText(file);
+        setPdfProgress(null);
+        text = await extractPdfText(file, (current, total) => setPdfProgress({ current, total }));
+        setPdfProgress(null);
         if (text.replace(/\s/g, '').length < 50) {
           toast.error('This PDF appears to be image-based (scanned). Please export as text or use the Paste Text option.');
           setFileName('');
@@ -250,7 +281,30 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
     );
   };
 
-  const handleParse = async () => {
+  const processResults = (results: unknown[]) => {
+    const rows: ParsedRow[] = [];
+    let invalidCount = 0;
+    for (const r of results) {
+      const parsed = AIRowSchema.safeParse(r);
+      if (!parsed.success) {
+        invalidCount++;
+        logger.error('AI returned invalid row', { error: parsed.error.issues });
+        continue;
+      }
+      const normalized = { ...parsed.data, date: normalizeDate(parsed.data.date) };
+      const isDup = isDuplicateTransaction(normalized);
+      rows.push({ ...normalized, selected: !isDup, isDuplicate: isDup });
+    }
+    if (invalidCount > 0) {
+      toast.warning(`${invalidCount} row${invalidCount > 1 ? 's' : ''} skipped — AI returned invalid data`);
+    }
+    return rows;
+  };
+
+  const handleParse = async (retryText?: string, retryImage?: string) => {
+    setLastFailedText(null);
+    setLastFailedImage(null);
+
     if (!accountId) {
       toast.error('Please select an account');
       return;
@@ -258,13 +312,15 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
 
     let results: unknown[] | null;
     if (inputMode === 'screenshot') {
-      if (!imageDataUrl) {
+      const img = retryImage ?? imageDataUrl;
+      if (!img) {
         toast.error('Please upload a screenshot');
         return;
       }
-      results = await categorizeImage(imageDataUrl);
+      results = await categorizeImage(img);
+      if (results === null) { setLastFailedImage(img); return; }
     } else {
-      const raw = inputMode === 'paste' ? pasteText : statementText;
+      const raw = retryText ?? (inputMode === 'paste' ? pasteText : statementText);
       if (!raw) {
         toast.error(inputMode === 'paste' ? 'Please paste some text' : 'Please upload a file');
         return;
@@ -278,29 +334,20 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
         }
         return;
       }
-      results = await categorizeStatement(textToProcess);
+      const chunks = chunkText(textToProcess);
+      if (chunks.length > 1) {
+        setChunkProgress({ current: 0, total: chunks.length });
+        results = await categorizeStatementBatch(chunks, (current, total) => setChunkProgress({ current, total }));
+        setChunkProgress(null);
+      } else {
+        results = await categorizeStatement(textToProcess);
+      }
+      if (results === null) { setLastFailedText(raw); return; }
     }
 
-    if (results === null) return; // fetch/network error already shown by useAI
+    if (results === null) return;
     if (results.length > 0) {
-      const rows: ParsedRow[] = [];
-      let invalidCount = 0;
-      for (const r of results) {
-        const parsed = AIRowSchema.safeParse(r);
-        if (!parsed.success) {
-          invalidCount++;
-          // Log only the validation error shape — never the raw AI row, which
-          // can contain merchant names/PII that would reach Sentry.
-          logger.error('AI returned invalid row', { error: parsed.error.issues });
-          continue;
-        }
-        const normalized = { ...parsed.data, date: normalizeDate(parsed.data.date) };
-        const isDup = isDuplicateTransaction(normalized);
-        rows.push({ ...normalized, selected: !isDup, isDuplicate: isDup });
-      }
-      if (invalidCount > 0) {
-        toast.warning(`${invalidCount} row${invalidCount > 1 ? 's' : ''} skipped — AI returned invalid data`);
-      }
+      const rows = processResults(results);
       if (rows.length === 0) {
         toast.error('No valid transactions found after parsing.');
         return;
@@ -340,6 +387,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       date: r.date,
     })));
 
+    navigator.vibrate?.(100);
     toast.success(`Imported ${selected.length} transactions`);
     
     // Show balance confirmation dialog
@@ -367,14 +415,16 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
 
   const resetAndClose = () => {
     setStatementText(''); setFileName(''); setParsed([]); setStep('upload'); setPasteText('');
-    setImageDataUrl(''); setImageName('');
+    setImageDataUrl(''); setImageName(''); setLastFailedText(null); setLastFailedImage(null);
+    setPdfProgress(null); setChunkProgress(null);
     onOpenChange(false);
   };
 
   const handleClose = (open: boolean) => {
     if (!open) {
       setStep('upload'); setParsed([]); setStatementText(''); setFileName(''); setPasteText('');
-      setImageDataUrl(''); setImageName('');
+      setImageDataUrl(''); setImageName(''); setLastFailedText(null); setLastFailedImage(null);
+      setPdfProgress(null); setChunkProgress(null);
     }
     onOpenChange(open);
   };
@@ -417,7 +467,12 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                   <button onClick={() => fileRef.current?.click()}
                     className="w-full py-8 rounded-2xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
                     {parsing ? (
-                      <><Loader2 size={32} className="text-primary animate-spin" /><span className="text-sm text-muted-foreground">Reading file…</span></>
+                      <>
+                        <Loader2 size={32} className="text-primary animate-spin" />
+                        <span className="text-sm text-muted-foreground">
+                          {pdfProgress ? `Reading page ${pdfProgress.current} of ${pdfProgress.total}…` : 'Reading file…'}
+                        </span>
+                      </>
                     ) : fileName ? (
                       <><FileText size={32} className="text-primary" /><span className="text-sm font-medium">{fileName}</span><span className="text-xs text-muted-foreground">Click to change file</span></>
                     ) : (
@@ -483,24 +538,42 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                onClick={handleParse}
-                disabled={
-                  (inputMode === 'file' && !statementText) ||
-                  (inputMode === 'paste' && !pasteText) ||
-                  (inputMode === 'screenshot' && !imageDataUrl) ||
-                  !accountId || loading || parsing
-                }
-                className="w-full h-12 text-base gradient-primary text-primary-foreground"
-              >
-                {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing with AI…</> : 'Parse & Categorize'}
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  onClick={() => handleParse()}
+                  disabled={
+                    (inputMode === 'file' && !statementText) ||
+                    (inputMode === 'paste' && !pasteText) ||
+                    (inputMode === 'screenshot' && !imageDataUrl) ||
+                    !accountId || loading || parsing
+                  }
+                  className="w-full h-12 text-base gradient-primary text-primary-foreground"
+                >
+                  {loading
+                    ? <>
+                        <Loader2 size={18} className="animate-spin mr-2" />
+                        {chunkProgress
+                          ? `Analyzing chunk ${chunkProgress.current} of ${chunkProgress.total}…`
+                          : 'Analyzing with AI…'}
+                      </>
+                    : 'Parse & Categorize'}
+                </Button>
+                {(lastFailedText || lastFailedImage) && !loading && (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleParse(lastFailedText ?? undefined, lastFailedImage ?? undefined)}
+                    className="w-full h-10"
+                  >
+                    <RefreshCw size={15} className="mr-2" /> Try Again
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
           {step === 'review' && (
-            <div className="space-y-4 mt-4">
-              <div className="flex items-center justify-between">
+            <div className="flex flex-col mt-4" style={{ minHeight: 0 }}>
+              <div className="flex items-center justify-between mb-3">
                 <p className="text-sm text-muted-foreground">{parsed.filter(r => r.selected).length} of {parsed.length} selected</p>
                 <div className="flex items-center gap-2">
                   {parsed.some(r => r.isDuplicate) && (
@@ -512,7 +585,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     className="text-xs text-primary font-medium">Toggle All</button>
                 </div>
               </div>
-              <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+              <div className="space-y-2 overflow-y-auto" style={{ maxHeight: '40vh' }}>
                 {parsed.map((row, idx) => (
                   <button key={idx} onClick={() => toggleRow(idx)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${row.selected ? 'bg-accent' : 'bg-muted/50 opacity-60'}`}>
@@ -533,7 +606,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                   </button>
                 ))}
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-4 sticky bottom-0 bg-card pb-1">
                 <Button variant="outline" onClick={() => setStep('upload')} className="flex-1">Back</Button>
                 <Button onClick={handleImport} className="flex-1 gradient-primary text-primary-foreground">
                   Import {parsed.filter(r => r.selected).length}

@@ -425,11 +425,72 @@ export const useAI = () => {
     return true;
   }, []);
 
+  /**
+   * Process a large statement in chunks. Each chunk is sent as a separate AI call
+   * with a 5.5s inter-chunk delay to avoid Groq rate limits. Progress is reported
+   * via onProgress(currentChunk, totalChunks). Returns merged results or null on
+   * unrecoverable error.
+   */
+  const categorizeStatementBatch = useCallback(async (
+    chunks: string[],
+    onProgress?: (current: number, total: number) => void,
+  ): Promise<unknown[] | null> => {
+    if (!chunks.length) return [];
+    // Consume a single cooldown slot for the whole batch (rate limit is per session, not per chunk).
+    if (!checkCooldown()) return null;
+    setLoading(true);
+
+    const makeAttempt = (text: string) =>
+      invokeWithTimeout<{ result?: string }>(
+        'ai-finance',
+        { type: 'categorize-csv', data: text },
+        60_000,
+      );
+
+    const isNetworkError = (err: unknown) =>
+      err instanceof TypeError ||
+      (err instanceof Error && err.message.includes('Failed to fetch'));
+
+    const allResults: unknown[] = [];
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        onProgress?.(i + 1, chunks.length);
+        // Inter-chunk delay starting from the second chunk (first already passed cooldown).
+        if (i > 0) await new Promise(r => setTimeout(r, 5_500));
+
+        let body: { result?: string } = { result: undefined };
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            body = await makeAttempt(chunks[i]);
+            break;
+          } catch (err) {
+            if (!isNetworkError(err) || attempt === 2) throw err;
+            await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempt)));
+          }
+        }
+        // Update the lastRequestAt so subsequent chunks reset the cooldown window.
+        lastRequestAt.current = Date.now();
+
+        const jsonMatch = body.result?.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (jsonMatch) allResults.push(...(JSON.parse(jsonMatch[0]) as unknown[]));
+      }
+      return allResults;
+    } catch (e: unknown) {
+      logger.error('categorizeStatementBatch failed', e);
+      const msg = e instanceof Error ? e.message : 'AI advisor is unavailable. Please try again later.';
+      toast.error(msg);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const categorizeCSV = categorizeStatement;
 
   return {
     loading, summaryText,
     generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV,
+    categorizeStatementBatch,
     categorizeImage, extractBudgetsFromImage, extractGoalsFromImage,
     generateBudgetAnalysis,
     fetchAdvisorHistory, deleteAdvisorSession,

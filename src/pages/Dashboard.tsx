@@ -233,7 +233,7 @@ const Dashboard = () => {
           <Skeleton className="h-10 w-48 bg-primary-foreground/20 mb-2" />
           <Skeleton className="h-4 w-28 bg-primary-foreground/20" />
         </div>
-        <div className="px-5 md:px-8 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="px-5 md:px-8 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-2xl" />
           ))}
@@ -264,7 +264,7 @@ const Dashboard = () => {
           <p className="text-muted-foreground text-sm">Get started in a few simple steps to take control of your finances.</p>
         </div>
 
-        <div className="space-y-3 mb-8">
+        <div className="space-y-5 mb-8">
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
@@ -309,7 +309,7 @@ const Dashboard = () => {
       <div className={`gradient-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-3xl' : 'pt-8 pb-6'}`}>
         <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
           <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-4'}`}>
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-4 min-w-0">
               <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-foreground/20 p-0.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-base font-heading font-bold text-primary-foreground leading-tight">Overview</p>
@@ -361,7 +361,7 @@ const Dashboard = () => {
         {/* Safe to spend today — the flagship "at a glance" hero */}
         {showSafeCard && (
           <Card className="border border-primary/20 mb-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[12.5px] font-semibold text-muted-foreground mb-1">Safe to spend today</p>
                 <p className="text-financial-large text-primary tabular-nums">{hidden ? '••••••' : fmt(animatedSafe)}</p>
@@ -385,8 +385,8 @@ const Dashboard = () => {
 
         {/* Section divider helper */}
         {/* ── OVERVIEW ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-3 pt-1">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-4 pt-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
             <div className="flex-1 h-px bg-border" />
             <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
@@ -441,8 +441,8 @@ const Dashboard = () => {
         </div>
 
         {/* ── ACCOUNTS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Accounts</span>
             <div className="flex-1 h-px bg-border" />
           </div>
@@ -462,7 +462,7 @@ const Dashboard = () => {
                 return (
                   <div key={accountType}>
                     <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
-                    <div className="space-y-3">
+                    <div className="space-y-5">
                       {group.map(a => {
                         const spent = a.type === 'credit' && a.creditLimit ? a.creditLimit - a.balance : 0;
                         const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((spent / a.creditLimit) * 100), 100) : 0;
@@ -470,7 +470,7 @@ const Dashboard = () => {
                         return (
                           <div key={a.id} className="group">
                             <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-3 min-w-0">
+                              <div className="flex items-center gap-4 min-w-0">
                                 <span className="text-2xl shrink-0">{a.icon}</span>
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium truncate">{a.name}</p>
@@ -523,8 +523,8 @@ const Dashboard = () => {
         </div>
 
         {/* ── SPENDING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
             <div className="flex-1 h-px bg-border" />
           </div>
@@ -583,8 +583,8 @@ const Dashboard = () => {
         </div>
 
         {/* ── PLANNING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
             <div className="flex-1 h-px bg-border" />
           </div>
@@ -678,8 +678,8 @@ const Dashboard = () => {
         </div>
 
         {/* ── INSIGHTS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
+          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
             <div className="flex-1 h-px bg-border" />
           </div>
@@ -694,14 +694,14 @@ const Dashboard = () => {
                 <h2 className="font-heading text-sm">Recent Transactions</h2>
                 <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-5">
                 {recentTx.map(tx => {
                   const isTransfer = tx.category === 'Transfer';
                   const toAccName = tx.toAccountId ? (accounts.find(a => a.id === tx.toAccountId)?.name || '') : null;
                   const fromAccName = isTransfer ? (accounts.find(a => a.id === tx.accountId)?.name || '') : null;
                   return (
                     <div key={tx.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <span className="text-xl">{extractEmoji(tx.categoryIcon)}</span>
                         <div>
                           <p className="text-sm font-medium">{isTransfer ? 'Transfer' : tx.merchant}</p>
