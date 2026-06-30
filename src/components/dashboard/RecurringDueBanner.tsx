@@ -16,7 +16,7 @@ const RecurringDueBanner = ({ transactions }: Props) => {
   const currentYear = getYear(now);
 
   // Find unique recurring transaction templates (by merchant+category) that have been logged before
-  const recurringTemplates = transactions.filter(tx => tx.isRecurring && tx.type === 'expense');
+  const recurringTemplates = transactions.filter(tx => tx.isRecurring && tx.type === 'expense' && !tx.isInternal);
 
   // Group by merchant+category to get unique recurring items
   const seen = new Set<string>();

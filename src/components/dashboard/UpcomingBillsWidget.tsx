@@ -43,7 +43,7 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
     });
 
     // Recurring transactions
-    transactions.filter(t => t.isRecurring && t.type === 'expense').forEach(t => {
+    transactions.filter(t => t.isRecurring && t.type === 'expense' && !t.isInternal).forEach(t => {
       // Advance month-by-month from the original date until the next occurrence
       // is in the future. Stepping from the original date (not the last computed
       // date) preserves the day-of-month correctly across month-length boundaries

@@ -93,6 +93,10 @@ function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`;
   // Exclude future-dated transactions: they haven't been spent yet.
+  // Pending (isPending) transactions are NOT excluded here on purpose: a
+  // pending charge is still real spending the user committed to, and
+  // budgets/reports should reflect it immediately. isPending only gates
+  // whether it's posted to the settled account balance (see the DB trigger).
   const monthExpenses = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal && t.date.startsWith(currentMonth) && t.date <= today);
   const spent: Record<string, number> = {};
   for (const t of monthExpenses) {

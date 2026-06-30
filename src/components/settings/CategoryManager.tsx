@@ -48,7 +48,7 @@ const TypeToggle = ({ value, onChange }: { value: CategoryType; onChange: (v: Ca
 
 const CategoryManager = () => {
   const { categories, customCategories, addCategory, updateCategory, removeCategory, overrideDefault } = useCategories();
-  const { transactions, budgets, bulkUpdateCategory, updateBudget } = useFinance();
+  const { transactions, budgets, bulkUpdateCategory, updateBudget, removeBudget } = useFinance();
   const [showAdd, setShowAdd] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [newName, setNewName] = useState('');
@@ -101,11 +101,22 @@ const CategoryManager = () => {
     setMerging(true);
     try {
       const ids = transactions.filter(t => t.category === sourceName).map(t => t.id);
-      if (ids.length > 0) await bulkUpdateCategory(ids, target.name, target.icon);
       const matchingBudgets = budgets.filter(b => b.category === sourceName);
-      for (const b of matchingBudgets) {
-        await updateBudget({ ...b, category: target.name, categoryIcon: target.icon });
-      }
+      await Promise.all([
+        ids.length > 0 ? bulkUpdateCategory(ids, target.name, target.icon) : Promise.resolve(),
+        ...matchingBudgets.map(b => {
+          // If the target category already has a budget for the same
+          // period, reassigning would create a second budget row for the
+          // same (category, month) — drop the source budget instead so the
+          // target's existing one stays the single source of truth.
+          const conflict = budgets.some(other =>
+            other.id !== b.id && other.category === target.name && other.month === b.month && other.period === b.period
+          );
+          return conflict
+            ? removeBudget(b.id)
+            : updateBudget({ ...b, category: target.name, categoryIcon: target.icon });
+        }),
+      ]);
       const custom = customCategories.find(c => c.name === sourceName);
       if (custom?.id) await removeCategory(custom.id);
       toast.success(`Merged "${sourceName}" into "${target.name}"`);

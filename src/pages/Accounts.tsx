@@ -178,7 +178,7 @@ const Accounts = () => {
         <div className="space-y-3">
           {visibleAccounts.map(account => {
             const stats = accountStats[account.id] || { income: 0, expenses: 0 };
-            const utilization =
+            const rawUtilization =
               account.type === 'credit' && account.creditLimit
                 ? (account.balance / account.creditLimit) * 100
                 // A $0 limit can't be divided into a percentage, but an owed
@@ -186,6 +186,10 @@ const Accounts = () => {
                 : account.type === 'credit' && account.creditLimit === 0 && account.balance > 0
                   ? 100
                   : null;
+            // Clamp at the source (not just the bar width) so the displayed
+            // percentage text can't read e.g. "134%" while every other page
+            // caps the same account at 100%.
+            const utilization = rawUtilization !== null ? Math.max(0, Math.min(rawUtilization, 100)) : null;
 
             return (
               <div key={account.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
@@ -249,7 +253,7 @@ const Accounts = () => {
                     </div>
                   )}
                 </div>
-                {account.type !== 'credit' && !!pendingHolds[account.id] && (
+                {!!pendingHolds[account.id] && (
                   <p className="text-[11px] text-muted-foreground -mt-2">
                     {mask(fmt(pendingHolds[account.id]))} in pending holds not yet settled
                   </p>
@@ -273,7 +277,7 @@ const Accounts = () => {
                           utilization > 75 ? 'bg-destructive' :
                           utilization > 30 ? 'bg-warning' : 'bg-primary'
                         }`}
-                        style={{ width: `${Math.min(utilization, 100)}%` }}
+                        style={{ width: `${utilization}%` }}
                       />
                     </div>
                   </div>

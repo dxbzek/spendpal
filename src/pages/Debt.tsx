@@ -259,7 +259,7 @@ const Debt = () => {
                                 min="1"
                                 step="10"
                                 value={payment}
-                                onChange={e => setPayments(p => ({ ...p, [debt.id]: parseFloat(e.target.value) || minPayment(debt.owed) }))}
+                                onChange={e => { const v = parseFloat(e.target.value); setPayments(p => ({ ...p, [debt.id]: isNaN(v) ? minPayment(debt.owed) : v })); }}
                                 className="h-9 text-sm"
                               />
                             </div>
@@ -271,7 +271,7 @@ const Debt = () => {
                                 max="100"
                                 step="0.5"
                                 value={apr}
-                                onChange={e => setAprs(a => ({ ...a, [debt.id]: parseFloat(e.target.value) || DEFAULT_APR }))}
+                                onChange={e => { const v = parseFloat(e.target.value); setAprs(a => ({ ...a, [debt.id]: isNaN(v) ? DEFAULT_APR : v })); }}
                                 className="h-9 text-sm"
                               />
                             </div>

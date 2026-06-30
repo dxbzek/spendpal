@@ -41,6 +41,12 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
 
   const handleApply = async () => {
     if (parsedActual === null || isNaN(parsedActual)) return;
+    // Same constraint as AddAccountDialog: balance/owed can't be negative,
+    // for credit accounts or otherwise.
+    if (parsedActual < 0) {
+      toast.error(isCredit ? 'Amount owed cannot be negative' : 'Balance cannot be negative');
+      return;
+    }
     setSubmitting(true);
     try {
       await updateAccount({ ...account, balance: parsedActual });
@@ -86,7 +92,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
           )}
           <Button
             onClick={handleApply}
-            disabled={parsedActual === null || isNaN(parsedActual) || drift === 0 || submitting}
+            disabled={parsedActual === null || isNaN(parsedActual) || parsedActual < 0 || drift === 0 || submitting}
             className="w-full h-11 text-base gradient-primary text-primary-foreground"
           >
             {drift !== null && drift !== 0 ? `Fix it — correct to ${fmt(parsedActual!)}` : 'Apply correction'}

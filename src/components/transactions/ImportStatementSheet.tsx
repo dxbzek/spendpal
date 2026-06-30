@@ -385,6 +385,10 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       merchant: r.merchant,
       accountId,
       date: r.date,
+      // The AI categorizer can tag a row 'Transfer' (card payment, BNPL
+      // repayment); without this it would silently count as real
+      // income/expense everywhere that now gates on isInternal.
+      isInternal: r.category === 'Transfer',
     })));
 
     navigator.vibrate?.(100);

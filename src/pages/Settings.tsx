@@ -192,6 +192,8 @@ const DataBackupCard = () => {
             total_installments: t.totalInstallments != null ? Number(t.totalInstallments) : null,
             current_installment: t.currentInstallment != null ? Number(t.currentInstallment) : null,
             is_tracking_only: Boolean(t.isTrackingOnly ?? false),
+            is_internal: Boolean(t.isInternal ?? false),
+            is_pending: Boolean(t.isPending ?? false),
             loan_total_amount: t.loanTotalAmount != null ? Number(t.loanTotalAmount) : null,
           }));
         if (mapped.length) {
