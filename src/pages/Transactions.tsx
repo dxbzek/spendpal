@@ -291,6 +291,11 @@ const Transactions = () => {
                    {tx.currentInstallment}/{tx.totalInstallments}
                  </span>
                )}
+               {tx.isPending && (
+                 <span className="text-[10px] font-medium text-warning bg-warning/10 px-1.5 py-0.5 rounded-full shrink-0">
+                   Pending
+                 </span>
+               )}
              </div>
              {tx.note && !isLinkedTransfer && (
                <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">📝 {tx.note}</p>

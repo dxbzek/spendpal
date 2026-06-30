@@ -52,6 +52,7 @@ const mapTransaction = (row: unknown): Transaction | null => {
     loanTotalAmount: r.loan_total_amount ?? null,
     isTrackingOnly: r.is_tracking_only ?? false,
     isInternal: r.is_internal ?? false,
+    isPending: r.is_pending ?? false,
   };
 };
 
@@ -279,6 +280,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
+      is_pending: tx.isPending ?? false,
     }).select().single();
     if (error) { toast.error(`Failed to add transaction: ${error.message}`); return null; }
 
@@ -320,6 +322,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         loan_total_amount: null,
         is_tracking_only: false,
         is_internal: true,
+        is_pending: false,
       },
       {
         user_id: userId,
@@ -338,6 +341,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         loan_total_amount: null,
         is_tracking_only: false,
         is_internal: true,
+        is_pending: false,
       },
     ];
     const { data, error } = await supabase.from('transactions').insert(rows).select();
@@ -377,6 +381,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
+      is_pending: tx.isPending ?? false,
     }));
     const { data, error } = await supabase.from('transactions').insert(rows).select();
     if (error) { toast.error(`Failed to import transactions: ${error.message}`); return; }
@@ -403,6 +408,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
+      is_pending: tx.isPending ?? false,
     }).eq('id', tx.id);
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
     setTransactions(prev => prev.map(t => t.id === tx.id ? tx : t));

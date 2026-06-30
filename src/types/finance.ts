@@ -37,6 +37,10 @@ export interface Transaction {
   // BNPL repayment, repaying a person) — excluded from income/expense
   // totals but still affects account balance, unlike isTrackingOnly.
   isInternal?: boolean;
+  // Authorized but not yet posted (a card hold). Doesn't affect the
+  // account's settled balance until cleared, but is counted as a hold
+  // against "available" funds for display.
+  isPending?: boolean;
 }
 
 export interface Budget {

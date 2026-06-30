@@ -67,6 +67,18 @@ const Accounts = () => {
     return stats;
   }, [transactions]);
 
+  // Pending expense holds per account — not yet posted, but they reduce what's
+  // actually available to spend even though the settled balance doesn't reflect them yet.
+  const pendingHolds = useMemo(() => {
+    const holds: Record<string, number> = {};
+    transactions.forEach(tx => {
+      if (tx.type === 'expense' && tx.isPending && !tx.isTrackingOnly) {
+        holds[tx.accountId] = (holds[tx.accountId] ?? 0) + tx.amount;
+      }
+    });
+    return holds;
+  }, [transactions]);
+
   // Balance projection: project total assets 30 days forward using recurring transactions
   const balanceProjection = useMemo(() => {
     const assetAccs = accounts.filter(a => a.type !== 'credit');
@@ -217,10 +229,21 @@ const Accounts = () => {
                   {account.type === 'credit' && account.creditLimit != null && (
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">Available</p>
-                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit - account.balance))}</p>
+                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit - account.balance - (pendingHolds[account.id] ?? 0)))}</p>
+                    </div>
+                  )}
+                  {account.type !== 'credit' && !!pendingHolds[account.id] && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Available</p>
+                      <p className="text-sm font-medium">{mask(fmt(account.balance - pendingHolds[account.id]))}</p>
                     </div>
                   )}
                 </div>
+                {account.type !== 'credit' && !!pendingHolds[account.id] && (
+                  <p className="text-[11px] text-muted-foreground -mt-2">
+                    {mask(fmt(pendingHolds[account.id]))} in pending holds not yet settled
+                  </p>
+                )}
 
                 {/* Credit utilization bar */}
                 {utilization !== null && (

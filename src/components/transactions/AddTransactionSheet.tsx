@@ -62,6 +62,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [currentInstallment, setCurrentInstallment] = useState('1');
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [loanTotalAmount, setLoanTotalAmount] = useState('');
   const [note, setNote] = useState('');
   const [allocateToGoal, setAllocateToGoal] = useState(false);
@@ -103,6 +104,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setLoanTotalAmount(editTransaction.loanTotalAmount ? String(editTransaction.loanTotalAmount) : '');
       setIsTrackingOnly(editTransaction.isTrackingOnly || false);
       setIsInternal(editTransaction.isInternal || false);
+      setIsPending(editTransaction.isPending || false);
       setNote(editTransaction.note || '');
       if (isTransferTx) {
         // Find the matching income half to restore toAccountId
@@ -149,6 +151,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     setLoanTotalAmount('');
     setIsTrackingOnly(false);
     setIsInternal(false);
+    setIsPending(false);
     setNote('');
     setAllocateToGoal(false);
     setGoalAllocationId('');
@@ -256,6 +259,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || undefined) : undefined,
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
       isInternal,
+      isPending,
     };
 
     let txSucceeded: boolean;
@@ -448,6 +452,14 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                         <p className="text-xs text-muted-foreground">Card payment, BNPL repayment, money to a person — excluded from income/expense totals</p>
                       </div>
                       <Switch checked={isInternal} onCheckedChange={setIsInternal} />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Pending</p>
+                        <p className="text-xs text-muted-foreground">Authorized but not posted yet — excluded from balance until you mark it settled</p>
+                      </div>
+                      <Switch checked={isPending} onCheckedChange={setIsPending} />
                     </div>
 
                     {isRecurring && (

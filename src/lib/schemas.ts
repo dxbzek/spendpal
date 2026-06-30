@@ -39,6 +39,7 @@ export const TransactionRowSchema = z.object({
   ),
   is_tracking_only: z.boolean().optional().default(false),
   is_internal: z.boolean().optional().default(false),
+  is_pending: z.boolean().optional().default(false),
 });
 
 export const BudgetRowSchema = z.object({
