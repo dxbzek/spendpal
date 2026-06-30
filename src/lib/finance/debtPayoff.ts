@@ -68,11 +68,15 @@ export function simulateStrategy(
     const priorityId = order.find((o) => states.find((s) => s.id === o.id)!.balance > 0)?.id;
     let remaining = totalBudget;
 
-    // Pay min on non-priority, full allocation on priority
+    // Pay min on non-priority, full allocation on priority. The minimum due
+    // is recomputed from the current (shrinking) balance each month — using
+    // the original minPay forever would keep paying yesterday's minimum
+    // instead of freeing that cash up for the priority card, the whole
+    // point of avalanche/snowball.
     for (const state of states) {
       if (state.balance <= 0) continue;
       if (state.id === priorityId) continue;
-      const pay = Math.min(state.minPay, state.balance);
+      const pay = Math.min(minPayment(state.balance), state.balance);
       state.balance = Math.max(0, state.balance - pay);
       remaining -= pay;
     }
