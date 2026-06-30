@@ -607,7 +607,7 @@ const Dashboard = () => {
               <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
                 className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
             </div>
-            {budgets.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
+            {activeBudgetsList.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
               const pct = Math.min(Math.round((b.spent / b.amount) * 100), 100);
               return (
                 <div key={b.id} className="mb-2 last:mb-0">
