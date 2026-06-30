@@ -5,7 +5,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, ChevronUp, Zap, Snowflake } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
-import { format, addMonths, getDate } from 'date-fns';
+import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_APR, monthsToPayoff, minPayment, simulateStrategy } from '@/lib/finance/debtPayoff';
 
@@ -29,7 +29,7 @@ const Debt = () => {
         ...a,
         // With a limit, balance is available credit (owed = limit - balance).
         // Without a limit, balance itself is the amount owed.
-        owed: a.creditLimit ? Math.max(0, a.creditLimit - a.balance) : Math.max(0, a.balance),
+        owed: a.creditLimit != null ? Math.max(0, a.creditLimit - a.balance) : Math.max(0, a.balance),
         utilization: a.creditLimit ? ((a.creditLimit - a.balance) / a.creditLimit) * 100 : 0,
       }))
       .filter(a => a.owed > 0)
@@ -58,8 +58,9 @@ const Debt = () => {
   const getDueDaysRemaining = (dueDate?: number) => {
     if (!dueDate) return null;
     const diff = dueDate - todayDate;
-    // If already passed this month, next month
-    return diff < 0 ? diff + 30 : diff;
+    // If already passed this month, next month — use the actual day count of
+    // the month being rolled into instead of assuming a flat 30 days.
+    return diff < 0 ? diff + getDaysInMonth(addMonths(new Date(), 1)) : diff;
   };
 
   // Multi-card strategy data
