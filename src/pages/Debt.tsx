@@ -30,7 +30,10 @@ const Debt = () => {
         // With a limit, balance is available credit (owed = limit - balance).
         // Without a limit, balance itself is the amount owed.
         owed: a.creditLimit != null ? Math.max(0, a.creditLimit - a.balance) : Math.max(0, a.balance),
-        utilization: a.creditLimit ? ((a.creditLimit - a.balance) / a.creditLimit) * 100 : 0,
+        // A $0 limit can't be divided into a percentage, but if there's still
+        // an owed balance against it, it's maxed out (100%) rather than 0% —
+        // 0% would contradict the owed amount shown right next to it.
+        utilization: a.creditLimit ? ((a.creditLimit - a.balance) / a.creditLimit) * 100 : a.creditLimit === 0 ? 100 : 0,
       }))
       .filter(a => a.owed > 0)
   , [accounts]);
