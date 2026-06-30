@@ -112,14 +112,14 @@ const Dashboard = () => {
   }, [transactions, period, now]);
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
-  const income = useMemo(() => filtered.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
-  const expenses = useMemo(() => filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0), [filtered]);
+  const income = useMemo(() => filtered.filter(t => t.type === 'income' && !t.isInternal && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
+  const expenses = useMemo(() => filtered.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0), [filtered]);
   const animatedIncome = useCountUp(income, 700);
   const animatedExpenses = useCountUp(expenses, 700);
 
   const categorySpending = useMemo(() => {
     const map: Record<string, { icon: string; total: number }> = {};
-    filtered.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).forEach(t => {
+    filtered.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).forEach(t => {
       if (!map[t.category]) map[t.category] = { icon: t.categoryIcon, total: 0 };
       map[t.category].total += t.amount;
     });
@@ -133,8 +133,8 @@ const Dashboard = () => {
       const d = parseISO(tx.date);
       if (d.getMonth() !== month || d.getFullYear() !== year) continue;
       if (d > now) continue; // skip future-dated transactions — not spent/earned yet
-      if (tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
-      else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) exp += tx.amount;
+      if (tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
+      else if (tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly) exp += tx.amount;
     }
     return [inc, exp];
   }, [transactions, now, creditAccountIds]);
@@ -157,7 +157,7 @@ const Dashboard = () => {
   const safeToday = Math.max(0, leftThisMonth / daysLeft);
   const todayKey = format(now, 'yyyy-MM-dd');
   const spentToday = useMemo(() => transactions
-    .filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly && t.date.slice(0, 10) === todayKey)
+    .filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly && t.date.slice(0, 10) === todayKey)
     .reduce((s, t) => s + t.amount, 0), [transactions, todayKey]);
   const safeLeft = Math.max(0, safeToday - spentToday);
   const todayPct = safeToday > 0 ? Math.min(100, Math.round((spentToday / safeToday) * 100)) : 0;
@@ -464,7 +464,9 @@ const Dashboard = () => {
                     <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
                     <div className="space-y-5">
                       {group.map(a => {
-                        const spent = a.type === 'credit' && a.creditLimit != null ? a.creditLimit - a.balance : 0;
+                        // balance IS the amount owed for credit accounts.
+                        const spent = a.type === 'credit' ? a.balance : 0;
+                        const available = a.type === 'credit' && a.creditLimit != null ? a.creditLimit - a.balance : null;
                         const utilization = a.type === 'credit' && a.creditLimit
                           ? Math.min(Math.round((spent / a.creditLimit) * 100), 100)
                           : a.type === 'credit' && a.creditLimit === 0 && spent > 0 ? 100 : 0;
@@ -490,7 +492,9 @@ const Dashboard = () => {
                                   <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
                                   {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
                                   {a.type === 'credit' && (
-                                    <p className="text-[11px] font-medium text-primary/70">Available Limit</p>
+                                    <p className="text-[11px] font-medium text-primary/70">
+                                      Owed{available != null ? ` · ${fmt(available)} available` : ''}
+                                    </p>
                                   )}
                                 </div>
                                 <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">

@@ -47,13 +47,8 @@ const Accounts = () => {
 
   const netWorth = useMemo(() => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
-    const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
-      // With a limit, balance is available credit (owed = limit - balance).
-      // Without a limit, balance itself is the amount owed. A $0 limit is a
-      // valid (if unusual) value, so check for null/undefined, not falsy.
-      const owed = a.creditLimit != null ? a.creditLimit - a.balance : a.balance;
-      return s + owed;
-    }, 0);
+    // balance IS the amount owed for credit accounts (see Account type).
+    const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0);
     return assets - liabilities;
   }, [accounts]);
 
@@ -66,8 +61,8 @@ const Accounts = () => {
       if (tx.date.slice(0, 7) !== thisMonth) return;
       if (tx.date > today) return; // skip future-dated transactions
       if (!stats[tx.accountId]) stats[tx.accountId] = { income: 0, expenses: 0 };
-      if (tx.type === 'income' && tx.category !== 'Transfer') stats[tx.accountId].income += tx.amount;
-      else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) stats[tx.accountId].expenses += tx.amount;
+      if (tx.type === 'income' && !tx.isInternal) stats[tx.accountId].income += tx.amount;
+      else if (tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly) stats[tx.accountId].expenses += tx.amount;
     });
     return stats;
   }, [transactions]);
@@ -125,7 +120,7 @@ const Accounts = () => {
   const deleteTxs = deleteId ? transactions.filter(t => t.accountId === deleteId) : [];
   const deleteTxCount = deleteTxs.length;
   const deleteTxSpend = deleteTxs
-    .filter(t => t.type === 'expense' && !t.isTrackingOnly)
+    .filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal)
     .reduce((s, t) => s + t.amount, 0);
 
   if (loading) return <PageSpinner />;
@@ -171,10 +166,10 @@ const Accounts = () => {
             const stats = accountStats[account.id] || { income: 0, expenses: 0 };
             const utilization =
               account.type === 'credit' && account.creditLimit
-                ? ((account.creditLimit - account.balance) / account.creditLimit) * 100
-                // A $0 limit can't be divided into a percentage, but a negative
+                ? (account.balance / account.creditLimit) * 100
+                // A $0 limit can't be divided into a percentage, but an owed
                 // balance against it still means it's maxed out (100%).
-                : account.type === 'credit' && account.creditLimit === 0 && account.balance < 0
+                : account.type === 'credit' && account.creditLimit === 0 && account.balance > 0
                   ? 100
                   : null;
 
@@ -214,13 +209,15 @@ const Accounts = () => {
                 {/* Balance row */}
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Balance</p>
-                    <p className="text-xl font-bold font-heading">{mask(fmt(account.balance))}</p>
+                    <p className="text-xs text-muted-foreground">{account.type === 'credit' ? 'Owed' : 'Balance'}</p>
+                    <p className={`text-xl font-bold font-heading ${account.type === 'credit' && account.balance > 0 ? 'text-expense' : ''}`}>
+                      {mask(fmt(account.balance))}
+                    </p>
                   </div>
-                  {account.type === 'credit' && account.creditLimit && (
+                  {account.type === 'credit' && account.creditLimit != null && (
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Credit limit</p>
-                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit))}</p>
+                      <p className="text-xs text-muted-foreground">Available</p>
+                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit - account.balance))}</p>
                     </div>
                   )}
                 </div>

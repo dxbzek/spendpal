@@ -154,10 +154,10 @@ const AIAdvisor = () => {
     // Exclude income posted to credit-card accounts (e.g. refunds) so the
     // model isn't fed inflated income — matches the Dashboard/Reports rule.
     const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
-    const income = monthlyTx.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
-    const expenses = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
+    const income = monthlyTx.filter(t => t.type === 'income' && !t.isInternal && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
+    const expenses = monthlyTx.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
     const categories: Record<string, { total: number; icon: string; count: number }> = {};
-    monthlyTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).forEach(t => {
+    monthlyTx.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).forEach(t => {
       if (!categories[t.category]) categories[t.category] = { total: 0, icon: t.categoryIcon, count: 0 };
       categories[t.category].total += t.amount;
       categories[t.category].count++;
@@ -179,7 +179,7 @@ const AIAdvisor = () => {
         name: c.name,
         balance: c.balance,
         creditLimit: c.creditLimit,
-        utilization: c.creditLimit ? Math.round(((c.creditLimit - c.balance) / c.creditLimit) * 100) : c.creditLimit === 0 ? 100 : 0,
+        utilization: c.creditLimit ? Math.round((c.balance / c.creditLimit) * 100) : c.creditLimit === 0 ? 100 : 0,
       })),
       existingBudgets: activeBudgets(budgets, monthKey).map(b => ({ category: b.category, amount: b.amount, spent: b.spent })),
       goals: goals.map(g => ({ name: g.name, target: g.targetAmount, saved: g.savedAmount, type: g.type })),
@@ -196,7 +196,7 @@ const AIAdvisor = () => {
     // Current month spending by category
     const curMap: Record<string, number> = {};
     transactions.forEach(tx => {
-      if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return;
+      if (tx.type !== 'expense' || tx.isInternal || tx.isTrackingOnly) return;
       const d = parseISO(tx.date);
       if (d.getMonth() !== thisM || d.getFullYear() !== thisY) return;
       curMap[tx.category] = (curMap[tx.category] || 0) + tx.amount;
@@ -209,7 +209,7 @@ const AIAdvisor = () => {
       const pm = getMonth(prev), py = getYear(prev);
       const monthMap: Record<string, number> = {};
       transactions.forEach(tx => {
-        if (tx.type !== 'expense' || tx.category === 'Transfer' || tx.isTrackingOnly) return;
+        if (tx.type !== 'expense' || tx.isInternal || tx.isTrackingOnly) return;
         const d = parseISO(tx.date);
         if (d.getMonth() !== pm || d.getFullYear() !== py) return;
         monthMap[tx.category] = (monthMap[tx.category] || 0) + tx.amount;

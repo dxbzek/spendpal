@@ -20,7 +20,7 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
       // summary cards: exclude transfers (stored as paired income+expense rows)
       // so they aren't double-counted, skip tracking-only expenses, and skip
       // future-dated transactions that haven't happened yet.
-      if (tx.category === 'Transfer') return;
+      if (tx.isInternal) return;
       if (tx.date > today) return;
       const isIncome = tx.type === 'income' && !creditAccountIds.has(tx.accountId);
       const isExpense = tx.type === 'expense' && !tx.isTrackingOnly;

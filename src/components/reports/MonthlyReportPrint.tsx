@@ -28,11 +28,11 @@ const MonthlyReportPrint = () => {
 
     const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
     const totalIncome = monthTxs
-      .filter(tx => tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId))
+      .filter(tx => tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId))
       .reduce((s, tx) => s + tx.amount, 0);
 
     const totalExpenses = monthTxs
-      .filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly)
+      .filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly)
       .reduce((s, tx) => s + tx.amount, 0);
 
     const netSavings = totalIncome - totalExpenses;
@@ -40,7 +40,7 @@ const MonthlyReportPrint = () => {
     // Expenses by category
     const byCategory: Record<string, { icon: string; total: number }> = {};
     monthTxs
-      .filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly)
+      .filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly)
       .forEach(tx => {
         if (!byCategory[tx.category]) byCategory[tx.category] = { icon: tx.categoryIcon, total: 0 };
         byCategory[tx.category].total += tx.amount;

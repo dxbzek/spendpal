@@ -155,6 +155,7 @@ const DataBackupCard = () => {
             credit_limit: a.creditLimit != null ? Number(a.creditLimit) : null,
             due_date: a.dueDate != null ? Number(a.dueDate) : null,
             statement_date: a.statementDate != null ? Number(a.statementDate) : null,
+            apr: a.apr != null ? Number(a.apr) : null,
           }))
         );
         if (error) throw error;

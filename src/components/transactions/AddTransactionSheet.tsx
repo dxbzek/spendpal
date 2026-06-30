@@ -61,6 +61,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
+  const [isInternal, setIsInternal] = useState(false);
   const [loanTotalAmount, setLoanTotalAmount] = useState('');
   const [note, setNote] = useState('');
   const [allocateToGoal, setAllocateToGoal] = useState(false);
@@ -101,6 +102,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setCurrentInstallment(String(editTransaction.currentInstallment ?? 0));
       setLoanTotalAmount(editTransaction.loanTotalAmount ? String(editTransaction.loanTotalAmount) : '');
       setIsTrackingOnly(editTransaction.isTrackingOnly || false);
+      setIsInternal(editTransaction.isInternal || false);
       setNote(editTransaction.note || '');
       if (isTransferTx) {
         // Find the matching income half to restore toAccountId
@@ -146,6 +148,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     setCurrentInstallment('1');
     setLoanTotalAmount('');
     setIsTrackingOnly(false);
+    setIsInternal(false);
     setNote('');
     setAllocateToGoal(false);
     setGoalAllocationId('');
@@ -210,6 +213,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
         isRecurring: false,
         totalInstallments: null,
         currentInstallment: null,
+        isInternal: true,
       });
       await addTransaction({
         type: 'income',
@@ -224,6 +228,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
         isRecurring: false,
         totalInstallments: null,
         currentInstallment: null,
+        isInternal: true,
       });
       resetForm();
       onOpenChange(false);
@@ -250,6 +255,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       currentInstallment: (hasInstallments && isRecurring) ? Math.max(0, isNaN(parseInt(currentInstallment)) ? 0 : parseInt(currentInstallment)) : undefined,
       loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || undefined) : undefined,
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
+      isInternal,
     };
 
     let txSucceeded: boolean;
@@ -435,6 +441,14 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                         }} />
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Internal / not real spending</p>
+                        <p className="text-xs text-muted-foreground">Card payment, BNPL repayment, money to a person — excluded from income/expense totals</p>
+                      </div>
+                      <Switch checked={isInternal} onCheckedChange={setIsInternal} />
+                    </div>
 
                     {isRecurring && (
                       <div className="flex items-center justify-between">

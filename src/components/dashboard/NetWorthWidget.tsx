@@ -36,13 +36,8 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const [editingGoal, setEditingGoal] = useState(false);
 
   const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
-  const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
-    // With a limit, balance is available credit (owed = limit - balance).
-    // Without a limit, balance itself is the amount owed. A $0 limit is a
-    // valid (if unusual) value, so check for null/undefined, not falsy.
-    const owed = a.creditLimit != null ? a.creditLimit - a.balance : a.balance;
-    return s + owed;
-  }, 0);
+  // balance IS the amount owed for credit accounts (see Account type).
+  const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0);
   const netWorth = assets - liabilities;
 
   // Persist current month's net worth snapshot

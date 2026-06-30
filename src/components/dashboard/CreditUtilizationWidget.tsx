@@ -18,7 +18,8 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
   if (creditCards.length === 0) return null;
 
   const totalLimit = creditCards.reduce((s, a) => s + (a.creditLimit || 0), 0);
-  const totalUsed = creditCards.reduce((s, a) => s + ((a.creditLimit || 0) - a.balance), 0);
+  // balance IS the amount owed/used for credit accounts (see Account type).
+  const totalUsed = creditCards.reduce((s, a) => s + a.balance, 0);
   const overallUtil = totalLimit ? Math.min(Math.round((totalUsed / totalLimit) * 100), 100) : totalUsed > 0 ? 100 : 0;
   const overallColor = overallUtil > 75 ? 'text-expense' : overallUtil > 50 ? 'text-warning' : 'text-primary';
   const overallBarColor = overallUtil > 75 ? 'bg-expense' : overallUtil > 50 ? 'bg-warning' : 'bg-primary';
@@ -55,7 +56,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
       <div className="space-y-3">
         {creditCards.map(card => {
           const limit = card.creditLimit || 0;
-          const used = limit - card.balance;
+          const used = card.balance;
           const util = limit
             ? Math.min(Math.round((used / limit) * 100), 100)
             : used > 0 ? 100 : 0;
