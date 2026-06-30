@@ -5,7 +5,8 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { type Account } from '@/types/finance';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
-import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
+import ReconcileDialog from '@/components/forms/ReconcileDialog';
+import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +43,7 @@ const Accounts = () => {
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reconcileAccount, setReconcileAccount] = useState<Account | null>(null);
   const navigate = useNavigate();
   const { scheduleDelete, isPending } = useUndoableDelete({ deleteOne: removeAccount });
 
@@ -201,6 +203,14 @@ const Accounts = () => {
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <button
+                      onClick={() => setReconcileAccount(account)}
+                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Reconcile account"
+                      title="Reconcile with your bank/card's actual balance"
+                    >
+                      <Scale size={16} />
+                    </button>
                     <button
                       onClick={() => { setEditAccount(account); setAddOpen(true); }}
                       className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -372,6 +382,13 @@ const Accounts = () => {
         open={addOpen}
         onOpenChange={o => { setAddOpen(o); if (!o) setEditAccount(null); }}
         editAccount={editAccount}
+      />
+
+      {/* Reconcile Dialog */}
+      <ReconcileDialog
+        open={!!reconcileAccount}
+        onOpenChange={o => { if (!o) setReconcileAccount(null); }}
+        account={reconcileAccount}
       />
 
       {/* Delete Confirmation */}
