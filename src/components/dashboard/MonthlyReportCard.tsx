@@ -31,11 +31,11 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
       const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
       // Exclude future-dated transactions — not yet earned/spent.
       const monthTx = transactions.filter(t => t.date.startsWith(currentMonth) && t.date <= today);
-      const income = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfer' && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
-      const expenses = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
+      const income = monthTx.filter(t => t.type === 'income' && !t.isInternal && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
+      const expenses = monthTx.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
 
       const categoryMap: Record<string, number> = {};
-      monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfer' && !t.isTrackingOnly).forEach(t => {
+      monthTx.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).forEach(t => {
         categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
       });
 

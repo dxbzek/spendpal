@@ -27,13 +27,12 @@ const Debt = () => {
       .filter(a => a.type === 'credit')
       .map(a => ({
         ...a,
-        // With a limit, balance is available credit (owed = limit - balance).
-        // Without a limit, balance itself is the amount owed.
-        owed: a.creditLimit != null ? Math.max(0, a.creditLimit - a.balance) : Math.max(0, a.balance),
+        // balance IS the amount owed for credit accounts (see Account type).
+        owed: Math.max(0, a.balance),
         // A $0 limit can't be divided into a percentage, but if there's still
         // an owed balance against it, it's maxed out (100%) rather than 0% —
         // 0% would contradict the owed amount shown right next to it.
-        utilization: a.creditLimit ? ((a.creditLimit - a.balance) / a.creditLimit) * 100 : a.creditLimit === 0 ? 100 : 0,
+        utilization: a.creditLimit ? (a.balance / a.creditLimit) * 100 : a.creditLimit === 0 ? 100 : 0,
       }))
       .filter(a => a.owed > 0)
   , [accounts]);
@@ -42,7 +41,7 @@ const Debt = () => {
   const totalLimit = creditDebts.reduce((s, d) => s + (d.creditLimit || 0), 0);
   const overallUtil = totalLimit ? (totalOwed / totalLimit) * 100 : 0;
 
-  const getApr = (id: string) => aprs[id] ?? DEFAULT_APR;
+  const getApr = (id: string, accountApr?: number) => aprs[id] ?? accountApr ?? DEFAULT_APR;
   const getPayment = (id: string, owed: number) => payments[id] ?? minPayment(owed);
 
   const utilizationColor = (pct: number) => {
@@ -73,7 +72,7 @@ const Debt = () => {
       name: d.name,
       icon: d.icon,
       owed: d.owed,
-      apr: getApr(d.id),
+      apr: getApr(d.id, d.apr),
       minPay: minPayment(d.owed),
     }))
   , [creditDebts, aprs]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -171,7 +170,7 @@ const Debt = () => {
           <>
             <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide">Credit Cards</h2>
             {creditDebts.map(debt => {
-              const apr = getApr(debt.id);
+              const apr = getApr(debt.id, debt.apr);
               const payment = getPayment(debt.id, debt.owed);
               const months = monthsToPayoff(debt.owed, apr, payment);
               const totalCost = months < Infinity ? payment * months : Infinity;
@@ -260,7 +259,7 @@ const Debt = () => {
                                 min="1"
                                 step="10"
                                 value={payment}
-                                onChange={e => setPayments(p => ({ ...p, [debt.id]: parseFloat(e.target.value) || minPayment(debt.owed) }))}
+                                onChange={e => { const v = parseFloat(e.target.value); setPayments(p => ({ ...p, [debt.id]: isNaN(v) ? minPayment(debt.owed) : v })); }}
                                 className="h-9 text-sm"
                               />
                             </div>
@@ -272,7 +271,7 @@ const Debt = () => {
                                 max="100"
                                 step="0.5"
                                 value={apr}
-                                onChange={e => setAprs(a => ({ ...a, [debt.id]: parseFloat(e.target.value) || DEFAULT_APR }))}
+                                onChange={e => { const v = parseFloat(e.target.value); setAprs(a => ({ ...a, [debt.id]: isNaN(v) ? DEFAULT_APR : v })); }}
                                 className="h-9 text-sm"
                               />
                             </div>

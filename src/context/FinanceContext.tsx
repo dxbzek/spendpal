@@ -28,6 +28,7 @@ const mapAccount = (row: unknown): Account | null => {
     creditLimit: r.credit_limit,
     dueDate: r.due_date,
     statementDate: r.statement_date,
+    apr: r.apr,
   };
 };
 
@@ -50,6 +51,8 @@ const mapTransaction = (row: unknown): Transaction | null => {
     currentInstallment: r.current_installment ?? null,
     loanTotalAmount: r.loan_total_amount ?? null,
     isTrackingOnly: r.is_tracking_only ?? false,
+    isInternal: r.is_internal ?? false,
+    isPending: r.is_pending ?? false,
   };
 };
 
@@ -90,7 +93,11 @@ function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`;
   // Exclude future-dated transactions: they haven't been spent yet.
-  const monthExpenses = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && t.date.startsWith(currentMonth) && t.date <= today);
+  // Pending (isPending) transactions are NOT excluded here on purpose: a
+  // pending charge is still real spending the user committed to, and
+  // budgets/reports should reflect it immediately. isPending only gates
+  // whether it's posted to the settled account balance (see the DB trigger).
+  const monthExpenses = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal && t.date.startsWith(currentMonth) && t.date <= today);
   const spent: Record<string, number> = {};
   for (const t of monthExpenses) {
     spent[t.category] = (spent[t.category] ?? 0) + t.amount;
@@ -228,6 +235,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       credit_limit: account.creditLimit ?? null,
       due_date: account.dueDate ?? null,
       statement_date: account.statementDate ?? null,
+      apr: account.apr ?? null,
     }).select().single();
     if (error) { toast.error(`Failed to add account: ${error.message}`); return; }
     const mapped = mapAccount(data);
@@ -243,6 +251,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       credit_limit: account.creditLimit ?? null,
       due_date: account.dueDate ?? null,
       statement_date: account.statementDate ?? null,
+      apr: account.apr ?? null,
     }).eq('id', account.id);
     if (error) { toast.error(`Failed to update account: ${error.message}`); return; }
     setAccounts(prev => prev.map(a => a.id === account.id ? account : a));
@@ -274,6 +283,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       current_installment: tx.currentInstallment ?? null,
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
+      is_internal: tx.isInternal ?? false,
+      is_pending: tx.isPending ?? false,
     }).select().single();
     if (error) { toast.error(`Failed to add transaction: ${error.message}`); return null; }
 
@@ -314,6 +325,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         current_installment: null,
         loan_total_amount: null,
         is_tracking_only: false,
+        is_internal: true,
+        is_pending: false,
       },
       {
         user_id: userId,
@@ -331,6 +344,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         current_installment: null,
         loan_total_amount: null,
         is_tracking_only: false,
+        is_internal: true,
+        is_pending: false,
       },
     ];
     const { data, error } = await supabase.from('transactions').insert(rows).select();
@@ -369,6 +384,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       current_installment: tx.currentInstallment ?? null,
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
+      is_internal: tx.isInternal ?? false,
+      is_pending: tx.isPending ?? false,
     }));
     const { data, error } = await supabase.from('transactions').insert(rows).select();
     if (error) { toast.error(`Failed to import transactions: ${error.message}`); return; }
@@ -394,6 +411,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       current_installment: tx.currentInstallment ?? null,
       loan_total_amount: tx.loanTotalAmount ?? null,
       is_tracking_only: tx.isTrackingOnly ?? false,
+      is_internal: tx.isInternal ?? false,
+      is_pending: tx.isPending ?? false,
     }).eq('id', tx.id);
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
     setTransactions(prev => prev.map(t => t.id === tx.id ? tx : t));

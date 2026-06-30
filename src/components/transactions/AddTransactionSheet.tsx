@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -13,6 +13,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useCategories } from '@/hooks/useCategories';
 import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
+import { findNearDuplicate } from '@/utils/detectDuplicates';
 import { format } from 'date-fns';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -61,6 +62,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
+  const [isInternal, setIsInternal] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [loanTotalAmount, setLoanTotalAmount] = useState('');
   const [note, setNote] = useState('');
   const [allocateToGoal, setAllocateToGoal] = useState(false);
@@ -101,6 +104,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setCurrentInstallment(String(editTransaction.currentInstallment ?? 0));
       setLoanTotalAmount(editTransaction.loanTotalAmount ? String(editTransaction.loanTotalAmount) : '');
       setIsTrackingOnly(editTransaction.isTrackingOnly || false);
+      setIsInternal(editTransaction.isInternal || false);
+      setIsPending(editTransaction.isPending || false);
       setNote(editTransaction.note || '');
       if (isTransferTx) {
         // Find the matching income half to restore toAccountId
@@ -146,6 +151,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     setCurrentInstallment('1');
     setLoanTotalAmount('');
     setIsTrackingOnly(false);
+    setIsInternal(false);
+    setIsPending(false);
     setNote('');
     setAllocateToGoal(false);
     setGoalAllocationId('');
@@ -158,23 +165,15 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const isTransfer = type === 'transfer';
 
-  // Build a lookup map once per transactions change so findDuplicate is O(1) instead of O(n).
-  const duplicateLookup = useMemo(() => {
-    const map = new Map<string, Transaction>();
-    for (const t of transactions) {
-      const key = `${t.accountId}|${t.type}|${t.date}|${t.amount.toFixed(2)}|${t.merchant.toLowerCase().trim()}`;
-      if (!map.has(key)) map.set(key, t);
-    }
-    return map;
-  }, [transactions]);
-
-  const findDuplicate = (txAmount: number, txMerchant: string, txDate: string, txAccountId: string, txType: string): Transaction | null => {
-    const key = `${txAccountId}|${txType}|${txDate}|${txAmount.toFixed(2)}|${txMerchant.toLowerCase().trim()}`;
-    const match = duplicateLookup.get(key) ?? null;
-    // Don't flag the transaction being edited as its own duplicate
-    if (isEditing && match?.id === editTransaction?.id) return null;
-    return match;
-  };
+  // Same amount + merchant within a few days (not an exact date match) —
+  // bank statements often post a charge a day or two after it was first
+  // logged manually, which an exact-date check would miss entirely.
+  const findDuplicate = (txAmount: number, txMerchant: string, txDate: string, txAccountId: string, txType: string): Transaction | null =>
+    findNearDuplicate(
+      { type: txType, amount: txAmount, merchant: txMerchant, date: txDate, accountId: txAccountId },
+      transactions,
+      isEditing ? editTransaction?.id : undefined,
+    );
 
   const executeSubmit = async () => {
     if (isTransfer) {
@@ -210,6 +209,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
         isRecurring: false,
         totalInstallments: null,
         currentInstallment: null,
+        isInternal: true,
       });
       await addTransaction({
         type: 'income',
@@ -224,6 +224,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
         isRecurring: false,
         totalInstallments: null,
         currentInstallment: null,
+        isInternal: true,
       });
       resetForm();
       onOpenChange(false);
@@ -250,6 +251,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       currentInstallment: (hasInstallments && isRecurring) ? Math.max(0, isNaN(parseInt(currentInstallment)) ? 0 : parseInt(currentInstallment)) : undefined,
       loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || undefined) : undefined,
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
+      isInternal,
+      isPending,
     };
 
     let txSucceeded: boolean;
@@ -435,6 +438,22 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                         }} />
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Internal / not real spending</p>
+                        <p className="text-xs text-muted-foreground">Card payment, BNPL repayment, money to a person — excluded from income/expense totals</p>
+                      </div>
+                      <Switch checked={isInternal} onCheckedChange={setIsInternal} />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Pending</p>
+                        <p className="text-xs text-muted-foreground">Authorized but not posted yet — excluded from balance until you mark it settled</p>
+                      </div>
+                      <Switch checked={isPending} onCheckedChange={setIsPending} />
+                    </div>
 
                     {isRecurring && (
                       <div className="flex items-center justify-between">

@@ -5,12 +5,16 @@ export interface Account {
   id: string;
   name: string;
   type: AccountType;
+  // For 'credit' accounts, balance is the amount OWED, not available credit —
+  // the same value everywhere (Debt tracker, account list, exports). Compute
+  // available credit for display as `creditLimit - balance` where needed.
   balance: number;
   currency: string;
   icon: string;
   creditLimit?: number;
   dueDate?: number; // day of month
   statementDate?: number;
+  apr?: number; // annual interest rate, % (e.g. 0 for BNPL/Tabby, ~36+ for typical UAE cards)
 }
 
 export interface Transaction {
@@ -29,6 +33,14 @@ export interface Transaction {
   currentInstallment?: number | null;
   loanTotalAmount?: number | null;
   isTrackingOnly?: boolean;
+  // Internal money movement (transfer between own accounts, card payment,
+  // BNPL repayment, repaying a person) — excluded from income/expense
+  // totals but still affects account balance, unlike isTrackingOnly.
+  isInternal?: boolean;
+  // Authorized but not yet posted (a card hold). Doesn't affect the
+  // account's settled balance until cleared, but is counted as a hold
+  // against "available" funds for display.
+  isPending?: boolean;
 }
 
 export interface Budget {

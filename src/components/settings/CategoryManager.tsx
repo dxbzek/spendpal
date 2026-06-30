@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useCategories } from '@/hooks/useCategories';
+import { useFinance } from '@/context/FinanceContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp, Combine } from 'lucide-react';
 import { CATEGORIES } from '@/types/finance';
+import { toast } from 'sonner';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -44,7 +47,8 @@ const TypeToggle = ({ value, onChange }: { value: CategoryType; onChange: (v: Ca
 );
 
 const CategoryManager = () => {
-  const { customCategories, addCategory, updateCategory, removeCategory, overrideDefault } = useCategories();
+  const { categories, customCategories, addCategory, updateCategory, removeCategory, overrideDefault } = useCategories();
+  const { transactions, budgets, bulkUpdateCategory, updateBudget, removeBudget } = useFinance();
   const [showAdd, setShowAdd] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [newName, setNewName] = useState('');
@@ -58,6 +62,9 @@ const CategoryManager = () => {
   const [editDefaultName, setEditDefaultName] = useState<string | null>(null);
   const [defaultNewIcon, setDefaultNewIcon] = useState('');
   const [defaultNewName, setDefaultNewName] = useState('');
+  const [mergingName, setMergingName] = useState<string | null>(null);
+  const [mergeTarget, setMergeTarget] = useState('');
+  const [merging, setMerging] = useState(false);
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
@@ -79,6 +86,45 @@ const CategoryManager = () => {
     await overrideDefault(editDefaultName, defaultNewIcon, defaultNewName || editDefaultName);
     setEditDefaultName(null);
     setDefaultNewName('');
+  };
+
+  // Merging folds a duplicate/synonym category (e.g. a custom "Restaurants"
+  // that should've just been "Dining") into an existing one: every
+  // transaction and budget using the old category name is repointed to the
+  // target, then the now-empty custom category is removed. Without this,
+  // analytics stay permanently split across synonyms — renaming a category
+  // only changes the picker label going forward, it doesn't touch history.
+  const handleMerge = async (sourceName: string) => {
+    if (!mergeTarget || mergeTarget === sourceName) return;
+    const target = categories.find(c => c.name === mergeTarget);
+    if (!target) return;
+    setMerging(true);
+    try {
+      const ids = transactions.filter(t => t.category === sourceName).map(t => t.id);
+      const matchingBudgets = budgets.filter(b => b.category === sourceName);
+      await Promise.all([
+        ids.length > 0 ? bulkUpdateCategory(ids, target.name, target.icon) : Promise.resolve(),
+        ...matchingBudgets.map(b => {
+          // If the target category already has a budget for the same
+          // period, reassigning would create a second budget row for the
+          // same (category, month) — drop the source budget instead so the
+          // target's existing one stays the single source of truth.
+          const conflict = budgets.some(other =>
+            other.id !== b.id && other.category === target.name && other.month === b.month && other.period === b.period
+          );
+          return conflict
+            ? removeBudget(b.id)
+            : updateBudget({ ...b, category: target.name, categoryIcon: target.icon });
+        }),
+      ]);
+      const custom = customCategories.find(c => c.name === sourceName);
+      if (custom?.id) await removeCategory(custom.id);
+      toast.success(`Merged "${sourceName}" into "${target.name}"`);
+    } finally {
+      setMerging(false);
+      setMergingName(null);
+      setMergeTarget('');
+    }
   };
 
   const defaultCategories = CATEGORIES.map(c => {
@@ -187,6 +233,24 @@ const CategoryManager = () => {
                   <Button size="sm" className="h-7 text-xs" onClick={handleUpdate}>Save</Button>
                 </div>
               </div>
+            ) : (item.type === 'custom' && mergingName === item.name) ? (
+              <div className="flex-1 space-y-2">
+                <p className="text-xs text-muted-foreground">Merge "{item.name}" into another category — every transaction and budget using it moves over, then "{item.name}" is removed.</p>
+                <Select value={mergeTarget} onValueChange={setMergeTarget}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Choose target category" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.filter(c => c.name !== item.name).map(c => (
+                      <SelectItem key={c.name} value={c.name}>{c.icon} {c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-1.5">
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setMergingName(null); setMergeTarget(''); }}>Cancel</Button>
+                  <Button size="sm" className="h-7 text-xs" disabled={!mergeTarget || merging} onClick={() => handleMerge(item.name)}>
+                    {merging ? 'Merging…' : 'Merge'}
+                  </Button>
+                </div>
+              </div>
             ) : (
               <>
                 <span className="text-lg">{item.icon}</span>
@@ -213,6 +277,13 @@ const CategoryManager = () => {
                   className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
                   <Pencil size={12} />
                 </button>
+                {item.type === 'custom' && (
+                  <button onClick={() => { setMergingName(item.name); setMergeTarget(''); }}
+                    title="Merge into another category"
+                    className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
+                    <Combine size={12} />
+                  </button>
+                )}
                 {item.type === 'custom' && (
                   <button onClick={() => setDeleteId(item.id!)}
                     className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">

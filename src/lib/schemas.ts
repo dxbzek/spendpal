@@ -15,6 +15,9 @@ export const AccountRowSchema = z.object({
   ),
   due_date: z.number().nullable().optional().transform((v): number | undefined => v ?? undefined),
   statement_date: z.number().nullable().optional().transform((v): number | undefined => v ?? undefined),
+  apr: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | undefined =>
+    v != null ? Number(v) : undefined
+  ),
 });
 
 export const TransactionRowSchema = z.object({
@@ -35,6 +38,8 @@ export const TransactionRowSchema = z.object({
     v != null && v !== '' ? Number(v) : null
   ),
   is_tracking_only: z.boolean().optional().default(false),
+  is_internal: z.boolean().optional().default(false),
+  is_pending: z.boolean().optional().default(false),
 });
 
 export const BudgetRowSchema = z.object({

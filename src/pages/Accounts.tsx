@@ -5,7 +5,8 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { type Account } from '@/types/finance';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
-import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
+import ReconcileDialog from '@/components/forms/ReconcileDialog';
+import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useNavigate } from 'react-router-dom';
@@ -42,18 +43,14 @@ const Accounts = () => {
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reconcileAccount, setReconcileAccount] = useState<Account | null>(null);
   const navigate = useNavigate();
   const { scheduleDelete, isPending } = useUndoableDelete({ deleteOne: removeAccount });
 
   const netWorth = useMemo(() => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
-    const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
-      // With a limit, balance is available credit (owed = limit - balance).
-      // Without a limit, balance itself is the amount owed. A $0 limit is a
-      // valid (if unusual) value, so check for null/undefined, not falsy.
-      const owed = a.creditLimit != null ? a.creditLimit - a.balance : a.balance;
-      return s + owed;
-    }, 0);
+    // balance IS the amount owed for credit accounts (see Account type).
+    const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0);
     return assets - liabilities;
   }, [accounts]);
 
@@ -66,10 +63,22 @@ const Accounts = () => {
       if (tx.date.slice(0, 7) !== thisMonth) return;
       if (tx.date > today) return; // skip future-dated transactions
       if (!stats[tx.accountId]) stats[tx.accountId] = { income: 0, expenses: 0 };
-      if (tx.type === 'income' && tx.category !== 'Transfer') stats[tx.accountId].income += tx.amount;
-      else if (tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly) stats[tx.accountId].expenses += tx.amount;
+      if (tx.type === 'income' && !tx.isInternal) stats[tx.accountId].income += tx.amount;
+      else if (tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly) stats[tx.accountId].expenses += tx.amount;
     });
     return stats;
+  }, [transactions]);
+
+  // Pending expense holds per account — not yet posted, but they reduce what's
+  // actually available to spend even though the settled balance doesn't reflect them yet.
+  const pendingHolds = useMemo(() => {
+    const holds: Record<string, number> = {};
+    transactions.forEach(tx => {
+      if (tx.type === 'expense' && tx.isPending && !tx.isTrackingOnly) {
+        holds[tx.accountId] = (holds[tx.accountId] ?? 0) + tx.amount;
+      }
+    });
+    return holds;
   }, [transactions]);
 
   // Balance projection: project total assets 30 days forward using recurring transactions
@@ -125,7 +134,7 @@ const Accounts = () => {
   const deleteTxs = deleteId ? transactions.filter(t => t.accountId === deleteId) : [];
   const deleteTxCount = deleteTxs.length;
   const deleteTxSpend = deleteTxs
-    .filter(t => t.type === 'expense' && !t.isTrackingOnly)
+    .filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal)
     .reduce((s, t) => s + t.amount, 0);
 
   if (loading) return <PageSpinner />;
@@ -169,14 +178,18 @@ const Accounts = () => {
         <div className="space-y-3">
           {visibleAccounts.map(account => {
             const stats = accountStats[account.id] || { income: 0, expenses: 0 };
-            const utilization =
+            const rawUtilization =
               account.type === 'credit' && account.creditLimit
-                ? ((account.creditLimit - account.balance) / account.creditLimit) * 100
-                // A $0 limit can't be divided into a percentage, but a negative
+                ? (account.balance / account.creditLimit) * 100
+                // A $0 limit can't be divided into a percentage, but an owed
                 // balance against it still means it's maxed out (100%).
-                : account.type === 'credit' && account.creditLimit === 0 && account.balance < 0
+                : account.type === 'credit' && account.creditLimit === 0 && account.balance > 0
                   ? 100
                   : null;
+            // Clamp at the source (not just the bar width) so the displayed
+            // percentage text can't read e.g. "134%" while every other page
+            // caps the same account at 100%.
+            const utilization = rawUtilization !== null ? Math.max(0, Math.min(rawUtilization, 100)) : null;
 
             return (
               <div key={account.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
@@ -194,6 +207,14 @@ const Accounts = () => {
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <button
+                      onClick={() => setReconcileAccount(account)}
+                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Reconcile account"
+                      title="Reconcile with your bank/card's actual balance"
+                    >
+                      <Scale size={16} />
+                    </button>
                     <button
                       onClick={() => { setEditAccount(account); setAddOpen(true); }}
                       className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -214,16 +235,29 @@ const Accounts = () => {
                 {/* Balance row */}
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Balance</p>
-                    <p className="text-xl font-bold font-heading">{mask(fmt(account.balance))}</p>
+                    <p className="text-xs text-muted-foreground">{account.type === 'credit' ? 'Owed' : 'Balance'}</p>
+                    <p className={`text-xl font-bold font-heading ${account.type === 'credit' && account.balance > 0 ? 'text-expense' : ''}`}>
+                      {mask(fmt(account.balance))}
+                    </p>
                   </div>
-                  {account.type === 'credit' && account.creditLimit && (
+                  {account.type === 'credit' && account.creditLimit != null && (
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Credit limit</p>
-                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit))}</p>
+                      <p className="text-xs text-muted-foreground">Available</p>
+                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit - account.balance - (pendingHolds[account.id] ?? 0)))}</p>
+                    </div>
+                  )}
+                  {account.type !== 'credit' && !!pendingHolds[account.id] && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Available</p>
+                      <p className="text-sm font-medium">{mask(fmt(account.balance - pendingHolds[account.id]))}</p>
                     </div>
                   )}
                 </div>
+                {!!pendingHolds[account.id] && (
+                  <p className="text-[11px] text-muted-foreground -mt-2">
+                    {mask(fmt(pendingHolds[account.id]))} in pending holds not yet settled
+                  </p>
+                )}
 
                 {/* Credit utilization bar */}
                 {utilization !== null && (
@@ -243,7 +277,7 @@ const Accounts = () => {
                           utilization > 75 ? 'bg-destructive' :
                           utilization > 30 ? 'bg-warning' : 'bg-primary'
                         }`}
-                        style={{ width: `${Math.min(utilization, 100)}%` }}
+                        style={{ width: `${utilization}%` }}
                       />
                     </div>
                   </div>
@@ -352,6 +386,13 @@ const Accounts = () => {
         open={addOpen}
         onOpenChange={o => { setAddOpen(o); if (!o) setEditAccount(null); }}
         editAccount={editAccount}
+      />
+
+      {/* Reconcile Dialog */}
+      <ReconcileDialog
+        open={!!reconcileAccount}
+        onOpenChange={o => { if (!o) setReconcileAccount(null); }}
+        account={reconcileAccount}
       />
 
       {/* Delete Confirmation */}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Transaction, Budget } from '@/types/finance';
-import { detectDuplicates } from '@/utils/detectDuplicates';
+import { detectDuplicates, findNearDuplicate } from '@/utils/detectDuplicates';
 
 // ─── Budget spent computation (extracted from FinanceContext) ─────────────────
 
@@ -287,5 +287,47 @@ describe('detectDuplicates', () => {
     for (let i = 0; i < 990; i++) {
       expect(dupes.has(`tx-${i}`)).toBe(false);
     }
+  });
+});
+
+// ─── findNearDuplicate (manual-entry soft-warn) ───────────────────────────────
+
+describe('findNearDuplicate', () => {
+  it('returns null when there are no existing transactions', () => {
+    expect(findNearDuplicate({ type: 'expense', amount: 50, merchant: 'Starbucks', date: '2025-01-10', accountId: 'acc-1' }, [])).toBeNull();
+  });
+
+  it('flags a same-amount, same-merchant charge posted a couple of days later (delayed bank posting)', () => {
+    const existing = [makeTransaction({ id: 'tx-1', amount: 250, merchant: 'Carrefour', date: '2025-01-10', accountId: 'acc-1' })];
+    const match = findNearDuplicate({ type: 'expense', amount: 250, merchant: 'Carrefour', date: '2025-01-12', accountId: 'acc-1' }, existing);
+    expect(match?.id).toBe('tx-1');
+  });
+
+  it('does not flag charges more than 3 days apart', () => {
+    const existing = [makeTransaction({ id: 'tx-1', amount: 250, merchant: 'Carrefour', date: '2025-01-10', accountId: 'acc-1' })];
+    const match = findNearDuplicate({ type: 'expense', amount: 250, merchant: 'Carrefour', date: '2025-01-15', accountId: 'acc-1' }, existing);
+    expect(match).toBeNull();
+  });
+
+  it('does not flag a different account', () => {
+    const existing = [makeTransaction({ id: 'tx-1', amount: 250, merchant: 'Carrefour', date: '2025-01-10', accountId: 'acc-1' })];
+    const match = findNearDuplicate({ type: 'expense', amount: 250, merchant: 'Carrefour', date: '2025-01-11', accountId: 'acc-2' }, existing);
+    expect(match).toBeNull();
+  });
+
+  it('excludes the transaction being edited from matching itself', () => {
+    const existing = [makeTransaction({ id: 'tx-1', amount: 250, merchant: 'Carrefour', date: '2025-01-10', accountId: 'acc-1' })];
+    const match = findNearDuplicate({ type: 'expense', amount: 250, merchant: 'Carrefour', date: '2025-01-10', accountId: 'acc-1' }, existing, 'tx-1');
+    expect(match).toBeNull();
+  });
+
+  it('does not flag a frequently-recurring merchant+amount pattern', () => {
+    const existing = [
+      makeTransaction({ id: 'm-1', amount: 20, merchant: 'RTA Metro', date: '2025-01-10', accountId: 'acc-1' }),
+      makeTransaction({ id: 'm-2', amount: 20, merchant: 'RTA Metro', date: '2025-01-11', accountId: 'acc-1' }),
+      makeTransaction({ id: 'm-3', amount: 20, merchant: 'RTA Metro', date: '2025-01-12', accountId: 'acc-1' }),
+    ];
+    const match = findNearDuplicate({ type: 'expense', amount: 20, merchant: 'RTA Metro', date: '2025-01-13', accountId: 'acc-1' }, existing);
+    expect(match).toBeNull();
   });
 });

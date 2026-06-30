@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
+import { DEFAULT_APR } from '@/lib/finance/debtPayoff';
 import { toast } from 'sonner';
 
 interface Props {
@@ -25,6 +26,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const [creditLimit, setCreditLimit] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [statementDate, setStatementDate] = useState('');
+  const [apr, setApr] = useState('');
 
   const isEdit = !!editAccount;
   const [submitting, setSubmitting] = useState(false);
@@ -38,6 +40,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       setCreditLimit(editAccount?.creditLimit?.toString() || '');
       setDueDate(editAccount?.dueDate?.toString() || '');
       setStatementDate(editAccount?.statementDate?.toString() || '');
+      setApr(editAccount?.apr?.toString() ?? '');
     }
   }, [open, editAccount]);
 
@@ -51,13 +54,10 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       return;
     }
     const parsedCreditLimit = type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined;
-    // For non-credit accounts, disallow negative balances
-    if (type !== 'credit' && parsedBalance < 0) { toast.error('Balance cannot be negative'); return; }
-    // For credit accounts, ensure available limit does not exceed credit limit
-    if (type === 'credit' && parsedCreditLimit !== undefined && parsedBalance > parsedCreditLimit) {
-      toast.error('Available limit cannot exceed credit limit');
-      return;
-    }
+    // Balance can't be negative — for credit accounts it's the amount owed,
+    // which can exceed the credit limit (over-limit charges, unpaid interest)
+    // but can't be negative.
+    if (parsedBalance < 0) { toast.error(type === 'credit' ? 'Amount owed cannot be negative' : 'Balance cannot be negative'); return; }
     const parsedDueDate = type === 'credit' && dueDate ? parseInt(dueDate) : undefined;
     const parsedStatementDate = type === 'credit' && statementDate ? parseInt(statementDate) : undefined;
     if (parsedDueDate !== undefined && (isNaN(parsedDueDate) || parsedDueDate < 1 || parsedDueDate > 31)) {
@@ -65,6 +65,10 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
     }
     if (parsedStatementDate !== undefined && (isNaN(parsedStatementDate) || parsedStatementDate < 1 || parsedStatementDate > 31)) {
       toast.error('Statement day must be between 1 and 31'); return;
+    }
+    const parsedApr = type === 'credit' && apr.trim() !== '' ? parseFloat(apr) : undefined;
+    if (parsedApr !== undefined && (isNaN(parsedApr) || parsedApr < 0)) {
+      toast.error('APR must be a non-negative number'); return;
     }
     setSubmitting(true);
     try {
@@ -77,6 +81,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
         creditLimit: parsedCreditLimit,
         dueDate: parsedDueDate,
         statementDate: parsedStatementDate,
+        apr: parsedApr,
       };
       if (isEdit) {
         await updateAccount({ ...data, id: editAccount.id });
@@ -115,13 +120,12 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           </div>
           <div>
             <label className="text-sm font-medium text-foreground/80 mb-1 block">
-              {type === 'credit' ? 'Available Limit' : 'Balance'} ({currency})
+              {type === 'credit' ? 'Amount Owed' : 'Balance'} ({currency})
             </label>
             <AmountInput value={balance} onChange={setBalance} className="h-11" />
             {type === 'credit' && (
               <p className="text-[11px] text-muted-foreground mt-1">
-                This is what you can still spend, not your total credit limit. Example: 20,000 limit
-                with 5,000 already used = 15,000 available.
+                How much you currently owe on this card — not your total credit limit. Available credit is shown as limit minus this.
               </p>
             )}
           </div>
@@ -130,6 +134,22 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               <div>
                 <label className="text-sm font-medium text-foreground/80 mb-1 block">Credit Limit ({currency})</label>
                 <AmountInput value={creditLimit} onChange={setCreditLimit} placeholder="20,000" className="h-11" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground/80 mb-1 block">APR (%)</label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.5"
+                  placeholder={`Default ${DEFAULT_APR}`}
+                  value={apr}
+                  onChange={e => setApr(e.target.value)}
+                  className="h-11 text-base"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Leave blank to use the {DEFAULT_APR}% default in the Debt payoff calculator. Set to 0 for interest-free BNPL (Tabby, Tamara, etc).
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>

@@ -29,7 +29,8 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
       const lastDay = getDaysInMonth(new Date(targetYear, normalizedMonth));
       const clampedDay = Math.min(cc.dueDate!, lastDay);
       const dueDate = new Date(targetYear, normalizedMonth, clampedDay);
-      const spent = cc.creditLimit != null ? cc.creditLimit - cc.balance : 0;
+      // balance IS the amount owed for credit accounts (see Account type).
+      const spent = cc.balance;
       if (spent > 0) {
         bills.push({
           name: cc.name,
@@ -42,7 +43,7 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
     });
 
     // Recurring transactions
-    transactions.filter(t => t.isRecurring && t.type === 'expense').forEach(t => {
+    transactions.filter(t => t.isRecurring && t.type === 'expense' && !t.isInternal).forEach(t => {
       // Advance month-by-month from the original date until the next occurrence
       // is in the future. Stepping from the original date (not the last computed
       // date) preserves the day-of-month correctly across month-length boundaries

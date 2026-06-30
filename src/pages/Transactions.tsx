@@ -203,17 +203,17 @@ const Transactions = () => {
     if (!merchantProfile) return null;
     const txs = transactions.filter(tx => tx.merchant.toLowerCase() === merchantProfile.toLowerCase())
       .sort((a, b) => b.date.localeCompare(a.date));
-    const total = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
+    const total = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal).reduce((s, t) => s + t.amount, 0);
     const count = txs.length;
     return { txs: txs.slice(0, 20), total, count, icon: txs[0]?.categoryIcon || '🏪' };
   }, [merchantProfile, transactions]);
 
   const filteredIncome = useMemo(() =>
-    filtered.filter(tx => tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)).reduce((s, tx) => s + tx.amount, 0),
+    filtered.filter(tx => tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId)).reduce((s, tx) => s + tx.amount, 0),
     [filtered, creditAccountIds]
   );
   const filteredExpenses = useMemo(() =>
-    filtered.filter(tx => tx.type === 'expense' && tx.category !== 'Transfer').reduce((s, tx) => s + tx.amount, 0),
+    filtered.filter(tx => tx.type === 'expense' && !tx.isInternal).reduce((s, tx) => s + tx.amount, 0),
     [filtered]
   );
   const filteredNet = filteredIncome - filteredExpenses;
@@ -289,6 +289,11 @@ const Transactions = () => {
                {tx.totalInstallments && tx.currentInstallment && (
                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
                    {tx.currentInstallment}/{tx.totalInstallments}
+                 </span>
+               )}
+               {tx.isPending && (
+                 <span className="text-[10px] font-medium text-warning bg-warning/10 px-1.5 py-0.5 rounded-full shrink-0">
+                   Pending
                  </span>
                )}
              </div>
