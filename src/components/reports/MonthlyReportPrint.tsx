@@ -16,9 +16,14 @@ const MonthlyReportPrint = () => {
     const start = startOfMonth(new Date(year, month - 1));
     const end = endOfMonth(start);
 
+    // Exclude future-dated transactions: they haven't been spent/earned yet,
+    // same convention as Reports.tsx and FinanceContext's computeSpentByCategory.
+    // Computed fresh here (not from the component-scope `now`) so the memo
+    // doesn't pin a stale "today" across re-renders that don't change deps.
+    const today = new Date();
     const monthTxs = transactions.filter(tx => {
       const d = parseISO(tx.date);
-      return d >= start && d <= end;
+      return d >= start && d <= end && d <= today;
     });
 
     const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
@@ -27,7 +32,7 @@ const MonthlyReportPrint = () => {
       .reduce((s, tx) => s + tx.amount, 0);
 
     const totalExpenses = monthTxs
-      .filter(tx => tx.type === 'expense' && tx.category !== 'Transfer')
+      .filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly)
       .reduce((s, tx) => s + tx.amount, 0);
 
     const netSavings = totalIncome - totalExpenses;
@@ -35,7 +40,7 @@ const MonthlyReportPrint = () => {
     // Expenses by category
     const byCategory: Record<string, { icon: string; total: number }> = {};
     monthTxs
-      .filter(tx => tx.type === 'expense' && tx.category !== 'Transfer')
+      .filter(tx => tx.type === 'expense' && tx.category !== 'Transfer' && !tx.isTrackingOnly)
       .forEach(tx => {
         if (!byCategory[tx.category]) byCategory[tx.category] = { icon: tx.categoryIcon, total: 0 };
         byCategory[tx.category].total += tx.amount;
@@ -44,8 +49,12 @@ const MonthlyReportPrint = () => {
       .map(([cat, v]) => ({ category: cat, icon: v.icon, total: v.total }))
       .sort((a, b) => b.total - a.total);
 
-    // Budget performance
-    const monthBudgets = budgets.filter(b => b.period === 'monthly');
+    // Budget performance — scope to the selected month and recompute spend
+    // from monthTxs rather than Budget.spent, which is always the real
+    // current month's spend regardless of which budget it's attached to.
+    const monthBudgets = budgets
+      .filter(b => b.period === 'monthly' && b.month === selectedMonth)
+      .map(b => ({ ...b, spent: byCategory[b.category]?.total ?? 0 }));
 
     return { totalIncome, totalExpenses, netSavings, categories, monthBudgets, txCount: monthTxs.length };
   }, [transactions, budgets, accounts, selectedMonth]);

@@ -160,9 +160,14 @@ const Installments = () => {
       : 0;
     const isDone = plan.paidInstallments >= plan.totalInstallments;
 
-    // Estimate start from latest date and how many installments have been paid
+    // Estimate start from latest date and how many installments have been paid.
+    // Floor at 1: latestDate is the month the most recent paid installment
+    // landed in, so even after the stepper is decremented to 0 paid, that
+    // month is still the best anchor we have — projecting the start a month
+    // *after* latestDate (what an unclamped 0 would do) is backwards.
+    const effectivePaidInstallments = Math.max(plan.paidInstallments, 1);
     const startMonth = startOfMonth(parseISO(plan.latestDate));
-    const estimatedStartMonth = addMonths(startMonth, -(plan.paidInstallments - 1));
+    const estimatedStartMonth = addMonths(startMonth, -(effectivePaidInstallments - 1));
     const estimatedEndMonth = addMonths(estimatedStartMonth, plan.totalInstallments - 1);
 
     // Use live plan data so progress stepper reflects real-time updates
@@ -357,7 +362,10 @@ const Installments = () => {
                 const progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
                 const remainingCount = plan.totalInstallments - plan.paidInstallments;
                 const remainingAmt = round2(remainingCount * plan.amountPerInstallment);
-                const endMonth = addMonths(startOfMonth(parseISO(plan.latestDate)), remainingCount);
+                // Mirror the detail view's floor-at-1 anchoring (see Installments.tsx
+                // detail view) so the two views agree on the estimated end month.
+                const effectivePaidInstallments = Math.max(plan.paidInstallments, 1);
+                const endMonth = addMonths(startOfMonth(parseISO(plan.latestDate)), plan.totalInstallments - effectivePaidInstallments);
                 return (
                   <div key={plan.key} className="bg-card rounded-2xl border border-border p-4 space-y-3">
                     {/* Tappable top row → detail view */}

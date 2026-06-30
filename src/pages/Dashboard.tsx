@@ -464,8 +464,10 @@ const Dashboard = () => {
                     <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
                     <div className="space-y-5">
                       {group.map(a => {
-                        const spent = a.type === 'credit' && a.creditLimit ? a.creditLimit - a.balance : 0;
-                        const utilization = a.type === 'credit' && a.creditLimit ? Math.min(Math.round((spent / a.creditLimit) * 100), 100) : 0;
+                        const spent = a.type === 'credit' && a.creditLimit != null ? a.creditLimit - a.balance : 0;
+                        const utilization = a.type === 'credit' && a.creditLimit
+                          ? Math.min(Math.round((spent / a.creditLimit) * 100), 100)
+                          : a.type === 'credit' && a.creditLimit === 0 && spent > 0 ? 100 : 0;
                         const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-warning' : 'bg-primary';
                         return (
                           <div key={a.id} className="group">
@@ -478,7 +480,7 @@ const Dashboard = () => {
                                     <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
                                       {a.statementDate && a.statementDate > 0 && <span>Stmt: {a.statementDate}th</span>}
                                       {a.dueDate && <span>Due: {a.dueDate}th</span>}
-                                      {a.creditLimit && <span>Limit: {fmt(a.creditLimit)}</span>}
+                                      {a.creditLimit != null && <span>Limit: {fmt(a.creditLimit)}</span>}
                                     </div>
                                   )}
                                 </div>
@@ -499,7 +501,7 @@ const Dashboard = () => {
                                 </button>
                               </div>
                             </div>
-                            {a.type === 'credit' && a.creditLimit && (
+                            {a.type === 'credit' && a.creditLimit != null && (
                               <div className="mt-1.5 ml-11">
                                 <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                                   <span>{utilization}% used</span>

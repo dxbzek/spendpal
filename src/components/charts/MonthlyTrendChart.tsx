@@ -13,12 +13,15 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
   const { fmt } = useCurrency();
 
   const data = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
     const map: Record<string, { income: number; expenses: number }> = {};
     transactions.forEach(tx => {
       // Mirror the canonical income/expense convention used by the Dashboard
       // summary cards: exclude transfers (stored as paired income+expense rows)
-      // so they aren't double-counted, and skip tracking-only expenses.
+      // so they aren't double-counted, skip tracking-only expenses, and skip
+      // future-dated transactions that haven't happened yet.
       if (tx.category === 'Transfer') return;
+      if (tx.date > today) return;
       const isIncome = tx.type === 'income' && !creditAccountIds.has(tx.accountId);
       const isExpense = tx.type === 'expense' && !tx.isTrackingOnly;
       if (!isIncome && !isExpense) return;

@@ -179,7 +179,7 @@ const AIAdvisor = () => {
         name: c.name,
         balance: c.balance,
         creditLimit: c.creditLimit,
-        utilization: c.creditLimit ? Math.round(((c.creditLimit - c.balance) / c.creditLimit) * 100) : 0,
+        utilization: c.creditLimit ? Math.round(((c.creditLimit - c.balance) / c.creditLimit) * 100) : c.creditLimit === 0 ? 100 : 0,
       })),
       existingBudgets: activeBudgets(budgets, monthKey).map(b => ({ category: b.category, amount: b.amount, spent: b.spent })),
       goals: goals.map(g => ({ name: g.name, target: g.targetAmount, saved: g.savedAmount, type: g.type })),

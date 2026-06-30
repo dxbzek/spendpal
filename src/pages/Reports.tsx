@@ -114,6 +114,19 @@ const Reports = () => {
     [budgets, selectedMonth]
   );
 
+  // Budget.spent (from FinanceContext) is always the real current month's spend,
+  // regardless of which budget it's attached to — fine for "this month" views,
+  // but wrong here once the user picks a different month from the dropdown.
+  // Recompute spend-by-category scoped to the selected month from monthTxs instead.
+  const monthSpentByCategory = useMemo(() => {
+    const spent: Record<string, number> = {};
+    for (const tx of monthTxs) {
+      if (tx.type !== 'expense' || tx.isTrackingOnly) continue;
+      spent[tx.category] = (spent[tx.category] ?? 0) + tx.amount;
+    }
+    return spent;
+  }, [monthTxs]);
+
   const incomeBySource = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};
     monthTxs.filter(tx => tx.type === 'income' && tx.category !== 'Transfer' && !creditAccountIds.has(tx.accountId)).forEach(tx => {
@@ -283,8 +296,9 @@ const Reports = () => {
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
           <h2 className="font-semibold text-sm">Budget Performance</h2>
           {monthBudgets.map(b => {
-            const pct = b.amount > 0 ? Math.min((b.spent / b.amount) * 100, 100) : 0;
-            const over = b.spent > b.amount;
+            const spent = monthSpentByCategory[b.category] ?? 0;
+            const pct = b.amount > 0 ? Math.min((spent / b.amount) * 100, 100) : 0;
+            const over = spent > b.amount;
             return (
               <div key={b.id} className="space-y-1">
                 <div className="flex justify-between text-xs">
@@ -293,7 +307,7 @@ const Reports = () => {
                     <span>{b.category}</span>
                   </span>
                   <span className={over ? 'text-destructive font-semibold' : 'text-muted-foreground'}>
-                    {mask(fmt(b.spent))} / {mask(fmt(b.amount))}
+                    {mask(fmt(spent))} / {mask(fmt(b.amount))}
                   </span>
                 </div>
                 <div className="h-1.5 bg-muted rounded-full overflow-hidden">

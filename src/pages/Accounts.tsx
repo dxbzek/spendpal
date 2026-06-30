@@ -49,8 +49,9 @@ const Accounts = () => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
     const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => {
       // With a limit, balance is available credit (owed = limit - balance).
-      // Without a limit, balance itself is the amount owed.
-      const owed = a.creditLimit ? a.creditLimit - a.balance : a.balance;
+      // Without a limit, balance itself is the amount owed. A $0 limit is a
+      // valid (if unusual) value, so check for null/undefined, not falsy.
+      const owed = a.creditLimit != null ? a.creditLimit - a.balance : a.balance;
       return s + owed;
     }, 0);
     return assets - liabilities;
@@ -171,7 +172,11 @@ const Accounts = () => {
             const utilization =
               account.type === 'credit' && account.creditLimit
                 ? ((account.creditLimit - account.balance) / account.creditLimit) * 100
-                : null;
+                // A $0 limit can't be divided into a percentage, but a negative
+                // balance against it still means it's maxed out (100%).
+                : account.type === 'credit' && account.creditLimit === 0 && account.balance < 0
+                  ? 100
+                  : null;
 
             return (
               <div key={account.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
