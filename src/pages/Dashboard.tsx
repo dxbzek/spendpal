@@ -2,6 +2,8 @@ import { useState, useMemo, lazy, Suspense } from 'react';
 import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
 import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
 import { activeBudgets } from '@/utils/budgets';
+import { availableCredit, creditUtilization } from '@/lib/finance/credit';
+import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -112,14 +114,14 @@ const Dashboard = () => {
   }, [transactions, period, now]);
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
-  const income = useMemo(() => filtered.filter(t => t.type === 'income' && !t.isInternal && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
-  const expenses = useMemo(() => filtered.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0), [filtered]);
+  const income = useMemo(() => filtered.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
+  const expenses = useMemo(() => filtered.filter(isCountableExpense).reduce((s, t) => s + t.amount, 0), [filtered]);
   const animatedIncome = useCountUp(income, 700);
   const animatedExpenses = useCountUp(expenses, 700);
 
   const categorySpending = useMemo(() => {
     const map: Record<string, { icon: string; total: number }> = {};
-    filtered.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).forEach(t => {
+    filtered.filter(isCountableExpense).forEach(t => {
       if (!map[t.category]) map[t.category] = { icon: t.categoryIcon, total: 0 };
       map[t.category].total += t.amount;
     });
@@ -133,8 +135,8 @@ const Dashboard = () => {
       const d = parseISO(tx.date);
       if (d.getMonth() !== month || d.getFullYear() !== year) continue;
       if (d > now) continue; // skip future-dated transactions — not spent/earned yet
-      if (tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId)) inc += tx.amount;
-      else if (tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly) exp += tx.amount;
+      if (isCountableIncome(tx, creditAccountIds)) inc += tx.amount;
+      else if (isCountableExpense(tx)) exp += tx.amount;
     }
     return [inc, exp];
   }, [transactions, now, creditAccountIds]);
@@ -157,7 +159,7 @@ const Dashboard = () => {
   const safeToday = Math.max(0, leftThisMonth / daysLeft);
   const todayKey = format(now, 'yyyy-MM-dd');
   const spentToday = useMemo(() => transactions
-    .filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly && t.date.slice(0, 10) === todayKey)
+    .filter(t => isCountableExpense(t) && t.date.slice(0, 10) === todayKey)
     .reduce((s, t) => s + t.amount, 0), [transactions, todayKey]);
   const safeLeft = Math.max(0, safeToday - spentToday);
   const todayPct = safeToday > 0 ? Math.min(100, Math.round((spentToday / safeToday) * 100)) : 0;
@@ -466,10 +468,8 @@ const Dashboard = () => {
                       {group.map(a => {
                         // balance IS the amount owed for credit accounts.
                         const spent = a.type === 'credit' ? a.balance : 0;
-                        const available = a.type === 'credit' && a.creditLimit != null ? a.creditLimit - a.balance : null;
-                        const utilization = a.type === 'credit' && a.creditLimit
-                          ? Math.min(Math.round((spent / a.creditLimit) * 100), 100)
-                          : a.type === 'credit' && a.creditLimit === 0 && spent > 0 ? 100 : 0;
+                        const available = availableCredit(a);
+                        const utilization = Math.round(creditUtilization(a) ?? 0);
                         const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-warning' : 'bg-primary';
                         return (
                           <div key={a.id} className="group">

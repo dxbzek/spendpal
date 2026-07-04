@@ -1,4 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
+import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -33,7 +34,7 @@ const CalendarView = () => {
   // Spending per day
   const dayTotals = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTxs.filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly).forEach(tx => {
+    monthTxs.filter(tx => isCountableExpense(tx)).forEach(tx => {
       map[tx.date] = (map[tx.date] || 0) + tx.amount;
     });
     return map;
@@ -43,7 +44,7 @@ const CalendarView = () => {
   const dayIncome = useMemo(() => {
     const map: Record<string, number> = {};
     monthTxs
-      .filter(tx => tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId))
+      .filter(tx => isCountableIncome(tx, creditAccountIds))
       .forEach(tx => { map[tx.date] = (map[tx.date] || 0) + tx.amount; });
     return map;
   }, [monthTxs, creditAccountIds]);
@@ -67,10 +68,10 @@ const CalendarView = () => {
   }, [selectedDay, monthTxs]);
 
   const totalIncome = useMemo(
-    () => monthTxs.filter(t => t.type === 'income' && !t.isInternal && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0),
+    () => monthTxs.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0),
     [monthTxs, creditAccountIds]
   );
-  const totalExpenses = useMemo(() => monthTxs.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0), [monthTxs]);
+  const totalExpenses = useMemo(() => monthTxs.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0), [monthTxs]);
 
   const dayColor = (total: number) => {
     if (!total) return '';

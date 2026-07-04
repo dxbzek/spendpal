@@ -79,4 +79,24 @@ describe("simulateStrategy", () => {
     expect(result.months).toBe(Infinity);
     expect(result.hitCap).toBe(true);
   });
+
+  it("reports exactly zero interest for interest-free (0% APR) debts", () => {
+    // BNPL plans (Tabby/Tamara) carry apr 0 — no interest can accrue, so
+    // totalInterest must be 0. The prior `totalBudget * month` estimate
+    // over-counted the final month's unused surplus as phantom interest.
+    const debts: StrategyDebt[] = [
+      { id: "a", owed: 400, apr: 0, minPay: minPayment(400) },
+      { id: "b", owed: 1000, apr: 0, minPay: minPayment(1000) },
+    ];
+    const order = [...debts].sort((x, y) => x.owed - y.owed); // snowball
+    const result = simulateStrategy(debts, order, 100);
+    expect(result.hitCap).toBe(false);
+    expect(result.months).toBeGreaterThan(0);
+    expect(result.totalInterest).toBe(0);
+  });
+
+  it("never reports negative interest even with a large surplus budget", () => {
+    const debts: StrategyDebt[] = [{ id: "a", owed: 200, apr: 0, minPay: minPayment(200) }];
+    expect(simulateStrategy(debts, debts, 5000).totalInterest).toBe(0);
+  });
 });

@@ -8,6 +8,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_APR, monthsToPayoff, minPayment, simulateStrategy } from '@/lib/finance/debtPayoff';
+import { creditUtilization } from '@/lib/finance/credit';
 
 const Debt = () => {
   const { accounts, loading } = useFinance();
@@ -29,10 +30,9 @@ const Debt = () => {
         ...a,
         // balance IS the amount owed for credit accounts (see Account type).
         owed: Math.max(0, a.balance),
-        // A $0 limit can't be divided into a percentage, but if there's still
-        // an owed balance against it, it's maxed out (100%) rather than 0% —
-        // 0% would contradict the owed amount shown right next to it.
-        utilization: a.creditLimit ? (a.balance / a.creditLimit) * 100 : a.creditLimit === 0 ? 100 : 0,
+        // Clamped 0–100 via the shared helper; a $0-limit card with an owed
+        // balance reads as maxed out (100%) rather than 0%.
+        utilization: creditUtilization(a) ?? 0,
       }))
       .filter(a => a.owed > 0)
   , [accounts]);
@@ -60,9 +60,11 @@ const Debt = () => {
   const getDueDaysRemaining = (dueDate?: number) => {
     if (!dueDate) return null;
     const diff = dueDate - todayDate;
-    // If already passed this month, next month — use the actual day count of
-    // the month being rolled into instead of assuming a flat 30 days.
-    return diff < 0 ? diff + getDaysInMonth(addMonths(new Date(), 1)) : diff;
+    // If already passed this month, the next occurrence is `dueDate` of next
+    // month: days remaining = (days left in THIS month) + dueDate, i.e.
+    // diff + getDaysInMonth(thisMonth). Using next month's length here would be
+    // off by the difference in month lengths.
+    return diff < 0 ? diff + getDaysInMonth(new Date()) : diff;
   };
 
   // Multi-card strategy data

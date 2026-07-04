@@ -1,4 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
+import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { useState, useMemo, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -97,8 +98,8 @@ const Goals = () => {
         const td = parseISO(tx.date);
         return getMonth(td) === m && getYear(td) === y;
       });
-      const inc = monthTx.filter(t => t.type === 'income' && !t.isInternal && !creditIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
-      const exp = monthTx.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
+      const inc = monthTx.filter(t => isCountableIncome(t, creditIds)).reduce((s, t) => s + t.amount, 0);
+      const exp = monthTx.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0);
       const savings = inc - exp;
       if (savings > 0) { totalRate += savings; validMonths++; }
     }

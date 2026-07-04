@@ -7,6 +7,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import type { Account } from '@/types/finance';
 import { toast } from 'sonner';
 import { Scale } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Props {
   open: boolean;
@@ -21,9 +22,14 @@ interface Props {
  * that base was ever wrong (a missed transaction, a manual DB edit, an
  * import gap), the drift compounds silently with no way to notice it short
  * of comparing numbers by hand. This makes that comparison a button.
+ *
+ * The correction is applied as an internal adjustment transaction (not a
+ * direct balance overwrite) so the ledger stays the single source of truth:
+ * the DB trigger moves `balance` to match, and any later recompute-from-
+ * transactions preserves the correction instead of silently discarding it.
  */
 const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
-  const { updateAccount } = useFinance();
+  const { addTransaction } = useFinance();
   const { fmt, currency } = useCurrency();
   const [actual, setActual] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +46,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
   const drift = parsedActual !== null && !isNaN(parsedActual) ? parsedActual - account.balance : null;
 
   const handleApply = async () => {
-    if (parsedActual === null || isNaN(parsedActual)) return;
+    if (parsedActual === null || isNaN(parsedActual) || drift === null || drift === 0) return;
     // Same constraint as AddAccountDialog: balance/owed can't be negative,
     // for credit accounts or otherwise.
     if (parsedActual < 0) {
@@ -49,9 +55,33 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
     }
     setSubmitting(true);
     try {
-      await updateAccount({ ...account, balance: parsedActual });
-      toast.success(`${account.name} balance corrected`);
-      onOpenChange(false);
+      // Post an internal adjustment that nudges the trigger-maintained balance
+      // to `actual`. For a normal account, balance rises on income / falls on
+      // expense; for a credit account, OWED rises on expense / falls on income —
+      // so the sign mapping flips for credit.
+      const needsIncrease = drift > 0;
+      const type: 'income' | 'expense' = isCredit
+        ? (needsIncrease ? 'expense' : 'income')
+        : (needsIncrease ? 'income' : 'expense');
+      const result = await addTransaction({
+        accountId: account.id,
+        type,
+        amount: Math.abs(drift),
+        currency: account.currency,
+        category: 'Adjustment',
+        categoryIcon: '⚖️',
+        merchant: 'Balance reconciliation',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        note: `Reconciled to ${fmt(parsedActual)} (was ${fmt(account.balance)})`,
+        isInternal: true,
+        isPending: false,
+        isTrackingOnly: false,
+        isRecurring: false,
+      });
+      if (result) {
+        toast.success(`${account.name} balance corrected`);
+        onOpenChange(false);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -85,7 +115,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
                   {drift > 0 ? 'SpendPal is under by ' : 'SpendPal is over by '}{fmt(Math.abs(drift))}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Likely cause: a transaction logged outside SpendPal, or one missing/duplicated here. Applying below corrects the stored balance directly — it won't add a transaction to your history.
+                  Likely cause: a transaction logged outside SpendPal, or one missing/duplicated here. Applying adds a small internal "Balance reconciliation" adjustment to your history so the balance matches — it won't affect your income/expense totals.
                 </p>
               </div>
             )

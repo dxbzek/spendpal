@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -203,17 +204,17 @@ const Transactions = () => {
     if (!merchantProfile) return null;
     const txs = transactions.filter(tx => tx.merchant.toLowerCase() === merchantProfile.toLowerCase())
       .sort((a, b) => b.date.localeCompare(a.date));
-    const total = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal).reduce((s, t) => s + t.amount, 0);
+    const total = txs.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0);
     const count = txs.length;
     return { txs: txs.slice(0, 20), total, count, icon: txs[0]?.categoryIcon || '🏪' };
   }, [merchantProfile, transactions]);
 
   const filteredIncome = useMemo(() =>
-    filtered.filter(tx => tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId)).reduce((s, tx) => s + tx.amount, 0),
+    filtered.filter(tx => isCountableIncome(tx, creditAccountIds)).reduce((s, tx) => s + tx.amount, 0),
     [filtered, creditAccountIds]
   );
   const filteredExpenses = useMemo(() =>
-    filtered.filter(tx => tx.type === 'expense' && !tx.isInternal).reduce((s, tx) => s + tx.amount, 0),
+    filtered.filter(isCountableExpense).reduce((s, tx) => s + tx.amount, 0),
     [filtered]
   );
   const filteredNet = filteredIncome - filteredExpenses;

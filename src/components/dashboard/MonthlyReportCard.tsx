@@ -1,4 +1,5 @@
 import { memo, useState, useCallback } from 'react';
+import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -31,11 +32,11 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
       const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
       // Exclude future-dated transactions — not yet earned/spent.
       const monthTx = transactions.filter(t => t.date.startsWith(currentMonth) && t.date <= today);
-      const income = monthTx.filter(t => t.type === 'income' && !t.isInternal && !creditAccountIds.has(t.accountId)).reduce((s, t) => s + t.amount, 0);
-      const expenses = monthTx.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).reduce((s, t) => s + t.amount, 0);
+      const income = monthTx.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0);
+      const expenses = monthTx.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0);
 
       const categoryMap: Record<string, number> = {};
-      monthTx.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).forEach(t => {
+      monthTx.filter(t => isCountableExpense(t)).forEach(t => {
         categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
       });
 

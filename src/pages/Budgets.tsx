@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { PageSpinner } from '@/components/ui/spinner';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -86,7 +87,7 @@ const Budgets = () => {
     transactions
       .filter(t => {
         const d = parseISO(t.date);
-        return t.type === 'expense' && !t.isInternal && !t.isTrackingOnly && getMonth(d) === pm && getYear(d) === py;
+        return isCountableExpense(t) && getMonth(d) === pm && getYear(d) === py;
       })
       .forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
     return map;
@@ -151,7 +152,7 @@ const Budgets = () => {
   };
 
   const handleGenerateSuggestions = async () => {
-    const spendingData = transactions.filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly).map(t => ({ category: t.category, amount: t.amount, date: t.date }));
+    const spendingData = transactions.filter(t => isCountableExpense(t)).map(t => ({ category: t.category, amount: t.amount, date: t.date }));
     const result = await generateBudgetSuggestions(spendingData);
     if (result.length > 0) setSuggestions(result);
   };
