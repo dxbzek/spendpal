@@ -54,6 +54,11 @@ export function simulateStrategy(
 
   let month = 0;
   let prevTotalBalance = debts.reduce((s, d) => s + d.owed, 0);
+  // Sum of cash actually paid. NOT totalBudget * month: in the final month(s)
+  // only the residual balance is paid and the surplus goes unused, so
+  // budget * month overstates payments — which shows up as phantom interest for
+  // 0%-APR (BNPL) debts, exactly the case per-account APR was added to support.
+  let totalPaid = 0;
 
   while (states.some((s) => s.balance > 0) && month < 600) {
     month++;
@@ -79,6 +84,7 @@ export function simulateStrategy(
       const pay = Math.min(minPayment(state.balance), state.balance);
       state.balance = Math.max(0, state.balance - pay);
       remaining -= pay;
+      totalPaid += pay;
     }
 
     // Put rest on priority
@@ -86,6 +92,7 @@ export function simulateStrategy(
     if (priorityState && priorityState.balance > 0) {
       const pay = Math.min(remaining, priorityState.balance);
       priorityState.balance = Math.max(0, priorityState.balance - pay);
+      totalPaid += pay;
     }
 
     // Non-convergence guard: if total balance is not decreasing, payments can't cover interest
@@ -97,8 +104,9 @@ export function simulateStrategy(
   }
 
   const hitCap = month >= 600;
-  // Compute total interest: (total paid) - (original principal)
-  const totalPaid = totalBudget * month - states.reduce((s, st) => s + Math.max(0, st.balance), 0);
+  // Total interest = every dollar paid minus the principal it retired. When the
+  // debt is fully cleared, principal retired == original principal, so this is
+  // exactly the interest — and 0 for a 0%-APR plan.
   const originalPrincipal = debts.reduce((s, d) => s + d.owed, 0);
   return { totalInterest: Math.max(0, totalPaid - originalPrincipal), months: month, hitCap };
 }

@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { useCurrency } from '@/context/CurrencyContext';
 import { PieChart } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
@@ -26,7 +27,7 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, m
     const totals: Record<string, number> = { cash: 0, debit: 0, credit: 0 };
 
     transactions
-      .filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly)
+      .filter(t => isCountableExpense(t))
       .forEach(t => {
         const aType = accountTypeMap.get(t.accountId);
         if (aType && aType in totals) totals[aType] += t.amount;

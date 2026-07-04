@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
@@ -33,7 +34,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
     const calcByType = (start: Date, end: Date) => {
       const totals: Record<string, number> = { cash: 0, debit: 0, credit: 0 };
       transactions
-        .filter(t => t.type === 'expense' && !t.isInternal && !t.isTrackingOnly && isWithinInterval(parseISO(t.date), { start, end }))
+        .filter(t => isCountableExpense(t) && isWithinInterval(parseISO(t.date), { start, end }))
         .forEach(t => {
           const aType = accountTypeMap.get(t.accountId);
           if (aType && aType in totals) totals[aType] += t.amount;

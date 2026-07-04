@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -97,7 +98,7 @@ function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
   // pending charge is still real spending the user committed to, and
   // budgets/reports should reflect it immediately. isPending only gates
   // whether it's posted to the settled account balance (see the DB trigger).
-  const monthExpenses = txs.filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal && t.date.startsWith(currentMonth) && t.date <= today);
+  const monthExpenses = txs.filter(t => isCountableExpense(t) && t.date.startsWith(currentMonth) && t.date <= today);
   const spent: Record<string, number> = {};
   for (const t of monthExpenses) {
     spent[t.category] = (spent[t.category] ?? 0) + t.amount;

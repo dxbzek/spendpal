@@ -4,6 +4,8 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { type Account } from '@/types/finance';
+import { creditUtilization } from '@/lib/finance/credit';
+import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import ReconcileDialog from '@/components/forms/ReconcileDialog';
 import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt, Scale } from 'lucide-react';
@@ -64,7 +66,7 @@ const Accounts = () => {
       if (tx.date > today) return; // skip future-dated transactions
       if (!stats[tx.accountId]) stats[tx.accountId] = { income: 0, expenses: 0 };
       if (tx.type === 'income' && !tx.isInternal) stats[tx.accountId].income += tx.amount;
-      else if (tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly) stats[tx.accountId].expenses += tx.amount;
+      else if (isCountableExpense(tx)) stats[tx.accountId].expenses += tx.amount;
     });
     return stats;
   }, [transactions]);
@@ -134,7 +136,7 @@ const Accounts = () => {
   const deleteTxs = deleteId ? transactions.filter(t => t.accountId === deleteId) : [];
   const deleteTxCount = deleteTxs.length;
   const deleteTxSpend = deleteTxs
-    .filter(t => t.type === 'expense' && !t.isTrackingOnly && !t.isInternal)
+    .filter(isCountableExpense)
     .reduce((s, t) => s + t.amount, 0);
 
   if (loading) return <PageSpinner />;
@@ -178,18 +180,10 @@ const Accounts = () => {
         <div className="space-y-3">
           {visibleAccounts.map(account => {
             const stats = accountStats[account.id] || { income: 0, expenses: 0 };
-            const rawUtilization =
-              account.type === 'credit' && account.creditLimit
-                ? (account.balance / account.creditLimit) * 100
-                // A $0 limit can't be divided into a percentage, but an owed
-                // balance against it still means it's maxed out (100%).
-                : account.type === 'credit' && account.creditLimit === 0 && account.balance > 0
-                  ? 100
-                  : null;
-            // Clamp at the source (not just the bar width) so the displayed
-            // percentage text can't read e.g. "134%" while every other page
+            // Clamped 0–100 (or null for no-limit) via the shared helper so the
+            // displayed percentage can't read e.g. "134%" while every other page
             // caps the same account at 100%.
-            const utilization = rawUtilization !== null ? Math.max(0, Math.min(rawUtilization, 100)) : null;
+            const utilization = creditUtilization(account);
 
             return (
               <div key={account.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">

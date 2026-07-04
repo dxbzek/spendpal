@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { activeBudgets } from '@/utils/budgets';
 import { FileText, Printer } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -28,11 +30,11 @@ const MonthlyReportPrint = () => {
 
     const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
     const totalIncome = monthTxs
-      .filter(tx => tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId))
+      .filter(tx => isCountableIncome(tx, creditAccountIds))
       .reduce((s, tx) => s + tx.amount, 0);
 
     const totalExpenses = monthTxs
-      .filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly)
+      .filter(tx => isCountableExpense(tx))
       .reduce((s, tx) => s + tx.amount, 0);
 
     const netSavings = totalIncome - totalExpenses;
@@ -40,7 +42,7 @@ const MonthlyReportPrint = () => {
     // Expenses by category
     const byCategory: Record<string, { icon: string; total: number }> = {};
     monthTxs
-      .filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly)
+      .filter(tx => isCountableExpense(tx))
       .forEach(tx => {
         if (!byCategory[tx.category]) byCategory[tx.category] = { icon: tx.categoryIcon, total: 0 };
         byCategory[tx.category].total += tx.amount;
@@ -49,11 +51,14 @@ const MonthlyReportPrint = () => {
       .map(([cat, v]) => ({ category: cat, icon: v.icon, total: v.total }))
       .sort((a, b) => b.total - a.total);
 
-    // Budget performance — scope to the selected month and recompute spend
-    // from monthTxs rather than Budget.spent, which is always the real
-    // current month's spend regardless of which budget it's attached to.
-    const monthBudgets = budgets
-      .filter(b => b.period === 'monthly' && b.month === selectedMonth)
+    // Budget performance — use the budgets ACTIVE for the selected month
+    // (carried forward from the most recent prior month if this month has no
+    // budgets of its own, matching the Dashboard) rather than a strict
+    // month-equality filter that would show nothing for carry-forward months.
+    // Spend is recomputed from monthTxs rather than Budget.spent, which is
+    // always the real current month's spend regardless of which budget it's on.
+    const monthBudgets = activeBudgets(budgets, selectedMonth)
+      .filter(b => b.period === 'monthly')
       .map(b => ({ ...b, spent: byCategory[b.category]?.total ?? 0 }));
 
     return { totalIncome, totalExpenses, netSavings, categories, monthBudgets, txCount: monthTxs.length };

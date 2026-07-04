@@ -1,4 +1,6 @@
 import { PageSpinner } from '@/components/ui/spinner';
+import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { activeBudgets } from '@/utils/budgets';
 import { useMemo, useState, lazy, Suspense } from 'react';
 import { format, parseISO, subMonths, getDay } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
@@ -51,18 +53,18 @@ const Reports = () => {
 
   const income = useMemo(
     () => monthTxs
-      .filter(tx => tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId))
+      .filter(tx => isCountableIncome(tx, creditAccountIds))
       .reduce((s, tx) => s + tx.amount, 0),
     [monthTxs, creditAccountIds]
   );
 
   const expenses = useMemo(
-    () => monthTxs.filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly).reduce((s, tx) => s + tx.amount, 0),
+    () => monthTxs.filter(tx => isCountableExpense(tx)).reduce((s, tx) => s + tx.amount, 0),
     [monthTxs]
   );
 
   const prevExpenses = useMemo(
-    () => prevMonthTxs.filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly).reduce((s, tx) => s + tx.amount, 0),
+    () => prevMonthTxs.filter(tx => isCountableExpense(tx)).reduce((s, tx) => s + tx.amount, 0),
     [prevMonthTxs]
   );
 
@@ -89,7 +91,7 @@ const Reports = () => {
 
   const categoryData = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};
-    monthTxs.filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly).forEach(tx => {
+    monthTxs.filter(tx => isCountableExpense(tx)).forEach(tx => {
       if (!map[tx.category]) map[tx.category] = { value: 0, icon: tx.categoryIcon };
       map[tx.category].value += tx.amount;
     });
@@ -100,7 +102,7 @@ const Reports = () => {
 
   const topMerchants = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTxs.filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly).forEach(tx => {
+    monthTxs.filter(tx => isCountableExpense(tx)).forEach(tx => {
       map[tx.merchant] = (map[tx.merchant] || 0) + tx.amount;
     });
     return Object.entries(map)
@@ -109,8 +111,12 @@ const Reports = () => {
       .map(([merchant, amount]) => ({ merchant, amount }));
   }, [monthTxs]);
 
+  // Budgets active for the selected month — carried forward from the most
+  // recent prior month when this month has none of its own (matches the
+  // Dashboard), instead of a strict month-equality filter that shows nothing
+  // for carry-forward months.
   const monthBudgets = useMemo(
-    () => budgets.filter(b => b.period === 'monthly' && b.month === selectedMonth),
+    () => activeBudgets(budgets, selectedMonth).filter(b => b.period === 'monthly'),
     [budgets, selectedMonth]
   );
 
@@ -129,7 +135,7 @@ const Reports = () => {
 
   const incomeBySource = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};
-    monthTxs.filter(tx => tx.type === 'income' && !tx.isInternal && !creditAccountIds.has(tx.accountId)).forEach(tx => {
+    monthTxs.filter(tx => isCountableIncome(tx, creditAccountIds)).forEach(tx => {
       if (!map[tx.merchant]) map[tx.merchant] = { value: 0, icon: tx.categoryIcon };
       map[tx.merchant].value += tx.amount;
     });
@@ -139,7 +145,7 @@ const Reports = () => {
   const dayOfWeekData = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const totals = new Array(7).fill(0);
-    monthTxs.filter(tx => tx.type === 'expense' && !tx.isInternal && !tx.isTrackingOnly).forEach(tx => {
+    monthTxs.filter(tx => isCountableExpense(tx)).forEach(tx => {
       // getDay: 0=Sun, 1=Mon... convert to Mon=0
       const d = (getDay(parseISO(tx.date)) + 6) % 7;
       totals[d] += tx.amount;
