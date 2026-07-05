@@ -25,31 +25,57 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_id
   ON public.goals(user_id);
 
 
--- ── 2. Account balance sync trigger (20260331000001) ─────────
+-- ── 2. Account balance sync trigger (20260331000001 + credit sign fix 20260630010000) ─
 --    CREATE OR REPLACE is safe; trigger creation is guarded.
+--
+--    A credit account's `balance` stores the amount OWED (positive), so its
+--    sign convention is the mirror of a debit/cash account: an expense (a card
+--    charge) INCREASES owed, and an income (a payment or refund) DECREASES it.
+--    Debit accounts keep the normal convention (income adds, expense subtracts).
 
 CREATE OR REPLACE FUNCTION public.sync_account_balance()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   delta NUMERIC := 0;
+  acct_type TEXT;
 BEGIN
   IF (TG_OP = 'INSERT') THEN
     IF NEW.is_tracking_only THEN RETURN NULL; END IF;
-    IF NEW.type = 'income' THEN delta := NEW.amount; ELSE delta := -NEW.amount; END IF;
+    SELECT type INTO acct_type FROM accounts WHERE id = NEW.account_id;
+    IF acct_type = 'credit' THEN
+      delta := CASE WHEN NEW.type = 'income' THEN -NEW.amount ELSE NEW.amount END;
+    ELSE
+      delta := CASE WHEN NEW.type = 'income' THEN NEW.amount ELSE -NEW.amount END;
+    END IF;
     UPDATE accounts SET balance = balance + delta WHERE id = NEW.account_id;
 
   ELSIF (TG_OP = 'DELETE') THEN
     IF OLD.is_tracking_only THEN RETURN NULL; END IF;
-    IF OLD.type = 'income' THEN delta := -OLD.amount; ELSE delta := OLD.amount; END IF;
+    SELECT type INTO acct_type FROM accounts WHERE id = OLD.account_id;
+    IF acct_type = 'credit' THEN
+      delta := CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END;
+    ELSE
+      delta := CASE WHEN OLD.type = 'income' THEN -OLD.amount ELSE OLD.amount END;
+    END IF;
     UPDATE accounts SET balance = balance + delta WHERE id = OLD.account_id;
 
   ELSIF (TG_OP = 'UPDATE') THEN
     IF NOT OLD.is_tracking_only THEN
-      IF OLD.type = 'income' THEN delta := -OLD.amount; ELSE delta := OLD.amount; END IF;
+      SELECT type INTO acct_type FROM accounts WHERE id = OLD.account_id;
+      IF acct_type = 'credit' THEN
+        delta := CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END;
+      ELSE
+        delta := CASE WHEN OLD.type = 'income' THEN -OLD.amount ELSE OLD.amount END;
+      END IF;
       UPDATE accounts SET balance = balance + delta WHERE id = OLD.account_id;
     END IF;
     IF NOT NEW.is_tracking_only THEN
-      IF NEW.type = 'income' THEN delta := NEW.amount; ELSE delta := -NEW.amount; END IF;
+      SELECT type INTO acct_type FROM accounts WHERE id = NEW.account_id;
+      IF acct_type = 'credit' THEN
+        delta := CASE WHEN NEW.type = 'income' THEN -NEW.amount ELSE NEW.amount END;
+      ELSE
+        delta := CASE WHEN NEW.type = 'income' THEN NEW.amount ELSE -NEW.amount END;
+      END IF;
       UPDATE accounts SET balance = balance + delta WHERE id = NEW.account_id;
     END IF;
   END IF;
