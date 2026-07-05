@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AmountInput } from '@/components/ui/AmountInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
@@ -342,7 +343,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
               <label htmlFor="tx-amount" className="text-sm font-medium mb-1.5 block">
                 {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
               </label>
-              <Input id="tx-amount" type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
+              <AmountInput id="tx-amount" placeholder="0.00" value={amount} onChange={setAmount}
                 className="text-3xl font-heading h-16 text-center tracking-tight" />
             </div>
 
@@ -502,8 +503,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                         </div>
                         <div>
                           <label htmlFor="tx-loan-total" className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
-                          <Input id="tx-loan-total" type="number" placeholder="e.g. 1200 (before interest/fees)"
-                            value={loanTotalAmount} onChange={e => setLoanTotalAmount(e.target.value)}
+                          <AmountInput id="tx-loan-total" placeholder="e.g. 1200 (before interest/fees)"
+                            value={loanTotalAmount} onChange={setLoanTotalAmount}
                             className="h-10" />
                           <p className="text-[10px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
                         </div>
@@ -555,12 +556,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                             ))}
                           </SelectContent>
                         </Select>
-                        <Input
-                          type="number"
+                        <AmountInput
                           placeholder="Amount to allocate"
                           value={goalAllocationAmount}
-                          onChange={e => setGoalAllocationAmount(e.target.value)}
-                          min="0.01"
+                          onChange={setGoalAllocationAmount}
                         />
                       </div>
                     )}

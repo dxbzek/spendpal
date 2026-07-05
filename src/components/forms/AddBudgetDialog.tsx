@@ -51,6 +51,20 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
 
   const selectedCat = EXPENSE_CATEGORIES.find(c => c.name === category);
 
+  // Categories that already have a budget this month can't be added again — the
+  // DB enforces one budget per (category, month, period), so offering them would
+  // only produce a confusing unique-constraint error on submit. When editing, the
+  // budget's own category stays selectable.
+  const availableCategories = useMemo(() => {
+    const monthKey = format(new Date(), 'yyyy-MM');
+    const taken = new Set(
+      budgets
+        .filter(b => b.month === monthKey && b.category !== editBudget?.category)
+        .map(b => b.category)
+    );
+    return EXPENSE_CATEGORIES.filter(c => !taken.has(c.name));
+  }, [budgets, editBudget]);
+
   // Last month's unspent for this category
   const lastMonthUnspent = useMemo(() => {
     if (!category || isEdit) return null;
@@ -138,11 +152,16 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
               <SelectContent>
-                {EXPENSE_CATEGORIES.map(c => (
+                {availableCategories.map(c => (
                   <SelectItem key={c.name} value={c.name}>{c.icon} {c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {!isEdit && availableCategories.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Every category already has a budget this month. Edit an existing one instead.
+              </p>
+            )}
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
