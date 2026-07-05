@@ -81,7 +81,7 @@ serve(async (req) => {
     let toolChoice: unknown = undefined;
 
     if (type === "summary") {
-      systemPrompt = `You are a personal finance assistant for the user. Analyze their financial data and write a clear, friendly, 3-4 paragraph monthly summary in plain English. Include:
+      systemPrompt = `You are a personal finance assistant. Analyze the user's financial data and write a clear, friendly, 3-4 paragraph monthly summary in plain English. Speak directly to the user in the second person ("you", "your") — never refer to them as "the user" or in the third person. Include:
 - Total income vs expenses and net savings
 - Top spending categories and notable patterns
 - Any concerning trends or positive highlights
@@ -90,8 +90,8 @@ Use ${userCurrency} for all amounts. Keep it concise and conversational.`;
       userPrompt = `Here is my financial data for this month:\n${JSON.stringify(data)}`;
 
     } else if (type === "budget-suggestions") {
-      systemPrompt = `You are a personal finance advisor for the user. Based on their spending history, suggest optimal monthly budget amounts for each spending category. Be realistic and practical.
-Return your response as a JSON array of objects with: category, suggestedAmount, reasoning.
+      systemPrompt = `You are a personal finance advisor. Based on the user's spending history, suggest optimal monthly budget amounts for each spending category. Be realistic and practical.
+Return your response as a JSON array of objects with: category, suggestedAmount, reasoning. In the "reasoning" field, address the user directly in the second person ("you", "your") — never refer to them as "the user" or in the third person.
 Use ${userCurrency} amounts. Only return the JSON array, no other text.`;
       userPrompt = `Here is my spending data:\n${JSON.stringify(data)}`;
 
@@ -228,7 +228,7 @@ Return: [{ name, icon, type, targetAmount, deadline? }]`;
       userPrompt = "";
 
     } else if (type === "monthly-report") {
-      systemPrompt = `You are a personal finance analyst for the user. Generate a comprehensive monthly financial report. Structure it with clear sections using markdown-style headers:
+      systemPrompt = `You are a personal finance analyst. Generate a comprehensive monthly financial report for the user, addressing them directly in the second person ("you", "your") throughout — never refer to them as "the user" or in the third person. Structure it with clear sections using markdown-style headers:
 
 ## 📊 Monthly Overview
 Summarize income, expenses, net savings with percentage changes.
@@ -251,6 +251,8 @@ Use ${userCurrency} for all amounts. Be specific with numbers. Keep tone profess
     } else if (type === "budget-advisor") {
       useToolCalling = true;
       systemPrompt = `You are an expert personal finance advisor specializing in budgeting methods. Analyze the user's complete financial picture and provide a comprehensive budget recommendation.
+
+Write every human-readable text field you return (methodReason, each insight's title and description, and each dynamic adjustment's action and impact) directly to the user in the second person — use "you" and "your", and never refer to them as "the user" or in the third person.
 
 You MUST call the budget_analysis tool with your analysis. Consider:
 - Monthly income vs expenses ratio
@@ -295,7 +297,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
                 },
                 methodReason: {
                   type: "string",
-                  description: "2-3 sentence explanation of why this method fits the user's spending behavior"
+                  description: "2-3 sentence explanation, written to the user in the second person ('you'/'your'), of why this method fits your spending behavior"
                 },
                 healthScore: {
                   type: "number",
@@ -319,7 +321,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
                     properties: {
                       type: { type: "string", enum: ["warning", "positive", "suggestion"], description: "Type of insight" },
                       title: { type: "string", description: "Short title for the insight" },
-                      description: { type: "string", description: "1-2 sentence detail" }
+                      description: { type: "string", description: "1-2 sentence detail, addressed to the user in the second person ('you'/'your')" }
                     },
                     required: ["type", "title", "description"],
                     additionalProperties: false
@@ -357,7 +359,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
                   items: {
                     type: "object",
                     properties: {
-                      action: { type: "string", description: "Specific actionable adjustment" },
+                      action: { type: "string", description: "Specific actionable adjustment, addressed to the user in the second person ('you'/'your')" },
                       impact: { type: "string", description: "Expected monthly savings or improvement" }
                     },
                     required: ["action", "impact"],
