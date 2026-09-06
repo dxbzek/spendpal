@@ -156,7 +156,14 @@ const Dashboard = () => {
   const leftThisMonth = monthlyBudget - thisMonthExpenses;
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
-  const safeToday = Math.max(0, leftThisMonth / daysLeft);
+  // The budget envelope says what you *planned* to spend; it cannot say what you
+  // are *able* to spend. Cap the allowance at the cash actually on hand so the
+  // card never green-lights a spend the accounts can't cover — on the last day
+  // of the month `daysLeft` is 1, which otherwise drops the entire remaining
+  // budget onto a single day regardless of the balance behind it.
+  const budgetAllowance = Math.max(0, leftThisMonth / daysLeft);
+  const safeToday = Math.min(budgetAllowance, Math.max(0, totalBalance));
+  const cappedByBalance = safeToday < budgetAllowance;
   const todayKey = format(now, 'yyyy-MM-dd');
   const spentToday = useMemo(() => transactions
     .filter(t => isCountableExpense(t) && t.date.slice(0, 10) === todayKey)
@@ -374,7 +381,7 @@ const Dashboard = () => {
               <m.div initial={{ width: 0 }} animate={{ width: `${todayPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
             </div>
             <p className="flex items-center justify-between text-[11.5px] text-muted-foreground mt-2.5">
-              <span className="truncate">{hidden ? '••••' : fmt(spentToday)} spent of {hidden ? '••••' : fmt(safeToday)} daily allowance</span>
+              <span className="truncate">{hidden ? '••••' : fmt(spentToday)} spent of {hidden ? '••••' : fmt(safeToday)} {cappedByBalance ? 'available' : 'daily allowance'}</span>
               <span className="font-semibold text-foreground shrink-0 ml-2">{daysLeft}d left</span>
             </p>
           </Card>
