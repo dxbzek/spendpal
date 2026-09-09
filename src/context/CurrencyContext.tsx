@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { CURRENCY_MAP } from '@/utils/currencies';
+import { formatAmount } from '@/lib/finance/formatAmount';
 import { toast } from 'sonner';
 
 interface CurrencyContextType {
@@ -142,24 +143,26 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const info = CURRENCY_MAP[currency] || CURRENCY_MAP.AED;
   const secondaryInfo = secondaryCurrency ? CURRENCY_MAP[secondaryCurrency] : null;
 
-  // \u202A/\u202C = LTR embedding/pop - prevents Arabic currency symbols (د.إ etc.)
-  // from triggering the Unicode bidi algorithm and flipping number layout.
+  // Amounts are wrapped in an LTR isolate, with the sign outside it, so that an
+  // RTL currency symbol cannot flush a minus to the wrong side of the digits.
+  // See formatAmount() for the full explanation.
   // Memoized so consumers (and their React.memo children) don't re-render on
   // every provider render; non-finite input falls back to 0 rather than "NaN".
   const fmt = useCallback(
-    (n: number) => `\u202A${info.symbol} ${(Number.isFinite(n) ? n : 0).toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`,
+    (n: number) => formatAmount(info.symbol, info.locale, n),
     [info]
   );
 
   const fmtSigned = useCallback((n: number, type: 'income' | 'expense' | 'transfer') => {
-    const prefix = type === 'income' ? '+' : type === 'expense' ? '-' : '';
-    return `\u202A${prefix}${info.symbol} ${(Number.isFinite(n) ? n : 0).toLocaleString(info.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
+    // Transfers carry no sign of their own, so they fall back to the amount's.
+    const prefix = type === 'income' ? '+' : type === 'expense' ? '-' : undefined;
+    return formatAmount(info.symbol, info.locale, n, prefix);
   }, [info]);
 
   const fmtSecondary = useCallback((n: number): string | null => {
     if (!secondaryCurrency || !secondaryInfo || secondaryRate === null) return null;
     const converted = (Number.isFinite(n) ? n : 0) * secondaryRate;
-    return `\u202A${secondaryInfo.symbol} ${converted.toLocaleString(secondaryInfo.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u202C`;
+    return formatAmount(secondaryInfo.symbol, secondaryInfo.locale, converted);
   }, [secondaryCurrency, secondaryInfo, secondaryRate]);
 
   const setCurrency = useCallback((code: string) => {
