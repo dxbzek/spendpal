@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Anthropic from "npm:@anthropic-ai/sdk@0.135.0";
+
+const MODEL = "claude-opus-5-5";
 
 // Always allow all origins. The Authorization header is validated server-side
 // so wildcard CORS does not reduce security here.
@@ -67,8 +70,8 @@ serve(async (req) => {
       });
     }
 
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) {
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: "AI is not available on this server. Please contact support." }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -76,9 +79,8 @@ serve(async (req) => {
 
     let systemPrompt = "";
     let userPrompt = "";
-    let useToolCalling = false;
-    let tools: unknown[] = [];
-    let toolChoice: unknown = undefined;
+    // Set for requests that must come back as JSON matching a schema.
+    let outputSchema: Record<string, unknown> | null = null;
 
     if (type === "summary") {
       systemPrompt = `You are a personal finance assistant. Analyze the user's financial data and write a clear, friendly, 3-4 paragraph monthly summary in plain English. Speak directly to the user in the second person ("you", "your") — never refer to them as "the user" or in the third person. Include:
@@ -249,12 +251,11 @@ Use ${userCurrency} for all amounts. Be specific with numbers. Keep tone profess
       userPrompt = `Generate my monthly financial report:\n${JSON.stringify(data)}`;
 
     } else if (type === "budget-advisor") {
-      useToolCalling = true;
       systemPrompt = `You are an expert personal finance advisor specializing in budgeting methods. Analyze the user's complete financial picture and provide a comprehensive budget recommendation.
 
 Write every human-readable text field you return (methodReason, each insight's title and description, and each dynamic adjustment's action and impact) directly to the user in the second person — use "you" and "your", and never refer to them as "the user" or in the third person.
 
-You MUST call the budget_analysis tool with your analysis. Consider:
+Return your analysis as JSON matching the provided schema. Consider:
 - Monthly income vs expenses ratio
 - Fixed vs variable expense breakdown
 - Spending volatility and patterns (weekend overspending, subscription accumulation, lifestyle inflation)
@@ -281,13 +282,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
 
       userPrompt = `Analyze my complete financial data and recommend the best budgeting strategy:\n${JSON.stringify(data)}`;
 
-      tools = [
-        {
-          type: "function",
-          function: {
-            name: "budget_analysis",
-            description: "Return a comprehensive budget analysis with method recommendation, health score, insights, and simulation results.",
-            parameters: {
+      outputSchema = {
               type: "object",
               properties: {
                 recommendedMethod: {
@@ -370,19 +365,15 @@ For simulation, estimate monthly savings potential if the user adopted each budg
               },
               required: ["recommendedMethod", "methodReason", "healthScore", "healthBreakdown", "insights", "suggestedEnvelopes", "simulation", "dynamicAdjustments"],
               additionalProperties: false
-            }
-          }
-        }
-      ];
-      toolChoice = { type: "function", function: { name: "budget_analysis" } };
+            };
 
     }
 
     const isImage = IMAGE_TYPES.has(type);
 
-    // Build the user message. For image requests, use OpenAI-compatible
-    // multimodal content with a data-URL image_url part.
-    let userMessageContent: unknown = userPrompt;
+    // Build the user message. Images arrive as a base64 data URL from the
+    // client upload, or an https URL.
+    let userContent: Anthropic.Beta.BetaContentBlockParam[] | string = userPrompt;
     if (isImage) {
       const { imageDataUrl, imageUrl, hint } =
         (data ?? {}) as { imageDataUrl?: string; imageUrl?: string; hint?: string };
@@ -392,10 +383,8 @@ For simulation, estimate monthly savings potential if the user adopted each budg
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Only accept data URLs (base64 client upload) or https URLs.
-      const isDataUrl = url.startsWith("data:image/");
-      const isHttpsUrl = url.startsWith("https://");
-      if (!isDataUrl && !isHttpsUrl) {
+      const dataUrl = url.match(/^data:(image\/(?:jpeg|png|gif|webp));base64,(.+)$/);
+      if (!dataUrl && !url.startsWith("https://")) {
         return new Response(JSON.stringify({ error: "Invalid image URL" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -404,109 +393,116 @@ For simulation, estimate monthly savings potential if the user adopted each budg
         type === "categorize-image-budgets" ? "Extract every budget category and its monthly amount from this screenshot." :
         type === "categorize-image-goals"   ? "Extract every savings goal and its target amount from this screenshot." :
                                               "Extract all transactions from this screenshot.";
-      userMessageContent = [
+      userContent = [
+        dataUrl
+          ? { type: "image", source: { type: "base64", media_type: dataUrl[1] as "image/png", data: dataUrl[2] } }
+          : { type: "image", source: { type: "url", url } },
         {
           type: "text",
           text: hint && typeof hint === "string" && hint.length < 500
             ? `${taskLabel} Context from the user: ${hint}`
             : taskLabel,
         },
-        { type: "image_url", image_url: { url } },
       ];
     }
 
-    const requestBody: Record<string, unknown> = {
-      // Vision requests use Groq's Llama 4 Scout (multimodal). Text requests
-      // stay on the text-only 3.3-70B model, which is cheaper and faster.
-      model: isImage ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessageContent },
-      ],
-      stream: type === "summary" || type === "monthly-report",
+    const client = new Anthropic({
+      apiKey: ANTHROPIC_API_KEY,
+      // Stay under the client's own 60s (90s for images) abort.
+      timeout: isImage ? 85_000 : 55_000,
+      maxRetries: 1,
+    });
+
+    const params: Anthropic.Beta.MessageCreateParamsNonStreaming = {
+      model: MODEL,
+      max_tokens: 16000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userContent }],
+      // Extraction and summaries are routine; the budget analysis gets more thought.
+      output_config: outputSchema
+        ? { effort: "medium", format: { type: "json_schema", schema: outputSchema } }
+        : { effort: "low" },
+      // On a policy decline, retry on the server's default fallback model.
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
     };
 
-    if (useToolCalling) {
-      requestBody.tools = tools;
-      requestBody.tool_choice = toolChoice;
-      requestBody.stream = false;
-    }
-
-    const groqController = new AbortController();
-    const groqTimeout = setTimeout(() => groqController.abort(), 25000);
-    let response: Response;
-    try {
-      response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-        signal: groqController.signal,
-      });
-    } catch (fetchErr) {
-      clearTimeout(groqTimeout);
-      if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
-        return new Response(JSON.stringify({ error: "AI request timed out. Please try again." }), {
-          status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw fetchErr;
-    }
-    clearTimeout(groqTimeout);
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI quota exhausted. Please check your Groq API usage limits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     if (type === "summary" || type === "monthly-report") {
-      return new Response(response.body, {
+      const stream = client.beta.messages.stream(params);
+      const encoder = new TextEncoder();
+      const send = (payload: unknown) => encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
+      const body = new ReadableStream({
+        async start(controller) {
+          try {
+            stream.on("text", (text) => controller.enqueue(send({ text })));
+            const final = await stream.finalMessage();
+            if (final.stop_reason === "refusal") controller.enqueue(send({ error: "The AI declined this request." }));
+          } catch (err) {
+            console.error("AI stream error:", err);
+            controller.enqueue(send({ error: "AI service error" }));
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+      return new Response(body, {
         headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
     }
 
-    // Non-streaming responses
-    const result = await response.json();
-
-    // Handle tool calling response for budget-advisor
-    if (useToolCalling) {
-      const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
-      if (toolCall?.function?.arguments) {
-        try {
-          const analysis = JSON.parse(toolCall.function.arguments);
-          return new Response(JSON.stringify({ result: analysis }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        } catch (parseError) {
-          console.error("Failed to parse tool call arguments:", parseError);
-          return new Response(JSON.stringify({ error: "Failed to parse AI analysis" }), {
-            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
+    let message: Anthropic.Beta.BetaMessage;
+    try {
+      message = await client.beta.messages.create(params);
+    } catch (err) {
+      if (err instanceof Anthropic.APIConnectionTimeoutError) {
+        return new Response(JSON.stringify({ error: "AI request timed out. Please try again." }), {
+          status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      // Fallback: try to parse from content
-      const content = result.choices?.[0]?.message?.content || "";
-      return new Response(JSON.stringify({ result: content }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (err instanceof Anthropic.RateLimitError) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
+        console.error("Anthropic auth error:", err.message);
+        return new Response(JSON.stringify({ error: "AI is not available on this server. Please contact support." }), {
+          status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (err instanceof Anthropic.APIError) {
+        console.error("Anthropic API error:", err.status, err.message);
+        return new Response(JSON.stringify({ error: "AI service error" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw err;
+    }
+
+    if (message.stop_reason === "refusal") {
+      return new Response(JSON.stringify({ error: "The AI declined this request." }), {
+        status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const content = result.choices?.[0]?.message?.content || "";
+    const content = message.content
+      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+
+    if (outputSchema) {
+      try {
+        return new Response(JSON.stringify({ result: JSON.parse(content) }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (parseError) {
+        console.error("Failed to parse structured output:", parseError);
+        return new Response(JSON.stringify({ error: "Failed to parse AI analysis" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     return new Response(JSON.stringify({ result: content }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

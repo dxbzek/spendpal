@@ -116,7 +116,7 @@ export interface AdvisorSession {
   created_at: string;
 }
 
-// Minimum interval between any AI requests to prevent Groq quota exhaustion.
+// Minimum interval between any AI requests to avoid hammering the AI API.
 const AI_COOLDOWN_MS = 5_000;
 
 export const useAI = () => {
@@ -185,13 +185,14 @@ export const useAI = () => {
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') break;
           try {
-            const parsed = JSON.parse(jsonStr) as { choices?: Array<{ delta?: { content?: string } }> };
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              fullText += content;
+            const parsed = JSON.parse(jsonStr) as { text?: string; error?: string };
+            if (parsed.error) throw new Error(parsed.error);
+            if (parsed.text) {
+              fullText += parsed.text;
               setSummaryText(fullText);
             }
-          } catch {
+          } catch (err) {
+            if (err instanceof Error && !(err instanceof SyntaxError)) throw err;
             buffer = line + '\n' + buffer;
             break;
           }
@@ -427,7 +428,7 @@ export const useAI = () => {
 
   /**
    * Process a large statement in chunks. Each chunk is sent as a separate AI call
-   * with a 5.5s inter-chunk delay to avoid Groq rate limits. Progress is reported
+   * with a 5.5s inter-chunk delay to stay under API rate limits. Progress is reported
    * via onProgress(currentChunk, totalChunks). Returns merged results or null on
    * unrecoverable error.
    */
