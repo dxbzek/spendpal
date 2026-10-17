@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo.png';
 import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wallet, BarChart3, CreditCard, Layers, CalendarDays } from 'lucide-react';
+import { m } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { LucideIcon } from 'lucide-react';
 
@@ -10,17 +11,22 @@ const NAV_SECTIONS = [
     items: [
       { path: '/', label: 'Home', icon: LayoutDashboard },
       { path: '/transactions', label: 'Transactions', icon: Receipt },
-      { path: '/debt', label: 'Debt', icon: CreditCard },
       { path: '/accounts', label: 'Accounts', icon: Wallet },
+    ],
+  },
+  {
+    label: 'Planning',
+    items: [
+      { path: '/budgets', label: 'Budgets', icon: PiggyBank },
+      { path: '/goals', label: 'Goals', icon: Target },
+      { path: '/debt', label: 'Debt', icon: CreditCard },
       { path: '/installments', label: 'Installments', icon: Layers },
     ],
   },
   {
-    label: 'More',
+    label: 'Analytics',
     items: [
-      { path: '/budgets', label: 'Budgets', icon: PiggyBank },
       { path: '/reports', label: 'Reports', icon: BarChart3 },
-      { path: '/goals', label: 'Goals', icon: Target },
       { path: '/calendar', label: 'Calendar', icon: CalendarDays },
       { path: '/advisor', label: 'AI Advisor', icon: Brain },
     ],
@@ -59,7 +65,13 @@ const NavButton = ({ path: _path, label, icon: Icon, active, onClick, collapsed 
 
   return (
     <div className="relative">
-      {active && <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-primary" />}
+      {active && (
+        <m.div
+          layoutId="sidebar-indicator"
+          className="absolute -left-3 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-primary"
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        />
+      )}
       <button
         onClick={onClick}
         aria-current={active ? 'page' : undefined}

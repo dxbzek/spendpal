@@ -24,7 +24,7 @@ describe("BottomNav More menu", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /close menu/i })).toBeInTheDocument(),
     );
-    expect(screen.getByText("Budgets")).toBeInTheDocument();
+    expect(screen.getByText("Accounts")).toBeInTheDocument();
 
     // Tap the X — the menu must close.
     fireEvent.click(screen.getByRole("button", { name: /close menu/i }));
