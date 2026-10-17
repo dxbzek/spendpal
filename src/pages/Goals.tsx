@@ -106,26 +106,34 @@ const Goals = () => {
     return validMonths > 0 ? totalRate / validMonths : 0;
   }, [transactions, accounts]);
 
+  const [savingProgress, setSavingProgress] = useState(false);
   const handleAddProgress = async () => {
-    if (!progressGoalId || !progressAmount) return;
+    if (!progressGoalId || !progressAmount || savingProgress) return;
     const amount = parseFloat(progressAmount);
     if (isNaN(amount) || amount <= 0) return;
-    if (progressMode === 'withdraw') {
-      await withdrawGoalProgress(progressGoalId, amount);
-    } else {
-      await addGoalProgress(progressGoalId, amount);
-      // Persist the contribution to Supabase.
-      await saveContribution(progressGoalId, amount, progressNote.trim());
+    setSavingProgress(true);
+    try {
+      if (progressMode === 'withdraw') {
+        // The context shows its own "Withdrew …" toast on success.
+        if (!await withdrawGoalProgress(progressGoalId, amount)) return;
+      } else {
+        if (!await addGoalProgress(progressGoalId, amount)) return;
+        // Persist the contribution to Supabase.
+        await saveContribution(progressGoalId, amount, progressNote.trim());
+        toast.success('Progress saved!');
+      }
+    } finally {
+      setSavingProgress(false);
     }
-    toast.success(progressMode === 'withdraw' ? 'Withdrawal recorded' : 'Progress saved!');
     setProgressGoalId(null);
     setProgressAmount('');
     setProgressNote('');
     setProgressMode('add');
   };
 
-  const activeGoals = goals.filter(g => g.status === 'active');
-  const completedGoals = goals.filter(g => g.status !== 'active');
+  // Paused goals stay in the active list (with their Resume button).
+  const activeGoals = goals.filter(g => g.status !== 'completed');
+  const completedGoals = goals.filter(g => g.status === 'completed');
 
   const getDaysRemaining = (deadline?: string) => {
     if (!deadline) return null;
@@ -388,7 +396,7 @@ const Goals = () => {
                 <Input placeholder="e.g. Monthly savings transfer" value={progressNote} onChange={e => setProgressNote(e.target.value)} className="h-10" />
               </div>
             )}
-            <Button onClick={handleAddProgress} className={`w-full ${progressMode === 'withdraw' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'gradient-primary text-primary-foreground'}`}>
+            <Button onClick={handleAddProgress} disabled={savingProgress} className={`w-full ${progressMode === 'withdraw' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'gradient-primary text-primary-foreground'}`}>
               {progressMode === 'withdraw' ? 'Withdraw' : 'Save Progress'}
             </Button>
           </div>

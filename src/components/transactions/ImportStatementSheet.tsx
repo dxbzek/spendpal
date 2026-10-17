@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -173,6 +174,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   const [imageName, setImageName] = useState('');
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState('');
+  const [importing, setImporting] = useState(false);
   const [lastFailedText, setLastFailedText] = useState<string | null>(null);
   const [lastFailedImage, setLastFailedImage] = useState<string | null>(null);
 
@@ -368,6 +370,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
   };
 
   const handleImport = async () => {
+    if (importing) return;
     const selected = parsed.filter(r => r.selected);
     if (selected.length === 0) { toast.error('No transactions selected'); return; }
 
@@ -376,7 +379,8 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       toast.warning(`Importing ${selectedDupes.length} row${selectedDupes.length > 1 ? 's' : ''} flagged as potential duplicates`);
     }
 
-    await bulkAddTransactions(selected.map(r => ({
+    setImporting(true);
+    const ok = await bulkAddTransactions(selected.map(r => ({
       type: r.type,
       amount: Math.abs(r.amount),
       currency,
@@ -390,14 +394,17 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
       // income/expense everywhere that now gates on isInternal.
       isInternal: r.category === 'Transfer',
     })));
+    if (!ok) { setImporting(false); return; }
 
     navigator.vibrate?.(100);
     toast.success(`Imported ${selected.length} transactions`);
-    
-    // Show balance confirmation dialog
-    const account = accounts.find(a => a.id === accountId);
-    if (account) {
-      setBalanceInput(String(account.balance));
+
+    // The import moved the balance (DB trigger), and `accounts` in this
+    // closure predates it, so read the fresh value to pre-fill the check.
+    const { data: fresh } = await supabase.from('accounts').select('balance').eq('id', accountId).single();
+    setImporting(false);
+    if (fresh) {
+      setBalanceInput(String(Number(fresh.balance)));
       setShowBalanceDialog(true);
     } else {
       resetAndClose();
@@ -612,7 +619,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
               </div>
               <div className="flex gap-3 pt-4 sticky bottom-0 bg-card pb-1">
                 <Button variant="outline" onClick={() => setStep('upload')} className="flex-1">Back</Button>
-                <Button onClick={handleImport} className="flex-1 gradient-primary text-primary-foreground">
+                <Button onClick={handleImport} disabled={importing} className="flex-1 gradient-primary text-primary-foreground">
                   Import {parsed.filter(r => r.selected).length}
                 </Button>
               </div>
@@ -627,7 +634,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
             <DialogTitle>Confirm Account Balance</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Since these are historical transactions, your balance wasn't adjusted. What is your current account balance?
+            The import changed this account's balance to the amount below. If your bank shows something different, enter the real figure.
           </p>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-muted-foreground">{symbol}</span>

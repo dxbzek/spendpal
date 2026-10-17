@@ -39,7 +39,7 @@ function loadTemplates(): BudgetTemplate[] {
 }
 
 const Budgets = () => {
-  const { budgets, transactions, removeBudget, bulkRemoveBudgets, addBudget, loading } = useFinance();
+  const { budgets, transactions, removeBudget, bulkRemoveBudgets, addBudget, updateBudget, loading } = useFinance();
   const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
   const { hidden, mask } = useBalanceMask();
@@ -117,11 +117,11 @@ const Budgets = () => {
       for (const b of lastMonthBudgets) {
         const exists = budgets.some(cb => cb.month === currentMonthKey && cb.category === b.category);
         if (!exists) {
-          await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period, month: currentMonthKey });
-          copied++;
+          if (await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period, month: currentMonthKey })) copied++;
         }
       }
-      toast.success(copied > 0 ? `Copied ${copied} budget${copied > 1 ? 's' : ''} from ${lastMonthLabel}` : 'All budgets already exist for this month');
+      if (copied > 0) toast.success(`Copied ${copied} budget${copied > 1 ? 's' : ''} from ${lastMonthLabel}`);
+      else if (hasCopiedLastMonth) toast.info('All budgets already exist for this month');
     } catch {
       toast.error('Failed to copy budgets');
     } finally {
@@ -139,11 +139,11 @@ const Budgets = () => {
         if (!exists) {
           const unspent = Math.max(0, b.amount - b.spent);
           const newAmount = Math.round((b.amount + unspent) * 100) / 100;
-          await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: newAmount, period: b.period, month: currentMonthKey });
-          rolled++;
+          if (await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: newAmount, period: b.period, month: currentMonthKey })) rolled++;
         }
       }
-      toast.success(rolled > 0 ? `Rolled over ${rolled} budget${rolled > 1 ? 's' : ''} with unspent amounts added` : 'All budgets already exist for this month');
+      if (rolled > 0) toast.success(`Rolled over ${rolled} budget${rolled > 1 ? 's' : ''} with unspent amounts added`);
+      else if (hasCopiedLastMonth) toast.info('All budgets already exist for this month');
     } catch {
       toast.error('Failed to roll over budgets');
     } finally {
@@ -153,17 +153,41 @@ const Budgets = () => {
 
   const handleGenerateSuggestions = async () => {
     const spendingData = transactions.filter(t => isCountableExpense(t)).map(t => ({ category: t.category, amount: t.amount, date: t.date }));
+    if (spendingData.length === 0) { toast.info('Log some expenses first so there is spending to base suggestions on.'); return; }
     const result = await generateBudgetSuggestions(spendingData);
     if (result.length > 0) setSuggestions(result);
+    else toast.info("Couldn't get suggestions this time. Try again in a moment.");
+  };
+
+  // Apply one AI suggestion: update this month's budget for the category, or create it.
+  const [applyingSuggestion, setApplyingSuggestion] = useState<string | null>(null);
+  const applySuggestion = async (s: BudgetSuggestion) => {
+    setApplyingSuggestion(s.category);
+    try {
+      const existing = budgets.find(b => b.month === currentMonthKey && b.category === s.category);
+      const icon = existing?.categoryIcon
+        ?? transactions.find(t => t.category === s.category)?.categoryIcon
+        ?? '📌';
+      const ok = existing
+        ? await updateBudget({ ...existing, amount: s.suggestedAmount })
+        : await addBudget({ category: s.category, categoryIcon: icon, amount: s.suggestedAmount, period: 'monthly', month: currentMonthKey });
+      if (ok) {
+        toast.success(`${s.category} budget set to ${fmt(s.suggestedAmount)}`);
+        setSuggestions(prev => prev.filter(x => x.category !== s.category));
+      }
+    } finally {
+      setApplyingSuggestion(null);
+    }
   };
 
   const saveTemplate = () => {
-    if (budgets.length === 0) return;
+    if (thisMonthBudgets.length === 0) return;
     const monthKey = format(now, 'MMMM yyyy');
     const template: BudgetTemplate = {
       name: monthKey,
       savedAt: new Date().toISOString(),
-      items: budgets.map(b => ({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period })),
+      // Only the month in view: saving every month's budgets repeated each category.
+      items: thisMonthBudgets.map(b => ({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period })),
     };
     const updated = [template, ...templates.filter(t => t.name !== monthKey)].slice(0, 12);
     setTemplates(updated);
@@ -177,15 +201,17 @@ const Budgets = () => {
     try {
       let addedCount = 0;
       let skippedCount = 0;
+      // `budgets` doesn't see rows added during this loop, so track them here
+      // (older templates can list the same category more than once).
+      const taken = new Set(budgets.filter(b => b.month === monthKey).map(b => b.category));
       for (const item of template.items) {
-        const exists = budgets.find(b => b.category === item.category && b.month === monthKey);
-        if (exists) { skippedCount++; continue; }
-        await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as 'monthly' | 'weekly', month: monthKey });
-        addedCount++;
+        if (taken.has(item.category)) { skippedCount++; continue; }
+        taken.add(item.category);
+        if (await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as 'monthly' | 'weekly', month: monthKey })) addedCount++;
       }
       if (addedCount === 0 && skippedCount > 0) {
         toast.info('All budgets from this template already exist for this month');
-      } else {
+      } else if (addedCount > 0) {
         const skippedNote = skippedCount > 0 ? ` (${skippedCount} already existed)` : '';
         toast.success(`Added ${addedCount} budget${addedCount !== 1 ? 's' : ''} from template${skippedNote}`);
       }
@@ -442,8 +468,18 @@ const Budgets = () => {
                     <span className="text-sm font-heading text-primary">{mask(fmt(s.suggestedAmount))}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{s.reasoning}</p>
+                  <button onClick={() => applySuggestion(s)} disabled={applyingSuggestion !== null}
+                    className="mt-2 text-xs font-medium text-primary disabled:opacity-50">
+                    {applyingSuggestion === s.category ? 'Applying…' : 'Apply'}
+                  </button>
                 </div>
               ))}
+              <div className="flex gap-3 pt-1">
+                <button onClick={handleGenerateSuggestions} disabled={aiLoading} className="text-xs font-medium text-primary disabled:opacity-50">
+                  {aiLoading ? 'Analyzing…' : 'Regenerate'}
+                </button>
+                <button onClick={() => setSuggestions([])} className="text-xs font-medium text-muted-foreground">Dismiss</button>
+              </div>
             </div>
           ) : (
             <>

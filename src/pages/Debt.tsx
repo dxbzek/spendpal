@@ -18,6 +18,22 @@ const Debt = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aprs, setAprs] = useState<Record<string, number>>({});
   const [payments, setPayments] = useState<Record<string, number>>({});
+  // What's typed while editing, so a field can be cleared and retyped without
+  // snapping back to the default the moment it's empty.
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const setNumber = (
+    key: string, raw: string,
+    set: React.Dispatch<React.SetStateAction<Record<string, number>>>, id: string,
+  ) => {
+    setDraft(d => ({ ...d, [key]: raw }));
+    const v = parseFloat(raw);
+    set(m => {
+      const next = { ...m };
+      if (isNaN(v)) delete next[id]; else next[id] = v;
+      return next;
+    });
+  };
+  const clearDraft = (key: string) => setDraft(d => { const n = { ...d }; delete n[key]; return n; });
   const [strategyTab, setStrategyTab] = useState<'avalanche' | 'snowball'>('avalanche');
   const [extraBudget, setExtraBudget] = useState(200);
 
@@ -271,8 +287,9 @@ const Debt = () => {
                                 type="number"
                                 min="1"
                                 step="10"
-                                value={payment}
-                                onChange={e => { const v = parseFloat(e.target.value); setPayments(p => ({ ...p, [debt.id]: isNaN(v) ? minPayment(debt.owed) : v })); }}
+                                value={draft[`pay:${debt.id}`] ?? payment}
+                                onChange={e => setNumber(`pay:${debt.id}`, e.target.value, setPayments, debt.id)}
+                                onBlur={() => clearDraft(`pay:${debt.id}`)}
                                 className="h-9 text-sm"
                               />
                             </div>
@@ -283,9 +300,9 @@ const Debt = () => {
                                 min="0"
                                 max="100"
                                 step="0.5"
-                                value={apr}
-                                onChange={e => { const v = parseFloat(e.target.value); setAprs(a => ({ ...a, [debt.id]: isNaN(v) ? DEFAULT_APR : v })); }}
-                                onBlur={() => saveApr(debt.id)}
+                                value={draft[`apr:${debt.id}`] ?? apr}
+                                onChange={e => setNumber(`apr:${debt.id}`, e.target.value, setAprs, debt.id)}
+                                onBlur={() => { clearDraft(`apr:${debt.id}`); saveApr(debt.id); }}
                                 className="h-9 text-sm"
                               />
                               {aprIsGuess(debt.id, debt.apr) && (

@@ -133,8 +133,9 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
         {children}
       </div>
 
-      {/* Keyboard/pointer fallback - overflow menu for non-touch users */}
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/tx:opacity-100 focus-within:opacity-100 transition-opacity">
+      {/* Keyboard/pointer fallback - overflow menu for non-touch users. Hidden
+          on touch screens, where it sat invisibly over the row's trash button. */}
+      <div className="hidden [@media(hover:hover)]:block absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/tx:opacity-100 focus-within:opacity-100 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

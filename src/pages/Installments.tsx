@@ -100,11 +100,20 @@ const Installments = () => {
       .sort((a, b) => b.date.localeCompare(a.date))[0];
 
   /** Increment or decrement currentInstallment on the latest tx for a plan */
+  // One update per plan at a time: `next` is computed from current state, so a
+  // second tap before the first save lands would just repeat the same value.
+  const [updatingPlan, setUpdatingPlan] = useState<string | null>(null);
   const updateProgress = async (plan: InstallmentPlan, delta: number) => {
+    if (updatingPlan === plan.key) return;
     const tx = getLatestTx(plan);
     if (!tx) return;
     const next = Math.max(0, Math.min(plan.totalInstallments, (tx.currentInstallment ?? 0) + delta));
-    await updateTransaction({ ...tx, currentInstallment: next });
+    setUpdatingPlan(plan.key);
+    try {
+      await updateTransaction({ ...tx, currentInstallment: next });
+    } finally {
+      setUpdatingPlan(null);
+    }
   };
 
   const handleDeletePlan = async () => {
@@ -143,7 +152,8 @@ const Installments = () => {
   // ── Detail view ───────────────────────────────────────────────────────────
 
   if (selectedPlan) {
-    const plan = selectedPlan;
+    // Live plan data, so every figure follows the +/- stepper, not just the stepper.
+    const plan = plans.find(p => p.key === selectedPlan.key) ?? selectedPlan;
     const remainingInstallments = Math.max(0, plan.totalInstallments - plan.paidInstallments);
     const remainingPayments = round2(remainingInstallments * plan.amountPerInstallment);
     const paidPayments = round2(plan.paidInstallments * plan.amountPerInstallment);
@@ -170,8 +180,7 @@ const Installments = () => {
     const estimatedStartMonth = addMonths(startMonth, -(effectivePaidInstallments - 1));
     const estimatedEndMonth = addMonths(estimatedStartMonth, plan.totalInstallments - 1);
 
-    // Use live plan data so progress stepper reflects real-time updates
-    const livePlan = plans.find(p => p.key === plan.key) ?? plan;
+    const livePlan = plan;
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 pb-28">

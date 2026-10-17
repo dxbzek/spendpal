@@ -58,7 +58,7 @@ export const useCategories = () => {
   })();
 
   const addCategory = useCallback(async (name: string, icon: string, type: 'expense' | 'income' | 'both' = 'both') => {
-    if (!user) return;
+    if (!user) return false;
     const { error } = await supabase.from('custom_categories').insert({
       user_id: user.id,
       name: name.trim(),
@@ -69,10 +69,11 @@ export const useCategories = () => {
     if (error) {
       if (error.code === '23505') toast.error('Category already exists');
       else toast.error(error.message);
-      return;
+      return false;
     }
     toast.success('Category added');
     await fetchCustom();
+    return true;
   }, [user, customCategories.length, fetchCustom]);
 
   const updateCategory = useCallback(async (id: string, name: string, icon: string, type?: 'expense' | 'income' | 'both') => {

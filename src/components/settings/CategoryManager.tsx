@@ -68,7 +68,8 @@ const CategoryManager = () => {
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
-    await addCategory(newName, newIcon, newType);
+    // Keep the form open (and the typed name) if the add failed.
+    if (!await addCategory(newName, newIcon, newType)) return;
     setNewName('');
     setNewIcon('📌');
     setNewType('both');
@@ -102,8 +103,8 @@ const CategoryManager = () => {
     try {
       const ids = transactions.filter(t => t.category === sourceName).map(t => t.id);
       const matchingBudgets = budgets.filter(b => b.category === sourceName);
-      await Promise.all([
-        ids.length > 0 ? bulkUpdateCategory(ids, target.name, target.icon) : Promise.resolve(),
+      const results = await Promise.all([
+        ids.length > 0 ? bulkUpdateCategory(ids, target.name, target.icon) : Promise.resolve(true),
         ...matchingBudgets.map(b => {
           // If the target category already has a budget for the same
           // period, reassigning would create a second budget row for the
@@ -117,6 +118,11 @@ const CategoryManager = () => {
             : updateBudget({ ...b, category: target.name, categoryIcon: target.icon });
         }),
       ]);
+      // Don't delete the source category while anything still points at it.
+      if (results.some(ok => !ok)) {
+        toast.error(`Couldn't move everything from "${sourceName}". Nothing was deleted; try the merge again.`);
+        return;
+      }
       const custom = customCategories.find(c => c.name === sourceName);
       if (custom?.id) await removeCategory(custom.id);
       toast.success(`Merged "${sourceName}" into "${target.name}"`);
@@ -274,19 +280,19 @@ const CategoryManager = () => {
                     setDefaultNewName(item.name);
                   }
                 }}
-                  className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
+                  className="md:opacity-0 md:group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
                   <Pencil size={12} />
                 </button>
                 {item.type === 'custom' && (
                   <button onClick={() => { setMergingName(item.name); setMergeTarget(''); }}
                     title="Merge into another category"
-                    className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
+                    className="md:opacity-0 md:group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
                     <Combine size={12} />
                   </button>
                 )}
                 {item.type === 'custom' && (
                   <button onClick={() => setDeleteId(item.id!)}
-                    className="opacity-0 group-hover:opacity-100 active:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">
+                    className="md:opacity-0 md:group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">
                     <Trash2 size={12} />
                   </button>
                 )}

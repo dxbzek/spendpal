@@ -96,7 +96,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[52] bg-black/30"
+                className="fixed inset-0 z-[44] bg-black/30"
                 onPointerDown={(e) => { e.stopPropagation(); setShowMore(false); }}
               />
 
@@ -161,7 +161,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
       )}
 
       {/* Bottom bar */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[54] bg-card border-t border-border safe-bottom">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] bg-card border-t border-border safe-bottom">
         <div className="flex items-end justify-evenly max-w-lg mx-auto h-[68px] px-2 pb-1">
           {NAV_ITEMS_LEFT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />

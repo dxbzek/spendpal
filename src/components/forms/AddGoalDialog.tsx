@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO, startOfDay } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Goal } from '@/types/finance';
@@ -53,7 +53,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
         setCustomIcon('🎯');
       }
       setTargetAmount(editGoal?.targetAmount?.toString() || '');
-      setDeadline(editGoal?.deadline ? new Date(editGoal.deadline) : undefined);
+      setDeadline(editGoal?.deadline ? parseISO(editGoal.deadline) : undefined);
     }
   }, [open, editGoal]);
 
@@ -83,12 +83,9 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
         deadline: deadline ? format(deadline, 'yyyy-MM-dd') : undefined,
         status: (editGoal?.status || 'active') as 'active' | 'completed' | 'paused',
       };
-      if (isEdit) {
-        await updateGoal({ ...data, id: editGoal.id });
-      } else {
-        await addGoal(data);
-      }
-      onOpenChange(false);
+      const ok = isEdit ? await updateGoal({ ...data, id: editGoal.id }) : await addGoal(data);
+      // Keep the dialog (and the typed values) open when the save failed.
+      if (ok) onOpenChange(false);
     } finally {
       setSubmitting(false);
     }
@@ -158,7 +155,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={deadline} onSelect={setDeadline} disabled={(date) => date < new Date()} initialFocus />
+                <Calendar mode="single" selected={deadline} onSelect={setDeadline} disabled={(date) => date < startOfDay(new Date())} initialFocus />
               </PopoverContent>
             </Popover>
             {deadline && (

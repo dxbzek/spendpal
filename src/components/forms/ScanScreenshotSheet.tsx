@@ -160,54 +160,81 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
     }
   };
 
+  const [applying, setApplying] = useState(false);
+
   const handleApplyBudgets = async () => {
+    if (applying) return;
     const selected = budgetRows.filter(r => r.selected);
     if (selected.length === 0) { toast.error('Select at least one row to apply.'); return; }
+    if (selected.some(r => !(r.amount > 0))) { toast.error('Every selected budget needs an amount above 0.'); return; }
     const monthKey = format(new Date(), 'yyyy-MM');
 
+    setApplying(true);
     let createdCategories = 0;
-    for (const row of selected) {
-      if (row.isNewCategory) {
-        try {
-          await addCategory(row.category, row.categoryIcon, 'expense');
-          createdCategories++;
-        } catch (e) {
-          // Non-fatal - the budget still writes even if the category create fails
-          logger.error('addCategory failed during scan', e);
+    const failed = new Set<BudgetRow>();
+    try {
+      for (const row of selected) {
+        if (row.isNewCategory) {
+          try {
+            await addCategory(row.category, row.categoryIcon, 'expense');
+            createdCategories++;
+          } catch (e) {
+            // Non-fatal - the budget still writes even if the category create fails
+            logger.error('addCategory failed during scan', e);
+          }
         }
+        const ok = await addBudget({
+          category: row.category,
+          categoryIcon: row.categoryIcon,
+          amount: row.amount,
+          period: 'monthly',
+          month: monthKey,
+        });
+        if (!ok) failed.add(row);
       }
-      await addBudget({
-        category: row.category,
-        categoryIcon: row.categoryIcon,
-        amount: row.amount,
-        period: 'monthly',
-        month: monthKey,
-      });
+    } finally {
+      setApplying(false);
     }
-    toast.success(
-      createdCategories > 0
-        ? `Added ${selected.length} budget${selected.length > 1 ? 's' : ''} (created ${createdCategories} new categor${createdCategories > 1 ? 'ies' : 'y'})`
-        : `Added ${selected.length} budget${selected.length > 1 ? 's' : ''}`
-    );
-    handleClose(false);
+    const added = selected.length - failed.size;
+    if (added > 0) {
+      toast.success(
+        createdCategories > 0
+          ? `Added ${added} budget${added > 1 ? 's' : ''} (created ${createdCategories} new categor${createdCategories > 1 ? 'ies' : 'y'})`
+          : `Added ${added} budget${added > 1 ? 's' : ''}`
+      );
+    }
+    // Keep only the rows that failed so they can be fixed and retried.
+    if (failed.size === 0) handleClose(false);
+    else setBudgetRows(rs => rs.filter(r => !r.selected || failed.has(r)));
   };
 
   const handleApplyGoals = async () => {
+    if (applying) return;
     const selected = goalRows.filter(r => r.selected);
     if (selected.length === 0) { toast.error('Select at least one row to apply.'); return; }
-    for (const row of selected) {
-      await addGoal({
-        name: row.name,
-        icon: row.icon,
-        type: row.type,
-        targetAmount: row.targetAmount,
-        savedAmount: 0,
-        deadline: row.deadline,
-        status: 'active',
-      });
+    if (selected.some(r => !(r.targetAmount > 0))) { toast.error('Every selected goal needs a target above 0.'); return; }
+    setApplying(true);
+    const failed = new Set<GoalRow>();
+    try {
+      for (const row of selected) {
+        const ok = await addGoal({
+          name: row.name,
+          icon: row.icon,
+          type: row.type,
+          targetAmount: row.targetAmount,
+          savedAmount: 0,
+          deadline: row.deadline,
+          status: 'active',
+        });
+        if (!ok) failed.add(row);
+      }
+    } finally {
+      setApplying(false);
     }
-    toast.success(`Added ${selected.length} goal${selected.length > 1 ? 's' : ''}`);
-    handleClose(false);
+    const added = selected.length - failed.size;
+    if (added > 0) toast.success(`Added ${added} goal${added > 1 ? 's' : ''}`);
+    if (failed.size === 0) handleClose(false);
+    else setGoalRows(rs => rs.filter(r => !r.selected || failed.has(r)));
   };
 
   const title = target === 'budget' ? 'Scan budget screenshot' : 'Scan goals screenshot';
@@ -315,7 +342,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
             </div>
             <DialogFooter className="gap-2">
               <Button variant="ghost" onClick={() => setStep('upload')}>Back</Button>
-              <Button onClick={handleApplyBudgets} className="gradient-primary text-primary-foreground">
+              <Button onClick={handleApplyBudgets} disabled={applying} className="gradient-primary text-primary-foreground">
                 <Check size={16} className="mr-2" /> Apply {budgetRows.filter(r => r.selected).length}
               </Button>
             </DialogFooter>
@@ -357,7 +384,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
             </div>
             <DialogFooter className="gap-2">
               <Button variant="ghost" onClick={() => setStep('upload')}>Back</Button>
-              <Button onClick={handleApplyGoals} className="gradient-primary text-primary-foreground">
+              <Button onClick={handleApplyGoals} disabled={applying} className="gradient-primary text-primary-foreground">
                 <Check size={16} className="mr-2" /> Apply {goalRows.filter(r => r.selected).length}
               </Button>
             </DialogFooter>
