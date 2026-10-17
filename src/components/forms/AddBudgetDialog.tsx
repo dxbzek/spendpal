@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,9 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const isEdit = !!editBudget;
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
+  // Unspent amount currently folded into `amount` by the rollover switch, so
+  // toggling it off takes it back out instead of stacking on every toggle.
+  const appliedRollover = useRef(0);
   const [period, setPeriod] = useState<'monthly' | 'weekly'>('monthly');
   const [rollover, setRollover] = useState(false);
   const [isFixed, setIsFixed] = useState(false);
@@ -43,6 +46,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
     if (open) {
       setCategory(editBudget?.category || '');
       setAmount(editBudget?.amount?.toString() || '');
+      appliedRollover.current = 0;
       setPeriod(editBudget?.period || 'monthly');
       setIsFixed(editBudget?.isFixed ?? false);
       setRollover(false);
@@ -100,13 +104,12 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
 
   // When rollover toggles (or unspent amount changes), update amount
   useEffect(() => {
-    if (!rollover || !lastMonthUnspent || isEdit) return;
-    const base = parseFloat(amount) || 0;
-    if (lastMonthUnspent > 0) {
-      setAmount((base + lastMonthUnspent).toFixed(2));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rollover, lastMonthUnspent]);
+    const target = rollover && !isEdit && lastMonthUnspent && lastMonthUnspent > 0 ? lastMonthUnspent : 0;
+    const delta = target - appliedRollover.current;
+    if (delta === 0) return;
+    appliedRollover.current = target;
+    setAmount(a => Math.max(0, (parseFloat(a) || 0) + delta).toFixed(2));
+  }, [rollover, lastMonthUnspent, isEdit]);
 
   const handleSubmit = async () => {
     if (!category || !amount || submitting) return;
@@ -126,15 +129,15 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
         categoryIcon: selectedCat?.icon || '📌',
         amount: parsedAmount,
         period,
-        month: format(new Date(), 'yyyy-MM'),
+        // Editing keeps the budget's own month: a carried-forward budget from
+        // last month must not suddenly claim to be this month's.
+        month: isEdit ? editBudget.month : format(new Date(), 'yyyy-MM'),
         isFixed,
       };
-      if (isEdit) {
-        await updateBudget({ ...data, id: editBudget.id, spent: editBudget.spent });
-      } else {
-        await addBudget(data);
-      }
-      onOpenChange(false);
+      const ok = isEdit
+        ? await updateBudget({ ...data, id: editBudget.id, spent: editBudget.spent })
+        : await addBudget(data);
+      if (ok) onOpenChange(false);
     } finally {
       setSubmitting(false);
     }

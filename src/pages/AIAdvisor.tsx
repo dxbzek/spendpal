@@ -254,20 +254,23 @@ const AIAdvisor = () => {
     if (!analysis?.suggestedEnvelopes) return;
     setApplyingEnvelopes(true);
     try {
+      let created = 0, failed = 0;
       for (const env of analysis.suggestedEnvelopes) {
         // Check if budget already exists for this category this month
         const existing = budgets.find(b => b.category === env.category && b.month === monthKey);
         if (!existing) {
-          await addBudget({
+          const ok = await addBudget({
             category: env.category,
             categoryIcon: env.icon,
             amount: env.amount,
             period: 'monthly',
             month: monthKey,
           });
+          if (ok) created++; else failed++;
         }
       }
-      toast.success('Budget envelopes created! Check your Budgets page.');
+      if (created > 0) toast.success(`${created} budget envelope${created > 1 ? 's' : ''} created. Check your Budgets page.`);
+      else if (failed === 0) toast.info('Budgets already exist for this month. Check your Budgets page.');
     } catch {
       toast.error('Failed to create some envelopes');
     } finally {
@@ -667,20 +670,22 @@ const AIAdvisor = () => {
                     }
                     setApplyingEnvelopes(true);
                     try {
-                      let created = 0;
+                      let created = 0, failed = 0;
                       for (const item of toApply) {
                         const existing = budgets.find(b => b.category === item.category && b.month === monthKey);
                         if (!existing) {
-                          await addBudget({
+                          const ok = await addBudget({
                             category: item.category,
                             categoryIcon: item.categoryIcon,
                             amount: item.amount,
                             period: 'monthly',
                             month: monthKey,
                           });
-                          created++;
+                          if (ok) created++; else failed++;
                         }
                       }
+                      // Every insert failed: stay here (the errors are already toasted).
+                      if (created === 0 && failed > 0) return;
                       if (created === 0) {
                         toast.info('Budgets already exist for this month — check your Budgets page');
                       } else {

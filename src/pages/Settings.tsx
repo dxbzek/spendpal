@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Bell } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
 import { useNavigate } from 'react-router-dom';
@@ -52,6 +52,8 @@ const SecondaryCurrencyCard = () => {
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input type="text" placeholder="Search currencies…" value={searchVal}
                   onChange={e => setSearchVal(e.target.value)}
+                  // Radix Select's typeahead would steal focus on every keystroke.
+                  onKeyDown={e => e.stopPropagation()}
                   className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
               </div>
             </div>
@@ -131,15 +133,11 @@ const DataBackupCard = () => {
     }
 
     try {
-      // 2. Delete existing data, checking each result for errors.
-      const [delTx, delBgt, delGoal, delAcc] = await Promise.all([
-        supabase.from('transactions').delete().eq('user_id', user.id),
-        supabase.from('budgets').delete().eq('user_id', user.id),
-        supabase.from('goals').delete().eq('user_id', user.id),
-        supabase.from('accounts').delete().eq('user_id', user.id),
-      ]);
-      for (const res of [delTx, delBgt, delGoal, delAcc]) {
-        if (res.error) throw res.error;
+      // 2. Delete existing data one table at a time (in parallel, deleting
+      // accounts while transactions are going can deadlock on the balance trigger).
+      for (const table of ['transactions', 'budgets', 'goals', 'accounts'] as const) {
+        const { error } = await supabase.from(table).delete().eq('user_id', user.id);
+        if (error) throw error;
       }
 
       // 3. Re-insert accounts
@@ -149,7 +147,9 @@ const DataBackupCard = () => {
             user_id: user.id,
             name: String(a.name),
             type: a.type as 'cash' | 'debit' | 'credit',
-            balance: Number(a.balance),
+            // Start at 0: re-inserting the transactions below replays them onto
+            // the balance via the DB trigger. The exported balance is set after.
+            balance: 0,
             currency: String(a.currency),
             icon: String(a.icon),
             credit_limit: a.creditLimit != null ? Number(a.creditLimit) : null,
@@ -200,6 +200,15 @@ const DataBackupCard = () => {
           const { error } = await supabase.from('transactions').insert(mapped);
           if (error) throw error;
         }
+      }
+
+      // 5b. Put each account back on its exported balance (the trigger's replay
+      // only matches it if the backup held the account's full history).
+      for (const old of data.accounts) {
+        const newId = accountMap[old.id as string];
+        if (!newId) continue;
+        const { error } = await supabase.from('accounts').update({ balance: Number(old.balance) }).eq('id', newId);
+        if (error) throw error;
       }
 
       // 6. Re-insert budgets
@@ -414,7 +423,7 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
   }, [userId]);
 
   const handleSave = async () => {
-    if (notifySms && phone && !/^\+[1-9]\d{6,14}$/.test(phone)) {
+    if (notifySms && !/^\+[1-9]\d{6,14}$/.test(phone.trim())) {
       toast.error('Enter a valid phone number in international format, e.g. +971501234567');
       return;
     }
@@ -532,7 +541,6 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
-  const [monthlyIncome, setMonthlyIncome] = useState(() => localStorage.getItem('spendpal_monthly_income') || '');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
@@ -622,7 +630,7 @@ const Settings = () => {
     <div className="px-5 md:px-8 pt-12 pb-8 max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
+        <button onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <h1 className="text-2xl font-heading">Settings</h1>
@@ -695,6 +703,7 @@ const Settings = () => {
                         placeholder="Search currencies…"
                         value={currencySearch}
                         onChange={e => setCurrencySearch(e.target.value)}
+                        onKeyDown={e => e.stopPropagation()}
                         className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
@@ -712,45 +721,6 @@ const Settings = () => {
             <Button onClick={handleSave} disabled={saving} className="w-full h-12 gradient-primary text-primary-foreground">
               {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
             </Button>
-          </div>
-        </section>
-
-        {/* Financial */}
-        <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Financial</p>
-          <div className="bg-card rounded-2xl p-5 card-shadow">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0 mt-0.5">
-                <Wallet size={17} className="text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Monthly Income</p>
-                <p className="text-xs text-muted-foreground mb-3">Used to show how much of your income you're projected to spend</p>
-                <Input
-                  type="number"
-                  placeholder="e.g. 15000"
-                  value={monthlyIncome}
-                  onChange={e => setMonthlyIncome(e.target.value)}
-                  className="h-11"
-                  min="0"
-                />
-                <Button
-                  size="sm"
-                  className="mt-2 gradient-primary text-primary-foreground"
-                  onClick={() => {
-                    const val = parseFloat(monthlyIncome);
-                    if (monthlyIncome === '' || (!isNaN(val) && val >= 0)) {
-                      localStorage.setItem('spendpal_monthly_income', monthlyIncome);
-                      toast.success('Monthly income saved');
-                    } else {
-                      toast.error('Please enter a valid income amount');
-                    }
-                  }}
-                >
-                  Save
-                </Button>
-              </div>
-            </div>
           </div>
         </section>
 

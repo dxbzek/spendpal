@@ -47,7 +47,8 @@ const TYPES: { value: TransactionType; label: string }[] = [
 const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, recurringMode }: Props) => {
-  const { accounts, transactions, goals, addTransaction, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
+  const { accounts, transactions, goals, addTransaction, addTransfer, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
+  const [submitting, setSubmitting] = useState(false);
   const { currency, fmt } = useCurrency();
   const { getCategoriesForType, refresh: refreshCategories } = useCategories();
   const [type, setType] = useState<TransactionType>('expense');
@@ -183,8 +184,21 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       if (!accountId) { toast.error('Please select an account'); return; }
       if (!toAccountId) { toast.error('Please select a destination account'); return; }
       if (accountId === toAccountId) { toast.error('Source and destination accounts must be different'); return; }
+      // Both halves go in as one insert, so a failure can't leave half a
+      // transfer behind; the original pair is only removed once it succeeded.
+      const fromName = accounts.find(a => a.id === accountId)?.name || 'account';
+      const toName = accounts.find(a => a.id === toAccountId)?.name || 'account';
+      const saved = await addTransfer({
+        fromAccountId: accountId,
+        toAccountId,
+        amount: parsedTransferAmount,
+        currency,
+        date,
+        merchant: merchant || 'Transfer',
+        note: `${fromName} → ${toName}`,
+      });
+      if (!saved) return;
       if (isEditing) {
-        // Remove both halves of the original transfer pair to avoid orphaned transactions
         const partner = transactions.find(t =>
           t.type === 'income' &&
           t.category === 'Transfer' &&
@@ -195,38 +209,6 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
         await removeTransaction(editTransaction.id);
         if (partner) await removeTransaction(partner.id);
       }
-      const transferNote = note || `Transfer to ${accounts.find(a => a.id === toAccountId)?.name || 'account'}`;
-      const transferNoteIn = note || `Transfer from ${accounts.find(a => a.id === accountId)?.name || 'account'}`;
-      await addTransaction({
-        type: 'expense',
-        amount: parseFloat(amount),
-        currency,
-        category: 'Transfer',
-        categoryIcon: '🔁',
-        merchant: merchant || 'Transfer',
-        accountId,
-        date,
-        note: transferNote,
-        isRecurring: false,
-        totalInstallments: null,
-        currentInstallment: null,
-        isInternal: true,
-      });
-      await addTransaction({
-        type: 'income',
-        amount: parseFloat(amount),
-        currency,
-        category: 'Transfer',
-        categoryIcon: '🔁',
-        merchant: merchant || 'Transfer',
-        accountId: toAccountId,
-        date,
-        note: transferNoteIn,
-        isRecurring: false,
-        totalInstallments: null,
-        currentInstallment: null,
-        isInternal: true,
-      });
       resetForm();
       onOpenChange(false);
       return;
@@ -277,6 +259,16 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await checkAndSubmit();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const checkAndSubmit = async () => {
     // Skip duplicate check when editing
     if (!isEditing) {
       const txAmount = parseFloat(amount);
@@ -568,7 +560,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
               </div>
             )}
 
-            <Button onClick={handleSubmit} className="w-full h-12 text-base gradient-primary text-primary-foreground">
+            <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-base gradient-primary text-primary-foreground">
               {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
             </Button>
           </div>

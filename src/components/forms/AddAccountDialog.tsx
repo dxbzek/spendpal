@@ -83,12 +83,8 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
         statementDate: parsedStatementDate,
         apr: parsedApr,
       };
-      if (isEdit) {
-        await updateAccount({ ...data, id: editAccount.id });
-      } else {
-        await addAccount(data);
-      }
-      onOpenChange(false);
+      const ok = isEdit ? await updateAccount({ ...data, id: editAccount.id }) : await addAccount(data);
+      if (ok) onOpenChange(false);
     } finally {
       setSubmitting(false);
     }

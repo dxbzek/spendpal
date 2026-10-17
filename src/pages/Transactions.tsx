@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
@@ -18,14 +19,12 @@ import SwipeableTransaction from '@/components/transactions/SwipeableTransaction
 import { extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditTransaction } from '@/components/layout/AppLayout';
-import { toast } from 'sonner';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const UNDO_DELAY_MS = 5000;
 
 const PAGE_SIZE = 50;
 
@@ -76,54 +75,15 @@ const Transactions = () => {
   const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  // Undo delete state
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
-  const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Undo delete state (pending deletes still run if the page unmounts).
+  const { pendingDeleteIds, scheduleDelete } = useUndoableDelete({
+    deleteOne: removeTransaction,
+    deleteMany: bulkRemoveTransactions,
+  });
 
-  // Cleanup all pending timers and debounce on unmount
   useEffect(() => () => {
-    pendingTimers.current.forEach(t => clearTimeout(t));
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
   }, []);
-
-  const scheduleDelete = useCallback((ids: string[], label: string) => {
-    ids.forEach(id => {
-      if (pendingTimers.current.has(id)) clearTimeout(pendingTimers.current.get(id)!);
-    });
-    setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
-
-    // Single timer for the batch so transfer pairs delete together.
-    const t = setTimeout(async () => {
-      try {
-        if (ids.length > 1) {
-          await bulkRemoveTransactions(ids);
-        } else {
-          await removeTransaction(ids[0]);
-        }
-      } catch { /* errors are already toasted inside the context functions */ }
-      finally {
-        setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
-        ids.forEach(id => pendingTimers.current.delete(id));
-      }
-    }, UNDO_DELAY_MS);
-
-    // Store the same timer reference under each ID so Undo can cancel it
-    ids.forEach(id => pendingTimers.current.set(id, t));
-
-    toast(label, {
-      duration: UNDO_DELAY_MS,
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          ids.forEach(id => {
-            const timer = pendingTimers.current.get(id);
-            if (timer) { clearTimeout(timer); pendingTimers.current.delete(id); }
-          });
-          setPendingDeleteIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
-        },
-      },
-    });
-  }, [removeTransaction, bulkRemoveTransactions]);
 
   // Detect duplicates: same merchant + amount + type within 24h (O(n) algorithm)
   const duplicateIds = useMemo(() => detectDuplicates(transactions), [transactions]);
@@ -159,7 +119,8 @@ const Transactions = () => {
       if (tx.isTrackingOnly) return false;
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase()) || (tx.note && tx.note.toLowerCase().includes(search.toLowerCase()));
       const isTransferEntry = tx.category === 'Transfer';
-      const matchType = filterType === 'all' || tx.type === filterType || (filterType === 'transfer' && isTransferEntry);
+      const matchType = filterType === 'all'
+        || (filterType === 'transfer' ? isTransferEntry : tx.type === filterType && !isTransferEntry);
 
       let matchAccount = filterAccount === 'all';
       if (!matchAccount) {

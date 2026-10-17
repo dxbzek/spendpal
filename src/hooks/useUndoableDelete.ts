@@ -42,12 +42,32 @@ export function useUndoableDelete({
     deleteManyRef.current = deleteMany;
   });
 
-  // Flush all pending timers on unmount.
+  // Batches still waiting out their Undo window, so unmounting can finish them.
+  const pendingBatches = useRef<Map<ReturnType<typeof setTimeout>, string[]>>(new Map());
+
+  const runDelete = useCallback(async (ids: string[]) => {
+    try {
+      if (ids.length > 1 && deleteManyRef.current) {
+        await deleteManyRef.current(ids);
+      } else {
+        for (const id of ids) await deleteOneRef.current(id);
+      }
+    } catch {
+      /* errors are surfaced by the deleters themselves */
+    }
+  }, []);
+
+  // Leaving the page must not resurrect what the user just deleted: run every
+  // pending batch now instead of cancelling it with the timers.
   useEffect(
     () => () => {
-      pendingTimers.current.forEach((t) => clearTimeout(t));
+      pendingBatches.current.forEach((ids, timer) => {
+        clearTimeout(timer);
+        void runDelete(ids);
+      });
+      pendingBatches.current.clear();
     },
-    [],
+    [runDelete],
   );
 
   const scheduleDelete = useCallback(
@@ -55,7 +75,10 @@ export function useUndoableDelete({
       if (ids.length === 0) return;
       ids.forEach((id) => {
         const existing = pendingTimers.current.get(id);
-        if (existing) clearTimeout(existing);
+        if (existing) {
+          clearTimeout(existing);
+          pendingBatches.current.delete(existing);
+        }
       });
       setPendingDeleteIds((prev) => {
         const next = new Set(prev);
@@ -64,26 +87,19 @@ export function useUndoableDelete({
       });
 
       const timer = setTimeout(async () => {
-        try {
-          if (ids.length > 1 && deleteManyRef.current) {
-            await deleteManyRef.current(ids);
-          } else {
-            for (const id of ids) await deleteOneRef.current(id);
-          }
-        } catch {
-          /* errors are surfaced by the deleters themselves */
-        } finally {
-          setPendingDeleteIds((prev) => {
-            const next = new Set(prev);
-            ids.forEach((id) => next.delete(id));
-            return next;
-          });
-          ids.forEach((id) => pendingTimers.current.delete(id));
-        }
+        pendingBatches.current.delete(timer);
+        await runDelete(ids);
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id) => next.delete(id));
+          return next;
+        });
+        ids.forEach((id) => pendingTimers.current.delete(id));
       }, delayMs);
 
       // Store the same timer under each id so Undo can cancel the whole batch.
       ids.forEach((id) => pendingTimers.current.set(id, timer));
+      pendingBatches.current.set(timer, ids);
 
       toast(label, {
         duration: delayMs,
@@ -94,6 +110,7 @@ export function useUndoableDelete({
               const t = pendingTimers.current.get(id);
               if (t) {
                 clearTimeout(t);
+                pendingBatches.current.delete(t);
                 pendingTimers.current.delete(id);
               }
             });
@@ -106,7 +123,7 @@ export function useUndoableDelete({
         },
       });
     },
-    [delayMs],
+    [delayMs, runDelete],
   );
 
   const isPending = useCallback((id: string) => pendingDeleteIds.has(id), [pendingDeleteIds]);

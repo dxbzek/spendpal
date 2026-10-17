@@ -58,11 +58,23 @@ async function invokeWithTimeout<T>(
         Authorization: `Bearer ${session.access_token}`,
       },
     });
+    if (error && (error as { name?: string }).name === 'FunctionsFetchError') {
+      // supabase-js returns (not throws) network failures and aborts, so map
+      // them back to what the timeout message and retry loops look for.
+      if (controller.signal.aborted) throw new Error('AI advisor is taking too long — please try again.');
+      throw new TypeError('Failed to fetch — check your connection and try again.');
+    }
     if (error) {
-      // FunctionsHttpError has a context property with the response
-      const msg =
-        (error as { message?: string }).message ??
-        'AI advisor is unavailable. Please try again later.';
+      // FunctionsHttpError's message is always the generic "non-2xx status";
+      // the edge function's own { error } explanation is in the response body.
+      let msg = (error as { message?: string }).message ?? 'AI advisor is unavailable. Please try again later.';
+      const ctx = (error as { context?: Response }).context;
+      if (ctx && typeof ctx.json === 'function') {
+        try {
+          const payload = await ctx.json() as { error?: string };
+          if (payload?.error) msg = payload.error;
+        } catch { /* non-JSON body — keep the generic message */ }
+      }
       throw new Error(msg);
     }
     return data as T;
