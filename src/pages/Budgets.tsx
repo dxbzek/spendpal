@@ -14,7 +14,6 @@ import { useAI } from '@/hooks/useAI';
 import { toast } from 'sonner';
 import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
-import { activeBudgets } from '@/utils/budgets';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -46,7 +45,7 @@ const Budgets = () => {
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
-  const { scheduleDelete: scheduleBudgetDelete } = useUndoableDelete({ deleteOne: removeBudget });
+  const { scheduleDelete: scheduleBudgetDelete, isPending: isBudgetPending } = useUndoableDelete({ deleteOne: removeBudget });
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
@@ -62,9 +61,14 @@ const Budgets = () => {
   const daysElapsed = totalDays - daysLeft;
 
   const currentMonthKey = format(now, 'yyyy-MM');
-  // Active set for "This Month": current-month budgets, or the latest month's
-  // budgets carried forward if none exist yet for the current month.
-  const thisMonthBudgets = useMemo(() => activeBudgets(budgets, currentMonthKey), [budgets, currentMonthKey]);
+  // "This Month" is this month's budgets only. Carrying last month's forward
+  // here made deleted budgets look like they came back (and their Delete
+  // button removed last month's history). Copy/Rollover bring them over.
+  // Budgets waiting out their Undo window disappear straight away.
+  const thisMonthBudgets = useMemo(
+    () => budgets.filter(b => b.month === currentMonthKey && !isBudgetPending(b.id)),
+    [budgets, currentMonthKey, isBudgetPending],
+  );
 
   const totalBudgeted = thisMonthBudgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = thisMonthBudgets.reduce((s, b) => s + b.spent, 0);
@@ -97,8 +101,8 @@ const Budgets = () => {
   const lastMonthKey = format(subMonths(now, 1), 'yyyy-MM');
 
   const lastMonthBudgets = useMemo(
-    () => budgets.filter(b => b.month === lastMonthKey),
-    [budgets, lastMonthKey]
+    () => budgets.filter(b => b.month === lastMonthKey && !isBudgetPending(b.id)),
+    [budgets, lastMonthKey, isBudgetPending]
   );
 
   const hasCopiedLastMonth = useMemo(
@@ -357,6 +361,25 @@ const Budgets = () => {
               className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-2">
               <Plus size={16} /> Create First Budget
             </button>
+          </div>
+        ) : tab === 'this' && thisMonthBudgets.length === 0 ? (
+          <div className="bg-card rounded-2xl p-6 card-shadow text-center">
+            <h3 className="font-heading text-base mb-1">No budgets for {format(now, 'MMMM')} yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {lastMonthBudgets.length > 0 ? `Bring over ${lastMonthLabel}'s budgets or add new ones.` : 'Add a budget to start tracking this month.'}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {lastMonthBudgets.length > 0 && (
+                <button onClick={copyFromLastMonth} disabled={copyingLastMonth}
+                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50">
+                  <Copy size={14} /> Copy {lastMonthLabel}
+                </button>
+              )}
+              <button onClick={() => { setEditBudget(null); setShowAddBudget(true); }}
+                className="px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-medium inline-flex items-center gap-2">
+                <Plus size={14} /> Add Budget
+              </button>
+            </div>
           </div>
         ) : tab === 'this' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

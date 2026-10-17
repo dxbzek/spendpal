@@ -39,7 +39,7 @@ const Goals = () => {
   const [showScan, setShowScan] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
-  const { scheduleDelete: scheduleGoalDelete } = useUndoableDelete({ deleteOne: removeGoal });
+  const { scheduleDelete: scheduleGoalDelete, isPending: isGoalPending } = useUndoableDelete({ deleteOne: removeGoal });
   const [showCompleted, setShowCompleted] = useState(false);
   // Goal id currently playing the completion celebration (confetti + pulse).
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
@@ -132,8 +132,10 @@ const Goals = () => {
   };
 
   // Paused goals stay in the active list (with their Resume button).
-  const activeGoals = goals.filter(g => g.status !== 'completed');
-  const completedGoals = goals.filter(g => g.status === 'completed');
+  // Goals waiting out their Undo window disappear straight away.
+  const visibleGoals = goals.filter(g => !isGoalPending(g.id));
+  const activeGoals = visibleGoals.filter(g => g.status !== 'completed');
+  const completedGoals = visibleGoals.filter(g => g.status === 'completed');
 
   const getDaysRemaining = (deadline?: string) => {
     if (!deadline) return null;
