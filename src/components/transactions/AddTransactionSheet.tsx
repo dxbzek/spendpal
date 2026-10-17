@@ -442,8 +442,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium">Internal / not real spending</p>
-                        <p className="text-xs text-muted-foreground">Card payment, BNPL repayment, money to a person — excluded from income/expense totals</p>
+                        <p className="text-sm font-medium">Internal / pass-through</p>
+                        <p className="text-xs text-muted-foreground">Card payment, BNPL repayment, money held for or passed on to someone else. Moves the balance, excluded from income/expense totals</p>
                       </div>
                       <Switch checked={isInternal} onCheckedChange={setIsInternal} />
                     </div>

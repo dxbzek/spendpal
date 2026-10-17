@@ -15,17 +15,17 @@ const NAV_ITEMS_LEFT = [
 ];
 
 const NAV_ITEMS_RIGHT = [
-  { path: '/goals', label: 'Goals', icon: Target },
-  { path: '/advisor', label: 'Advisor', icon: Brain },
+  { path: '/debt', label: 'Debt', icon: CreditCard },
+  { path: '/accounts', label: 'Accounts', icon: Wallet },
 ];
 
 const MORE_ITEMS = [
-  { path: '/accounts', label: 'Accounts', icon: Wallet },
+  { path: '/installments', label: 'Installments', icon: Layers },
   { path: '/budgets', label: 'Budgets', icon: PiggyBank },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/debt', label: 'Debt', icon: CreditCard },
-  { path: '/installments', label: 'Installments', icon: Layers },
+  { path: '/goals', label: 'Goals', icon: Target },
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { path: '/advisor', label: 'Advisor', icon: Brain },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -35,7 +35,7 @@ interface BottomNavProps {
   onAddClick: () => void;
 }
 
-const NavButton = ({ path, label, icon: Icon, active, onClick }: {
+const NavButton = ({ label, icon: Icon, active, onClick }: {
   path: string; label: string; icon: LucideIcon; active: boolean; onClick: () => void;
 }) => (
   <button
@@ -43,13 +43,7 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
     aria-current={active ? 'page' : undefined}
     className="flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95"
   >
-    {active && (
-      <m.div
-        layoutId={`nav-indicator-${path}`}
-        className="absolute inset-0 rounded-2xl bg-accent"
-        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      />
-    )}
+    {active && <div className="absolute inset-0 rounded-2xl bg-accent" />}
     <Icon size={20} className={`relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
     <span className={`relative z-10 text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
       {label}
@@ -102,7 +96,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[52] bg-black/30 backdrop-blur-sm"
+                className="fixed inset-0 z-[52] bg-black/30"
                 onPointerDown={(e) => { e.stopPropagation(); setShowMore(false); }}
               />
 
@@ -167,7 +161,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
       )}
 
       {/* Bottom bar */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[54] bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[54] bg-card border-t border-border safe-bottom">
         <div className="flex items-end justify-evenly max-w-lg mx-auto h-[68px] px-2 pb-1">
           {NAV_ITEMS_LEFT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
@@ -193,13 +187,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
             aria-label="More options"
             className={`flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95 ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
           >
-            {(showMore || isMoreActive) && (
-              <m.div
-                layoutId="nav-indicator-more"
-                className="absolute inset-0 rounded-2xl bg-accent"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
+            {(showMore || isMoreActive) && <div className="absolute inset-0 rounded-2xl bg-accent" />}
             {showMore
               ? <X size={20} className="relative z-10" />
               : <MoreHorizontal size={20} className="relative z-10" />
