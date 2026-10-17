@@ -1,13 +1,13 @@
 # SpendPal
 
-A personal finance management PWA for tracking accounts, transactions, budgets, and savings goals — with an AI advisor powered by Groq.
+A personal finance management PWA for tracking accounts, transactions, budgets, and savings goals — with an AI advisor powered by Claude.
 
 ## Tech stack
 
 - React 18 + TypeScript + Vite
 - Tailwind CSS + shadcn-ui
 - Supabase (PostgreSQL + Auth + Edge Functions)
-- Groq API (AI Advisor)
+- Anthropic Claude API (AI features)
 
 ## Local development
 
@@ -27,13 +27,14 @@ npm run dev
 
 ## Environment variables
 
-The AI Advisor edge function requires a `GROQ_API_KEY` set in your Supabase project secrets:
+The `ai-finance` edge function (advisor, budget suggestions, statement and screenshot import) requires an `ANTHROPIC_API_KEY` in your Supabase project secrets:
 
 ```sh
-supabase secrets set GROQ_API_KEY=<your_key>
+supabase secrets set ANTHROPIC_API_KEY=<your_key>
+supabase functions deploy ai-finance
 ```
 
-Get a free API key at [console.groq.com](https://console.groq.com).
+Create a key at [platform.claude.com](https://platform.claude.com).
 
 ## Deployment
 
