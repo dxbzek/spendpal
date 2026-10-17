@@ -25,6 +25,8 @@ import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
+import CardPaymentsCard from '@/components/dashboard/CardPaymentsCard';
+import { ordinal } from '@/lib/ordinal';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
@@ -367,6 +369,14 @@ const Dashboard = () => {
       </div>
 
       <div className="px-5 md:px-8 -mt-4 pb-8">
+        {/* What each card's statement asks for, exactly as entered */}
+        <CardPaymentsCard
+          accounts={accounts}
+          transactions={transactions}
+          mask={mask}
+          onEditAccount={(a) => { setEditAccount(a); setShowAddAccount(true); }}
+        />
+
         {/* Safe to spend today — the flagship "at a glance" hero */}
         {showSafeCard && (
           <Card className="border border-primary/20 mb-4">
@@ -487,8 +497,8 @@ const Dashboard = () => {
                                   <p className="text-sm font-medium truncate">{a.name}</p>
                                   {a.type === 'credit' && (
                                     <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                                      {a.statementDate && a.statementDate > 0 && <span>Stmt: {a.statementDate}th</span>}
-                                      {a.dueDate && <span>Due: {a.dueDate}th</span>}
+                                      {a.statementDate && a.statementDate > 0 && <span>Stmt: {ordinal(a.statementDate)}</span>}
+                                      {a.dueDate && <span>Due: {ordinal(a.dueDate)}</span>}
                                       {a.creditLimit != null && <span>Limit: {fmt(a.creditLimit)}</span>}
                                     </div>
                                   )}

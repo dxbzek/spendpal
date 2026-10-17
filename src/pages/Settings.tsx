@@ -156,6 +156,10 @@ const DataBackupCard = () => {
             due_date: a.dueDate != null ? Number(a.dueDate) : null,
             statement_date: a.statementDate != null ? Number(a.statementDate) : null,
             apr: a.apr != null ? Number(a.apr) : null,
+            // Only present in newer backups (and needs the statement migration).
+            ...(a.statementTotalDue !== undefined && { statement_total_due: a.statementTotalDue != null ? Number(a.statementTotalDue) : null }),
+            ...(a.statementMinDue !== undefined && { statement_min_due: a.statementMinDue != null ? Number(a.statementMinDue) : null }),
+            ...(a.statementDueOn !== undefined && { statement_due_on: (a.statementDueOn as string | null) ?? null }),
           }))
         );
         if (error) throw error;

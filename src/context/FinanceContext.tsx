@@ -30,8 +30,19 @@ const mapAccount = (row: unknown): Account | null => {
     dueDate: r.due_date,
     statementDate: r.statement_date,
     apr: r.apr,
+    statementTotalDue: r.statement_total_due,
+    statementMinDue: r.statement_min_due,
+    statementDueOn: r.statement_due_on,
   };
 };
+
+// Statement columns are only sent when the account carries them, so account
+// edits keep working on a database where the statement migration isn't applied.
+const statementColumns = (a: Partial<Account>) => ({
+  ...(a.statementTotalDue !== undefined && { statement_total_due: a.statementTotalDue }),
+  ...(a.statementMinDue !== undefined && { statement_min_due: a.statementMinDue }),
+  ...(a.statementDueOn !== undefined && { statement_due_on: a.statementDueOn }),
+});
 
 const mapTransaction = (row: unknown): Transaction | null => {
   const r = safeParseRow(TransactionRowSchema, row, 'Transaction');
@@ -237,6 +248,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       due_date: account.dueDate ?? null,
       statement_date: account.statementDate ?? null,
       apr: account.apr ?? null,
+      ...statementColumns(account),
     }).select().single();
     if (error) { toast.error(`Failed to add account: ${error.message}`); return false; }
     const mapped = mapAccount(data);
@@ -254,6 +266,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       due_date: account.dueDate ?? null,
       statement_date: account.statementDate ?? null,
       apr: account.apr ?? null,
+      ...statementColumns(account),
     }).eq('id', account.id);
     if (error) { toast.error(`Failed to update account: ${error.message}`); return false; }
     setAccounts(prev => prev.map(a => a.id === account.id ? account : a));

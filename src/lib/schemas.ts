@@ -18,6 +18,14 @@ export const AccountRowSchema = z.object({
   apr: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | undefined =>
     v != null ? Number(v) : undefined
   ),
+  // undefined = column not there yet (migration not applied); null = empty.
+  statement_total_due: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | null | undefined =>
+    v === undefined ? undefined : v === null || v === '' ? null : Number(v)
+  ),
+  statement_min_due: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | null | undefined =>
+    v === undefined ? undefined : v === null || v === '' ? null : Number(v)
+  ),
+  statement_due_on: z.string().nullable().optional(),
 });
 
 export const TransactionRowSchema = z.object({
