@@ -11,7 +11,7 @@ import { DEFAULT_APR, monthsToPayoff, minPayment, simulateStrategy } from '@/lib
 import { creditUtilization } from '@/lib/finance/credit';
 
 const Debt = () => {
-  const { accounts, loading } = useFinance();
+  const { accounts, loading, updateAccount } = useFinance();
   const { fmt } = useCurrency();
   const { mask } = useBalanceMask();
 
@@ -42,6 +42,17 @@ const Debt = () => {
   const overallUtil = totalLimit ? (totalOwed / totalLimit) * 100 : 0;
 
   const getApr = (id: string, accountApr?: number) => aprs[id] ?? accountApr ?? DEFAULT_APR;
+  const aprIsGuess = (id: string, accountApr?: number) => aprs[id] == null && accountApr == null;
+  const unsetAprCount = creditDebts.filter(d => aprIsGuess(d.id, d.apr)).length;
+
+  // APR edits are saved to the account so the optimizer stops guessing on the
+  // next visit (and the Accounts dialog shows the same number).
+  const saveApr = (id: string) => {
+    const v = aprs[id];
+    const account = accounts.find(a => a.id === id);
+    if (v == null || !account || account.apr === v) return;
+    void updateAccount({ ...account, apr: v });
+  };
   const getPayment = (id: string, owed: number) => payments[id] ?? minPayment(owed);
 
   const utilizationColor = (pct: number) => {
@@ -80,7 +91,7 @@ const Debt = () => {
   , [creditDebts, aprs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const avalancheOrder = useMemo(() =>
-    [...strategyDebts].sort((a, b) => b.apr - a.apr),
+    [...strategyDebts].sort((a, b) => b.apr - a.apr || a.owed - b.owed),
     [strategyDebts]
   );
 
@@ -274,8 +285,12 @@ const Debt = () => {
                                 step="0.5"
                                 value={apr}
                                 onChange={e => { const v = parseFloat(e.target.value); setAprs(a => ({ ...a, [debt.id]: isNaN(v) ? DEFAULT_APR : v })); }}
+                                onBlur={() => saveApr(debt.id)}
                                 className="h-9 text-sm"
                               />
+                              {aprIsGuess(debt.id, debt.apr) && (
+                                <p className="text-[10px] text-warning mt-1">Not set, assuming {DEFAULT_APR}%. Use 0 for Tabby/Tamara.</p>
+                              )}
                             </div>
                           </div>
 
@@ -317,6 +332,11 @@ const Debt = () => {
                 <div className="p-4 pb-3">
                   <p className="text-sm font-heading mb-1">Payoff Optimizer</p>
                   <p className="text-xs text-muted-foreground mb-3">Best order to attack your {creditDebts.length} cards</p>
+                  {unsetAprCount > 0 && (
+                    <p className="text-xs text-warning bg-warning/10 rounded-lg p-2 mb-3">
+                      {unsetAprCount} {unsetAprCount === 1 ? 'card has' : 'cards have'} no APR set, so the order below assumes {DEFAULT_APR}% for {unsetAprCount === 1 ? 'it' : 'them'}. Open a card above and enter its real rate (0 for interest-free BNPL).
+                    </p>
+                  )}
 
                   {/* Extra budget input */}
                   <div className="flex items-center gap-3 mb-4 bg-muted/50 rounded-xl p-3">
@@ -382,7 +402,7 @@ const Debt = () => {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold truncate">{d.name}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            {mask(fmt(d.owed))} · {d.apr}% APR
+                            {mask(fmt(d.owed))} · {d.apr}% APR{aprIsGuess(d.id, creditDebts.find(c => c.id === d.id)?.apr) ? ' (assumed)' : ''}
                           </p>
                         </div>
                         {i === 0 && (
