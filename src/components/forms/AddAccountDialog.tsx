@@ -27,6 +27,9 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const [dueDate, setDueDate] = useState('');
   const [statementDate, setStatementDate] = useState('');
   const [apr, setApr] = useState('');
+  const [stmtTotal, setStmtTotal] = useState('');
+  const [stmtMin, setStmtMin] = useState('');
+  const [stmtDueOn, setStmtDueOn] = useState('');
 
   const isEdit = !!editAccount;
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +44,9 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       setDueDate(editAccount?.dueDate?.toString() || '');
       setStatementDate(editAccount?.statementDate?.toString() || '');
       setApr(editAccount?.apr?.toString() ?? '');
+      setStmtTotal(editAccount?.statementTotalDue?.toString() ?? '');
+      setStmtMin(editAccount?.statementMinDue?.toString() ?? '');
+      setStmtDueOn(editAccount?.statementDueOn ?? '');
     }
   }, [open, editAccount]);
 
@@ -70,6 +76,24 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
     if (parsedApr !== undefined && (isNaN(parsedApr) || parsedApr < 0)) {
       toast.error('APR must be a non-negative number'); return;
     }
+    // Statement figures, typed from the card's statement. A blank field clears
+    // it (null), except where the account never had the column (undefined):
+    // then nothing is sent, so editing still works before the migration runs.
+    const blank = <T,>(had: T | null | undefined) => (had === undefined ? undefined : null);
+    const parsedStmtTotal = type !== 'credit' ? undefined
+      : stmtTotal.trim() === '' ? blank(editAccount?.statementTotalDue) : parseFloat(stmtTotal);
+    const parsedStmtMin = type !== 'credit' ? undefined
+      : stmtMin.trim() === '' ? blank(editAccount?.statementMinDue) : parseFloat(stmtMin);
+    const parsedStmtDueOn = type !== 'credit' ? undefined
+      : stmtDueOn === '' ? blank(editAccount?.statementDueOn) : stmtDueOn;
+    for (const v of [parsedStmtTotal, parsedStmtMin]) {
+      if (typeof v === 'number' && (isNaN(v) || v < 0)) { toast.error('Statement amounts must be 0 or more'); return; }
+    }
+    if (typeof parsedStmtTotal === 'number' && !parsedStmtDueOn) { toast.error('Add the statement due date too'); return; }
+    if (parsedStmtDueOn && typeof parsedStmtTotal !== 'number') { toast.error('Add the statement total due too'); return; }
+    if (typeof parsedStmtMin === 'number' && typeof parsedStmtTotal === 'number' && parsedStmtMin > parsedStmtTotal) {
+      toast.error('Minimum due can’t be more than the total due'); return;
+    }
     setSubmitting(true);
     try {
       const data = {
@@ -82,6 +106,9 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
         dueDate: parsedDueDate,
         statementDate: parsedStatementDate,
         apr: parsedApr,
+        statementTotalDue: parsedStmtTotal,
+        statementMinDue: parsedStmtMin,
+        statementDueOn: parsedStmtDueOn,
       };
       const ok = isEdit ? await updateAccount({ ...data, id: editAccount.id }) : await addAccount(data);
       if (ok) onOpenChange(false);
@@ -156,6 +183,22 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
                   <label className="text-sm font-medium text-foreground/80 mb-1 block">Due Day</label>
                   <Input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="15" value={dueDate} onChange={e => setDueDate(e.target.value.replace(/[^0-9]/g, ''))} className="h-11 text-base" maxLength={2} />
                 </div>
+              </div>
+              <div className="pt-1">
+                <p className="text-sm font-medium text-foreground/80">Latest statement</p>
+                <p className="text-[11px] text-muted-foreground mb-2">Copy these from the statement. Home shows exactly these numbers.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Total due</label>
+                    <AmountInput value={stmtTotal} onChange={setStmtTotal} placeholder="0.00" className="h-11" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Minimum due</label>
+                    <AmountInput value={stmtMin} onChange={setStmtMin} placeholder="0.00" className="h-11" />
+                  </div>
+                </div>
+                <label className="text-xs text-muted-foreground mt-2 mb-1 block">Due date</label>
+                <Input type="date" value={stmtDueOn} onChange={e => setStmtDueOn(e.target.value)} className="h-11 text-base" />
               </div>
             </div>
           )}

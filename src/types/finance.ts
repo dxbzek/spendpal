@@ -15,6 +15,11 @@ export interface Account {
   dueDate?: number; // day of month
   statementDate?: number;
   apr?: number; // annual interest rate, % (e.g. 0 for BNPL/Tabby, ~36+ for typical UAE cards)
+  // From the card's latest statement, typed in by hand. Shown as-is on Home;
+  // null means "not entered" and Home asks for the statement instead of guessing.
+  statementTotalDue?: number | null;
+  statementMinDue?: number | null;
+  statementDueOn?: string | null; // YYYY-MM-DD
 }
 
 export interface Transaction {

@@ -441,3 +441,18 @@ DROP INDEX IF EXISTS public.idx_budgets_user_id;             -- dup of uniq_budg
 --       percentage-based allocation in Dashboard → Project Settings →
 --       Database. No SQL equivalent.
 --       https://supabase.com/docs/guides/deployment/going-into-prod
+
+
+-- ── 17. Card statement fields (20261017000000) ───────────────
+--    Entered from each card's statement; Home shows them as-is.
+ALTER TABLE public.accounts
+  ADD COLUMN IF NOT EXISTS statement_total_due NUMERIC,
+  ADD COLUMN IF NOT EXISTS statement_min_due NUMERIC,
+  ADD COLUMN IF NOT EXISTS statement_due_on DATE;
+
+ALTER TABLE public.accounts DROP CONSTRAINT IF EXISTS accounts_statement_due_nonneg;
+ALTER TABLE public.accounts ADD CONSTRAINT accounts_statement_due_nonneg
+  CHECK (
+    (statement_total_due IS NULL OR statement_total_due >= 0) AND
+    (statement_min_due IS NULL OR statement_min_due >= 0)
+  );
