@@ -160,6 +160,7 @@ const DataBackupCard = () => {
             ...(a.statementTotalDue !== undefined && { statement_total_due: a.statementTotalDue != null ? Number(a.statementTotalDue) : null }),
             ...(a.statementMinDue !== undefined && { statement_min_due: a.statementMinDue != null ? Number(a.statementMinDue) : null }),
             ...(a.statementDueOn !== undefined && { statement_due_on: (a.statementDueOn as string | null) ?? null }),
+            ...(a.excludeFromSpendable !== undefined && { exclude_from_spendable: Boolean(a.excludeFromSpendable) }),
           }))
         );
         if (error) throw error;
@@ -199,6 +200,7 @@ const DataBackupCard = () => {
             is_internal: Boolean(t.isInternal ?? false),
             is_pending: Boolean(t.isPending ?? false),
             loan_total_amount: t.loanTotalAmount != null ? Number(t.loanTotalAmount) : null,
+            ...(t.remainingPrincipal !== undefined && { remaining_principal: t.remainingPrincipal != null ? Number(t.remainingPrincipal) : null }),
           }));
         if (mapped.length) {
           const { error } = await supabase.from('transactions').insert(mapped);

@@ -198,6 +198,9 @@ const Accounts = () => {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[account.type]}`}>
                         {TYPE_LABELS[account.type]}
                       </span>
+                      {account.excludeFromSpendable && (
+                        <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Savings</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1">

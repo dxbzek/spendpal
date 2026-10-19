@@ -25,13 +25,15 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_id
   ON public.goals(user_id);
 
 
--- ── 2. Account balance sync trigger (20260331000001 + credit sign fix 20260630010000) ─
+-- ── 2. Account balance sync trigger (20260331000001 + credit sign fix 20260630010000 + pending holds 20260630040000) ─
 --    CREATE OR REPLACE is safe; trigger creation is guarded.
 --
 --    A credit account's `balance` stores the amount OWED (positive), so its
 --    sign convention is the mirror of a debit/cash account: an expense (a card
 --    charge) INCREASES owed, and an income (a payment or refund) DECREASES it.
 --    Debit accounts keep the normal convention (income adds, expense subtracts).
+--    Tracking-only and pending rows don't move the balance (columns: sections
+--    5 and 18; plpgsql resolves them when the trigger fires, not here).
 
 CREATE OR REPLACE FUNCTION public.sync_account_balance()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -40,7 +42,7 @@ DECLARE
   acct_type TEXT;
 BEGIN
   IF (TG_OP = 'INSERT') THEN
-    IF NEW.is_tracking_only THEN RETURN NULL; END IF;
+    IF NEW.is_tracking_only OR NEW.is_pending THEN RETURN NULL; END IF;
     SELECT type INTO acct_type FROM accounts WHERE id = NEW.account_id;
     IF acct_type = 'credit' THEN
       delta := CASE WHEN NEW.type = 'income' THEN -NEW.amount ELSE NEW.amount END;
@@ -50,7 +52,7 @@ BEGIN
     UPDATE accounts SET balance = balance + delta WHERE id = NEW.account_id;
 
   ELSIF (TG_OP = 'DELETE') THEN
-    IF OLD.is_tracking_only THEN RETURN NULL; END IF;
+    IF OLD.is_tracking_only OR OLD.is_pending THEN RETURN NULL; END IF;
     SELECT type INTO acct_type FROM accounts WHERE id = OLD.account_id;
     IF acct_type = 'credit' THEN
       delta := CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END;
@@ -60,7 +62,9 @@ BEGIN
     UPDATE accounts SET balance = balance + delta WHERE id = OLD.account_id;
 
   ELSIF (TG_OP = 'UPDATE') THEN
-    IF NOT OLD.is_tracking_only THEN
+    -- Reverse old row's effect (if it had one), using the account it WAS
+    -- posted against in case account_id changed.
+    IF NOT (OLD.is_tracking_only OR OLD.is_pending) THEN
       SELECT type INTO acct_type FROM accounts WHERE id = OLD.account_id;
       IF acct_type = 'credit' THEN
         delta := CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END;
@@ -69,7 +73,10 @@ BEGIN
       END IF;
       UPDATE accounts SET balance = balance + delta WHERE id = OLD.account_id;
     END IF;
-    IF NOT NEW.is_tracking_only THEN
+
+    -- Apply new row's effect (if it has one now — e.g. just flipped from
+    -- pending to settled), using the account it's NOW posted against.
+    IF NOT (NEW.is_tracking_only OR NEW.is_pending) THEN
       SELECT type INTO acct_type FROM accounts WHERE id = NEW.account_id;
       IF acct_type = 'credit' THEN
         delta := CASE WHEN NEW.type = 'income' THEN -NEW.amount ELSE NEW.amount END;
@@ -419,7 +426,7 @@ CREATE INDEX IF NOT EXISTS idx_notification_log_user_created
   ON public.notification_log(user_id, channel, created_at DESC);
 
 
--- ── 15. Drop redundant duplicate indexes (advisor 0005 unused_index) ──
+-- ── 15. Drop redundant duplicate indexes (20260602000001, advisor 0005 unused_index) ──
 --    Three of the five flagged indexes are exact duplicates of a UNIQUE
 --    constraint's leading-column index, so they can never win a plan and are
 --    pure write overhead. The other two (idx_goals_user_id,
@@ -456,3 +463,44 @@ ALTER TABLE public.accounts ADD CONSTRAINT accounts_statement_due_nonneg
     (statement_total_due IS NULL OR statement_total_due >= 0) AND
     (statement_min_due IS NULL OR statement_min_due >= 0)
   );
+
+
+-- ── 18. June columns: apr, is_internal, is_pending (20260630020000-40000) ──
+--    Applied by hand on 19 Oct 2026 after they were missed here and "New
+--    Transaction" failed on the missing columns. The balance trigger that
+--    reads is_pending is section 2.
+--    Not repeated here: the one-time balance conversions in 20260630010000
+--    (credit balance = limit - balance) and 20260704000000 (recompute no-limit
+--    cards from the ledger). They rewrite data, and the first one undoes
+--    itself if run twice, so they don't belong in a run-anytime file.
+ALTER TABLE public.accounts
+  ADD COLUMN IF NOT EXISTS apr NUMERIC;
+
+ALTER TABLE public.accounts DROP CONSTRAINT IF EXISTS accounts_apr_nonneg;
+ALTER TABLE public.accounts ADD CONSTRAINT accounts_apr_nonneg
+  CHECK (apr IS NULL OR apr >= 0);
+
+ALTER TABLE public.transactions
+  ADD COLUMN IF NOT EXISTS is_internal BOOLEAN NOT NULL DEFAULT false;
+
+-- Transfers are internal by definition; re-running only re-sets true on rows
+-- that are already true.
+UPDATE public.transactions SET is_internal = true
+WHERE category = 'Transfer' AND NOT is_internal;
+
+ALTER TABLE public.transactions
+  ADD COLUMN IF NOT EXISTS is_pending BOOLEAN NOT NULL DEFAULT false;
+
+
+-- ── 19. Spendable flag + plan remaining principal (20261019000000) ──
+--    exclude_from_spendable: left out of Home's "Left until payday".
+--    remaining_principal: typed from the statement on an instalment plan row.
+ALTER TABLE public.accounts
+  ADD COLUMN IF NOT EXISTS exclude_from_spendable BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE public.transactions
+  ADD COLUMN IF NOT EXISTS remaining_principal NUMERIC;
+
+ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_remaining_principal_nonneg;
+ALTER TABLE public.transactions ADD CONSTRAINT transactions_remaining_principal_nonneg
+  CHECK (remaining_principal IS NULL OR remaining_principal >= 0);

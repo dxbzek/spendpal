@@ -20,6 +20,10 @@ export interface Account {
   statementTotalDue?: number | null;
   statementMinDue?: number | null;
   statementDueOn?: string | null; // YYYY-MM-DD
+  // Non-credit money that isn't spendable (savings held for someone else).
+  // Left out of "Left until payday"; still counted in net position.
+  // undefined = column not on the database yet.
+  excludeFromSpendable?: boolean;
 }
 
 export interface Transaction {
@@ -46,6 +50,9 @@ export interface Transaction {
   // account's settled balance until cleared, but is counted as a hold
   // against "available" funds for display.
   isPending?: boolean;
+  // Instalment plan row only: principal still owed per the latest statement.
+  // null = not entered; undefined = column not on the database yet.
+  remainingPrincipal?: number | null;
 }
 
 export interface Budget {

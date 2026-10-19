@@ -56,9 +56,16 @@ const Debt = () => {
   const totalOwed = creditDebts.reduce((s, d) => s + d.owed, 0);
   const totalLimit = creditDebts.reduce((s, d) => s + (d.creditLimit || 0), 0);
   const overallUtil = totalLimit ? (totalOwed / totalLimit) * 100 : 0;
+  // The label follows the most-used card: a maxed-out card hurts even when
+  // the total across cards looks fine.
+  const worstCard = creditDebts.reduce<(typeof creditDebts)[number] | null>(
+    (w, d) => (!w || d.utilization > w.utilization ? d : w), null);
+  const worstUtil = worstCard?.utilization ?? 0;
 
   const getApr = (id: string, accountApr?: number) => aprs[id] ?? accountApr ?? DEFAULT_APR;
-  const getPayment = (id: string, owed: number) => payments[id] ?? minPayment(owed);
+  // The statement's minimum when entered; the 2% rule of thumb otherwise.
+  const getMinPay = (d: { owed: number; statementMinDue?: number | null }) => d.statementMinDue ?? minPayment(d.owed);
+  const getPayment = (id: string, minPay: number) => payments[id] ?? minPay;
 
   const utilizationColor = (pct: number) => {
     if (pct >= 75) return 'text-expense bg-destructive/10';
@@ -91,7 +98,7 @@ const Debt = () => {
       icon: d.icon,
       owed: d.owed,
       apr: getApr(d.id, d.apr),
-      minPay: minPayment(d.owed),
+      minPay: getMinPay(d),
     }))
   , [creditDebts, aprs]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -141,9 +148,9 @@ const Debt = () => {
                 <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
                   <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
-                  {overallUtil >= 30 && (
+                  {worstUtil >= 30 && (
                     <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-foreground/25 text-primary-foreground shrink-0">
-                      {overallUtil >= 75 ? 'High' : 'Watch'}
+                      {worstUtil >= 75 ? 'High' : 'Watch'}
                     </span>
                   )}
                 </div>
@@ -162,14 +169,14 @@ const Debt = () => {
 
         {/* Utilization health */}
         {creditDebts.length > 0 && (
-          <div className={`flex items-start gap-3 p-3 rounded-xl text-xs ${overallUtil >= 30 ? 'bg-warning/10 border border-warning/30' : 'bg-income/10 border border-income/20'}`}>
-            <AlertCircle size={14} className={overallUtil >= 30 ? 'text-warning mt-0.5' : 'text-income mt-0.5'} />
+          <div className={`flex items-start gap-3 p-3 rounded-xl text-xs ${worstUtil >= 30 ? 'bg-warning/10 border border-warning/30' : 'bg-income/10 border border-income/20'}`}>
+            <AlertCircle size={14} className={worstUtil >= 30 ? 'text-warning mt-0.5' : 'text-income mt-0.5'} />
             <div>
-              {overallUtil >= 75
-                ? <p className="font-semibold text-expense">High utilization — this hurts your credit score</p>
-                : overallUtil >= 30
-                ? <p className="font-semibold text-warning">Moderate utilization — aim to keep below 30%</p>
-                : <p className="font-semibold text-income">Good utilization — you're below 30%</p>}
+              {worstUtil >= 75
+                ? <p className="font-semibold text-expense">High utilization — {worstCard?.name} is at {worstUtil.toFixed(0)}%</p>
+                : worstUtil >= 30
+                ? <p className="font-semibold text-warning">Moderate utilization — {worstCard?.name} is at {worstUtil.toFixed(0)}%</p>
+                : <p className="font-semibold text-income">Good utilization — every card is below 30%</p>}
               <p className="text-muted-foreground mt-0.5">Credit bureaus recommend keeping utilization under 30%</p>
             </div>
           </div>
@@ -189,7 +196,8 @@ const Debt = () => {
             <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide">Credit Cards</h2>
             {creditDebts.map(debt => {
               const apr = getApr(debt.id, debt.apr);
-              const payment = getPayment(debt.id, debt.owed);
+              const minPay = getMinPay(debt);
+              const payment = getPayment(debt.id, minPay);
               const months = monthsToPayoff(debt.owed, apr, payment);
               const totalCost = months < Infinity ? payment * months : Infinity;
               const interest = months < Infinity ? totalCost - debt.owed : Infinity;
@@ -235,7 +243,7 @@ const Debt = () => {
                     <div className="flex items-center justify-between mt-2 text-xs gap-2 flex-wrap">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <TrendingDown size={11} />
-                        Min: {mask(fmt(minPayment(debt.owed)))}/mo
+                        Min: {mask(fmt(minPay))}/mo
                       </span>
                       {payoffDate && (
                         <span className="text-muted-foreground flex items-center gap-1">

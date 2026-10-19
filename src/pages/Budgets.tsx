@@ -5,8 +5,11 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine, MoreHorizontal, X } from 'lucide-react';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { m } from 'framer-motion';
 import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
@@ -54,6 +57,7 @@ const Budgets = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
   const [showScan, setShowScan] = useState(false);
+  const [showAI, setShowAI] = useState(false);
 
   const now = useMemo(() => new Date(), []);
   const daysLeft = differenceInDays(endOfMonth(now), now);
@@ -243,6 +247,30 @@ const Budgets = () => {
             <h1 className="text-2xl font-heading mb-1">Budgets</h1>
             <p className="text-sm text-muted-foreground">{now.toLocaleString('en', { month: 'long', year: 'numeric' })}</p>
           </div>
+          {/* Occasional tools live here, out of the main view. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground" aria-label="More budget actions">
+                <MoreHorizontal size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onSelect={() => setShowAI(true)}>
+                <Sparkles size={14} className="mr-2" /> AI budget suggestions
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowScan(true)}>
+                <ScanLine size={14} className="mr-2" /> Scan a screenshot
+              </DropdownMenuItem>
+              {budgets.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setShowDeleteAll(true)} className="text-destructive focus:text-destructive">
+                    <Trash2 size={14} className="mr-2" /> Delete all budgets…
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {lastMonthBudgets.length > 0 && !hasCopiedLastMonth && (
@@ -275,14 +303,6 @@ const Budgets = () => {
           {templates.length > 0 && (
             <button onClick={() => setShowTemplates(!showTemplates)} className="text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
               <FolderOpen size={12} /> Templates
-            </button>
-          )}
-          <button onClick={() => setShowScan(true)} className="text-xs text-primary font-medium flex items-center gap-1 hover:underline" title="Scan a budget screenshot">
-            <ScanLine size={12} /> Scan
-          </button>
-          {budgets.length > 0 && (
-            <button onClick={() => setShowDeleteAll(true)} className="text-xs text-destructive font-medium flex items-center gap-1 hover:underline">
-              <Trash2 size={12} /> Delete All
             </button>
           )}
         </div>
@@ -474,13 +494,17 @@ const Budgets = () => {
           </div>
         )}
 
-        {/* AI Suggestions */}
+        {/* AI Suggestions — opened from the ⋯ menu */}
+        {showAI && (
         <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/30">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-xl gradient-primary flex items-center justify-center shrink-0">
               <Sparkles size={13} className="text-primary-foreground" />
             </div>
-            <h2 className="font-heading text-sm">AI Budget Suggestions</h2>
+            <h2 className="font-heading text-sm flex-1">AI Budget Suggestions</h2>
+            <button onClick={() => { setShowAI(false); setSuggestions([]); }} className="text-muted-foreground p-1" aria-label="Close suggestions">
+              <X size={14} />
+            </button>
           </div>
           {suggestions.length > 0 ? (
             <div className="space-y-2.5">
@@ -501,7 +525,7 @@ const Budgets = () => {
                 <button onClick={handleGenerateSuggestions} disabled={aiLoading} className="text-xs font-medium text-primary disabled:opacity-50">
                   {aiLoading ? 'Analyzing…' : 'Regenerate'}
                 </button>
-                <button onClick={() => setSuggestions([])} className="text-xs font-medium text-muted-foreground">Dismiss</button>
+                <button onClick={() => { setSuggestions([]); setShowAI(false); }} className="text-xs font-medium text-muted-foreground">Dismiss</button>
               </div>
             </div>
           ) : (
@@ -514,6 +538,7 @@ const Budgets = () => {
             </>
           )}
         </div>
+        )}
 
         <button onClick={() => { setEditBudget(null); setShowAddBudget(true); }}
           className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-colors">

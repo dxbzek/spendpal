@@ -2,39 +2,24 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { useMemo, useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { format, parseISO, addMonths, startOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { CreditCard, CheckCircle2, ChevronLeft, Plus, Trash2, Pencil, Minus } from 'lucide-react';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import type { Transaction } from '@/types/finance';
 import {
+  buildPlans, planDisplayName, planLeft, planSchedule, totalLeft, type InstallmentPlan,
+} from '@/lib/finance/installments';
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface InstallmentPlan {
-  key: string;
-  merchant: string;
-  category: string;
-  categoryIcon: string;
-  totalInstallments: number;
-  paidInstallments: number;
-  amountPerInstallment: number;
-  totalAmount: number;
-  paidAmount: number;
-  latestDate: string;
-  isTrackingOnly: boolean;
-  loanTotalAmount: number | null;
-  note: string | null;
-}
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const Installments = () => {
-  const { transactions, loading, updateTransaction, bulkRemoveTransactions } = useFinance();
+  const { transactions, accounts, loading, updateTransaction, bulkRemoveTransactions } = useFinance();
   const { fmt } = useCurrency();
 
   const [selectedPlan, setSelectedPlan] = useState<InstallmentPlan | null>(null);
@@ -44,52 +29,13 @@ const Installments = () => {
 
   // ── Plans computation ────────────────────────────────────────────────────
 
-  const plans = useMemo<InstallmentPlan[]>(() => {
-    const installmentTxs = transactions.filter(
-      tx => tx.totalInstallments != null && tx.currentInstallment != null
-    );
-    const map: Record<string, typeof installmentTxs> = {};
-    installmentTxs.forEach(tx => {
-      const key = `${tx.merchant}|${tx.totalInstallments}`;
-      if (!map[key]) map[key] = [];
-      map[key].push(tx);
-    });
-    return Object.entries(map).map(([, txs]) => {
-      const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
-      const latest = sorted[0];
-      const totalInstallments = latest.totalInstallments!;
-      const paidInstallments = latest.currentInstallment ?? 0;
-      const amountPerInstallment = latest.amount;
-      const loanTotalAmount = latest.loanTotalAmount ?? null;
-      const totalAmount = loanTotalAmount ?? round2(amountPerInstallment * totalInstallments);
-      const paidAmount = round2(paidInstallments * amountPerInstallment);
-      return {
-        key: `${latest.merchant}|${totalInstallments}`,
-        merchant: latest.merchant,
-        category: latest.category,
-        categoryIcon: latest.categoryIcon,
-        totalInstallments,
-        paidInstallments,
-        amountPerInstallment,
-        totalAmount,
-        paidAmount,
-        latestDate: latest.date,
-        isTrackingOnly: txs.some(t => t.isTrackingOnly),
-        loanTotalAmount,
-        note: latest.note ?? null,
-      };
-    }).sort((a, b) => {
-      const aDone = a.paidInstallments >= a.totalInstallments;
-      const bDone = b.paidInstallments >= b.totalInstallments;
-      if (aDone !== bDone) return aDone ? 1 : -1;
-      return b.latestDate.localeCompare(a.latestDate);
-    });
-  }, [transactions]);
+  const plans = useMemo(() => buildPlans(transactions), [transactions]);
+  const accountOf = (plan: InstallmentPlan) => accounts.find(a => a.id === plan.accountId);
+  const now = useMemo(() => new Date(), []);
 
   const activePlans = plans.filter(p => p.paidInstallments < p.totalInstallments);
   const completedPlans = plans.filter(p => p.paidInstallments >= p.totalInstallments);
-  const totalRemaining = activePlans.reduce((s, p) =>
-    s + round2((p.totalInstallments - p.paidInstallments) * p.amountPerInstallment), 0);
+  const totalRemaining = totalLeft(activePlans);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -163,22 +109,15 @@ const Installments = () => {
     const principalPerInstallment = round2(loanTotal / plan.totalInstallments);
     const interestPerInstallment = round2(plan.amountPerInstallment - principalPerInstallment);
     const paidPrincipal = round2(plan.paidInstallments * principalPerInstallment);
-    const remainingPrincipal = round2(loanTotal - paidPrincipal);
+    // The statement's figure wins over the straight-line estimate.
+    const remainingPrincipal = plan.remainingPrincipal ?? round2(loanTotal - paidPrincipal);
     const remainingInterest = round2(remainingInstallments * interestPerInstallment);
     const progressPct = plan.totalInstallments > 0
       ? Math.round((plan.paidInstallments / plan.totalInstallments) * 100)
       : 0;
     const isDone = plan.paidInstallments >= plan.totalInstallments;
 
-    // Estimate start from latest date and how many installments have been paid.
-    // Floor at 1: latestDate is the month the most recent paid installment
-    // landed in, so even after the stepper is decremented to 0 paid, that
-    // month is still the best anchor we have — projecting the start a month
-    // *after* latestDate (what an unclamped 0 would do) is backwards.
-    const effectivePaidInstallments = Math.max(plan.paidInstallments, 1);
-    const startMonth = startOfMonth(parseISO(plan.latestDate));
-    const estimatedStartMonth = addMonths(startMonth, -(effectivePaidInstallments - 1));
-    const estimatedEndMonth = addMonths(estimatedStartMonth, plan.totalInstallments - 1);
+    const schedule = planSchedule(plan, accountOf(plan), now);
 
     const livePlan = plan;
 
@@ -229,7 +168,7 @@ const Installments = () => {
             <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPct}%` }} />
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            Remaining &nbsp;<span className="font-medium text-foreground">{fmt(hasLoan ? remainingPrincipal : remainingPayments)}</span>
+            Remaining &nbsp;<span className="font-medium text-foreground">{fmt(hasLoan ? remainingPrincipal : planLeft(plan))}</span>
           </p>
         </div>
 
@@ -270,11 +209,12 @@ const Installments = () => {
         <div className="bg-card rounded-2xl border border-border divide-y divide-border mb-4">
           <DetailRow label="Monthly installment" value={fmt(plan.amountPerInstallment)} />
           <DetailRow label="Repayment period" value={`${plan.totalInstallments} month${plan.totalInstallments !== 1 ? 's' : ''}`} />
-          <DetailRow label="Started" value={format(estimatedStartMonth, 'MMM yyyy')} />
-          {!isDone && <DetailRow label="Projected end" value={format(estimatedEndMonth, 'MMM yyyy')} />}
+          {schedule && <DetailRow label="Started" value={format(schedule.startedOn, 'MMM yyyy')} />}
+          {schedule && <DetailRow label="Next payment" value={format(schedule.nextDue, 'd MMM yyyy')} />}
+          {schedule && <DetailRow label="Ends" value={format(schedule.endsOn, 'd MMM yyyy')} />}
           <DetailRow label="Remaining installments" value={String(remainingInstallments)} />
           <DetailRow label="Remaining payments" value={fmt(remainingPayments)} />
-          {hasLoan && (
+          {(hasLoan || plan.remainingPrincipal != null) && (
             <DetailRow label="Remaining principal" value={fmt(remainingPrincipal)} />
           )}
           {hasLoan && interestPerInstallment > 0 && (
@@ -294,7 +234,7 @@ const Installments = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Installment Plan?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete all transactions linked to <strong>{planToDelete?.merchant}</strong>. This cannot be undone.
+                This will permanently delete all transactions linked to <strong>{planToDelete && planDisplayName(planToDelete.merchant)}</strong>. This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -369,12 +309,7 @@ const Installments = () => {
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Active</h2>
               {activePlans.map(plan => {
                 const progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
-                const remainingCount = plan.totalInstallments - plan.paidInstallments;
-                const remainingAmt = round2(remainingCount * plan.amountPerInstallment);
-                // Mirror the detail view's floor-at-1 anchoring (see Installments.tsx
-                // detail view) so the two views agree on the estimated end month.
-                const effectivePaidInstallments = Math.max(plan.paidInstallments, 1);
-                const endMonth = addMonths(startOfMonth(parseISO(plan.latestDate)), plan.totalInstallments - effectivePaidInstallments);
+                const schedule = planSchedule(plan, accountOf(plan), now);
                 return (
                   <div key={plan.key} className="bg-card rounded-2xl border border-border p-4 space-y-3">
                     {/* Tappable top row → detail view */}
@@ -384,13 +319,8 @@ const Installments = () => {
                     >
                       <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold truncate">{plan.merchant}</p>
-                          {plan.isTrackingOnly && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">CC/Tabby</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{plan.category}</p>
+                        <p className="font-semibold truncate">{planDisplayName(plan.merchant)}</p>
+                        <p className="text-xs text-muted-foreground truncate">{accountOf(plan)?.name ?? plan.category}</p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-semibold">{fmt(plan.amountPerInstallment)}/mo</p>
@@ -409,18 +339,11 @@ const Installments = () => {
                       </div>
                     </div>
 
-                    {/* Bottom row: last payment + quick +1 button */}
-                    <div className="flex items-center justify-between pt-1 border-t border-border">
+                    {/* Bottom row: when it ends + what's left */}
+                    <div className="pt-2 border-t border-border">
                       <span className="text-xs text-muted-foreground">
-                        Ends {format(endMonth, 'MMM yyyy')} · <span className="text-expense font-medium">{fmt(remainingAmt)} left</span>
+                        {schedule && <>Ends {format(schedule.endsOn, 'd MMM yyyy')} · </>}<span className="text-expense font-medium">{fmt(planLeft(plan))} left</span>
                       </span>
-                      <button
-                        onClick={() => updateProgress(plan, +1)}
-                        className="flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full transition-colors"
-                        title="Mark one installment as paid"
-                      >
-                        <Plus size={11} /> 1 paid
-                      </button>
                     </div>
                   </div>
                 );
@@ -441,7 +364,7 @@ const Installments = () => {
                   <div className="flex items-center gap-3">
                     <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{plan.merchant}</p>
+                      <p className="font-semibold truncate">{planDisplayName(plan.merchant)}</p>
                       <p className="text-xs text-muted-foreground">{plan.totalInstallments} payments · {fmt(plan.totalAmount)} total</p>
                     </div>
                     <CheckCircle2 size={16} className="text-income shrink-0" />

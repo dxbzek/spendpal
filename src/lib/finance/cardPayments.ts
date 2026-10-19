@@ -55,8 +55,11 @@ export function nextPayday(day: number, now: Date): Date {
   return thisMonth > today ? thisMonth : inMonth(today.getFullYear(), today.getMonth() + 1);
 }
 
+/** Cash/debit money that's yours to spend: savings marked not-spendable are left out. */
+export const isSpendable = (a: Account) => a.type !== 'credit' && !a.excludeFromSpendable;
+
 /**
- * Cash in cash/debit accounts minus every statement total due before the next
+ * Spendable cash/debit money minus every statement total due before the next
  * payday (a payment due on payday itself is covered by that day's salary).
  * Negative means the cash doesn't cover what's due; callers must not turn a
  * negative into a per-day allowance.
@@ -64,7 +67,7 @@ export function nextPayday(day: number, now: Date): Date {
 export function leftUntilPayday(accounts: Account[], payday: Date, now: Date) {
   const today = startOfDay(now);
   const cashCents = accounts
-    .filter(a => a.type !== 'credit')
+    .filter(isSpendable)
     .reduce((s, a) => s + toCents(a.balance), 0);
   const dues = cardStatuses(accounts, now).filter(
     (s): s is Extract<CardStatus, { kind: 'due' }> => s.kind === 'due' && s.dueOn >= today && s.dueOn < payday,

@@ -1,0 +1,19 @@
+{
+  "accounts": [
+    "user_id", "name", "type", "balance", "currency", "icon",
+    "credit_limit", "due_date", "statement_date", "apr",
+    "statement_total_due", "statement_min_due", "statement_due_on",
+    "exclude_from_spendable"
+  ],
+  "transactions": [
+    "user_id", "account_id", "type", "amount", "currency", "category", "category_icon",
+    "merchant", "date", "note", "is_recurring", "total_installments", "current_installment",
+    "loan_total_amount", "is_tracking_only", "is_internal", "is_pending", "remaining_principal"
+  ],
+  "budgets": ["user_id", "category", "category_icon", "amount", "period", "month", "is_fixed"],
+  "goals": ["user_id", "name", "icon", "type", "target_amount", "saved_amount", "deadline", "status"],
+  "goal_contributions": ["goal_id", "user_id", "amount", "note"],
+  "custom_categories": ["user_id", "name", "icon", "type", "sort_order", "original_name"],
+  "profiles": ["display_name", "currency", "avatar_url", "notify_email", "notify_sms", "phone_number"],
+  "advisor_sessions": ["user_id", "session_type", "result"]
+}
