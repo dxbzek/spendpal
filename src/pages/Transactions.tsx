@@ -19,10 +19,6 @@ import SwipeableTransaction from '@/components/transactions/SwipeableTransaction
 import { extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditTransaction } from '@/components/layout/AppLayout';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
@@ -63,8 +59,6 @@ const Transactions = () => {
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [showDeleteAll, setShowDeleteAll] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [merchantProfile, setMerchantProfile] = useState<string | null>(null);
   const [categorizeTxId, setCategorizeTxId] = useState<string | null>(null);
   // Pagination
@@ -320,19 +314,13 @@ const Transactions = () => {
         )}
 
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          {filtered.length > 0 && (
-            <button onClick={() => setShowDeleteAll(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors">
-              <Trash2 size={14} /> <span className="hidden sm:inline">Delete All</span><span className="sm:hidden">Delete</span>
-            </button>
-          )}
           <button onClick={() => exportTransactionsCsv(filtered, accounts)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
-            <Download size={14} /> <span className="hidden sm:inline">Export</span>
+            <Download size={14} /> <span>Export</span>
           </button>
           <button onClick={() => setShowImport(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
-            <Upload size={14} /> <span className="hidden sm:inline">Import</span>
+            <Upload size={14} /> <span>Import</span>
           </button>
           <button
             onClick={() => {
@@ -342,7 +330,7 @@ const Transactions = () => {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               selectMode ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             }`}>
-            {selectMode ? <X size={14} /> : <span>☑</span>} <span className="hidden sm:inline">{selectMode ? 'Cancel' : 'Select'}</span>
+            {selectMode ? <X size={14} /> : <span>☑</span>} <span>{selectMode ? 'Cancel' : 'Select'}</span>
           </button>
         </div>
 
@@ -588,10 +576,6 @@ const Transactions = () => {
                     const isLinkedTransfer = !!pair;
                     const isDupe = duplicateIds.has(tx.id);
                     const isSelected = selectedIds.has(tx.id);
-                    const emojiOnly = (str: string) => {
-                      const match = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
-                      return match ? match[0] : str.charAt(0);
-                    };
                     return (
                       <div key={tx.id}
                         className={`grid ${selectMode ? 'grid-cols-[28px_150px_1fr_160px_110px_60px]' : 'grid-cols-[150px_1fr_160px_110px_60px]'} gap-0 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition-colors cursor-pointer group items-center ${isDupe ? 'bg-warning/5' : ''} ${isSelected ? 'bg-primary/5' : ''}`}
@@ -617,7 +601,7 @@ const Transactions = () => {
                         )}
                         <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</span>
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-xl shrink-0">{emojiOnly(tx.categoryIcon)}</span>
+                          <span className="text-xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold truncate flex items-center gap-1.5">
                               {tx.merchant}
@@ -729,40 +713,6 @@ const Transactions = () => {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showDeleteAll} onOpenChange={setShowDeleteAll}>
-        <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete All Transactions?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete all {filtered.length} {filterType !== 'all' ? filterType : ''} transactions. Account balances will be adjusted. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              onClick={async () => {
-                setDeleting(true);
-                try {
-                  // Expand transfer pairs so the income half isn't orphaned
-                  // (filtered only carries the expense half of each transfer).
-                  await bulkRemoveTransactions(
-                    filtered.flatMap(tx => {
-                      const pair = transferPairs.get(tx.id);
-                      return pair ? [tx.id, pair.to.id] : [tx.id];
-                    })
-                  );
-                  setShowDeleteAll(false);
-                } finally {
-                  setDeleting(false);
-                }
-              }}
-              className="bg-destructive text-destructive-foreground">
-              {deleting ? 'Deleting...' : `Delete ${filtered.length} Transactions`}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

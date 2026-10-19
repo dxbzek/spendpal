@@ -7,7 +7,7 @@ import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, Chev
 import { m, AnimatePresence } from 'framer-motion';
 import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
-import { DEFAULT_APR, monthsToPayoff, minPayment, simulateStrategy } from '@/lib/finance/debtPayoff';
+import { DEFAULT_APR, monthsToPayoff, simulateStrategy } from '@/lib/finance/debtPayoff';
 import { creditUtilization } from '@/lib/finance/credit';
 
 const Debt = () => {
@@ -46,26 +46,28 @@ const Debt = () => {
         ...a,
         // balance IS the amount owed for credit accounts (see Account type).
         owed: Math.max(0, a.balance),
-        // Clamped 0–100 via the shared helper; a $0-limit card with an owed
-        // balance reads as maxed out (100%) rather than 0%.
-        utilization: creditUtilization(a) ?? 0,
+        // Clamped 0–100 via the shared helper. No limit (Tabby and the like)
+        // means no utilization at all, not 0% or 100%.
+        utilization: a.creditLimit ? creditUtilization(a) : null,
       }))
       .filter(a => a.owed > 0)
   , [accounts]);
 
   const totalOwed = creditDebts.reduce((s, d) => s + d.owed, 0);
-  const totalLimit = creditDebts.reduce((s, d) => s + (d.creditLimit || 0), 0);
-  const overallUtil = totalLimit ? (totalOwed / totalLimit) * 100 : 0;
+  const limited = creditDebts.filter(d => d.utilization != null);
+  const totalLimit = limited.reduce((s, d) => s + (d.creditLimit || 0), 0);
+  const overallUtil = totalLimit ? (limited.reduce((s, d) => s + d.owed, 0) / totalLimit) * 100 : 0;
   // The label follows the most-used card: a maxed-out card hurts even when
   // the total across cards looks fine.
-  const worstCard = creditDebts.reduce<(typeof creditDebts)[number] | null>(
-    (w, d) => (!w || d.utilization > w.utilization ? d : w), null);
+  const worstCard = limited.reduce<(typeof limited)[number] | null>(
+    (w, d) => (!w || (d.utilization ?? 0) > (w.utilization ?? 0) ? d : w), null);
   const worstUtil = worstCard?.utilization ?? 0;
 
   const getApr = (id: string, accountApr?: number) => aprs[id] ?? accountApr ?? DEFAULT_APR;
-  // The statement's minimum when entered; the 2% rule of thumb otherwise.
-  const getMinPay = (d: { owed: number; statementMinDue?: number | null }) => d.statementMinDue ?? minPayment(d.owed);
-  const getPayment = (id: string, minPay: number) => payments[id] ?? minPay;
+  // The statement's minimum when entered; otherwise there is none to show
+  // (no guessing a 2% rule the card may not have).
+  const getMinPay = (d: { statementMinDue?: number | null }) => d.statementMinDue ?? null;
+  const getPayment = (id: string, minPay: number | null) => payments[id] ?? minPay;
 
   const utilizationColor = (pct: number) => {
     if (pct >= 75) return 'text-expense bg-destructive/10';
@@ -98,7 +100,7 @@ const Debt = () => {
       icon: d.icon,
       owed: d.owed,
       apr: getApr(d.id, d.apr),
-      minPay: getMinPay(d),
+      minPay: getMinPay(d) ?? 0,
     }))
   , [creditDebts, aprs]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -167,8 +169,8 @@ const Debt = () => {
 
       <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto space-y-4">
 
-        {/* Utilization health */}
-        {creditDebts.length > 0 && (
+        {/* Utilization health (cards with a limit only) */}
+        {limited.length > 0 && (
           <div className={`flex items-start gap-3 p-3 rounded-xl text-xs ${worstUtil >= 30 ? 'bg-warning/10 border border-warning/30' : 'bg-income/10 border border-income/20'}`}>
             <AlertCircle size={14} className={worstUtil >= 30 ? 'text-warning mt-0.5' : 'text-income mt-0.5'} />
             <div>
@@ -198,7 +200,8 @@ const Debt = () => {
               const apr = getApr(debt.id, debt.apr);
               const minPay = getMinPay(debt);
               const payment = getPayment(debt.id, minPay);
-              const months = monthsToPayoff(debt.owed, apr, payment);
+              // No payment to work from (no minimum, nothing typed): no payoff date.
+              const months = payment ? monthsToPayoff(debt.owed, apr, payment) : Infinity;
               const totalCost = months < Infinity ? payment * months : Infinity;
               const interest = months < Infinity ? totalCost - debt.owed : Infinity;
               const payoffDate = months < Infinity ? addMonths(new Date(), months) : null;
@@ -219,31 +222,37 @@ const Debt = () => {
                         <div>
                           <p className="text-sm font-semibold">{debt.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {mask(fmt(debt.owed))} owed of {mask(fmt(debt.creditLimit || 0))} limit
+                            {debt.utilization != null
+                              ? <>{mask(fmt(debt.owed))} owed of {mask(fmt(debt.creditLimit || 0))} limit</>
+                              : <>{mask(fmt(debt.owed))} owed</>}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${utilizationColor(debt.utilization)}`}>
-                          {debt.utilization.toFixed(0)}%
-                        </span>
+                        {debt.utilization != null && (
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${utilizationColor(debt.utilization)}`}>
+                            {debt.utilization.toFixed(0)}%
+                          </span>
+                        )}
                         {isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
                       </div>
                     </div>
 
-                    {/* Utilization bar */}
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        style={{ width: `${Math.min(debt.utilization, 100)}%` }}
-                        className={`h-full rounded-full transition-all ${utilizationBarColor(debt.utilization)}`}
-                      />
-                    </div>
+                    {/* Utilization bar (only with a limit to measure against) */}
+                    {debt.utilization != null && (
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          style={{ width: `${Math.min(debt.utilization, 100)}%` }}
+                          className={`h-full rounded-full transition-all ${utilizationBarColor(debt.utilization)}`}
+                        />
+                      </div>
+                    )}
 
                     {/* Quick stats row */}
                     <div className="flex items-center justify-between mt-2 text-xs gap-2 flex-wrap">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <TrendingDown size={11} />
-                        Min: {mask(fmt(minPay))}/mo
+                        {minPay != null ? <>Min: {mask(fmt(minPay))}/mo</> : 'No minimum'}
                       </span>
                       {payoffDate && (
                         <span className="text-muted-foreground flex items-center gap-1">
@@ -284,7 +293,8 @@ const Debt = () => {
                                 type="number"
                                 min="1"
                                 step="10"
-                                value={draft[`pay:${debt.id}`] ?? payment}
+                                value={draft[`pay:${debt.id}`] ?? payment ?? ''}
+                                placeholder="Amount"
                                 onChange={e => setNumber(`pay:${debt.id}`, e.target.value, setPayments, debt.id)}
                                 onBlur={() => clearDraft(`pay:${debt.id}`)}
                                 className="h-9 text-sm"
@@ -321,6 +331,8 @@ const Debt = () => {
                                 <p className="text-sm font-heading text-expense">{mask(fmt(interest))}</p>
                               </div>
                             </div>
+                          ) : !payment ? (
+                            <p className="text-xs text-muted-foreground text-center">Enter a monthly payment to see when it&apos;s paid off.</p>
                           ) : (
                             <div className="bg-destructive/10 rounded-xl p-3 text-center">
                               <p className="text-xs text-expense font-semibold">Payment too low — doesn't cover interest</p>
@@ -406,7 +418,7 @@ const Debt = () => {
                         }`}>{i + 1}</span>
                         <span className="text-base shrink-0">{d.icon}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate">{d.name}</p>
+                          <p className="text-xs font-semibold line-clamp-2 break-words">{d.name}</p>
                           <p className="text-[10px] text-muted-foreground">
                             {mask(fmt(d.owed))} · {d.apr}% APR
                           </p>

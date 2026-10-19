@@ -4,9 +4,14 @@ import App from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import "./index.css";
 import { registerAppUpdates } from "./lib/pwaUpdate";
+import { polyfillCountryFlagEmojis } from "country-flag-emoji-polyfill";
 
 // Show a "New version, tap to reload" toast when a new build is deployed.
 registerAppUpdates();
+
+// Windows has no flag glyphs ("🇬🇪" shows as "GE"). Where flags don't draw,
+// load a flag-only font from our own origin (the CSP blocks font CDNs).
+polyfillCountryFlagEmojis("Twemoji Country Flags", "/fonts/TwemojiCountryFlags.woff2");
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,

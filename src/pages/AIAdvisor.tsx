@@ -6,8 +6,8 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
 import { activeBudgets } from '@/utils/budgets';
-import { creditUtilization } from '@/lib/finance/credit';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { isCountableExpense } from '@/lib/finance/transactionFilters';
+import { buildAdvisorData, presentAnalysis } from '@/lib/finance/advisorData';
 import { format, parseISO, subMonths, getMonth, getYear } from 'date-fns';
 import { m, AnimatePresence } from 'framer-motion';
 import {
@@ -146,49 +146,13 @@ const AIAdvisor = () => {
   }, []);
   const now = useMemo(() => new Date(), []);
 
-  // Build the financial summary sent to the model.
-  const financialData = useMemo(() => {
-    const monthlyTx = transactions.filter(tx => {
-      const d = parseISO(tx.date);
-      // Exclude future-dated transactions — not yet earned/spent.
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && d <= now;
-    });
-    // Exclude income posted to credit-card accounts (e.g. refunds) so the
-    // model isn't fed inflated income — matches the Dashboard/Reports rule.
-    const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
-    const income = monthlyTx.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0);
-    const expenses = monthlyTx.filter(isCountableExpense).reduce((s, t) => s + t.amount, 0);
-    const categories: Record<string, { total: number; icon: string; count: number }> = {};
-    monthlyTx.filter(isCountableExpense).forEach(t => {
-      if (!categories[t.category]) categories[t.category] = { total: 0, icon: t.categoryIcon, count: 0 };
-      categories[t.category].total += t.amount;
-      categories[t.category].count++;
-    });
-
-    const recurring = transactions.filter(t => t.isRecurring);
-    const creditCards = accounts.filter(a => a.type === 'credit');
-    const totalBalance = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
-
-    return {
-      currency,
-      monthlyIncome: income,
-      monthlyExpenses: expenses,
-      netSavings: income - expenses,
-      totalBalance,
-      categories: Object.entries(categories).map(([name, d]) => ({ name, ...d })),
-      recurringExpenses: recurring.map(r => ({ merchant: r.merchant, amount: r.amount, category: r.category })),
-      creditCards: creditCards.map(c => ({
-        name: c.name,
-        balance: c.balance,
-        creditLimit: c.creditLimit,
-        utilization: Math.round(creditUtilization(c) ?? 0),
-      })),
-      existingBudgets: activeBudgets(budgets, monthKey).map(b => ({ category: b.category, amount: b.amount, spent: b.spent })),
-      goals: goals.map(g => ({ name: g.name, target: g.targetAmount, saved: g.savedAmount, type: g.type })),
-      transactionCount: transactions.length,
-      accountCount: accounts.length,
-    };
-  }, [transactions, accounts, budgets, goals, currency, now, monthKey]);
+  // What the model is told: countable rows only, recurring merchants once.
+  const financialData = useMemo(
+    () => buildAdvisorData(transactions, accounts, activeBudgets(budgets, monthKey), goals, now, currency),
+    [transactions, accounts, budgets, goals, currency, now, monthKey],
+  );
+  // What's shown: in the second person, and only advice tied to your own data.
+  const shown = useMemo(() => (analysis ? presentAnalysis(analysis, financialData) : null), [analysis, financialData]);
 
   // Flag categories where this month's spend is 2x+ the 3-month average.
   const anomalies = useMemo(() => {
@@ -454,7 +418,7 @@ const AIAdvisor = () => {
                     <p className="text-xs text-muted-foreground">{METHOD_LABELS[analysis.recommendedMethod]?.desc}</p>
                   </div>
                 </div>
-                <p className="text-sm text-foreground/80 leading-relaxed">{analysis.methodReason}</p>
+                <p className="text-sm text-foreground/80 leading-relaxed">{shown?.methodReason}</p>
               </div>
 
               {/* Health Score + Breakdown */}
@@ -504,10 +468,11 @@ const AIAdvisor = () => {
               </div>
 
               {/* Insights */}
+              {!!shown?.insights.length && (
               <div className="bg-card rounded-2xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Behavior Insights</h3>
                 <div className="space-y-2.5">
-                  {analysis.insights.map((insight) => (
+                  {shown.insights.map((insight) => (
                     <div key={insight.title} className={`flex items-start gap-3 p-3 rounded-xl border ${INSIGHT_COLORS[insight.type]}`}>
                       <div className="shrink-0 mt-0.5">{INSIGHT_ICONS[insight.type]}</div>
                       <div>
@@ -518,6 +483,7 @@ const AIAdvisor = () => {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Suggested Envelopes */}
               <div className="bg-card rounded-2xl p-5 card-shadow">
@@ -710,10 +676,11 @@ const AIAdvisor = () => {
               </div>
 
               {/* Dynamic Adjustments */}
+              {!!shown?.dynamicAdjustments.length && (
               <div className="bg-card rounded-2xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Recommended Adjustments</h3>
                 <div className="space-y-2.5">
-                  {analysis.dynamicAdjustments.map((adj) => (
+                  {shown.dynamicAdjustments.map((adj) => (
                     <div key={adj.action} className="flex items-start gap-3 p-3 bg-accent/30 rounded-xl">
                       <ArrowRight size={16} className="text-primary shrink-0 mt-0.5" />
                       <div>
@@ -724,6 +691,7 @@ const AIAdvisor = () => {
                   ))}
                 </div>
               </div>
+              )}
             </m.div>
           )}
         </AnimatePresence>

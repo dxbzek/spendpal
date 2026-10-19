@@ -420,7 +420,7 @@ const Dashboard = () => {
                               <div className="flex items-center gap-4 min-w-0">
                                 <span className="text-2xl shrink-0">{a.icon}</span>
                                 <div className="min-w-0">
-                                  <p className="text-sm font-medium truncate">{a.name}</p>
+                                  <p className="text-sm font-medium line-clamp-2 break-words">{a.name}</p>
                                   {a.type === 'credit' && (
                                     <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
                                       {a.statementDate && a.statementDate > 0 && <span>Stmt: {ordinal(a.statementDate)}</span>}

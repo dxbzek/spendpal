@@ -194,7 +194,7 @@ const Accounts = () => {
                       {account.icon}
                     </div>
                     <div>
-                      <p className="font-semibold">{account.name}</p>
+                      <p className="font-semibold line-clamp-2 break-words">{account.name}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[account.type]}`}>
                         {TYPE_LABELS[account.type]}
                       </span>

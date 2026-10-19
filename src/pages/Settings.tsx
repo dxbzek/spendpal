@@ -308,9 +308,32 @@ const DangerZoneCard = () => {
   const { accounts, transactions, budgets, goals, refresh } = useFinance();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [showConfirm, setShowConfirm] = useState(false);
+  // Which delete the confirm dialog is for: every transaction, or everything.
+  const [confirming, setConfirming] = useState<'transactions' | 'everything' | null>(null);
+  const showConfirm = confirming !== null;
+  const setShowConfirm = (open: boolean) => { if (!open) setConfirming(null); };
   const [deleting, setDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+
+  const handleDeleteTransactions = async () => {
+    if (!user || confirmText !== 'DELETE') return;
+    setDeleting(true);
+    try {
+      // Server-side by user, so it covers rows older than the 13 months the
+      // app loads. The balance trigger reverses each row on its account.
+      const { error } = await supabase.from('transactions').delete().eq('user_id', user.id);
+      if (error) throw error;
+      toast.success('All transactions deleted');
+      await refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error('Delete failed: ' + msg);
+    } finally {
+      setDeleting(false);
+      setShowConfirm(false);
+      setConfirmText('');
+    }
+  };
 
   const handleDeleteAll = async () => {
     if (!user || confirmText !== 'DELETE') return;
@@ -348,7 +371,26 @@ const DangerZoneCard = () => {
     <>
       <section>
         <p className="text-[11px] font-semibold text-destructive uppercase tracking-wider mb-3 px-1">Danger Zone</p>
-        <div className="bg-card rounded-2xl p-5 card-shadow border border-destructive/20">
+        <div className="bg-card rounded-2xl p-5 card-shadow border border-destructive/20 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+              <Trash2 size={16} className="text-destructive" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Delete All Transactions</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Permanently removes every transaction. Accounts, budgets and goals stay; account balances are adjusted back.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => setConfirming('transactions')}
+              >
+                <Trash2 size={14} className="mr-1.5" /> Delete All Transactions
+              </Button>
+            </div>
+          </div>
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
               <Trash2 size={16} className="text-destructive" />
@@ -362,7 +404,7 @@ const DangerZoneCard = () => {
                 variant="outline"
                 size="sm"
                 className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setShowConfirm(true)}
+                onClick={() => setConfirming('everything')}
               >
                 <Trash2 size={14} className="mr-1.5" /> Delete Everything
               </Button>
@@ -376,10 +418,12 @@ const DangerZoneCard = () => {
           <AlertDialogHeader>
             <div className="flex items-center gap-2">
               <AlertTriangle size={20} className="text-destructive" />
-              <AlertDialogTitle>Delete All Data?</AlertDialogTitle>
+              <AlertDialogTitle>{confirming === 'transactions' ? 'Delete All Transactions?' : 'Delete All Data?'}</AlertDialogTitle>
             </div>
             <AlertDialogDescription>
-              This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals. This action <span className="font-semibold text-foreground">cannot be undone</span> — there is no Undo for Delete All.
+              {confirming === 'transactions'
+                ? <>This will permanently delete every transaction, including ones older than the app shows. Account balances are adjusted back. This action <span className="font-semibold text-foreground">cannot be undone</span>.</>
+                : <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals. This action <span className="font-semibold text-foreground">cannot be undone</span> — there is no Undo for Delete All.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-1">
@@ -399,11 +443,11 @@ const DangerZoneCard = () => {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting || confirmText !== 'DELETE'}
-              onClick={handleDeleteAll}
+              onClick={confirming === 'transactions' ? handleDeleteTransactions : handleDeleteAll}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-              Yes, Delete Everything
+              {confirming === 'transactions' ? 'Yes, Delete All Transactions' : 'Yes, Delete Everything'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

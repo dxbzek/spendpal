@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { format } from 'date-fns';
-import { CreditCard, CheckCircle2, ChevronLeft, Plus, Trash2, Pencil, Minus } from 'lucide-react';
+import { CreditCard, CheckCircle2, ChevronLeft, ChevronDown, Plus, Trash2, Pencil, Minus } from 'lucide-react';
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import type { Transaction } from '@/types/finance';
 import {
@@ -26,6 +26,8 @@ const Installments = () => {
   const [planToDelete, setPlanToDelete] = useState<InstallmentPlan | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
+  // Finished plans stay tucked away unless asked for.
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // ── Plans computation ────────────────────────────────────────────────────
 
@@ -354,8 +356,15 @@ const Installments = () => {
           {/* Completed Plans */}
           {completedPlans.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Completed</h2>
-              {completedPlans.map(plan => (
+              <button
+                onClick={() => setShowCompleted(v => !v)}
+                aria-expanded={showCompleted}
+                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                Completed ({completedPlans.length})
+                <ChevronDown size={14} className={showCompleted ? 'rotate-180' : ''} />
+              </button>
+              {showCompleted && completedPlans.map(plan => (
                 <button
                   key={plan.key}
                   onClick={() => setSelectedPlan(plan)}
