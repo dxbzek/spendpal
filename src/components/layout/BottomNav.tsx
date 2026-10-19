@@ -7,24 +7,24 @@ import {
   Brain, Settings, CreditCard, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { m, AnimatePresence } from 'framer-motion';
+import { m } from 'framer-motion';
 
 const NAV_ITEMS_LEFT = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { path: '/transactions', label: 'Txns', icon: Receipt },
+  { path: '/installments', label: 'Installments', icon: Layers },
 ];
 
 const NAV_ITEMS_RIGHT = [
   { path: '/goals', label: 'Goals', icon: Target },
-  { path: '/advisor', label: 'Advisor', icon: Brain },
+  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
 ];
 
 const MORE_ITEMS = [
   { path: '/accounts', label: 'Accounts', icon: Wallet },
-  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/debt', label: 'Debt', icon: CreditCard },
-  { path: '/installments', label: 'Installments', icon: Layers },
+  { path: '/advisor', label: 'Advisor', icon: Brain },
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -90,17 +90,18 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
       {/* More overlay — rendered in a portal on document.body so no ancestor
           stacking/overflow/transform context can clip or offset it, and
           centered with flexbox (not margin-auto) so a transform on the
-          animating panel can never knock it off-centre. */}
+          animating panel can never knock it off-centre.
+          It unmounts the moment showMore is false. It used to wait for an
+          exit animation, and when that stalled (iOS pauses animations in
+          the background) the sheet stayed on screen with showMore already
+          false, so its X did nothing. */}
       {createPortal(
-        <AnimatePresence>
-          {showMore && (
+        showMore && (
             <>
               {/* Backdrop */}
               <m.div
-                key="backdrop"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
                 className="fixed inset-0 z-[44] bg-black/30 backdrop-blur-sm"
                 onPointerDown={(e) => { e.stopPropagation(); setShowMore(false); }}
@@ -111,18 +112,12 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                   to the backdrop; the panel re-enables pointer events. */}
               <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[62] flex justify-center px-3 pointer-events-none">
                 <m.div
-                  key="more-panel"
-                  drag="y"
-                  dragConstraints={{ top: 0, bottom: 0 }}
-                  dragElastic={{ top: 0, bottom: 0.3 }}
-                  onDragEnd={(_e, info) => {
-                    if (info.offset.y > 80 || info.velocity.y > 500) setShowMore(false);
-                  }}
+                  role="dialog"
+                  aria-label="More"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh] cursor-grab active:cursor-grabbing"
+                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
                 >
                   <div className="flex justify-center pt-2 pb-0.5">
                     <div className="w-9 h-1 rounded-full bg-border" />
@@ -161,8 +156,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                 </m.div>
               </div>
             </>
-          )}
-        </AnimatePresence>,
+        ),
         document.body,
       )}
 
