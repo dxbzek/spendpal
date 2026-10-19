@@ -53,6 +53,7 @@ export const TransactionRowSchema = z.object({
   remaining_principal: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | null | undefined =>
     v === undefined ? undefined : v === null || v === '' ? null : Number(v)
   ),
+  dupe_dismissed: z.boolean().optional().default(false),
 });
 
 export const BudgetRowSchema = z.object({

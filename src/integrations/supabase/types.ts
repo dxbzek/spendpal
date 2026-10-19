@@ -275,6 +275,7 @@ export type Database = {
           date: string
           id: string
           is_recurring: boolean
+          dupe_dismissed: boolean
           is_tracking_only: boolean
           loan_total_amount: number | null
           merchant: string
@@ -295,6 +296,7 @@ export type Database = {
           date?: string
           id?: string
           is_recurring?: boolean
+          dupe_dismissed?: boolean
           is_tracking_only?: boolean
           loan_total_amount?: number | null
           merchant: string
@@ -315,6 +317,7 @@ export type Database = {
           date?: string
           id?: string
           is_recurring?: boolean
+          dupe_dismissed?: boolean
           is_tracking_only?: boolean
           loan_total_amount?: number | null
           merchant?: string

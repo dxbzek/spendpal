@@ -29,7 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const PAGE_SIZE = 50;
 
 const Transactions = () => {
-  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, bulkUpdateCategory, updateTransaction, loading } = useFinance();
+  const { transactions, accounts, removeTransaction, bulkRemoveTransactions, bulkUpdateCategory, updateTransaction, dismissDuplicate, loading } = useFinance();
   const { fmtSigned, fmt } = useCurrency();
 
   const { hidden, mask } = useBalanceMask();
@@ -46,6 +46,8 @@ const Transactions = () => {
   const dateFrom = searchParams.get('from') || '';
   const dateTo = searchParams.get('to') || '';
   const search = searchParams.get('q') || '';
+  // Tapping the duplicates banner narrows the list to the flagged rows.
+  const dupesOnly = searchParams.get('dupes') === '1';
 
   const setFilter = useCallback((key: string, value: string) => {
     setSearchParams(prev => {
@@ -85,8 +87,15 @@ const Transactions = () => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
   }, []);
 
-  // Detect duplicates: same merchant + amount + type within 24h (O(n) algorithm)
+  // Possible duplicates: same account, merchant, amount and type within a few
+  // days, minus rows marked "Not a duplicate" (O(n) algorithm).
   const duplicateIds = useMemo(() => detectDuplicates(transactions), [transactions]);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const handleNotDuplicate = async (id: string) => {
+    if (dismissingId) return;
+    setDismissingId(id);
+    try { await dismissDuplicate(id); } finally { setDismissingId(null); }
+  };
 
   // Merge transfer pairs: match expense+income with same date, amount, category='Transfer'
   const { mergedTransactions, transferPairs } = useMemo(() => {
@@ -117,6 +126,7 @@ const Transactions = () => {
     return mergedTransactions.filter(tx => {
       if (pendingDeleteIds.has(tx.id)) return false;
       if (tx.isTrackingOnly) return false;
+      if (dupesOnly && !duplicateIds.has(tx.id)) return false;
       const matchSearch = !search || tx.merchant.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase()) || (tx.note && tx.note.toLowerCase().includes(search.toLowerCase()));
       const isTransferEntry = tx.category === 'Transfer';
       const matchType = filterType === 'all'
@@ -138,10 +148,10 @@ const Transactions = () => {
 
       return matchSearch && matchType && matchAccount && matchDateFrom && matchDateTo && matchCategory;
     }).sort((a, b) => b.date.localeCompare(a.date));
-  }, [mergedTransactions, search, filterType, filterAccount, filterCategory, transferPairs, dateFrom, dateTo, pendingDeleteIds]);
+  }, [mergedTransactions, search, filterType, filterAccount, filterCategory, transferPairs, dateFrom, dateTo, pendingDeleteIds, dupesOnly, duplicateIds]);
 
   // Reset pagination when filters change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, filterType, filterAccount, filterCategory, dateFrom, dateTo]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, filterType, filterAccount, filterCategory, dateFrom, dateTo, dupesOnly]);
 
   const paginated = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
@@ -159,6 +169,8 @@ const Transactions = () => {
   }, [paginated]);
 
   const visibleDupeCount = useMemo(() => filtered.filter(tx => duplicateIds.has(tx.id)).length, [filtered, duplicateIds]);
+  // Once the last flagged row is dismissed, go back to the full list.
+  useEffect(() => { if (!loading && dupesOnly && visibleDupeCount === 0) setFilter('dupes', ''); }, [loading, dupesOnly, visibleDupeCount, setFilter]);
 
   // Merchant profile stats
   const merchantStats = useMemo(() => {
@@ -262,6 +274,15 @@ const Transactions = () => {
              {tx.note && !isLinkedTransfer && (
                <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">📝 {tx.note}</p>
              )}
+             {isDupe && (
+               <button
+                 onClick={e => { e.stopPropagation(); handleNotDuplicate(tx.id); }}
+                 disabled={dismissingId === tx.id}
+                 className="mt-1 text-[11px] font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full disabled:opacity-50"
+               >
+                 Not a duplicate
+               </button>
+             )}
            </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -312,12 +333,19 @@ const Transactions = () => {
         </p>
 
         {/* Duplicate warning banner */}
-        {visibleDupeCount > 0 && (
+        {visibleDupeCount > 0 && (dupesOnly ? (
           <div className="flex items-center gap-2 mb-3 px-3 py-2.5 bg-warning/10 border border-warning/30 rounded-xl text-xs text-warning font-medium">
-            <AlertTriangle size={14} />
-            {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''} detected — review before deleting
+            <AlertTriangle size={14} className="shrink-0" />
+            <span className="flex-1">Showing {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''}.</span>
+            <button onClick={() => setFilter('dupes', '')} className="shrink-0 underline underline-offset-2">Show all</button>
           </div>
-        )}
+        ) : (
+          <button onClick={() => setFilter('dupes', '1')}
+            className="w-full flex items-center gap-2 mb-3 px-3 py-2.5 bg-warning/10 border border-warning/30 rounded-xl text-xs text-warning font-medium text-left">
+            <AlertTriangle size={14} className="shrink-0" />
+            {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''}. Tap to review.
+          </button>
+        ))}
 
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           {filtered.length > 0 && (
@@ -622,6 +650,15 @@ const Transactions = () => {
                             <p className="text-sm font-semibold truncate flex items-center gap-1.5">
                               {tx.merchant}
                               {isDupe && <AlertTriangle size={12} className="text-warning shrink-0" />}
+                              {isDupe && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); handleNotDuplicate(tx.id); }}
+                                  disabled={dismissingId === tx.id}
+                                  className="text-[11px] font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full shrink-0 disabled:opacity-50"
+                                >
+                                  Not a duplicate
+                                </button>
+                              )}
                             </p>
                             <p className="text-[11px] font-medium text-muted-foreground truncate">{tx.category}</p>
                           </div>

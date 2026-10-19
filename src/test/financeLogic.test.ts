@@ -292,6 +292,40 @@ describe('detectDuplicates', () => {
 
 // ─── findNearDuplicate (manual-entry soft-warn) ───────────────────────────────
 
+describe('detectDuplicates: account and "Not a duplicate"', () => {
+  // The real cases: two taxi rides, two gov fees on one day, all genuine.
+  const taxi1 = makeTransaction({ id: 'taxi-1', amount: 18, merchant: 'Dubai Taxi', date: '2026-09-05', accountId: 'enbd' });
+  const taxi2 = makeTransaction({ id: 'taxi-2', amount: 18, merchant: 'Dubai Taxi', date: '2026-09-07', accountId: 'enbd' });
+  const fee1 = makeTransaction({ id: 'fee-1', amount: 20, merchant: 'Smart Dubai', date: '2026-09-15', accountId: 'enbd' });
+  const fee2 = makeTransaction({ id: 'fee-2', amount: 20, merchant: 'Smart Dubai', date: '2026-09-15', accountId: 'enbd' });
+
+  it('only pairs charges on the same account', () => {
+    const otherCard = { ...taxi2, accountId: 'mashreq' };
+    expect(detectDuplicates([taxi1, otherCard]).size).toBe(0);
+    expect(detectDuplicates([taxi1, taxi2])).toEqual(new Set(['taxi-1', 'taxi-2']));
+  });
+
+  it('stops flagging rows marked "Not a duplicate"', () => {
+    const all = [taxi1, taxi2, fee1, fee2];
+    expect(detectDuplicates(all).size).toBe(4);
+    const dismissed = all.map(t => ({ ...t, dupeDismissed: true }));
+    expect(detectDuplicates(dismissed).size).toBe(0);
+  });
+
+  it('keeps flagging the partner until it is dismissed too', () => {
+    expect(detectDuplicates([{ ...taxi1, dupeDismissed: true }, taxi2])).toEqual(new Set(['taxi-2']));
+  });
+
+  it('still flags a new re-import of a dismissed charge', () => {
+    const reviewed = [{ ...taxi1, dupeDismissed: true }, { ...taxi2, dupeDismissed: true }];
+    const reimport = makeTransaction({ id: 'taxi-reimport', amount: 18, merchant: 'Dubai Taxi', date: '2026-09-07', accountId: 'enbd' });
+    expect(detectDuplicates([...reviewed, reimport])).toEqual(new Set(['taxi-reimport']));
+    // Re-importing the whole statement: both copies flagged, the reviewed originals not.
+    const again = [taxi1, taxi2].map(t => ({ ...t, id: `${t.id}-again` }));
+    expect(detectDuplicates([...reviewed, ...again])).toEqual(new Set(['taxi-1-again', 'taxi-2-again']));
+  });
+});
+
 describe('findNearDuplicate', () => {
   it('returns null when there are no existing transactions', () => {
     expect(findNearDuplicate({ type: 'expense', amount: 50, merchant: 'Starbucks', date: '2025-01-10', accountId: 'acc-1' }, [])).toBeNull();

@@ -17,10 +17,15 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /**
  * Detects potential duplicate transactions in O(n) time using date-bucket hashing.
  *
- * Two transactions are considered duplicates if they share the same type, amount,
- * and merchant name (case-insensitive) and fall within a 3-day window — UNLESS the
- * (merchant + amount) combination recurs frequently within the same month, in which
- * case it is a recurring pattern and is left unflagged.
+ * Two transactions are considered duplicates if they're on the same account,
+ * share the same type, amount, and merchant name (case-insensitive) and fall
+ * within a 3-day window, UNLESS the (merchant + amount) combination recurs
+ * frequently within the same month, in which case it is a recurring pattern
+ * and is left unflagged.
+ *
+ * A row the user marked "Not a duplicate" (dupeDismissed) is never flagged,
+ * but it still counts as a match: a later re-import of that same charge is
+ * flagged against it.
  */
 export function detectDuplicates(transactions: Transaction[]): Set<string> {
   // Map<bucketKey, transactionId[]>
@@ -44,26 +49,32 @@ export function detectDuplicates(transactions: Transaction[]): Set<string> {
     const merchant = tx.merchant.toLowerCase();
 
     const monthKey = `${merchant}|${tx.amount}|${tx.date.slice(0, 7)}`;
-    monthlyFreq.set(monthKey, (monthlyFreq.get(monthKey) ?? 0) + 1);
+    // Reviewed rows don't make a charge "recurring": otherwise re-importing
+    // two charges the user already confirmed (3+ in the month) would hide the
+    // re-import instead of flagging it.
+    if (!tx.dupeDismissed) monthlyFreq.set(monthKey, (monthlyFreq.get(monthKey) ?? 0) + 1);
     monthKeyById.set(tx.id, monthKey);
 
+    const key = `${tx.accountId}|${tx.type}|${tx.amount}|${merchant}`;
     // Index under own date
-    addToBucket(`${tx.type}|${tx.amount}|${merchant}|${day}`, tx.id);
+    addToBucket(`${key}|${day}`, tx.id);
     // Also index under prior days to catch re-imports and cross-midnight duplicates.
     // Native UTC date math (no date-fns) keeps this hot loop fast.
     const baseMs = Date.parse(`${day}T00:00:00Z`);
     for (let offset = 1; offset <= DUPLICATE_WINDOW_DAYS; offset++) {
       const prior = new Date(baseMs - offset * MS_PER_DAY).toISOString().slice(0, 10);
-      addToBucket(`${tx.type}|${tx.amount}|${merchant}|${prior}`, tx.id);
+      addToBucket(`${key}|${prior}`, tx.id);
     }
   }
 
+  const dismissed = new Set(transactions.filter(t => t.dupeDismissed).map(t => t.id));
   const dupes = new Set<string>();
   for (const ids of buckets.values()) {
     // Deduplicate IDs within a bucket (a tx may appear in multiple buckets)
     const uniqueIds = [...new Set(ids)];
     if (uniqueIds.length > 1) {
       for (const id of uniqueIds) {
+        if (dismissed.has(id)) continue;
         const monthKey = monthKeyById.get(id);
         // Skip frequently-recurring merchant+amount combos: not duplicates.
         if (monthKey && (monthlyFreq.get(monthKey) ?? 0) >= RECURRING_MONTHLY_THRESHOLD) continue;

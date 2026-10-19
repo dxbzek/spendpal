@@ -8,7 +8,8 @@
   "transactions": [
     "user_id", "account_id", "type", "amount", "currency", "category", "category_icon",
     "merchant", "date", "note", "is_recurring", "total_installments", "current_installment",
-    "loan_total_amount", "is_tracking_only", "is_internal", "is_pending", "remaining_principal"
+    "loan_total_amount", "is_tracking_only", "is_internal", "is_pending", "remaining_principal",
+    "dupe_dismissed"
   ],
   "budgets": ["user_id", "category", "category_icon", "amount", "period", "month", "is_fixed"],
   "goals": ["user_id", "name", "icon", "type", "target_amount", "saved_amount", "deadline", "status"],
