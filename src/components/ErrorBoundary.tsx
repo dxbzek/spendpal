@@ -1,6 +1,7 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
 import { logger } from '@/lib/logger';
+import { isChunkLoadError, recoverFromChunkError, reloadToLatest } from '@/lib/appReload';
 
 interface Props {
   children: React.ReactNode;
@@ -24,12 +25,16 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: React.ErrorInfo) {
+    // A page file from an older deploy: reload onto the current build rather
+    // than show an error (and not worth a Sentry report).
+    if (error instanceof Error && isChunkLoadError(error.message) && recoverFromChunkError()) return;
     logger.error('Unhandled render error', error, info.componentStack);
     // Report render-time exceptions to Sentry (beforeSend in main.tsx scrubs PII).
     Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
   }
 
-  private reset = () => this.setState({ hasError: false, message: '' });
+  // A failed lazy import is cached, so re-rendering can't fix it: reload instead.
+  private reset = () => (isChunkLoadError(this.state.message) ? reloadToLatest() : this.setState({ hasError: false, message: '' }));
 
   render() {
     if (!this.state.hasError) return this.props.children;
@@ -49,9 +54,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="text-center space-y-4 max-w-sm">
           <p className="text-4xl">⚠️</p>
-          <h1 className="text-xl font-semibold">Something went wrong on our end</h1>
+          <h1 className="text-xl font-semibold">
+            {isChunkLoadError(this.state.message) ? 'SpendPal was updated' : 'Something went wrong on our end'}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Your data is safe — we just couldn't load this screen.
+            {isChunkLoadError(this.state.message)
+              ? 'Reload to get the new version. Your data is safe.'
+              : 'Your data is safe — we just couldn\'t load this screen.'}
           </p>
           <div className="flex gap-2 justify-center">
             <button
@@ -64,7 +73,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               onClick={this.reset}
               className="px-4 py-2 rounded-lg border border-border text-sm font-medium"
             >
-              Try again
+              {isChunkLoadError(this.state.message) ? 'Reload' : 'Try again'}
             </button>
           </div>
           <details className="text-left">

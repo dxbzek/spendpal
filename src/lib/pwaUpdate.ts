@@ -7,13 +7,20 @@
 // also check hourly and whenever the app comes back to the foreground.
 import { registerSW } from 'virtual:pwa-register';
 import { toast } from 'sonner';
+import { recoverFromChunkError, setWaitingUpdate } from '@/lib/appReload';
 
 const CHECK_EVERY_MS = 60 * 60 * 1000;
 
 export function registerAppUpdates() {
+  // Vite fires this when a lazy page's file can't be fetched.
+  window.addEventListener('vite:preloadError', event => {
+    if (recoverFromChunkError()) event.preventDefault();
+  });
+
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
+      setWaitingUpdate(() => { void updateSW(true); });
       toast('New version, tap to reload', {
         id: 'app-update',
         duration: Infinity,
