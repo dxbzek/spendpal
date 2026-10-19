@@ -75,6 +75,7 @@ const mapTransaction = (row: unknown): Transaction | null => {
     isInternal: r.is_internal ?? false,
     isPending: r.is_pending ?? false,
     remainingPrincipal: r.remaining_principal,
+    dupeDismissed: r.dupe_dismissed,
   };
 };
 
@@ -157,6 +158,8 @@ interface FinanceContextType {
   updateTransaction: (tx: Transaction) => Promise<boolean>;
   removeTransaction: (id: string) => Promise<void>;
   bulkRemoveTransactions: (ids: string[]) => Promise<void>;
+  /** "Not a duplicate": stop flagging this transaction. */
+  dismissDuplicate: (id: string) => Promise<boolean>;
   // Budgets
   addBudget: (budget: Omit<Budget, 'id' | 'spent'>) => Promise<boolean>;
   updateBudget: (budget: Budget) => Promise<boolean>;
@@ -534,6 +537,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [transactions]);
 
+  // Only this column is written, so other saves never depend on it existing.
+  const dismissDuplicate = useCallback(async (id: string) => {
+    const { error } = await supabase.from('transactions').update({ dupe_dismissed: true }).eq('id', id);
+    if (error) { toast.error(`Couldn't save that: ${error.message}`); return false; }
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, dupeDismissed: true } : t));
+    return true;
+  }, []);
+
   const bulkUpdateCategory = useCallback(async (ids: string[], category: string, categoryIcon: string) => {
     if (ids.length === 0) return true;
     const { error } = await supabase
@@ -675,14 +686,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const contextValue = useMemo(() => ({
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
-    addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions, dismissDuplicate,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
     addGoal, updateGoal, removeGoal, addGoalProgress, withdrawGoalProgress,
     refresh: fetchAll,
   }), [
     accounts, transactions, budgets, goals, loading,
     addAccount, updateAccount, removeAccount,
-    addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions,
+    addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions, dismissDuplicate,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
     addGoal, updateGoal, removeGoal, addGoalProgress, withdrawGoalProgress,
     fetchAll,

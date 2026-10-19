@@ -504,3 +504,9 @@ ALTER TABLE public.transactions
 ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_remaining_principal_nonneg;
 ALTER TABLE public.transactions ADD CONSTRAINT transactions_remaining_principal_nonneg
   CHECK (remaining_principal IS NULL OR remaining_principal >= 0);
+
+
+-- ── 20. transactions.dupe_dismissed (20261019200000) ─────────
+--    Set by "Not a duplicate" on Transactions; that row stops being flagged.
+ALTER TABLE public.transactions
+  ADD COLUMN IF NOT EXISTS dupe_dismissed BOOLEAN NOT NULL DEFAULT false;

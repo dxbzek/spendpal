@@ -53,6 +53,8 @@ export interface Transaction {
   // Instalment plan row only: principal still owed per the latest statement.
   // null = not entered; undefined = column not on the database yet.
   remainingPrincipal?: number | null;
+  // The user said this isn't a duplicate; Transactions stops flagging it.
+  dupeDismissed?: boolean;
 }
 
 export interface Budget {
