@@ -41,7 +41,7 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
   <button
     onClick={onClick}
     aria-current={active ? 'page' : undefined}
-    className="flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95"
+    className="w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-2xl min-h-[48px] relative transition-colors active:scale-95"
   >
     {active && (
       <m.div
@@ -51,7 +51,9 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
       />
     )}
     <Icon size={20} className={`relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-    <span className={`relative z-10 text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+    {/* No truncation: a long label ("Installments") may run a few px past its
+        equal-width slot, which beats cutting it off. */}
+    <span className={`relative z-10 text-[10px] font-medium whitespace-nowrap ${active ? 'text-primary' : 'text-muted-foreground'}`}>
       {label}
     </span>
   </button>
@@ -162,7 +164,9 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
       {/* Bottom bar */}
       <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
-        <div className="flex items-end justify-evenly max-w-lg mx-auto h-[68px] px-2 pb-1">
+        {/* Equal slots, three either side of +, so + sits dead centre however
+            long the labels are. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-end justify-items-center gap-0.5 max-w-lg mx-auto h-[68px] px-2 pb-1">
           {NAV_ITEMS_LEFT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
@@ -170,7 +174,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           {/* FAB */}
           <button
             onClick={onAddClick}
-            className="gradient-primary rounded-2xl w-12 h-12 flex items-center justify-center -mt-6 shadow-fab ring-4 ring-card active:scale-90 transition-transform shrink-0"
+            className="gradient-primary rounded-2xl w-12 h-12 flex items-center justify-center -mt-6 mx-1.5 shadow-fab ring-4 ring-card active:scale-90 transition-transform shrink-0"
             aria-label="Add transaction"
           >
             <Plus size={22} className="text-primary-foreground" />
@@ -185,7 +189,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
             onClick={() => setShowMore(v => !v)}
             aria-expanded={showMore}
             aria-label="More options"
-            className={`flex flex-col items-center gap-0.5 py-2 px-2 rounded-2xl min-w-[52px] min-h-[48px] relative transition-colors active:scale-95 ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
+            className={`w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-2xl min-h-[48px] relative transition-colors active:scale-95 ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
           >
             {(showMore || isMoreActive) && (
               <m.div
