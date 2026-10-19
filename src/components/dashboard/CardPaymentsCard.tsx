@@ -111,7 +111,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
           <>
             <p className={`text-financial-medium tabular-nums ${runway.left < 0 ? 'text-expense' : ''}`}>{mask(fmt(runway.left))}</p>
             <p className="text-[11px] text-muted-foreground">
-              {mask(fmt(runway.cash))} in cash/debit − {mask(fmt(runway.due))} due before payday
+              {mask(fmt(runway.cash))} spendable − {mask(fmt(runway.due))} due before payday
               {runway.perDay != null && <> · {mask(fmt(runway.perDay))}/day for {runway.days} days</>}
             </p>
           </>

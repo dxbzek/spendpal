@@ -26,6 +26,7 @@ export const AccountRowSchema = z.object({
     v === undefined ? undefined : v === null || v === '' ? null : Number(v)
   ),
   statement_due_on: z.string().nullable().optional(),
+  exclude_from_spendable: z.boolean().optional(),
 });
 
 export const TransactionRowSchema = z.object({
@@ -48,6 +49,10 @@ export const TransactionRowSchema = z.object({
   is_tracking_only: z.boolean().optional().default(false),
   is_internal: z.boolean().optional().default(false),
   is_pending: z.boolean().optional().default(false),
+  // undefined = column not there yet (migration not applied); null = empty.
+  remaining_principal: z.union([z.number(), z.string(), z.null()]).optional().transform((v): number | null | undefined =>
+    v === undefined ? undefined : v === null || v === '' ? null : Number(v)
+  ),
 });
 
 export const BudgetRowSchema = z.object({

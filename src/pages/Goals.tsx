@@ -14,6 +14,10 @@ import { Button } from '@/components/ui/button';
 import { differenceInDays, parseISO, subMonths, getMonth, getYear, format } from 'date-fns';
 import AddGoalDialog from '@/components/forms/AddGoalDialog';
 import type { Goal } from '@/types/finance';
+
+// Paying something down rather than saving up: "paid off", and no savings-rate hint.
+const isDebtGoal = (g: Pick<Goal, 'name' | 'type'>) =>
+  /debt|loan|pay ?off|repay|credit card|tabby|\bemi\b/i.test(`${g.type} ${g.name}`);
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -142,9 +146,9 @@ const Goals = () => {
     return differenceInDays(parseISO(deadline), new Date());
   };
 
-  const getCompletionEstimate = (remaining: number): string | null => {
+  const getCompletionEstimate = (remaining: number, debt: boolean): string | null => {
     if (remaining <= 0) return null;
-    if (monthlySavingsRate <= 0) return 'Add income transactions to estimate timeline';
+    if (monthlySavingsRate <= 0) return debt ? null : 'Add income transactions to estimate timeline';
     const months = remaining / monthlySavingsRate;
     if (months < 1) return 'Less than a month';
     if (months < 12) return `~${Math.ceil(months)} month${Math.ceil(months) > 1 ? 's' : ''}`;
@@ -200,7 +204,8 @@ const Goals = () => {
               const pct = goal.targetAmount ? Math.round((goal.savedAmount / goal.targetAmount) * 100) : 0;
               const remaining = goal.targetAmount - goal.savedAmount;
               const daysLeft = getDaysRemaining(goal.deadline);
-              const estimate = getCompletionEstimate(remaining);
+              const debt = isDebtGoal(goal);
+              const estimate = getCompletionEstimate(remaining, debt);
               return (
                 <div key={goal.id} className={`relative overflow-hidden bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''} ${celebratingId === goal.id ? 'animate-celebrate-pulse' : ''}`}>
                   {celebratingId === goal.id && (
@@ -243,7 +248,7 @@ const Goals = () => {
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-2xl font-heading text-primary">{pct}%</p>
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{mask(fmt(goal.savedAmount))} saved</p>
+                      <p className="text-xs text-muted-foreground">{mask(fmt(goal.savedAmount))} {debt ? 'paid off' : 'saved'}</p>
                       <p className="text-xs text-muted-foreground">of {mask(fmt(goal.targetAmount))}</p>
                     </div>
                   </div>
@@ -355,7 +360,7 @@ const Goals = () => {
                     <span className="w-12 h-12 rounded-2xl bg-income/10 flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{goal.name}</p>
-                      <p className="text-xs text-income font-medium">{mask(fmt(goal.savedAmount))} saved</p>
+                      <p className="text-xs text-income font-medium">{mask(fmt(goal.savedAmount))} {isDebtGoal(goal) ? 'paid off' : 'saved'}</p>
                     </div>
                     <CheckCircle2 size={18} className="text-income shrink-0" />
                   </div>

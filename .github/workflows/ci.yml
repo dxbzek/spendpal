@@ -20,3 +20,15 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
+
+  # Every column the app writes must exist on the live database. Fails with
+  # the missing columns when a migration hasn't been applied from
+  # supabase/pending_migrations.sql yet.
+  live-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/check-schema.mjs

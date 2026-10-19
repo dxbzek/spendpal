@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { AmountInput } from '@/components/ui/AmountInput';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
@@ -30,6 +31,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
   const [stmtTotal, setStmtTotal] = useState('');
   const [stmtMin, setStmtMin] = useState('');
   const [stmtDueOn, setStmtDueOn] = useState('');
+  const [notSpendable, setNotSpendable] = useState(false);
 
   const isEdit = !!editAccount;
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +49,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
       setStmtTotal(editAccount?.statementTotalDue?.toString() ?? '');
       setStmtMin(editAccount?.statementMinDue?.toString() ?? '');
       setStmtDueOn(editAccount?.statementDueOn ?? '');
+      setNotSpendable(editAccount?.excludeFromSpendable ?? false);
     }
   }, [open, editAccount]);
 
@@ -109,6 +112,10 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
         statementTotalDue: parsedStmtTotal,
         statementMinDue: parsedStmtMin,
         statementDueOn: parsedStmtDueOn,
+        // Only sent when it means something, so editing an account still
+        // works on a database without the column.
+        excludeFromSpendable: type !== 'credit' && notSpendable ? true
+          : editAccount?.excludeFromSpendable ? false : undefined,
       };
       const ok = isEdit ? await updateAccount({ ...data, id: editAccount.id }) : await addAccount(data);
       if (ok) onOpenChange(false);
@@ -152,6 +159,15 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               </p>
             )}
           </div>
+          {type !== 'credit' && (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 p-2.5">
+              <div>
+                <p className="text-sm font-medium text-foreground/80">Savings — not for spending</p>
+                <p className="text-[11px] text-muted-foreground">Left out of "Left until payday". Still counts in net position.</p>
+              </div>
+              <Switch checked={notSpendable} onCheckedChange={setNotSpendable} aria-label="Savings, not for spending" />
+            </div>
+          )}
           {type === 'credit' && (
             <div className="space-y-2.5 rounded-lg bg-muted/50 p-2.5">
               <div>

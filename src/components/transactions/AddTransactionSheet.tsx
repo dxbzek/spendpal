@@ -44,7 +44,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
   { value: 'transfer', label: 'Transfer' },
 ];
 
-const INSTALLMENT_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
+const INSTALLMENT_OPTIONS = [3, 4, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, recurringMode }: Props) => {
   const { accounts, transactions, goals, addTransaction, addTransfer, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
@@ -67,6 +67,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [isInternal, setIsInternal] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [loanTotalAmount, setLoanTotalAmount] = useState('');
+  const [remainingPrincipal, setRemainingPrincipal] = useState('');
   const [note, setNote] = useState('');
   const [allocateToGoal, setAllocateToGoal] = useState(false);
   const [goalAllocationId, setGoalAllocationId] = useState('');
@@ -105,6 +106,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setTotalInstallments(String(editTransaction.totalInstallments || 12));
       setCurrentInstallment(String(editTransaction.currentInstallment ?? 0));
       setLoanTotalAmount(editTransaction.loanTotalAmount ? String(editTransaction.loanTotalAmount) : '');
+      setRemainingPrincipal(editTransaction.remainingPrincipal != null ? String(editTransaction.remainingPrincipal) : '');
       setIsTrackingOnly(editTransaction.isTrackingOnly || false);
       setIsInternal(editTransaction.isInternal || false);
       setIsPending(editTransaction.isPending || false);
@@ -152,6 +154,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     setTotalInstallments('12');
     setCurrentInstallment('1');
     setLoanTotalAmount('');
+    setRemainingPrincipal('');
     setIsTrackingOnly(false);
     setIsInternal(false);
     setIsPending(false);
@@ -236,6 +239,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
       isInternal,
       isPending,
+      // Sent only when entered, or when clearing one that was entered, so a
+      // database without the column still saves new transactions.
+      remainingPrincipal: (hasInstallments && isRecurring && remainingPrincipal.trim() !== '')
+        ? (parseFloat(remainingPrincipal) || 0)
+        : editTransaction?.remainingPrincipal != null ? null : undefined,
     };
 
     let txSucceeded: boolean;
@@ -499,6 +507,13 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                             value={loanTotalAmount} onChange={setLoanTotalAmount}
                             className="h-10" />
                           <p className="text-[10px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
+                        </div>
+                        <div>
+                          <label htmlFor="tx-remaining-principal" className="text-xs text-muted-foreground mb-1 block">Remaining Principal ({currency}) — optional</label>
+                          <AmountInput id="tx-remaining-principal" placeholder="From your latest statement"
+                            value={remainingPrincipal} onChange={setRemainingPrincipal}
+                            className="h-10" />
+                          <p className="text-[10px] text-muted-foreground mt-1">What the statement says is still owed on this plan. Used for "left" instead of installment × months.</p>
                         </div>
                         {amount && (
                           <div className="bg-primary/5 rounded-lg p-2.5 text-center">

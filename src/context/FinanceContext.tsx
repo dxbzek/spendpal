@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
 import {
   AccountRowSchema,
   TransactionRowSchema,
@@ -33,6 +34,7 @@ const mapAccount = (row: unknown): Account | null => {
     statementTotalDue: r.statement_total_due,
     statementMinDue: r.statement_min_due,
     statementDueOn: r.statement_due_on,
+    excludeFromSpendable: r.exclude_from_spendable,
   };
 };
 
@@ -42,6 +44,13 @@ const statementColumns = (a: Partial<Account>) => ({
   ...(a.statementTotalDue !== undefined && { statement_total_due: a.statementTotalDue }),
   ...(a.statementMinDue !== undefined && { statement_min_due: a.statementMinDue }),
   ...(a.statementDueOn !== undefined && { statement_due_on: a.statementDueOn }),
+  ...(a.excludeFromSpendable !== undefined && { exclude_from_spendable: a.excludeFromSpendable }),
+});
+
+// Same for the plan's remaining principal: a missing column must not break
+// "New Transaction" again.
+const planColumns = (tx: Partial<Transaction>) => ({
+  ...(tx.remainingPrincipal !== undefined && { remaining_principal: tx.remainingPrincipal }),
 });
 
 const mapTransaction = (row: unknown): Transaction | null => {
@@ -65,6 +74,7 @@ const mapTransaction = (row: unknown): Transaction | null => {
     isTrackingOnly: r.is_tracking_only ?? false,
     isInternal: r.is_internal ?? false,
     isPending: r.is_pending ?? false,
+    remainingPrincipal: r.remaining_principal,
   };
 };
 
@@ -233,6 +243,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Once per sign-in: if a migration wasn't applied, say which columns are
+  // missing instead of letting the next save fail with a vague error.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    findMissingColumns(supabaseProbe(supabase)).then(({ missing }) => {
+      if (cancelled || missing.length === 0) return;
+      logger.error('Database schema is behind the app', { missing });
+      toast.error(`Database is missing ${missing.join(', ')}. Run supabase/pending_migrations.sql in the Supabase SQL editor.`, { duration: Infinity });
+    }).catch(err => logger.warn('Schema check failed', err));
+    return () => { cancelled = true; };
+  }, [userId]);
+
   // ─── ACCOUNTS ─────────────────────────────────────────────────────────────
 
   const addAccount = useCallback(async (account: Omit<Account, 'id'>) => {
@@ -303,6 +326,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
       is_pending: tx.isPending ?? false,
+      ...planColumns(tx),
     }).select().single();
     if (error) { toast.error(`Failed to add transaction: ${error.message}`); return null; }
 
@@ -445,6 +469,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
       is_pending: tx.isPending ?? false,
+      ...planColumns(tx),
     }).eq('id', tx.id);
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
     setTransactions(prev => prev.map(t => t.id === tx.id ? tx : t));

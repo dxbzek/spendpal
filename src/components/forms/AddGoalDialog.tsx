@@ -27,6 +27,7 @@ const GOAL_TYPES = [
   { name: 'Education', icon: '📚' },
   { name: 'Wedding', icon: '💍' },
   { name: 'Gadget', icon: '📱' },
+  { name: 'Debt Payoff', icon: '💳' },
 ];
 
 const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {

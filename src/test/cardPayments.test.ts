@@ -83,6 +83,16 @@ describe('left until payday', () => {
     expect(passed.due).toBe(0);
   });
 
+  it("leaves out savings that aren't spendable", () => {
+    // "Savings (held by Ju)": 5,000 that isn't ours to spend.
+    const ju = acct({ name: 'Savings (held by Ju)', type: 'debit', balance: 5_000, excludeFromSpendable: true });
+    const r = leftUntilPayday([...accounts, ju], new Date(2026, 10, 12), now);
+    expect(r.cash).toBe(5_347.49);
+    expect(r.left).toBe(-334.49);
+    // Without the flag it would wrongly cover the card.
+    expect(leftUntilPayday([...accounts, { ...ju, excludeFromSpendable: false }], new Date(2026, 10, 12), now).left).toBe(4_665.51);
+  });
+
   it('finds the next payday after today', () => {
     expect(nextPayday(12, now)).toEqual(new Date(2026, 10, 12));
     expect(nextPayday(28, now)).toEqual(new Date(2026, 9, 28));
