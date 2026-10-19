@@ -146,9 +146,9 @@ const Goals = () => {
     return differenceInDays(parseISO(deadline), new Date());
   };
 
-  const getCompletionEstimate = (remaining: number, debt: boolean): string | null => {
-    if (remaining <= 0) return null;
-    if (monthlySavingsRate <= 0) return debt ? null : 'Add income transactions to estimate timeline';
+  // No estimate without a savings rate to base it on.
+  const getCompletionEstimate = (remaining: number): string | null => {
+    if (remaining <= 0 || monthlySavingsRate <= 0) return null;
     const months = remaining / monthlySavingsRate;
     if (months < 1) return 'Less than a month';
     if (months < 12) return `~${Math.ceil(months)} month${Math.ceil(months) > 1 ? 's' : ''}`;
@@ -205,7 +205,7 @@ const Goals = () => {
               const remaining = goal.targetAmount - goal.savedAmount;
               const daysLeft = getDaysRemaining(goal.deadline);
               const debt = isDebtGoal(goal);
-              const estimate = getCompletionEstimate(remaining, debt);
+              const estimate = getCompletionEstimate(remaining);
               return (
                 <div key={goal.id} className={`relative overflow-hidden bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''} ${celebratingId === goal.id ? 'animate-celebrate-pulse' : ''}`}>
                   {celebratingId === goal.id && (

@@ -42,11 +42,10 @@ export default defineConfig(() => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
-      // We register the service worker ourselves in main.tsx so we can
-      // reload the page as soon as a new build activates. Without that
-      // reload, clients keep running the previously cached bundle
-      // indefinitely and never pick up shipped fixes.
+      // "prompt": a new build waits until the user taps the "New version"
+      // toast (src/lib/pwaUpdate.ts), which then reloads onto it. We register
+      // the service worker ourselves for that, hence injectRegister: false.
+      registerType: "prompt",
       injectRegister: false,
       includeAssets: ["favicon.ico", "pwa-192.png", "pwa-512.png"],
       workbox: {

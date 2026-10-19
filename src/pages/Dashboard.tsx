@@ -19,13 +19,15 @@ import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, Receipt
 import logo from '@/assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
-import { format, differenceInDays, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { m } from 'framer-motion';
 import { useBudgetAlerts } from '@/hooks/useBudgetAlerts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import CardPaymentsCard from '@/components/dashboard/CardPaymentsCard';
+import { isSpendable } from '@/lib/finance/cardPayments';
+import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
@@ -49,30 +51,6 @@ const Card = ({ children, className = '' }: { children: React.ReactNode; classNa
   <div className={`bg-card rounded-2xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
 );
 
-// Small progress ring used on the "Safe to spend today" hero card.
-const SafeRing = ({ pct }: { pct: number }) => {
-  const size = 62, stroke = 6;
-  const r = (size - stroke) / 2 - 2;
-  const circ = 2 * Math.PI * r;
-  const clamped = Math.max(0, Math.min(100, pct));
-  const color = clamped >= 75 ? 'hsl(var(--income))' : clamped >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--expense))';
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
-          strokeDasharray={`${(clamped / 100) * circ} ${circ}`}
-          style={{ transition: 'stroke-dasharray 0.7s ease-out' }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center font-heading font-bold" style={{ fontSize: size * 0.26, color }}>
-        {Math.round(clamped)}
-      </div>
-    </div>
-  );
-};
-
 const Dashboard = () => {
   const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
   
@@ -86,20 +64,22 @@ const Dashboard = () => {
   // Shared hook keeps the balance mask in sync across the app.
   const { hidden, mask } = useBalanceMask();
   const toggleHidden = () => dispatchBalanceMaskToggle(!hidden);
-  const [period, setPeriod] = useState<'month' | 'year' | 'all'>('all');
+  const [period, setPeriod] = useState<'month' | 'year' | 'all'>('month');
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
   const now = useMemo(() => new Date(), []);
   // Budgets that apply to the current month (carried forward if none created
-  // yet) — used for the Safe-to-spend hero, status line, and budget alerts.
+  // yet) — used for the status line and budget alerts.
   const activeBudgetsList = useMemo(
     () => activeBudgets(budgets, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`),
     [budgets, now]
   );
   useBudgetAlerts(activeBudgetsList);
 
-  const totalBalance = useMemo(() => accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0), [accounts]);
+  // Same figure "Left until payday" starts from: cash/debit, minus savings
+  // marked not-for-spending.
+  const totalBalance = useMemo(() => accounts.filter(isSpendable).reduce((s, a) => s + a.balance, 0), [accounts]);
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
 
@@ -149,31 +129,11 @@ const Dashboard = () => {
   const totalBudgeted = activeBudgetsList.reduce((s, b) => s + b.amount, 0);
   const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
-  const creditCards = accounts.filter(a => a.type === 'credit' && a.dueDate);
 
-  // ── Safe-to-spend (the flagship "understandable in one glance" hero) ──
   // Envelope is the user's monthly budget; if none is set, fall back to this
-  // month's income so the card stays meaningful for budget-free users.
+  // month's income so the status line stays meaningful for budget-free users.
   const monthlyBudget = totalBudgeted > 0 ? totalBudgeted : thisMonthIncome;
   const leftThisMonth = monthlyBudget - thisMonthExpenses;
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
-  // The budget envelope says what you *planned* to spend; it cannot say what you
-  // are *able* to spend. Cap the allowance at the cash actually on hand so the
-  // card never green-lights a spend the accounts can't cover — on the last day
-  // of the month `daysLeft` is 1, which otherwise drops the entire remaining
-  // budget onto a single day regardless of the balance behind it.
-  const budgetAllowance = Math.max(0, leftThisMonth / daysLeft);
-  const safeToday = Math.min(budgetAllowance, Math.max(0, totalBalance));
-  const cappedByBalance = safeToday < budgetAllowance;
-  const todayKey = format(now, 'yyyy-MM-dd');
-  const spentToday = useMemo(() => transactions
-    .filter(t => isCountableExpense(t) && t.date.slice(0, 10) === todayKey)
-    .reduce((s, t) => s + t.amount, 0), [transactions, todayKey]);
-  const safeLeft = Math.max(0, safeToday - spentToday);
-  const todayPct = safeToday > 0 ? Math.min(100, Math.round((spentToday / safeToday) * 100)) : 0;
-  const animatedSafe = useCountUp(safeLeft, 700);
-  const showSafeCard = monthlyBudget > 0;
 
   // Plain-language status sentence shown in the header band.
   const overBudget = totalBudgeted > 0 && leftThisMonth < 0;
@@ -186,29 +146,13 @@ const Dashboard = () => {
       ? `Saving ${savingsRate}% this month`
       : budgetPart;
 
-  // Installment plan summary for Planning widget
+  // Installment plan summary — the same plans and "left" as the Installments page.
   const installmentSummary = useMemo(() => {
-    const round2 = (n: number) => Math.round(n * 100) / 100;
-    const installmentTxs = transactions.filter(tx => tx.totalInstallments != null && tx.currentInstallment != null);
-    const map: Record<string, typeof installmentTxs> = {};
-    installmentTxs.forEach(tx => {
-      const key = `${tx.merchant}|${tx.totalInstallments}`;
-      if (!map[key]) map[key] = [];
-      map[key].push(tx);
-    });
-    const plans = Object.values(map).map(txs => {
-      const latest = [...txs].sort((a, b) => b.date.localeCompare(a.date))[0];
-      const paid = latest.currentInstallment ?? txs.length;
-      const total = latest.totalInstallments!;
-      const monthly = latest.amount;
-      const remaining = Math.max(0, total - paid);
-      return { paid, total, monthly, remaining, merchant: latest.merchant };
-    });
-    const active = plans.filter(p => p.paid < p.total);
+    const active = buildPlans(transactions).filter(p => p.paidInstallments < p.totalInstallments);
     return {
       count: active.length,
-      monthlyTotal: round2(active.reduce((s, p) => s + p.monthly, 0)),
-      totalRemaining: round2(active.reduce((s, p) => s + p.remaining * p.monthly, 0)),
+      monthlyTotal: Math.round(active.reduce((s, p) => s + p.amountPerInstallment, 0) * 100) / 100,
+      totalRemaining: totalLeft(active),
     };
   }, [transactions]);
 
@@ -334,13 +278,14 @@ const Dashboard = () => {
 
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-primary-foreground/70 text-xs uppercase tracking-wider mb-1">Total Balance</p>
+              <p className="text-primary-foreground/70 text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
               <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
               {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
             </div>
 
-            {/* Secondary currency */}
-            <Select value={secondaryCurrency || '__none__'} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+            {/* Secondary currency — chosen in Settings; switchable here once set */}
+            {secondaryCurrency && (
+            <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
               <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
                 <SelectValue placeholder="2nd currency" />
               </SelectTrigger>
@@ -358,6 +303,7 @@ const Dashboard = () => {
                 ))}
               </SelectContent>
             </Select>
+            )}
           </div>
 
           {statusLine && (
@@ -376,26 +322,6 @@ const Dashboard = () => {
           mask={mask}
           onEditAccount={(a) => { setEditAccount(a); setShowAddAccount(true); }}
         />
-
-        {/* Safe to spend today — the flagship "at a glance" hero */}
-        {showSafeCard && (
-          <Card className="border border-primary/20 mb-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-[12.5px] font-semibold text-muted-foreground mb-1">Safe to spend today</p>
-                <p className="text-financial-large text-primary tabular-nums">{hidden ? '••••••' : fmt(animatedSafe)}</p>
-              </div>
-              <SafeRing pct={Math.max(0, 100 - todayPct)} />
-            </div>
-            <div className="mt-2.5 h-[7px] bg-muted rounded-full overflow-hidden">
-              <m.div initial={{ width: 0 }} animate={{ width: `${todayPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
-            </div>
-            <p className="flex items-center justify-between text-[11.5px] text-muted-foreground mt-2.5">
-              <span className="truncate">{hidden ? '••••' : fmt(spentToday)} spent of {hidden ? '••••' : fmt(safeToday)} {cappedByBalance ? 'available' : 'daily allowance'}</span>
-              <span className="font-semibold text-foreground shrink-0 ml-2">{daysLeft}d left</span>
-            </p>
-          </Card>
-        )}
 
         {/* Alerts */}
         <div className="mb-4">
@@ -644,29 +570,6 @@ const Dashboard = () => {
           <div className="col-span-2 lg:col-span-2">
             <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
           </div>
-
-          {creditCards.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
-              <h2 className="font-heading text-sm mb-3">Credit Card Due Dates</h2>
-              <div className="space-y-2">
-                {creditCards.map(cc => {
-                  const dueDay = cc.dueDate!;
-                  const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
-                  if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
-                  const daysLeft = differenceInDays(dueDate, now);
-                  return (
-                    <div key={cc.id} className="flex items-center justify-between py-1">
-                      <div className="flex items-center gap-2"><span className="text-lg">{cc.icon}</span><span className="text-sm">{cc.name}</span></div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Due {format(dueDate, 'MMM d')}</p>
-                        <p className={`text-xs font-medium ${daysLeft <= 7 ? 'text-expense' : 'text-primary'}`}>{daysLeft}d left</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
 
           <div className="col-span-2 lg:col-span-2">
             <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
