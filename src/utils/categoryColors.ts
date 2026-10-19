@@ -48,7 +48,12 @@ export const getCategoryChartColor = (category: string, index: number): string =
  * Extract the first emoji character from a category icon string.
  * Falls back to the first character if no emoji is found.
  */
+// The first whole emoji: a flag is two regional-indicator letters, and family
+// or skin-tone emoji are several code points joined, so matching one code
+// point would cut "🇬🇪" down to a lone "🇬".
+const WHOLE_EMOJI = /\p{Regional_Indicator}{2}|\p{Extended_Pictographic}\uFE0F?\p{Emoji_Modifier}?(?:\u200D\p{Extended_Pictographic}\uFE0F?\p{Emoji_Modifier}?)*|[#*0-9]\uFE0F?\u20E3/u;
+
 export const extractEmoji = (icon: string): string => {
-  const match = icon.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
+  const match = icon.match(WHOLE_EMOJI);
   return match ? match[0] : icon.charAt(0);
 };

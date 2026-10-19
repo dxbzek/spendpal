@@ -66,7 +66,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
         {cards.map(c => (
           <div key={c.account.id} className="flex items-center justify-between gap-3 py-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{c.account.name}</p>
+              <p className="text-sm font-medium line-clamp-2 break-words">{c.account.name}</p>
               {c.kind === 'due' && (
                 <p className="text-[11px] text-muted-foreground">
                   {c.min != null && <>Min {mask(fmt(c.min))} · </>}

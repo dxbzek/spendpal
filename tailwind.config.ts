@@ -22,8 +22,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ['"Plus Jakarta Sans"', 'sans-serif'],
-        body: ['"DM Sans"', 'sans-serif'],
+        // "Twemoji Country Flags" only covers flag code points and only loads
+        // where the device can't draw flags (src/main.tsx), so it's first.
+        heading: ['"Twemoji Country Flags"', '"Plus Jakarta Sans"', 'sans-serif'],
+        body: ['"Twemoji Country Flags"', '"DM Sans"', 'sans-serif'],
       },
       fontSize: {
         "financial-hero":  ["2.25rem",  { lineHeight: "1.2",  letterSpacing: "-0.02em",  fontWeight: "700" }],

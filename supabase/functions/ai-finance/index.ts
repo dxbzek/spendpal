@@ -255,6 +255,12 @@ Use ${userCurrency} for all amounts. Be specific with numbers. Keep tone profess
 
 Write every human-readable text field you return (methodReason, each insight's title and description, and each dynamic adjustment's action and impact) directly to the user in the second person — use "you" and "your", and never refer to them as "the user" or in the third person.
 
+Ground every insight and adjustment in the data you are given:
+- Name the specific category, merchant, card or goal it is about and quote its amount from the data. Never invent figures or percentages that can't be read off the data.
+- No generic advice (for example "increase your income by 10%", "build an emergency fund", "cancel unused subscriptions") unless a specific item in the data shows it. If the data supports only one or two points, return only those.
+- The data already leaves out internal transfers, card payments and tracking-only instalment rows. Don't add them back.
+- "Subscriptions" means subscriptionsThisMonth (the Subscriptions category this month) and nothing else. Don't fold other categories or recurringExpenses into it.
+
 Return your analysis as JSON matching the provided schema. Consider:
 - Monthly income vs expenses ratio
 - Fixed vs variable expense breakdown
@@ -274,7 +280,7 @@ For the health score (0-100), weigh:
 - Budget adherence (25 points): How well spending aligns with reasonable limits
 - Debt management (25 points): Low credit utilization, no overdue payments
 
-For insights, detect specific patterns like weekend overspending, subscription accumulation, lifestyle inflation, category overspending vs recommended percentages.
+For insights, look for patterns that the data actually shows, such as a category well above its budget or a recurring merchant that adds up.
 
 For suggested envelopes (if recommending envelope or hybrid), create realistic category budgets based on actual spending patterns.
 
@@ -321,7 +327,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
                     required: ["type", "title", "description"],
                     additionalProperties: false
                   },
-                  description: "3-6 behavioral insights"
+                  description: "Up to 6 behavioral insights, each naming an item from the data"
                 },
                 suggestedEnvelopes: {
                   type: "array",
@@ -360,7 +366,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
                     required: ["action", "impact"],
                     additionalProperties: false
                   },
-                  description: "3-5 specific budget adjustments to make"
+                  description: "Up to 5 specific budget adjustments, each naming an item from the data"
                 }
               },
               required: ["recommendedMethod", "methodReason", "healthScore", "healthBreakdown", "insights", "suggestedEnvelopes", "simulation", "dynamicAdjustments"],
