@@ -12,15 +12,15 @@ import { m } from 'framer-motion';
 const NAV_ITEMS_LEFT = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { path: '/transactions', label: 'Txns', icon: Receipt },
-  { path: '/installments', label: 'Installments', icon: Layers },
 ];
 
 const NAV_ITEMS_RIGHT = [
-  { path: '/goals', label: 'Goals', icon: Target },
   { path: '/budgets', label: 'Budgets', icon: PiggyBank },
 ];
 
 const MORE_ITEMS = [
+  { path: '/installments', label: 'Installments', icon: Layers },
+  { path: '/goals', label: 'Goals', icon: Target },
   { path: '/accounts', label: 'Accounts', icon: Wallet },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/debt', label: 'Debt', icon: CreditCard },
@@ -51,9 +51,7 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
       />
     )}
     <Icon size={20} className={`relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-    {/* No truncation: a long label ("Installments") may run a few px past its
-        equal-width slot, which beats cutting it off. */}
-    <span className={`relative z-10 text-[10px] font-medium whitespace-nowrap ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+    <span className={`relative z-10 text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
       {label}
     </span>
   </button>
@@ -164,9 +162,9 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
       {/* Bottom bar */}
       <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
-        {/* Equal slots, three either side of +, so + sits dead centre however
+        {/* Equal slots, two either side of +, so + sits dead centre however
             long the labels are. */}
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-end justify-items-center gap-0.5 max-w-lg mx-auto h-[68px] px-2 pb-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-end justify-items-center gap-0.5 max-w-lg mx-auto h-[68px] px-2 pb-1">
           {NAV_ITEMS_LEFT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
@@ -174,10 +172,10 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           {/* FAB */}
           <button
             onClick={onAddClick}
-            className="gradient-primary rounded-2xl w-12 h-12 flex items-center justify-center -mt-6 mx-1.5 shadow-fab ring-4 ring-card active:scale-90 transition-transform shrink-0"
+            className="gradient-primary rounded-2xl w-14 h-14 flex items-center justify-center relative -top-5 mx-3 shadow-fab ring-4 ring-card active:scale-90 transition-transform shrink-0"
             aria-label="Add transaction"
           >
-            <Plus size={22} className="text-primary-foreground" />
+            <Plus size={28} className="text-primary-foreground" />
           </button>
 
           {NAV_ITEMS_RIGHT.map(item => (
