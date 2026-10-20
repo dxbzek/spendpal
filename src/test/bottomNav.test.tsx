@@ -45,19 +45,23 @@ describe("BottomNav More menu", () => {
     );
   });
 
-  it("puts Installments and Budgets in the bar and Advisor in More", async () => {
+  it("has five slots: Home, Txns, +, Budgets, More; the rest is in More", async () => {
     renderNav();
     const bar = screen.getByRole("navigation", { name: /main navigation/i });
-    for (const label of ["Home", "Txns", "Installments", "Goals", "Budgets"]) {
+    expect(bar.querySelectorAll("button")).toHaveLength(5);
+    for (const label of ["Home", "Txns", "Budgets", "More"]) {
       expect(bar).toHaveTextContent(label);
     }
-    expect(bar).not.toHaveTextContent("Advisor");
+    for (const label of ["Installments", "Goals", "Advisor"]) {
+      expect(bar).not.toHaveTextContent(label);
+    }
 
     fireEvent.click(screen.getByRole("button", { name: /more/i }));
     const sheet = await screen.findByRole("dialog", { name: /more/i });
-    expect(sheet).toHaveTextContent("Advisor");
+    for (const label of ["Installments", "Goals", "Advisor"]) {
+      expect(sheet).toHaveTextContent(label);
+    }
     expect(sheet).not.toHaveTextContent("Budgets");
-    expect(sheet).not.toHaveTextContent("Installments");
   });
 
   it("removes the sheet as soon as it closes, without waiting on an animation", () => {
