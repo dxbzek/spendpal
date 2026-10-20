@@ -14,7 +14,7 @@ const enbd = acct({
   statementTotalDue: 5_681.98, statementMinDue: 1_287.38, statementDueOn: '2026-11-10',
 });
 const tabby = acct({
-  name: 'Tabby Card', type: 'credit', balance: 1_191.18,
+  name: 'Tabby Card', type: 'credit', balance: 1_191.18, creditLimit: 2_500,
   statementTotalDue: 198.53, statementMinDue: null, statementDueOn: '2026-11-12',
 });
 // Debit + cash accounts adding up to 5,347.49.
@@ -55,6 +55,11 @@ describe('card payments come from the statement fields, never a guess', () => {
 
   it('lists only credit cards, soonest due first', () => {
     expect(cardStatuses(accounts, now).map(s => s.account.name)).toEqual(['ENBD', 'Tabby Card']);
+  });
+
+  it('leaves out a personal debt: a credit account with no limit and no due day', () => {
+    const owed = { ...accounts.find(a => a.type === 'credit')!, id: 'ju', name: 'Owed to Ju (Georgia trip)', creditLimit: undefined, dueDate: undefined, statementTotalDue: undefined, statementDueOn: undefined };
+    expect(cardStatuses([...accounts, owed], now).map(s => s.account.name)).not.toContain('Owed to Ju (Georgia trip)');
   });
 });
 

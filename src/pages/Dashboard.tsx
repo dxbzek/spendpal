@@ -130,21 +130,24 @@ const Dashboard = () => {
   const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
 
-  // Envelope is the user's monthly budget; if none is set, fall back to this
-  // month's income so the status line stays meaningful for budget-free users.
-  const monthlyBudget = totalBudgeted > 0 ? totalBudgeted : thisMonthIncome;
-  const leftThisMonth = monthlyBudget - thisMonthExpenses;
+  // Same figure as the Budgets page: spending in budgeted categories against
+  // the budget total. Spending in categories without a budget is shown apart,
+  // not counted as going over.
+  const unbudgetedSpent = Math.max(0, thisMonthExpenses - totalSpent);
+  const leftOfBudget = totalBudgeted - totalSpent;
 
   // Plain-language status sentence shown in the header band.
-  const overBudget = totalBudgeted > 0 && leftThisMonth < 0;
   const budgetPart = totalBudgeted > 0
-    ? (overBudget ? `${fmt(-leftThisMonth)} over budget` : `${fmt(leftThisMonth)} left of budget`)
+    ? (leftOfBudget < 0 ? `${fmt(-leftOfBudget)} over budget` : `${fmt(leftOfBudget)} left of budget`)
     : null;
   const statusLine = savingsRate !== null && budgetPart
     ? `Saving ${savingsRate}% · ${budgetPart}`
     : savingsRate !== null
       ? `Saving ${savingsRate}% this month`
       : budgetPart;
+  const outsideBudgetsLine = totalBudgeted > 0 && unbudgetedSpent >= 0.005
+    ? `+${fmt(unbudgetedSpent)} spent outside your budgets`
+    : null;
 
   // Installment plan summary — the same plans and "left" as the Installments page.
   const installmentSummary = useMemo(() => {
@@ -307,8 +310,9 @@ const Dashboard = () => {
           </div>
 
           {statusLine && (
-            <div className="mt-3.5 inline-flex bg-primary-foreground/15 backdrop-blur-sm rounded-xl px-3 py-2 text-[12.5px] leading-snug text-primary-foreground">
-              {statusLine}
+            <div className="mt-3.5 inline-flex flex-col bg-primary-foreground/15 backdrop-blur-sm rounded-xl px-3 py-2 text-[12.5px] leading-snug text-primary-foreground">
+              <span>{statusLine}</span>
+              {outsideBudgetsLine && <span className="opacity-80">{outsideBudgetsLine}</span>}
             </div>
           )}
         </div>
