@@ -34,9 +34,16 @@ export function cardStatus(account: Account, now: Date): CardStatus {
     : { kind: 'due', account, total, min, dueOn };
 }
 
+/**
+ * A credit account that is a card: it has a limit or a due day. A personal
+ * debt (money owed to a friend) is a credit account with neither; it belongs
+ * on the Debt page, not in card payments.
+ */
+export const isCard = (a: Account) => a.type === 'credit' && ((a.creditLimit ?? 0) > 0 || a.dueDate != null);
+
 export function cardStatuses(accounts: Account[], now: Date): CardStatus[] {
   return accounts
-    .filter(a => a.type === 'credit')
+    .filter(isCard)
     .map(a => cardStatus(a, now))
     .sort((a, b) => {
       // Upcoming first (soonest due), then passed, then missing.
