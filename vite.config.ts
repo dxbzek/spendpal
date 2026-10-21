@@ -47,7 +47,7 @@ export default defineConfig(() => ({
       // the service worker ourselves for that, hence injectRegister: false.
       registerType: "prompt",
       injectRegister: false,
-      includeAssets: ["favicon.ico", "pwa-192.png", "pwa-512.png"],
+      includeAssets: ["favicon.ico", "apple-touch-icon.png", "pwa-192.png", "pwa-512.png", "pwa-maskable-512.png"],
       workbox: {
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
@@ -67,7 +67,7 @@ export default defineConfig(() => ({
         icons: [
           { src: "pwa-192.png", sizes: "192x192", type: "image/png" },
           { src: "pwa-512.png", sizes: "512x512", type: "image/png" },
-          { src: "pwa-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "pwa-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
     }),
