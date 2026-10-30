@@ -70,9 +70,9 @@ const Debt = () => {
   const getPayment = (id: string, minPay: number | null) => payments[id] ?? minPay;
 
   const utilizationColor = (pct: number) => {
-    if (pct >= 75) return 'text-expense bg-destructive/10';
-    if (pct >= 30) return 'text-warning bg-warning/10';
-    return 'text-income bg-income/10';
+    if (pct >= 75) return 'text-expense bg-destructive-soft';
+    if (pct >= 30) return 'text-warning bg-warning-soft';
+    return 'text-income bg-income-soft';
   };
 
   const utilizationBarColor = (pct: number) => {
@@ -133,25 +133,25 @@ const Debt = () => {
   return (
     <div>
       {/* Header */}
-      <div className="gradient-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl md:rounded-b-none">
+      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt Tracker</h1>
           {creditDebts.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="min-w-0 bg-primary-foreground/15 border border-primary-foreground/20 rounded-2xl p-3 backdrop-blur-sm">
+              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-2xl p-3">
                 <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Total Owed</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalOwed))}</p>
               </div>
-              <div className="min-w-0 bg-primary-foreground/15 border border-primary-foreground/20 rounded-2xl p-3 backdrop-blur-sm">
+              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-2xl p-3">
                 <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Credit Limit</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalLimit))}</p>
               </div>
-              <div className="min-w-0 bg-primary-foreground/15 border border-primary-foreground/20 rounded-2xl p-3 backdrop-blur-sm">
+              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-2xl p-3">
                 <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
                   <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
                   {worstUtil >= 30 && (
-                    <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-foreground/25 text-primary-foreground shrink-0">
+                    <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-raised text-primary-foreground shrink-0">
                       {worstUtil >= 75 ? 'High' : 'Watch'}
                     </span>
                   )}
@@ -159,7 +159,7 @@ const Debt = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-primary-foreground/10 rounded-2xl p-4 backdrop-blur-sm text-center">
+            <div className="bg-primary-raised rounded-2xl p-4 text-center">
               <p className="text-primary-foreground/80 text-sm">No credit card debt detected</p>
               <p className="text-primary-foreground/50 text-xs mt-1">Add credit accounts to track debt</p>
             </div>
@@ -171,7 +171,7 @@ const Debt = () => {
 
         {/* Utilization health (cards with a limit only) */}
         {limited.length > 0 && (
-          <div className={`flex items-start gap-3 p-3 rounded-xl text-xs ${worstUtil >= 30 ? 'bg-warning/10 border border-warning/30' : 'bg-income/10 border border-income/20'}`}>
+          <div className={`flex items-start gap-3 p-3 rounded-xl text-xs ${worstUtil >= 30 ? 'bg-warning-soft border border-warning-line' : 'bg-income-soft border border-income-line'}`}>
             <AlertCircle size={14} className={worstUtil >= 30 ? 'text-warning mt-0.5' : 'text-income mt-0.5'} />
             <div>
               {worstUtil >= 75
@@ -213,7 +213,7 @@ const Debt = () => {
               return (
                 <div key={debt.id} className="bg-card rounded-2xl card-shadow overflow-hidden">
                   <button
-                    className="w-full p-4 text-left hover:bg-muted/40 transition-colors"
+                    className="w-full p-4 text-left hover:bg-muted transition-colors"
                     onClick={() => setExpanded(isExpanded ? null : debt.id)}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -263,8 +263,8 @@ const Debt = () => {
                       {/* Due date badge */}
                       {debt.dueDate && (
                         <span className={`flex items-center gap-1 font-medium px-2 py-0.5 rounded-full ${
-                          isDueToday ? 'bg-destructive/15 text-expense' :
-                          isDueSoon ? 'bg-warning/15 text-warning' :
+                          isDueToday ? 'bg-destructive-soft text-expense' :
+                          isDueSoon ? 'bg-warning-soft text-warning' :
                           'bg-muted text-muted-foreground'
                         }`}>
                           <CalendarClock size={10} />
@@ -317,16 +317,16 @@ const Debt = () => {
 
                           {months < Infinity ? (
                             <div className="grid grid-cols-3 gap-3 text-center">
-                              <div className="bg-accent/50 rounded-xl p-3">
+                              <div className="bg-accent rounded-xl p-3">
                                 <p className="text-[11px] text-muted-foreground mb-0.5">Payoff in</p>
                                 <p className="text-sm font-heading">{months} mo</p>
                                 <p className="text-[10px] text-muted-foreground">{payoffDate ? format(payoffDate, 'MMM yyyy') : ''}</p>
                               </div>
-                              <div className="bg-accent/50 rounded-xl p-3">
+                              <div className="bg-accent rounded-xl p-3">
                                 <p className="text-[11px] text-muted-foreground mb-0.5">Total paid</p>
                                 <p className="text-sm font-heading">{mask(fmt(totalCost))}</p>
                               </div>
-                              <div className="bg-destructive/10 rounded-xl p-3">
+                              <div className="bg-destructive-soft rounded-xl p-3">
                                 <p className="text-[11px] text-muted-foreground mb-0.5">Interest</p>
                                 <p className="text-sm font-heading text-expense">{mask(fmt(interest))}</p>
                               </div>
@@ -334,7 +334,7 @@ const Debt = () => {
                           ) : !payment ? (
                             <p className="text-xs text-muted-foreground text-center">Enter a monthly payment to see when it&apos;s paid off.</p>
                           ) : (
-                            <div className="bg-destructive/10 rounded-xl p-3 text-center">
+                            <div className="bg-destructive-soft rounded-xl p-3 text-center">
                               <p className="text-xs text-expense font-semibold">Payment too low — doesn't cover interest</p>
                               <p className="text-[11px] text-muted-foreground mt-0.5">
                                 Minimum to cover interest: {mask(fmt(Math.ceil((debt.owed * apr) / 100 / 12 * 100) / 100))}/mo
@@ -351,13 +351,13 @@ const Debt = () => {
 
             {/* Multi-card Payoff Optimizer */}
             {creditDebts.length > 1 && (
-              <div className="bg-card rounded-2xl card-shadow border border-primary/10 overflow-hidden">
+              <div className="bg-card rounded-2xl card-shadow border border-primary-line overflow-hidden">
                 <div className="p-4 pb-3">
                   <p className="text-sm font-heading mb-1">Payoff Optimizer</p>
                   <p className="text-xs text-muted-foreground mb-3">Best order to attack your {creditDebts.length} cards</p>
 
                   {/* Extra budget input */}
-                  <div className="flex items-center gap-3 mb-4 bg-muted/50 rounded-xl p-3">
+                  <div className="flex items-center gap-3 mb-4 bg-muted rounded-xl p-3">
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground mb-1">Extra monthly budget (above minimums)</p>
                       <Input
@@ -412,7 +412,7 @@ const Debt = () => {
                   {/* Ranked card list */}
                   <div className="space-y-2 mb-4">
                     {activeOrder.map((d, i) => (
-                      <div key={d.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${i === 0 ? 'bg-primary/8 border border-primary/15' : 'bg-muted/40'}`}>
+                      <div key={d.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${i === 0 ? 'bg-primary-soft border border-primary-line' : 'bg-muted'}`}>
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
                           i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                         }`}>{i + 1}</span>
@@ -424,7 +424,7 @@ const Debt = () => {
                           </p>
                         </div>
                         {i === 0 && (
-                          <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
+                          <span className="text-[10px] font-semibold text-primary bg-primary-soft px-2 py-0.5 rounded-full shrink-0">
                             Focus here
                           </span>
                         )}
@@ -435,17 +435,17 @@ const Debt = () => {
                   {/* Strategy result */}
                   {activeResult && (
                     activeResult.hitCap ? (
-                      <div className="bg-destructive/10 rounded-xl p-3 text-center">
+                      <div className="bg-destructive-soft rounded-xl p-3 text-center">
                         <p className="text-xs text-expense font-semibold">Payments don't cover interest — increase monthly budget</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">Add more to extra monthly budget above to make progress</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-accent/50 rounded-xl p-3 text-center">
+                        <div className="bg-accent rounded-xl p-3 text-center">
                           <p className="text-[11px] text-muted-foreground mb-0.5">Total interest</p>
                           <p className="text-sm font-heading text-expense">{mask(fmt(activeResult.totalInterest))}</p>
                         </div>
-                        <div className="bg-accent/50 rounded-xl p-3 text-center">
+                        <div className="bg-accent rounded-xl p-3 text-center">
                           <p className="text-[11px] text-muted-foreground mb-0.5">Debt free in</p>
                           <p className="text-sm font-heading">{activeResult.months} mo</p>
                           <p className="text-[10px] text-muted-foreground">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
@@ -466,14 +466,14 @@ const Debt = () => {
 
             {/* Single card strategy tip */}
             {creditDebts.length === 1 && (
-              <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/20">
+              <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary-line">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff Strategies</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-accent/50 rounded-xl p-3">
+                  <div className="bg-accent rounded-xl p-3">
                     <p className="font-semibold mb-1">❄️ Debt Snowball</p>
                     <p className="text-muted-foreground">Pay smallest balance first. Wins motivation through quick wins.</p>
                   </div>
-                  <div className="bg-accent/50 rounded-xl p-3">
+                  <div className="bg-accent rounded-xl p-3">
                     <p className="font-semibold mb-1">🔥 Debt Avalanche</p>
                     <p className="text-muted-foreground">Pay highest APR first. Saves the most money long-term.</p>
                   </div>

@@ -10,7 +10,7 @@ const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendCha
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
 import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank, Printer } from 'lucide-react';
 
-const ChartSkeleton = () => <div className="h-[220px] w-full rounded-xl bg-muted/30 animate-pulse" />;
+const ChartSkeleton = () => <div className="h-[220px] w-full rounded-xl bg-muted animate-pulse" />;
 
 const Reports = () => {
   const { transactions, accounts, budgets, loading } = useFinance();
@@ -255,7 +255,7 @@ const Reports = () => {
               <button
                 key={cat.name}
                 onClick={() => setDrillCategory(drillCategory === cat.name ? null : cat.name)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${drillCategory === cat.name ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/60'}`}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${drillCategory === cat.name ? 'bg-primary-soft border border-primary-line' : 'hover:bg-muted'}`}
               >
                 <span className="flex items-center gap-2">
                   <span>{cat.icon}</span>
@@ -279,7 +279,7 @@ const Reports = () => {
                   {catTxs.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-3">No transactions</p>
                   ) : catTxs.map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-muted/40">
+                    <div key={tx.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-muted">
                       <div className="flex items-center gap-2 min-w-0">
                         <Receipt size={11} className="text-muted-foreground shrink-0" />
                         <div className="min-w-0">

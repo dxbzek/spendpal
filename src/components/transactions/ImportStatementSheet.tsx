@@ -501,7 +501,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     onChange={e => setPasteText(e.target.value)}
                     placeholder="Paste CSV rows, copied table text, or any bank statement format…"
                     rows={7}
-                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary resize-none"
+                    className="w-full rounded-xl border border-border bg-muted px-3 py-2.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary resize-none"
                   />
                 </div>
               )}
@@ -510,12 +510,12 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                 <div>
                   <input ref={imageRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
                   {imageDataUrl ? (
-                    <div className="relative w-full rounded-2xl border border-border overflow-hidden bg-muted/30">
+                    <div className="relative w-full rounded-2xl border border-border overflow-hidden bg-muted">
                       <img src={imageDataUrl} alt={imageName || 'Screenshot preview'} className="w-full max-h-64 object-contain" />
                       <button
                         onClick={clearImage}
                         aria-label="Remove screenshot"
-                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/90 hover:bg-background border border-border flex items-center justify-center"
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background hover:bg-background border border-border flex items-center justify-center"
                       >
                         <X size={14} />
                       </button>
@@ -558,7 +558,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     (inputMode === 'screenshot' && !imageDataUrl) ||
                     !accountId || loading || parsing
                   }
-                  className="w-full h-12 text-base gradient-primary text-primary-foreground"
+                  className="w-full h-12 text-base bg-primary text-primary-foreground"
                 >
                   {loading
                     ? <>
@@ -588,7 +588,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                 <p className="text-sm text-muted-foreground">{parsed.filter(r => r.selected).length} of {parsed.length} selected</p>
                 <div className="flex items-center gap-2">
                   {parsed.some(r => r.isDuplicate) && (
-                    <Badge variant="outline" className="text-xs text-warning border-warning/40">
+                    <Badge variant="outline" className="text-xs text-warning border-warning-line">
                       {parsed.filter(r => r.isDuplicate).length} duplicates
                     </Badge>
                   )}
@@ -599,7 +599,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
               <div className="space-y-2 overflow-y-auto" style={{ maxHeight: '40vh' }}>
                 {parsed.map((row, idx) => (
                   <button key={idx} onClick={() => toggleRow(idx)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${row.selected ? 'bg-accent' : 'bg-muted/50 opacity-60'}`}>
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${row.selected ? 'bg-accent' : 'bg-muted opacity-60'}`}>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${row.selected ? 'border-primary bg-primary' : 'border-border'}`}>
                       {row.selected && <Check size={12} className="text-primary-foreground" />}
                     </div>
@@ -619,7 +619,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
               </div>
               <div className="flex gap-3 pt-4 sticky bottom-0 bg-card pb-1">
                 <Button variant="outline" onClick={() => setStep('upload')} className="flex-1">Back</Button>
-                <Button onClick={handleImport} disabled={importing} className="flex-1 gradient-primary text-primary-foreground">
+                <Button onClick={handleImport} disabled={importing} className="flex-1 bg-primary text-primary-foreground">
                   Import {parsed.filter(r => r.selected).length}
                 </Button>
               </div>
@@ -650,7 +650,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
             <Button variant="outline" onClick={() => { setShowBalanceDialog(false); resetAndClose(); }}>
               Skip
             </Button>
-            <Button onClick={handleBalanceConfirm} className="gradient-primary text-primary-foreground">
+            <Button onClick={handleBalanceConfirm} className="bg-primary text-primary-foreground">
               Update Balance
             </Button>
           </DialogFooter>

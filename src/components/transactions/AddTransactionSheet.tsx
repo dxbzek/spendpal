@@ -356,7 +356,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                     <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
                       title={c.name}
                       className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all active:scale-95 ${
-                        category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                        category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                       }`}>
                       <span className="text-2xl">{c.icon}</span>
                       <span className="truncate w-full text-center text-muted-foreground text-[10px] leading-tight">{c.name}</span>
@@ -425,7 +425,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
               <div className="space-y-5">
                 {/* Recurring toggle - hidden for transfers */}
                 {!isTransfer && (
-                  <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+                  <div className="bg-muted rounded-xl p-3 space-y-3">
                     {!recurringMode && (
                       <div className="flex items-center justify-between">
                         <div>
@@ -516,7 +516,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                           <p className="text-[10px] text-muted-foreground mt-1">What the statement says is still owed on this plan. Used for "left" instead of installment × months.</p>
                         </div>
                         {amount && (
-                          <div className="bg-primary/5 rounded-lg p-2.5 text-center">
+                          <div className="bg-primary-soft rounded-lg p-2.5 text-center">
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                             <p className="text-sm font-heading text-foreground">
                               {fmt(totalAmount)} ({currentInstallment}/{totalInstallments})
@@ -540,7 +540,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
                 {/* Allocate to Goal */}
                 {!isEditing && !hasInstallments && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
-                  <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+                  <div className="bg-muted rounded-xl p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Target size={14} className="text-primary" />
@@ -575,7 +575,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
               </div>
             )}
 
-            <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-base gradient-primary text-primary-foreground">
+            <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-base bg-primary text-primary-foreground">
               {isEditing ? 'Save Changes' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
             </Button>
           </div>

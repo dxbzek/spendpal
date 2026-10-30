@@ -42,8 +42,8 @@ const AuthPage = () => {
     <main className="min-h-[100dvh] bg-background flex flex-col items-center justify-center px-5 py-10">
       {/* Decorative background blobs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-primary/6" />
-        <div className="absolute -bottom-14 -left-14 w-44 h-44 rounded-full bg-primary/5" />
+        <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-primary-soft" />
+        <div className="absolute -bottom-14 -left-14 w-44 h-44 rounded-full bg-primary-soft" />
       </div>
 
       <div className="relative w-full max-w-[min(22rem,calc(100vw-2.5rem))]">
@@ -57,7 +57,7 @@ const AuthPage = () => {
         </div>
 
         {/* Form card */}
-        <div className="bg-card rounded-2xl border border-border/60 card-shadow p-5">
+        <div className="bg-card rounded-2xl border border-border card-shadow p-5">
           {/* Sign In / Sign Up toggle */}
           <div className="relative flex p-1 bg-muted rounded-xl mb-5">
             <div
@@ -134,7 +134,7 @@ const AuthPage = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 text-[15px] font-semibold gradient-primary text-primary-foreground rounded-xl touch-manipulation mt-1"
+              className="w-full h-12 text-[15px] font-semibold bg-primary text-primary-foreground rounded-xl touch-manipulation mt-1"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={18} />

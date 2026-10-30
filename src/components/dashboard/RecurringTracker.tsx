@@ -44,7 +44,7 @@ const RecurringTracker = () => {
       </div>
 
       {/* Summary bar */}
-      <div className="flex items-center gap-3 bg-muted/50 rounded-xl p-3 mb-3">
+      <div className="flex items-center gap-3 bg-muted rounded-xl p-3 mb-3">
         <div className="flex-1">
           <p className="text-xs text-muted-foreground">Monthly Commitment</p>
           <p className="text-lg font-heading">{fmt(monthlyTotal)}</p>
@@ -86,7 +86,7 @@ const RecurringTracker = () => {
                           <div className="flex items-center gap-2">
                             <p className="text-[11px] text-muted-foreground">Next: {getNextDate(item.date)}</p>
                             {hasInstallments && (
-                              <span className="text-[11px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                              <span className="text-[11px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full">
                                 {item.currentInstallment}/{item.totalInstallments}
                               </span>
                             )}

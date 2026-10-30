@@ -32,10 +32,10 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
               key={`${bill.name}-${bill.dueDate.getTime()}`}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors ${
                 urgent
-                  ? 'bg-expense/8 border border-expense/20'
+                  ? 'bg-expense-soft border border-expense-line'
                   : soon
-                    ? 'bg-warning/8 border border-warning/15'
-                    : 'bg-muted/40'
+                    ? 'bg-warning-soft border border-warning-line'
+                    : 'bg-muted'
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">

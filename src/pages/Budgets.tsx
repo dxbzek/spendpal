@@ -429,7 +429,7 @@ const Budgets = () => {
                       {pct > 100 ? (
                         <Badge variant="destructive" className="text-[10px] px-2 py-0.5">Over Budget</Badge>
                       ) : (
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                       )}
                       <button onClick={() => { setEditBudget(b); setShowAddBudget(true); }} aria-label="Edit budget" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2"><Edit2 size={14} /></button>
                       <button onClick={() => setDeleteBudgetId(b.id)} aria-label="Delete budget" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2"><Trash2 size={14} /></button>
@@ -475,7 +475,7 @@ const Budgets = () => {
                       <p className="text-sm font-semibold">{b.category}</p>
                       <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {mask(fmt(b.amount))}</p>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 100 ? 'bg-destructive/10 text-expense' : pct > 75 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 100 ? 'bg-destructive-soft text-expense' : pct > 75 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-3">
                     <div style={{ width: `${Math.min(pct, 100)}%` }} className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
@@ -496,9 +496,9 @@ const Budgets = () => {
 
         {/* AI Suggestions — opened from the ⋯ menu */}
         {showAI && (
-        <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary/30">
+        <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary-line">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-xl bg-primary flex items-center justify-center shrink-0">
               <Sparkles size={13} className="text-primary-foreground" />
             </div>
             <h2 className="font-heading text-sm flex-1">AI Budget Suggestions</h2>
@@ -509,7 +509,7 @@ const Budgets = () => {
           {suggestions.length > 0 ? (
             <div className="space-y-2.5">
               {suggestions.map((s) => (
-                <div key={s.category} className="p-3 bg-accent/50 rounded-xl">
+                <div key={s.category} className="p-3 bg-accent rounded-xl">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">{s.category}</span>
                     <span className="text-sm font-heading text-primary">{mask(fmt(s.suggestedAmount))}</span>

@@ -161,28 +161,28 @@ const Goals = () => {
   return (
     <div>
       {/* Header */}
-      <div className="gradient-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-3xl">
+      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-3xl">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
             <div className="flex items-center gap-2">
               <button onClick={() => setShowScan(true)}
-                className="bg-primary-foreground/20 rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1"
+                className="bg-primary-raised rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1"
                 title="Scan a goals screenshot">
                 <ScanLine size={14} /> Scan
               </button>
               <button onClick={() => { setEditGoal(null); setShowAddGoal(true); }}
-                className="bg-primary-foreground/20 rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
+                className="bg-primary-raised rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
                 <Plus size={14} /> New Goal
               </button>
             </div>
           </div>
-          <div className="bg-primary-foreground/10 rounded-2xl p-4 backdrop-blur-sm">
+          <div className="bg-primary-raised rounded-2xl p-4">
             <p className="text-primary-foreground/70 text-xs mb-1">Total Progress</p>
             <p className="text-2xl font-heading text-primary-foreground mb-2">
               {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {mask(fmt(totalTarget))}</span>
             </p>
-            <div className="h-3.5 bg-primary-foreground/20 rounded-full overflow-hidden">
+            <div className="h-3.5 bg-primary-raised rounded-full overflow-hidden">
               <m.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
             </div>
           </div>
@@ -227,7 +227,7 @@ const Goals = () => {
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {daysLeft !== null && (
                         <span className={`flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                          daysLeft <= 7 ? 'bg-destructive/10 text-expense' : daysLeft <= 30 ? 'bg-warning/10 text-warning' : 'bg-accent text-accent-foreground'
+                          daysLeft <= 7 ? 'bg-destructive-soft text-expense' : daysLeft <= 30 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'
                         }`}>
                           <CalendarClock size={10} />
                           {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d`}
@@ -253,7 +253,7 @@ const Goals = () => {
                     </div>
                   </div>
                   <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
-                    <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full gradient-primary" />
+                    <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -283,7 +283,7 @@ const Goals = () => {
                               updateGoal({ ...goal, status: 'completed' });
                             }, 800);
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-income/10 text-income text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform">
+                          className="px-3 py-1.5 rounded-lg bg-income-soft text-income text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform">
                           <CheckCircle2 size={12} /> Complete
                         </button>
                       ) : (
@@ -299,7 +299,7 @@ const Goals = () => {
                             Log
                           </button>
                           <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); setProgressMode('add'); }}
-                            className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold shadow-fab active:scale-95 transition-transform">Add</button>
+                            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform">Add</button>
                         </>
                       )}
                     </div>
@@ -357,7 +357,7 @@ const Goals = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {completedGoals.map(goal => (
                   <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow opacity-70 flex items-center gap-4">
-                    <span className="w-12 h-12 rounded-2xl bg-income/10 flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
+                    <span className="w-12 h-12 rounded-2xl bg-income-soft flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{goal.name}</p>
                       <p className="text-xs text-income font-medium">{mask(fmt(goal.savedAmount))} {isDebtGoal(goal) ? 'paid off' : 'saved'}</p>
@@ -403,7 +403,7 @@ const Goals = () => {
                 <Input placeholder="e.g. Monthly savings transfer" value={progressNote} onChange={e => setProgressNote(e.target.value)} className="h-10" />
               </div>
             )}
-            <Button onClick={handleAddProgress} disabled={savingProgress} className={`w-full ${progressMode === 'withdraw' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'gradient-primary text-primary-foreground'}`}>
+            <Button onClick={handleAddProgress} disabled={savingProgress} className={`w-full ${progressMode === 'withdraw' ? 'bg-destructive text-destructive-foreground hover:brightness-95' : 'bg-primary text-primary-foreground'}`}>
               {progressMode === 'withdraw' ? 'Withdraw' : 'Save Progress'}
             </Button>
           </div>

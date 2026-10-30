@@ -31,9 +31,9 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  cash: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  debit: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  credit: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  cash: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+  debit: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
+  credit: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400',
 };
 
 const Accounts = () => {
@@ -152,14 +152,14 @@ const Accounts = () => {
         <Button
           onClick={() => setAddOpen(true)}
           size="sm"
-          className="gradient-primary text-primary-foreground shadow-fab"
+          className="bg-primary text-primary-foreground"
         >
           <Plus size={16} className="mr-1" /> Add Account
         </Button>
       </div>
 
       {/* Net Worth Summary */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-5">
+      <div className="rounded-2xl bg-primary-soft border border-primary-line p-5">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Total Net Worth</p>
         <p className={`text-3xl font-bold font-heading ${netWorth >= 0 ? 'text-foreground' : 'text-destructive'}`}>
           {netWorth < 0 ? '-' : ''}{mask(fmt(Math.abs(netWorth)))}
@@ -221,7 +221,7 @@ const Accounts = () => {
                     </button>
                     <button
                       onClick={() => setDeleteId(account.id)}
-                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-destructive-soft text-muted-foreground hover:text-destructive transition-colors"
                       aria-label="Delete account"
                     >
                       <Trash2 size={16} />
@@ -322,7 +322,7 @@ const Accounts = () => {
                       ) : (
                         <>
                           {acctTxs.map(tx => (
-                            <div key={tx.id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-muted/40">
+                            <div key={tx.id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-muted">
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="text-base shrink-0">{tx.categoryIcon}</span>
                                 <div className="min-w-0">
@@ -413,7 +413,7 @@ const Accounts = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:brightness-95"
             >
               Delete {deleteAccount?.name ?? 'account'}
             </AlertDialogAction>

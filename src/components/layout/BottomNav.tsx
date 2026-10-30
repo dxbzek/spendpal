@@ -103,7 +103,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[44] bg-black/30 backdrop-blur-sm"
+                className="fixed inset-0 z-[44] bg-black/30"
                 onPointerDown={(e) => { e.stopPropagation(); setShowMore(false); }}
               />
 
@@ -161,7 +161,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
       )}
 
       {/* Bottom bar */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] bg-card border-t border-border safe-bottom">
         {/* Equal slots, two either side of +, so + sits dead centre however
             long the labels are. */}
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-end justify-items-center gap-0.5 max-w-lg mx-auto h-[68px] px-2 pb-1">
@@ -172,7 +172,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           {/* FAB */}
           <button
             onClick={onAddClick}
-            className="gradient-primary rounded-2xl w-14 h-14 flex items-center justify-center relative -top-5 mx-3 shadow-fab ring-4 ring-card active:scale-90 transition-transform shrink-0"
+            className="bg-primary rounded-2xl w-14 h-14 flex items-center justify-center relative -top-5 mx-3 ring-4 ring-card active:scale-90 transition-transform shrink-0"
             aria-label="Add transaction"
           >
             <Plus size={28} className="text-primary-foreground" />

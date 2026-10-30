@@ -149,7 +149,7 @@ const Installments = () => {
             </button>
             <button
               onClick={() => setPlanToDelete(livePlan)}
-              className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center text-destructive"
+              className="w-9 h-9 rounded-full bg-destructive-soft flex items-center justify-center text-destructive"
               aria-label="Delete plan"
             >
               <Trash2 size={16} />
@@ -176,7 +176,7 @@ const Installments = () => {
 
         {/* CC / quick progress stepper */}
         {!isDone && (
-          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 mb-4">
+          <div className="bg-primary-soft border border-primary-line rounded-2xl p-4 mb-4">
             <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">
               Update paid installments
             </p>
@@ -243,7 +243,7 @@ const Installments = () => {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeletePlan}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-destructive text-destructive-foreground hover:brightness-95"
               >
                 Delete
               </AlertDialogAction>
@@ -273,7 +273,7 @@ const Installments = () => {
         </div>
         <button
           onClick={openAdd}
-          className="gradient-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-medium flex items-center gap-1.5 shadow-fab active:scale-95 transition-transform"
+          className="bg-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-medium flex items-center gap-1.5 active:scale-95 transition-transform"
         >
           <Plus size={15} /> New Plan
         </button>

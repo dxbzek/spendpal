@@ -182,7 +182,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
           </div>
 
           {/* Fixed expense option */}
-          <div className="flex items-center justify-between p-3 bg-accent/50 rounded-xl">
+          <div className="flex items-center justify-between p-3 bg-accent rounded-xl">
             <div>
               <p className="text-xs font-medium">Fixed expense</p>
               <p className="text-[11px] text-muted-foreground">Skip budget alerts (e.g. rent, utilities)</p>
@@ -192,7 +192,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
 
           {/* Rollover option */}
           {!isEdit && lastMonthUnspent && lastMonthUnspent > 0 && (
-            <div className="flex items-center justify-between p-3 bg-accent/50 rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-accent rounded-xl">
               <div className="flex items-center gap-2">
                 <RotateCcw size={14} className="text-primary" />
                 <div>
@@ -204,7 +204,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
             </div>
           )}
 
-          <Button onClick={handleSubmit} disabled={!category || !amount || submitting} className="w-full gradient-primary text-primary-foreground">
+          <Button onClick={handleSubmit} disabled={!category || !amount || submitting} className="w-full bg-primary text-primary-foreground">
             {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Add Budget'}
           </Button>

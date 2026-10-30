@@ -160,7 +160,7 @@ const CategoryManager = () => {
           <p className="text-xs text-muted-foreground">Customize icons or add new</p>
         </div>
         <button onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-colors">
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary-soft transition-colors">
           {showAdd ? <X size={12} /> : <Plus size={12} />}
           {showAdd ? 'Cancel' : 'Add'}
         </button>
@@ -168,7 +168,7 @@ const CategoryManager = () => {
 
       {/* Add new category */}
       {showAdd && (
-        <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+        <div className="bg-muted rounded-xl p-3 space-y-3">
           <Input placeholder="Category name" value={newName} onChange={e => setNewName(e.target.value)} className="h-10" />
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">Type</p>
@@ -180,14 +180,14 @@ const CategoryManager = () => {
               {EMOJI_SUGGESTIONS.map(emoji => (
                 <button key={emoji} onClick={() => setNewIcon(emoji)}
                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-all ${
-                    newIcon === emoji ? 'bg-primary/20 ring-2 ring-primary' : 'bg-background hover:bg-muted'
+                    newIcon === emoji ? 'bg-primary-soft ring-2 ring-primary' : 'bg-background hover:bg-muted'
                   }`}>
                   {emoji}
                 </button>
               ))}
             </div>
           </div>
-          <Button onClick={handleAdd} disabled={!newName.trim()} size="sm" className="w-full h-9 gradient-primary text-primary-foreground">
+          <Button onClick={handleAdd} disabled={!newName.trim()} size="sm" className="w-full h-9 bg-primary text-primary-foreground">
             <Check size={12} className="mr-1" /> Add Category
           </Button>
         </div>
@@ -196,7 +196,7 @@ const CategoryManager = () => {
       {/* Preview / All categories */}
       <div className="space-y-1.5">
         {visibleItems.map(item => (
-          <div key={(item as { originalName?: string }).originalName ?? item.name} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted/40 group">
+          <div key={(item as { originalName?: string }).originalName ?? item.name} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted group">
             {(item.type === 'default' && editDefaultName === (item as { originalName?: string }).originalName) ? (
               <div className="flex-1 space-y-2">
                 <Input
@@ -209,7 +209,7 @@ const CategoryManager = () => {
                   {EMOJI_SUGGESTIONS.slice(0, 20).map(emoji => (
                     <button key={emoji} onClick={() => setDefaultNewIcon(emoji)}
                       className={`w-7 h-7 rounded flex items-center justify-center text-sm ${
-                        defaultNewIcon === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'hover:bg-muted'
+                        defaultNewIcon === emoji ? 'bg-primary-soft ring-1 ring-primary' : 'hover:bg-muted'
                       }`}>
                       {emoji}
                     </button>
@@ -228,7 +228,7 @@ const CategoryManager = () => {
                   {EMOJI_SUGGESTIONS.slice(0, 20).map(emoji => (
                     <button key={emoji} onClick={() => setEditIcon(emoji)}
                       className={`w-7 h-7 rounded flex items-center justify-center text-sm ${
-                        editIcon === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'hover:bg-muted'
+                        editIcon === emoji ? 'bg-primary-soft ring-1 ring-primary' : 'hover:bg-muted'
                       }`}>
                       {emoji}
                     </button>

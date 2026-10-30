@@ -32,10 +32,10 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
             exit={{ opacity: 0, y: -8 }}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm ${
               a.over
-                ? 'bg-destructive/10 border border-destructive/20 text-destructive'
+                ? 'bg-destructive-soft border border-destructive-line text-destructive'
                 : a.high
-                ? 'bg-warning/10 border border-warning/20 text-warning-foreground'
-                : 'bg-accent border border-primary/10 text-accent-foreground'
+                ? 'bg-warning-soft border border-warning-line text-warning-foreground'
+                : 'bg-accent border border-primary-line text-accent-foreground'
             }`}
           >
             {a.over ? (
