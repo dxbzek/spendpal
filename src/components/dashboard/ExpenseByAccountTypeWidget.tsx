@@ -14,9 +14,9 @@ interface Props {
 }
 
 const TYPE_CONFIG = {
-  cash: { label: '💵 Cash', color: 'bg-income' },
-  debit: { label: '💳 Debit', color: 'bg-primary' },
-  credit: { label: '🏦 Credit', color: 'bg-warning' },
+  cash: { label: 'Cash', color: 'bg-income' },
+  debit: { label: 'Debit', color: 'bg-primary' },
+  credit: { label: 'Credit', color: 'bg-warning' },
 } as const;
 
 const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, mask }: Props) => {

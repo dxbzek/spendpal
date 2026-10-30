@@ -72,13 +72,13 @@ const MonthlyReportPrint = () => {
     if (!printWindow) return;
 
     const rows = report.categories.map(c =>
-      `<tr><td>${c.icon} ${c.category}</td><td style="text-align:right">${fmt(Math.round(c.total))}</td></tr>`
+      `<tr><td>${c.category}</td><td style="text-align:right">${fmt(Math.round(c.total))}</td></tr>`
     ).join('');
 
     const budgetRows = report.monthBudgets.length > 0
       ? report.monthBudgets.map(b => {
           const pct = b.amount > 0 ? Math.round((b.spent / b.amount) * 100) : 0;
-          const status = pct >= 100 ? '🔴 Over' : pct >= 75 ? '🟡 High' : '🟢 OK';
+          const status = pct >= 100 ? 'Over' : pct >= 75 ? 'High' : 'OK';
           return `<tr><td>${b.categoryIcon} ${b.category}</td><td style="text-align:right">${fmt(Math.round(b.spent))}</td><td style="text-align:right">${fmt(b.amount)}</td><td style="text-align:center">${status}</td></tr>`;
         }).join('')
       : '<tr><td colspan="4" style="color:#888">No budgets set</td></tr>';

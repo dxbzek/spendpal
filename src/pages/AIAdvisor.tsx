@@ -21,6 +21,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import AppIcon from '@/components/AppIcon';
 
 const METHOD_DETAILS: Record<string, {
   name: string; emoji: string; desc: string;
@@ -293,7 +294,7 @@ const AIAdvisor = () => {
                       onClick={() => { setAnalysis(session.result); setActiveSimTab(session.result.recommendedMethod); }}
                       className="flex items-center gap-3 flex-1 text-left">
                       <div className="w-9 h-9 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
-                        <span className="text-base">{METHOD_DETAILS[session.result.recommendedMethod]?.emoji ?? '📊'}</span>
+                        <span className="text-base"><AppIcon value={METHOD_DETAILS[session.result.recommendedMethod]?.emoji ?? '📊'} /></span>
                       </div>
                       <div>
                         <p className="text-sm font-medium">
@@ -335,7 +336,7 @@ const AIAdvisor = () => {
               {anomalies.map(a => (
                 <div key={a.category} className="flex items-center justify-between p-3 bg-warning-soft border border-warning-line rounded-xl">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-lg">{a.icon}</span>
+                    <span className="text-lg"><AppIcon value={a.icon} /></span>
                     <div>
                       <p className="text-sm font-medium">{a.category}</p>
                       <p className="text-[11px] text-muted-foreground">Avg: {mask(fmt(a.avg))}/mo</p>
@@ -411,7 +412,7 @@ const AIAdvisor = () => {
               {/* Recommended Method */}
               <div className="bg-card rounded-2xl p-5 card-shadow border-2 border-primary-line">
                 <div className="flex items-start gap-3 mb-3">
-                  <span className="text-3xl">{METHOD_LABELS[analysis.recommendedMethod]?.emoji}</span>
+                  <span className="text-3xl"><AppIcon value={METHOD_LABELS[analysis.recommendedMethod]?.emoji} /></span>
                   <div>
                     <p className="text-xs text-primary font-medium uppercase tracking-wide">Recommended Method</p>
                     <h2 className="font-heading text-lg">{METHOD_LABELS[analysis.recommendedMethod]?.name}</h2>
@@ -501,7 +502,7 @@ const AIAdvisor = () => {
                     return (
                       <div key={env.category} className="flex items-center justify-between p-3 bg-muted rounded-xl">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-lg">{env.icon}</span>
+                          <span className="text-lg"><AppIcon value={env.icon} /></span>
                           <div>
                             <p className="text-sm font-medium">{env.category}</p>
                             <p className="text-[10px] text-muted-foreground">Currently: {mask(fmt(env.currentSpending))}/mo</p>
@@ -547,7 +548,7 @@ const AIAdvisor = () => {
                               </p>
                               {sim.key === analysis.recommendedMethod && (
                                 <div className="mt-1">
-                                  <Badge variant="outline" className="text-[9px] border-primary text-primary bg-primary-soft px-1.5 py-0">★ Best</Badge>
+                                  <Badge variant="outline" className="text-[9px] border-primary text-primary bg-primary-soft px-1.5 py-0">Best</Badge>
                                 </div>
                               )}
                             </button>
@@ -566,7 +567,7 @@ const AIAdvisor = () => {
                             <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle className="flex items-center gap-2 text-lg">
-                                  <span>{detail.emoji}</span> {detail.name}
+                                  <AppIcon value={detail.emoji} /> {detail.name}
                                 </DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4 text-sm">
@@ -576,7 +577,7 @@ const AIAdvisor = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div className="bg-income-soft border border-income-line rounded-xl p-3">
-                                    <h4 className="font-heading text-xs text-income mb-2">✅ Pros</h4>
+                                    <h4 className="font-heading text-xs text-income mb-2">Pros</h4>
                                     <ul className="space-y-1">
                                       {detail.pros.map((p) => (
                                         <li key={p} className="text-xs text-foreground/70">• {p}</li>
@@ -584,7 +585,7 @@ const AIAdvisor = () => {
                                     </ul>
                                   </div>
                                   <div className="bg-expense-soft border border-expense-line rounded-xl p-3">
-                                    <h4 className="font-heading text-xs text-expense mb-2">⚠️ Cons</h4>
+                                    <h4 className="font-heading text-xs text-expense mb-2">Cons</h4>
                                     <ul className="space-y-1">
                                       {detail.cons.map((c) => (
                                         <li key={c} className="text-xs text-foreground/70">• {c}</li>
@@ -593,11 +594,11 @@ const AIAdvisor = () => {
                                   </div>
                                 </div>
                                 <div className="bg-primary-soft border border-primary-line rounded-xl p-3">
-                                  <h4 className="font-heading text-xs text-primary mb-1">🎯 Best for</h4>
+                                  <h4 className="font-heading text-xs text-primary mb-1">Best for</h4>
                                   <p className="text-xs text-foreground/70">{detail.bestFor}</p>
                                 </div>
                                 <div className="bg-muted rounded-xl p-3">
-                                  <h4 className="font-heading text-xs text-muted-foreground mb-1">📝 Example</h4>
+                                  <h4 className="font-heading text-xs text-muted-foreground mb-1">Example</h4>
                                   <p className="text-xs text-foreground/70">{detail.example}</p>
                                 </div>
                               </div>

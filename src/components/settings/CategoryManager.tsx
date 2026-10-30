@@ -11,8 +11,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import AppIcon from '@/components/AppIcon';
+import { PICKER_ICONS } from '@/lib/appIcons';
 
-const EMOJI_SUGGESTIONS = ['☕', '🛒', '🚗', '🍽️', '📱', '🚇', '✈️', '🎬', '🤲', '📦', '💡', '🏠', '🛍️', '🏥', '📚', '🔄', '💰', '💻', '🔁', '📌', '🎮', '🐾', '💊', '🏋️', '🎵', '🍺', '⛽', '🧹', '👶', '💇', '🎁', '🧾', '🏦', '🚌', '🍕', '🎭', '⚽', '🏖️', '💍', '🔧', '📸'];
+const EMOJI_SUGGESTIONS = PICKER_ICONS;
 
 const PREVIEW_COUNT = 6;
 
@@ -182,7 +184,7 @@ const CategoryManager = () => {
                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-all ${
                     newIcon === emoji ? 'bg-primary-soft ring-2 ring-primary' : 'bg-background hover:bg-muted'
                   }`}>
-                  {emoji}
+                  <AppIcon value={emoji} />
                 </button>
               ))}
             </div>
@@ -211,7 +213,7 @@ const CategoryManager = () => {
                       className={`w-7 h-7 rounded flex items-center justify-center text-sm ${
                         defaultNewIcon === emoji ? 'bg-primary-soft ring-1 ring-primary' : 'hover:bg-muted'
                       }`}>
-                      {emoji}
+                      <AppIcon value={emoji} />
                     </button>
                   ))}
                 </div>
@@ -230,7 +232,7 @@ const CategoryManager = () => {
                       className={`w-7 h-7 rounded flex items-center justify-center text-sm ${
                         editIcon === emoji ? 'bg-primary-soft ring-1 ring-primary' : 'hover:bg-muted'
                       }`}>
-                      {emoji}
+                      <AppIcon value={emoji} />
                     </button>
                   ))}
                 </div>
@@ -246,7 +248,7 @@ const CategoryManager = () => {
                   <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Choose target category" /></SelectTrigger>
                   <SelectContent>
                     {categories.filter(c => c.name !== item.name).map(c => (
-                      <SelectItem key={c.name} value={c.name}>{c.icon} {c.name}</SelectItem>
+                      <SelectItem key={c.name} value={c.name}><AppIcon value={c.icon} /> {c.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -259,7 +261,7 @@ const CategoryManager = () => {
               </div>
             ) : (
               <>
-                <span className="text-lg">{item.icon}</span>
+                <span className="text-lg"><AppIcon value={item.icon} /></span>
                 <span className="text-xs truncate flex-1">{item.name}</span>
                 {item.type === 'custom' && (() => {
                   const cat = customCategories.find(c => c.id === (item as { id?: string }).id);

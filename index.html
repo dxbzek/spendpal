@@ -3,18 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1e7a42" />
+    <meta name="theme-color" content="#17663a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Load fonts via a non-blocking <link> instead of a CSS @import (which is
-         discovered late and blocks render). display=swap avoids invisible text. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" />
     <title>SpendPal — Personal Finance Tracker</title>
     <meta name="description" content="SpendPal is a personal finance tracker for managing accounts, transactions, budgets, and savings goals — with an AI advisor.">
     <link rel="canonical" href="https://spendpal.vercel.app/" />
@@ -48,8 +43,8 @@
   <body>
     <div id="root">
       <div id="app-shell-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;font-family:sans-serif;gap:12px">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2e9e6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-        <span style="color:#2e9e6b;font-size:14px">Loading…</span>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#17663a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+        <span style="color:#17663a;font-size:14px">Loading…</span>
       </div>
     </div>
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
@@ -72,7 +67,7 @@
         msg.style.cssText = 'color:#666;font-size:13px;word-break:break-all';
         msg.textContent = (e && e.message) ? String(e.message) : '';
         var btn = document.createElement('button');
-        btn.style.cssText = 'margin-top:16px;padding:8px 20px;background:#2e9e6b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px';
+        btn.style.cssText = 'margin-top:16px;padding:8px 20px;background:#17663a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px';
         btn.textContent = 'Reload';
         btn.addEventListener('click', function() { location.reload(); });
         box.appendChild(icon);

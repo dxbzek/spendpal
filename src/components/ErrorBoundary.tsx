@@ -2,6 +2,7 @@ import React from 'react';
 import * as Sentry from '@sentry/react';
 import { logger } from '@/lib/logger';
 import { isChunkLoadError, recoverFromChunkError, reloadToLatest } from '@/lib/appReload';
+import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
@@ -53,7 +54,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="text-center space-y-4 max-w-sm">
-          <p className="text-4xl">⚠️</p>
+          <AlertTriangle className="mx-auto text-warning" size={36} strokeWidth={1.75} aria-hidden="true" />
           <h1 className="text-xl font-semibold">
             {isChunkLoadError(this.state.message) ? 'SpendPal was updated' : 'Something went wrong on our end'}
           </h1>

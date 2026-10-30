@@ -10,6 +10,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { EXPENSE_CATEGORIES, FIXED_EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
 import { format, subMonths, getMonth, getYear, parseISO } from 'date-fns';
+import AppIcon from '@/components/AppIcon';
 
 interface Props {
   open: boolean;
@@ -156,7 +157,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
               <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
               <SelectContent>
                 {availableCategories.map(c => (
-                  <SelectItem key={c.name} value={c.name}>{c.icon} {c.name}</SelectItem>
+                  <SelectItem key={c.name} value={c.name}><AppIcon value={c.icon} /> {c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

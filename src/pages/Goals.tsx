@@ -25,6 +25,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import AppIcon from '@/components/AppIcon';
 
 interface Contribution { id?: string; amount: number; note: string; date: string; }
 
@@ -208,12 +209,9 @@ const Goals = () => {
               const estimate = getCompletionEstimate(remaining);
               return (
                 <div key={goal.id} className={`relative overflow-hidden bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''} ${celebratingId === goal.id ? 'animate-celebrate-pulse' : ''}`}>
-                  {celebratingId === goal.id && (
-                    <span className="pointer-events-none absolute -top-1 right-3 text-2xl z-10 animate-confetti-pop motion-reduce:hidden">🎉</span>
-                  )}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
+                      <span className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <p className="text-sm font-semibold truncate">{goal.name}</p>
@@ -357,7 +355,7 @@ const Goals = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {completedGoals.map(goal => (
                   <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow opacity-70 flex items-center gap-4">
-                    <span className="w-12 h-12 rounded-2xl bg-income-soft flex items-center justify-center text-2xl shrink-0">{goal.icon}</span>
+                    <span className="w-12 h-12 rounded-2xl bg-income-soft flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{goal.name}</p>
                       <p className="text-xs text-income font-medium">{mask(fmt(goal.savedAmount))} {isDebtGoal(goal) ? 'paid off' : 'saved'}</p>

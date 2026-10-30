@@ -58,7 +58,7 @@ export default defineConfig(() => ({
         name: "SpendPal - Personal Finance Tracker",
         short_name: "SpendPal",
         description: "Track your spending, budgets, and financial goals",
-        theme_color: "#1e7a42",
+        theme_color: "#17663a",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",

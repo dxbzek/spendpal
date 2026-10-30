@@ -40,20 +40,14 @@ const AuthPage = () => {
 
   return (
     <main className="min-h-[100dvh] bg-background flex flex-col items-center justify-center px-5 py-10">
-      {/* Decorative background blobs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-primary-soft" />
-        <div className="absolute -bottom-14 -left-14 w-44 h-44 rounded-full bg-primary-soft" />
-      </div>
-
       <div className="relative w-full max-w-[min(22rem,calc(100vw-2.5rem))]">
         {/* Logo / Brand */}
         <div className="flex flex-col items-center mb-7">
-          <img src={logo} alt="SpendPal" className="w-16 h-16 sm:w-[4.75rem] sm:h-[4.75rem] object-contain mb-4 animate-float motion-reduce:animate-none" />
+          <img src={logo} alt="SpendPal" className="w-16 h-16 sm:w-[4.75rem] sm:h-[4.75rem] object-contain mb-4" />
           <h1 className="text-2xl sm:text-[1.625rem] font-heading font-bold tracking-tight leading-none">
             SpendPal
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">Your Personal Finance Companion</p>
+          <p className="text-sm text-muted-foreground mt-1.5">Track spending, budgets and goals</p>
         </div>
 
         {/* Form card */}

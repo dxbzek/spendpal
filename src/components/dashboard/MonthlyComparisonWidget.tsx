@@ -5,6 +5,7 @@ import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
 import { startOfMonth, subMonths, format, parseISO, isWithinInterval, endOfMonth } from 'date-fns';
 import type { Account, Transaction } from '@/types/finance';
+import AppIcon from '@/components/AppIcon';
 
 interface Props {
   accounts: Account[];
@@ -106,7 +107,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
           return (
             <div key={key} className="grid grid-cols-4 gap-2 items-center px-1">
               <span className="text-xs font-medium flex items-center gap-1">
-                <span>{config.icon}</span> {config.label}
+                <span><AppIcon value={config.icon} /></span> {config.label}
               </span>
               <span className="text-xs text-muted-foreground text-right">{mask(fmt(prev))}</span>
               <span className="text-xs font-heading text-right">{mask(fmt(curr))}</span>

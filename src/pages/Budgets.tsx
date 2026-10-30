@@ -5,7 +5,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine, MoreHorizontal, X } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine, MoreHorizontal, X, ChartPie } from 'lucide-react';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -374,7 +374,7 @@ const Budgets = () => {
 
         {budgets.length === 0 ? (
           <div className="bg-card rounded-2xl p-8 card-shadow text-center">
-            <div className="text-5xl mb-3">📊</div>
+            <ChartPie className="mx-auto mb-3 text-primary" size={40} strokeWidth={1.5} aria-hidden="true" />
             <h3 className="font-heading text-base mb-1">No budgets yet</h3>
             <p className="text-sm text-muted-foreground mb-4">Create your first budget to start tracking your spending limits</p>
             <button onClick={() => { setEditBudget(null); setShowAddBudget(true); }}

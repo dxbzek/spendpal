@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag, ArrowUp, ArrowDown, Check, SquareCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useCategories } from '@/hooks/useCategories';
@@ -16,10 +16,10 @@ import { Input } from '@/components/ui/input';
 import { m, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
 import SwipeableTransaction from '@/components/transactions/SwipeableTransaction';
-import { extractEmoji } from '@/utils/categoryColors';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditTransaction } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/skeleton';
+import AppIcon from '@/components/AppIcon';
 
 
 const PAGE_SIZE = 50;
@@ -224,12 +224,12 @@ const Transactions = () => {
             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
               isSelected ? 'bg-primary border-primary' : 'border-border'
             }`}>
-              {isSelected && <span className="text-primary-foreground text-[10px] leading-none">✓</span>}
+              {isSelected && <Check size={10} strokeWidth={3} className="text-primary-foreground" aria-hidden="true" />}
             </div>
           </div>
         )}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <span className="text-2xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
+          <span className="text-2xl shrink-0"><AppIcon value={tx.categoryIcon} /></span>
            <div className="min-w-0">
              <p className="text-sm font-medium truncate flex items-center gap-1.5">
                <button
@@ -251,7 +251,7 @@ const Transactions = () => {
                )}
                {!isLinkedTransfer && tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
-                   💳 Card Credit
+                   Card credit
                  </span>
                )}
                {tx.totalInstallments && tx.currentInstallment && (
@@ -266,7 +266,7 @@ const Transactions = () => {
                )}
              </div>
              {tx.note && !isLinkedTransfer && (
-               <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">📝 {tx.note}</p>
+               <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{tx.note}</p>
              )}
              {isDupe && (
                <button
@@ -358,7 +358,7 @@ const Transactions = () => {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               selectMode ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             }`}>
-            {selectMode ? <X size={14} /> : <span>☑</span>} <span>{selectMode ? 'Cancel' : 'Select'}</span>
+            {selectMode ? <X size={14} /> : <SquareCheck size={14} aria-hidden="true" />} <span>{selectMode ? 'Cancel' : 'Select'}</span>
           </button>
         </div>
 
@@ -388,7 +388,7 @@ const Transactions = () => {
                       setSelectMode(false);
                     }}
                     className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground text-xs transition-colors">
-                    <span>{cat.icon}</span> {cat.name}
+                    <span><AppIcon value={cat.icon} /></span> {cat.name}
                   </button>
                 ))}
               </PopoverContent>
@@ -453,7 +453,7 @@ const Transactions = () => {
                 className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all max-w-full truncate ${
                   filterAccount === acc.id ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
                 }`}>
-                {acc.icon} {acc.name}
+                <AppIcon value={acc.icon} /> {acc.name}
               </button>
             ))}
           </div>
@@ -472,7 +472,7 @@ const Transactions = () => {
                 className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all max-w-full truncate ${
                   filterCategory === cat.name ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
                 }`}>
-                {cat.icon} {cat.name}
+                <AppIcon value={cat.icon} /> {cat.name}
               </button>
             ))}
           </div>
@@ -623,13 +623,13 @@ const Transactions = () => {
                         {selectMode && (
                           <div className="flex items-center">
                             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border'}`}>
-                              {isSelected && <span className="text-primary-foreground text-[10px] leading-none">✓</span>}
+                              {isSelected && <Check size={10} strokeWidth={3} className="text-primary-foreground" aria-hidden="true" />}
                             </div>
                           </div>
                         )}
                         <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</span>
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
+                          <span className="text-xl shrink-0"><AppIcon value={tx.categoryIcon} /></span>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold truncate flex items-center gap-1.5">
                               {tx.merchant}
@@ -690,7 +690,7 @@ const Transactions = () => {
         <DialogContent className="max-w-sm w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <span className="text-2xl">{merchantStats?.icon}</span>
+              <span className="text-2xl"><AppIcon value={merchantStats?.icon} /></span>
               <span>{merchantProfile}</span>
             </DialogTitle>
           </DialogHeader>
@@ -742,7 +742,7 @@ const Transactions = () => {
                 }}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted hover:bg-accent hover:text-accent-foreground transition-colors"
               >
-                <span className="text-2xl">{cat.icon}</span>
+                <span className="text-2xl"><AppIcon value={cat.icon} /></span>
                 <span className="text-[10px] font-medium text-center leading-tight">{cat.name}</span>
               </button>
             ))}

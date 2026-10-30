@@ -10,6 +10,8 @@ import { format, parseISO, startOfDay } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Goal } from '@/types/finance';
+import AppIcon from '@/components/AppIcon';
+import { PICKER_ICONS } from '@/lib/appIcons';
 
 interface Props {
   open: boolean;
@@ -111,7 +113,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
                   className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
                     goalType === g.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                   }`}>
-                  <span className="text-xl">{g.icon}</span>
+                  <span className="text-xl"><AppIcon value={g.icon} /></span>
                   <span className="text-muted-foreground">{g.name}</span>
                 </button>
               ))}
@@ -119,26 +121,28 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
                 className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
                   goalType === CUSTOM_GOAL_TYPE ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                 }`}>
-                <span className="text-xl">{goalType === CUSTOM_GOAL_TYPE ? (customIcon || '🎯') : '✏️'}</span>
+                <span className="text-xl"><AppIcon value={goalType === CUSTOM_GOAL_TYPE ? (customIcon || '🎯') : '✏️'} /></span>
                 <span className="text-muted-foreground">Custom</span>
               </button>
             </div>
             {goalType === CUSTOM_GOAL_TYPE && (
-              <div className="mt-3 flex gap-2">
-                <Input
-                  placeholder="🎯"
-                  value={customIcon}
-                  onChange={e => setCustomIcon(e.target.value)}
-                  className="w-16 text-center text-lg px-1"
-                  maxLength={4}
-                />
+              <div className="mt-3 space-y-2">
                 <Input
                   placeholder="e.g., Bike, Travel, Pet..."
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
                   maxLength={30}
-                  className="flex-1"
                 />
+                <div className="flex flex-wrap gap-1">
+                  {PICKER_ICONS.map(icon => (
+                    <button key={icon} type="button" onClick={() => setCustomIcon(icon)}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-colors ${
+                        customIcon === icon ? 'bg-primary-soft ring-2 ring-primary text-primary' : 'hover:bg-muted'
+                      }`}>
+                      <AppIcon value={icon} />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

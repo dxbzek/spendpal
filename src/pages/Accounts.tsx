@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import AppIcon from '@/components/AppIcon';
 
 const TYPE_LABELS: Record<string, string> = {
   cash: 'Cash',
@@ -191,7 +192,7 @@ const Accounts = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-xl shrink-0">
-                      {account.icon}
+                      <AppIcon value={account.icon} />
                     </div>
                     <div>
                       <p className="font-semibold line-clamp-2 break-words">{account.name}</p>

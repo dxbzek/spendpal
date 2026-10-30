@@ -1,6 +1,6 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
-import { getCategoryChartColor, extractEmoji } from '@/utils/categoryColors';
+import { getCategoryChartColor } from '@/utils/categoryColors';
 import { activeBudgets } from '@/utils/budgets';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
@@ -43,6 +43,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import AppIcon from '@/components/AppIcon';
 
 
 // Hoisted out of the component so it's a stable type — defining it inline in
@@ -407,7 +408,7 @@ const Dashboard = () => {
               {(['cash', 'debit', 'credit'] as const).map(accountType => {
                 const group = accounts.filter(a => a.type === accountType);
                 if (group.length === 0) return null;
-                const labels = { cash: '💵 Cash', debit: '💳 Debit Cards', credit: '🏦 Credit Cards' };
+                const labels = { cash: 'Cash', debit: 'Debit Cards', credit: 'Credit Cards' };
                 return (
                   <div key={accountType}>
                     <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
@@ -422,7 +423,7 @@ const Dashboard = () => {
                           <div key={a.id} className="group">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-4 min-w-0">
-                                <span className="text-2xl shrink-0">{a.icon}</span>
+                                <span className="text-2xl shrink-0"><AppIcon value={a.icon} /></span>
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium line-clamp-2 break-words">{a.name}</p>
                                   {a.type === 'credit' && (
@@ -632,7 +633,7 @@ const Dashboard = () => {
                   return (
                     <div key={tx.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <span className="text-xl">{extractEmoji(tx.categoryIcon)}</span>
+                        <span className="text-xl"><AppIcon value={tx.categoryIcon} /></span>
                         <div>
                           <p className="text-sm font-medium">{isTransfer ? 'Transfer' : tx.merchant}</p>
                           {isTransfer && toAccName ? (
