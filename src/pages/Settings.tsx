@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
+import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
@@ -582,10 +583,13 @@ const EmailUpdateCard = ({ currentEmail }: { currentEmail: string }) => {
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { setCurrency: setGlobalCurrency } = useCurrency();
+  const { accounts, refresh } = useFinance();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [currency, setCurrency] = useState('AED');
+  const [savedCurrency, setSavedCurrency] = useState('AED');
+  const [conversion, setConversion] = useState<{ from: string; to: string; allowRelabel: boolean } | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -602,6 +606,7 @@ const Settings = () => {
         if (data) {
           setDisplayName(data.display_name || '');
           setCurrency(data.currency || 'AED');
+          setSavedCurrency(data.currency || 'AED');
           setAvatarUrl(data.avatar_url);
         }
       } finally {
@@ -650,21 +655,51 @@ const Settings = () => {
     setUploading(false);
   };
 
-  const handleSave = async () => {
+  // Accounts still holding amounts in a currency other than the preferred one:
+  // left behind when the preferred currency was changed without converting.
+  const unconvertedCurrency = (() => {
+    const counts = new Map<string, number>();
+    for (const a of accounts) {
+      if (a.currency && a.currency !== savedCurrency) counts.set(a.currency, (counts.get(a.currency) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
+  })();
+
+  const saveProfile = async (nextCurrency: string) => {
     if (!user) return;
     setSaving(true);
     const { error } = await supabase.from('profiles').update({
       display_name: displayName.trim() || null,
-      currency,
+      currency: nextCurrency,
     }).eq('user_id', user.id);
 
     if (error) {
       toast.error('Failed to save: ' + error.message);
     } else {
-      setGlobalCurrency(currency);
+      setSavedCurrency(nextCurrency);
+      setGlobalCurrency(nextCurrency);
       toast.success('Profile updated!');
     }
     setSaving(false);
+  };
+
+  const handleSave = () => {
+    if (currency !== savedCurrency) {
+      setConversion({ from: savedCurrency, to: currency, allowRelabel: true });
+      return;
+    }
+    saveProfile(currency);
+  };
+
+  const handleConversionDone = async (converted: boolean) => {
+    const target = conversion?.to ?? currency;
+    setConversion(null);
+    if (converted) {
+      setCurrency(target);
+      await refresh();
+    }
+    // convert_currency already set profiles.currency; this also saves the name.
+    await saveProfile(target);
   };
 
   const initials = displayName ? displayName.slice(0, 2).toUpperCase() : (user?.email?.slice(0, 2).toUpperCase() ?? '?');
@@ -768,6 +803,28 @@ const Settings = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {unconvertedCurrency && unconvertedCurrency !== currency && (
+              <div className="rounded-xl border border-warning-line bg-warning-soft p-3 text-sm">
+                <p>Your accounts are still in {unconvertedCurrency}, so their amounts show with the {savedCurrency} symbol unconverted.</p>
+                <Button
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setConversion({ from: unconvertedCurrency, to: savedCurrency, allowRelabel: false })}
+                >
+                  Convert {unconvertedCurrency} to {savedCurrency}
+                </Button>
+              </div>
+            )}
+
+            <ConvertCurrencyDialog
+              open={conversion !== null}
+              from={conversion?.from ?? savedCurrency}
+              to={conversion?.to ?? currency}
+              allowRelabel={conversion?.allowRelabel}
+              onDone={handleConversionDone}
+              onCancel={() => setConversion(null)}
+            />
 
             <Button onClick={handleSave} disabled={saving} className="w-full h-12 bg-primary text-primary-foreground">
               {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
