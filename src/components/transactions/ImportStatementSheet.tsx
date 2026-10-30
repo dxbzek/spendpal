@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { downscaleImage } from '@/utils/downscaleImage';
 import { normalizeDate } from '@/lib/finance/normalizeDate';
+import AppIcon from '@/components/AppIcon';
 
 // Chunk large statement text into ~10k-char pieces split on line boundaries.
 function chunkText(text: string, maxChunkSize = 10_000): string[] {
@@ -545,7 +546,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                 <Select value={accountId} onValueChange={setAccountId}>
                   <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
                   <SelectContent>
-                    {accounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>))}
+                    {accounts.map(a => (<SelectItem key={a.id} value={a.id}><AppIcon value={a.icon} /> {a.name}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>

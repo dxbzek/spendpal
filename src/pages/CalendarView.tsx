@@ -9,7 +9,7 @@ import {
   addMonths, subMonths, isSameDay, isSameMonth,
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
-import { extractEmoji } from '@/utils/categoryColors';
+import AppIcon from '@/components/AppIcon';
 
 const CalendarView = () => {
   const { transactions, accounts, loading } = useFinance();
@@ -207,7 +207,7 @@ const CalendarView = () => {
               {selectedTxs.map(tx => (
                 <div key={tx.id} className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xl shrink-0">{extractEmoji(tx.categoryIcon)}</span>
+                    <span className="text-xl shrink-0"><AppIcon value={tx.categoryIcon} /></span>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{tx.merchant}</p>
                       <p className="text-xs text-muted-foreground">{tx.category}</p>

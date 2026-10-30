@@ -11,6 +11,7 @@ import { useAI } from '@/hooks/useAI';
 import { useFinance } from '@/context/FinanceContext';
 import { useCategories } from '@/hooks/useCategories';
 import { format } from 'date-fns';
+import AppIcon from '@/components/AppIcon';
 
 type Target = 'budget' | 'goal';
 
@@ -363,7 +364,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
                     onChange={() => setGoalRows(rs => rs.map((r, idx) => idx === i ? { ...r, selected: !r.selected } : r))}
                     className="h-4 w-4 shrink-0"
                   />
-                  <span className="text-xl shrink-0">{row.icon}</span>
+                  <span className="text-xl shrink-0"><AppIcon value={row.icon} /></span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{row.name}</p>
                     <p className="text-[11px] text-muted-foreground">

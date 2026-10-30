@@ -141,9 +141,9 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               <Select value={type} onValueChange={v => setType(v as AccountType)}>
                 <SelectTrigger className="h-11 text-base w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">💵 Cash</SelectItem>
-                  <SelectItem value="debit">💳 Debit</SelectItem>
-                  <SelectItem value="credit">🏦 Credit</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="debit">Debit</SelectItem>
+                  <SelectItem value="credit">Credit</SelectItem>
                 </SelectContent>
               </Select>
             </div>

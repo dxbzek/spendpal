@@ -2,6 +2,8 @@ import * as Sentry from '@sentry/react';
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import "./index.css";
 import { registerAppUpdates } from "./lib/pwaUpdate";
 import { polyfillCountryFlagEmojis } from "country-flag-emoji-polyfill";

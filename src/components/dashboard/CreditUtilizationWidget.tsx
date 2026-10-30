@@ -5,6 +5,7 @@ import GlossaryLink from '@/components/GlossaryLink';
 import { m } from 'framer-motion';
 import type { Account } from '@/types/finance';
 import { creditUtilization } from '@/lib/finance/credit';
+import AppIcon from '@/components/AppIcon';
 
 interface Props {
   accounts: Account[];
@@ -69,7 +70,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
             <div key={card.id}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium flex items-center gap-1.5">
-                  <span>{card.icon}</span> {card.name}
+                  <span><AppIcon value={card.icon} /></span> {card.name}
                 </span>
                 <span className="text-xs text-muted-foreground">{util}%</span>
               </div>

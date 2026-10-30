@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import type { Transaction, Account } from '@/types/finance';
 import { memo, useMemo } from 'react';
 import { upcomingBills } from '@/lib/finance/upcomingBills';
+import AppIcon from '@/components/AppIcon';
 
 interface Props {
   accounts: Account[];
@@ -39,7 +40,7 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <span className="text-lg w-7 text-center shrink-0">{bill.icon}</span>
+                <span className="text-lg w-7 text-center shrink-0"><AppIcon value={bill.icon} /></span>
                 <div className="min-w-0">
                   <p className="text-sm font-medium leading-tight truncate">{bill.name}</p>
                   <p className="text-[11px] text-muted-foreground">{format(bill.dueDate, 'MMM d')}</p>

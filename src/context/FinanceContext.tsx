@@ -659,7 +659,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setGoals(prev => prev.map(g =>
       g.id === goalId ? { ...g, savedAmount: newSaved, status: isNowComplete ? 'completed' : g.status } : g
     ));
-    if (isNowComplete) toast.success(`🎉 Goal "${goal.name}" completed!`);
+    if (isNowComplete) toast.success(`Goal "${goal.name}" completed`);
     return true;
   }, [goals]);
 

@@ -20,6 +20,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import AppIcon from '@/components/AppIcon';
 
 interface Prefill {
   type: TransactionType;
@@ -358,7 +359,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all active:scale-95 ${
                         category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                       }`}>
-                      <span className="text-2xl">{c.icon}</span>
+                      <span className="text-2xl"><AppIcon value={c.icon} /></span>
                       <span className="truncate w-full text-center text-muted-foreground text-[10px] leading-tight">{c.name}</span>
                     </button>
                   ))}
@@ -375,7 +376,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                 <SelectTrigger aria-label={isTransfer ? 'From account' : 'Account'}><SelectValue placeholder="Select account" /></SelectTrigger>
                 <SelectContent>
                   {accounts.map(a => (
-                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}><AppIcon value={a.icon} /> {a.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -388,7 +389,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                   <SelectTrigger aria-label="To account"><SelectValue placeholder="Select destination" /></SelectTrigger>
                   <SelectContent>
                     {accounts.filter(a => a.id !== accountId).map(a => (
-                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                      <SelectItem key={a.id} value={a.id}><AppIcon value={a.icon} /> {a.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -558,7 +559,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                           <SelectContent>
                             {goals.filter(g => g.status === 'active').map(g => (
                               <SelectItem key={g.id} value={g.id}>
-                                {g.icon} {g.name}
+                                <AppIcon value={g.icon} /> {g.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -607,7 +608,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       <AlertDialog open={showDuplicateWarning} onOpenChange={(o) => { if (!o) { setShowDuplicateWarning(false); setPendingSubmit(null); setDuplicateMatch(null); } }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>⚠️ Possible Duplicate</AlertDialogTitle>
+            <AlertDialogTitle>Possible duplicate</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>A similar transaction already exists:</p>

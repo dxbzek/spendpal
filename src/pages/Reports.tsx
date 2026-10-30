@@ -9,6 +9,7 @@ import { useBalanceMask } from '@/hooks/useBalanceMask';
 const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
 import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank, Printer } from 'lucide-react';
+import AppIcon from '@/components/AppIcon';
 
 const ChartSkeleton = () => <div className="h-[220px] w-full rounded-xl bg-muted animate-pulse" />;
 
@@ -258,7 +259,7 @@ const Reports = () => {
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${drillCategory === cat.name ? 'bg-primary-soft border border-primary-line' : 'hover:bg-muted'}`}
               >
                 <span className="flex items-center gap-2">
-                  <span>{cat.icon}</span>
+                  <span><AppIcon value={cat.icon} /></span>
                   <span className="font-medium">{cat.name}</span>
                 </span>
                 <span className="font-semibold">{mask(fmt(cat.value))}</span>
@@ -359,7 +360,7 @@ const Reports = () => {
                 <div key={source}>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="flex items-center gap-1.5">
-                      <span>{data.icon}</span>
+                      <span><AppIcon value={data.icon} /></span>
                       <span className="font-medium">{source}</span>
                     </span>
                     <span className="font-semibold text-primary">{mask(fmt(data.value))} <span className="text-muted-foreground font-normal">({pct}%)</span></span>

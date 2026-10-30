@@ -9,6 +9,7 @@ import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_APR, monthsToPayoff, simulateStrategy } from '@/lib/finance/debtPayoff';
 import { creditUtilization } from '@/lib/finance/credit';
+import AppIcon from '@/components/AppIcon';
 
 const Debt = () => {
   const { accounts, loading } = useFinance();
@@ -218,7 +219,7 @@ const Debt = () => {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl">{debt.icon}</span>
+                        <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl"><AppIcon value={debt.icon} /></span>
                         <div>
                           <p className="text-sm font-semibold">{debt.name}</p>
                           <p className="text-xs text-muted-foreground">
@@ -416,7 +417,7 @@ const Debt = () => {
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
                           i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                         }`}>{i + 1}</span>
-                        <span className="text-base shrink-0">{d.icon}</span>
+                        <span className="text-base shrink-0"><AppIcon value={d.icon} /></span>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold line-clamp-2 break-words">{d.name}</p>
                           <p className="text-[10px] text-muted-foreground">
@@ -470,11 +471,11 @@ const Debt = () => {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff Strategies</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="bg-accent rounded-xl p-3">
-                    <p className="font-semibold mb-1">❄️ Debt Snowball</p>
+                    <p className="font-semibold mb-1">Debt snowball</p>
                     <p className="text-muted-foreground">Pay smallest balance first. Wins motivation through quick wins.</p>
                   </div>
                   <div className="bg-accent rounded-xl p-3">
-                    <p className="font-semibold mb-1">🔥 Debt Avalanche</p>
+                    <p className="font-semibold mb-1">Debt avalanche</p>
                     <p className="text-muted-foreground">Pay highest APR first. Saves the most money long-term.</p>
                   </div>
                 </div>
