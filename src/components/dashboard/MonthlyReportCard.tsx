@@ -124,7 +124,7 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
   }, [transactions, budgets, goals, accounts]);
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary-line">
+    <div className="bg-card rounded-xl p-4 card-shadow border border-dashed border-primary-line">
       <div className="flex items-center gap-2 mb-2">
         <FileText size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Monthly AI Report</h2>

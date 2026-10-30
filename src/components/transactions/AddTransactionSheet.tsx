@@ -356,10 +356,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                   {getCategoriesForType(type).map(c => (
                     <button key={c.name} onClick={() => selectCategory(c.name, c.icon)}
                       title={c.name}
-                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all active:scale-95 ${
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
                         category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                       }`}>
-                      <span className="text-2xl"><AppIcon value={c.icon} /></span>
+                      <AppIcon value={c.icon} className="text-2xl" />
                       <span className="truncate w-full text-center text-muted-foreground text-[10px] leading-tight">{c.name}</span>
                     </button>
                   ))}
@@ -586,7 +586,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     <>
       {isMobile ? (
         <Sheet open={open} onOpenChange={onOpenChange}>
-          <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetContent side="bottom" className="rounded-t-xl">
             <SheetHeader className="text-left mb-1">
               <SheetTitle className="text-lg">{title}</SheetTitle>
             </SheetHeader>

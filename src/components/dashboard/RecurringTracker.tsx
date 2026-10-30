@@ -5,6 +5,7 @@ import { getCategoryChartColor } from '@/utils/categoryColors';
 import { CalendarClock } from 'lucide-react';
 import { parseISO, addMonths, format } from 'date-fns';
 import { m } from 'framer-motion';
+import { IconTile } from '@/components/AppIcon';
 
 const RecurringTracker = () => {
   const { transactions } = useFinance();
@@ -34,7 +35,7 @@ const RecurringTracker = () => {
   if (recurring.length === 0) return null;
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow">
+    <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <CalendarClock size={16} className="text-primary" />
@@ -80,7 +81,7 @@ const RecurringTracker = () => {
                   <div key={item.id} className="py-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xl shrink-0">{item.categoryIcon}</span>
+                        <IconTile value={item.categoryIcon} />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.merchant}</p>
                           <div className="flex items-center gap-2">

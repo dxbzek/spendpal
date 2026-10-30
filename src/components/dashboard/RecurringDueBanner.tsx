@@ -59,7 +59,7 @@ const RecurringDueBanner = ({ transactions }: Props) => {
             {overdue.length} recurring {overdue.length === 1 ? 'expense' : 'expenses'} not logged this month
           </p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {overdue.map(tx => `${tx.categoryIcon} ${tx.merchant || tx.category}`).join(', ')}
+            {overdue.map(tx => tx.merchant || tx.category).join(', ')}
           </p>
         </div>
         <span className="text-xs text-primary font-medium shrink-0 mt-0.5">Log now →</span>

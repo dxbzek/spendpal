@@ -31,7 +31,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
   const overallBarColor = overallUtil > 75 ? 'bg-expense' : overallUtil > 50 ? 'bg-warning' : 'bg-primary';
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow">
+    <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
         <CreditCard size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Credit Utilization</h2>

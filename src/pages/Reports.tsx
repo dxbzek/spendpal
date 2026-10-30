@@ -205,12 +205,12 @@ const Reports = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+        <div className="bg-card rounded-xl border border-border p-3 text-center">
           <TrendingUp size={18} className="text-primary mx-auto mb-1" />
           <p className="text-xs text-muted-foreground">Income</p>
           <p className="font-bold text-sm">{mask(fmt(income))}</p>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+        <div className="bg-card rounded-xl border border-border p-3 text-center">
           <TrendingDown size={18} className="text-destructive mx-auto mb-1" />
           <p className="text-xs text-muted-foreground">Expenses</p>
           <p className="font-bold text-sm">{mask(fmt(expenses))}</p>
@@ -220,14 +220,14 @@ const Reports = () => {
             </p>
           )}
         </div>
-        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+        <div className="bg-card rounded-xl border border-border p-3 text-center">
           <Minus size={18} className={`mx-auto mb-1 ${net >= 0 ? 'text-primary' : 'text-destructive'}`} />
           <p className="text-xs text-muted-foreground">Net</p>
           <p className={`font-bold text-sm ${net >= 0 ? 'text-primary' : 'text-destructive'}`}>
             {hidden ? '••••••' : `${net < 0 ? '-' : ''}${fmt(Math.abs(net))}`}
           </p>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+        <div className="bg-card rounded-xl border border-border p-3 text-center">
           <PiggyBank size={18} className={`mx-auto mb-1 ${savingsRate !== null && savingsRate >= 20 ? 'text-primary' : 'text-muted-foreground'}`} />
           <p className="text-xs text-muted-foreground">Savings Rate</p>
           <p className={`font-bold text-sm ${savingsRate === null ? 'text-muted-foreground' : savingsRate >= 20 ? 'text-primary' : savingsRate < 0 ? 'text-destructive' : 'text-foreground'}`}>
@@ -237,7 +237,7 @@ const Reports = () => {
       </div>
 
       {/* 6-Month Trend */}
-      <div className="bg-card rounded-2xl border border-border p-4">
+      <div className="bg-card rounded-xl border border-border p-4">
         <h2 className="font-semibold text-sm mb-3">6-Month Trend</h2>
         <Suspense fallback={<ChartSkeleton />}>
           <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
@@ -246,7 +246,7 @@ const Reports = () => {
 
       {/* Spending by Category */}
       {categoryData.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Spending by Category</h2>
           <Suspense fallback={<ChartSkeleton />}>
             <SpendingPieChart data={categoryData} />
@@ -300,7 +300,7 @@ const Reports = () => {
 
       {/* Budget Performance */}
       {monthBudgets.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+        <div className="bg-card rounded-xl border border-border p-4 space-y-3">
           <h2 className="font-semibold text-sm">Budget Performance</h2>
           {monthBudgets.map(b => {
             const spent = monthSpentByCategory[b.category] ?? 0;
@@ -310,7 +310,7 @@ const Reports = () => {
               <div key={b.id} className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="flex items-center gap-1">
-                    <span>{b.categoryIcon}</span>
+                    <span><AppIcon value={b.categoryIcon} /></span>
                     <span>{b.category}</span>
                   </span>
                   <span className={over ? 'text-destructive font-semibold' : 'text-muted-foreground'}>
@@ -333,7 +333,7 @@ const Reports = () => {
 
       {/* Top Merchants */}
       {topMerchants.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Top Merchants</h2>
           <div className="space-y-2">
             {topMerchants.map(({ merchant, amount }, i) => (
@@ -351,7 +351,7 @@ const Reports = () => {
 
       {/* Income by Source */}
       {incomeBySource.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Income by Source</h2>
           <div className="space-y-2">
             {incomeBySource.map(([source, data], _i) => {
@@ -377,7 +377,7 @@ const Reports = () => {
 
       {/* Day of Week Heatmap */}
       {dayOfWeekData.some(d => d.total > 0) && (
-        <div className="bg-card rounded-2xl border border-border p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
           <h2 className="font-semibold text-sm mb-3">Spending by Day of Week</h2>
           <div className="flex items-end gap-1.5">
             {dayOfWeekData.map(({ label, total, pct }) => (

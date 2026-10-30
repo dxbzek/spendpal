@@ -14,3 +14,10 @@ const AppIcon = ({ value, className }: AppIconProps) => {
 };
 
 export default AppIcon;
+
+/** A stored icon in a quiet square tile, for the leading icon of a list row or card. */
+export const IconTile = ({ value, className }: AppIconProps) => (
+  <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground text-[20px]', className)}>
+    <AppIcon value={value} />
+  </span>
+);

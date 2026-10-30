@@ -19,7 +19,7 @@ import SwipeableTransaction from '@/components/transactions/SwipeableTransaction
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditTransaction } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/skeleton';
-import AppIcon from '@/components/AppIcon';
+import AppIcon, { IconTile } from '@/components/AppIcon';
 
 
 const PAGE_SIZE = 50;
@@ -229,7 +229,7 @@ const Transactions = () => {
           </div>
         )}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <span className="text-2xl shrink-0"><AppIcon value={tx.categoryIcon} /></span>
+          <IconTile value={tx.categoryIcon} />
            <div className="min-w-0">
              <p className="text-sm font-medium truncate flex items-center gap-1.5">
                <button
@@ -571,7 +571,7 @@ const Transactions = () => {
             {grouped.map(([date, txs]) => (
               <m.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
-                <div className="bg-card rounded-2xl card-shadow overflow-hidden divide-y divide-border">
+                <div className="bg-card rounded-xl card-shadow overflow-hidden divide-y divide-border">
                   {txs.map((tx, idx) => (
                     <SwipeableTransaction key={tx.id} onDelete={() => handleDeleteSingle(tx.id)} onCategorize={() => setCategorizeTxId(tx.id)}>
                       {renderTxContent(tx, idx)}
@@ -583,7 +583,7 @@ const Transactions = () => {
           </AnimatePresence>
         ) : (
           /* Desktop: table layout */
-          <div className="bg-card rounded-2xl card-shadow overflow-hidden">
+          <div className="bg-card rounded-xl card-shadow overflow-hidden">
             {/* Table header */}
             <div className={`grid ${selectMode ? 'grid-cols-[28px_150px_1fr_160px_110px_60px]' : 'grid-cols-[150px_1fr_160px_110px_60px]'} gap-0 border-b border-border px-4 py-3`}>
               {selectMode && <span />}
@@ -629,7 +629,7 @@ const Transactions = () => {
                         )}
                         <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</span>
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-xl shrink-0"><AppIcon value={tx.categoryIcon} /></span>
+                          <IconTile value={tx.categoryIcon} />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold truncate flex items-center gap-1.5">
                               {tx.merchant}
@@ -690,7 +690,7 @@ const Transactions = () => {
         <DialogContent className="max-w-sm w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <span className="text-2xl"><AppIcon value={merchantStats?.icon} /></span>
+              <IconTile value={merchantStats?.icon} />
               <span>{merchantProfile}</span>
             </DialogTitle>
           </DialogHeader>
@@ -742,7 +742,7 @@ const Transactions = () => {
                 }}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted hover:bg-accent hover:text-accent-foreground transition-colors"
               >
-                <span className="text-2xl"><AppIcon value={cat.icon} /></span>
+                <IconTile value={cat.icon} />
                 <span className="text-[10px] font-medium text-center leading-tight">{cat.name}</span>
               </button>
             ))}

@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import AppIcon from '@/components/AppIcon';
+import AppIcon, { IconTile } from '@/components/AppIcon';
 
 const METHOD_DETAILS: Record<string, {
   name: string; emoji: string; desc: string;
@@ -260,7 +260,7 @@ const AIAdvisor = () => {
   return (
     <div>
       {/* Header */}
-      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl md:rounded-b-none">
+      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-2">
             <Brain size={28} className="text-primary-foreground" />
@@ -276,7 +276,7 @@ const AIAdvisor = () => {
 
         {/* Past Sessions */}
         {history.length > 0 && (
-          <div className="bg-card rounded-2xl card-shadow overflow-hidden">
+          <div className="bg-card rounded-xl card-shadow overflow-hidden">
             <button
               onClick={() => setShowHistory(h => !h)}
               className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted transition-colors">
@@ -326,7 +326,7 @@ const AIAdvisor = () => {
 
         {/* Spending Anomalies */}
         {anomalies.length > 0 && (
-          <div className="bg-card rounded-2xl p-5 card-shadow">
+          <div className="bg-card rounded-xl p-5 card-shadow">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle size={16} className="text-warning" />
               <h3 className="font-heading text-sm">Spending Anomalies This Month</h3>
@@ -336,7 +336,7 @@ const AIAdvisor = () => {
               {anomalies.map(a => (
                 <div key={a.category} className="flex items-center justify-between p-3 bg-warning-soft border border-warning-line rounded-xl">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-lg"><AppIcon value={a.icon} /></span>
+                    <IconTile value={a.icon} />
                     <div>
                       <p className="text-sm font-medium">{a.category}</p>
                       <p className="text-[11px] text-muted-foreground">Avg: {mask(fmt(a.avg))}/mo</p>
@@ -354,8 +354,8 @@ const AIAdvisor = () => {
 
         {/* Analyze Button */}
         {!analysis && (
-          <div className="bg-card rounded-2xl p-6 card-shadow text-center">
-            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
+          <div className="bg-card rounded-xl p-6 card-shadow text-center">
+            <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
               <Brain size={32} className="text-primary-foreground" />
             </div>
             <h2 className="font-heading text-lg mb-2">Get Your Budget Analysis</h2>
@@ -387,7 +387,7 @@ const AIAdvisor = () => {
         {loading && !analysis && (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="bg-card rounded-2xl p-5 card-shadow animate-pulse">
+              <div key={i} className="bg-card rounded-xl p-5 card-shadow animate-pulse">
                 <div className="h-3 bg-muted rounded w-1/3 mb-3" />
                 <div className="h-4 bg-muted rounded w-2/3 mb-2" />
                 <div className="h-3 bg-muted rounded w-full mb-1.5" />
@@ -410,7 +410,7 @@ const AIAdvisor = () => {
               </div>
 
               {/* Recommended Method */}
-              <div className="bg-card rounded-2xl p-5 card-shadow border-2 border-primary-line">
+              <div className="bg-card rounded-xl p-5 card-shadow border-2 border-primary-line">
                 <div className="flex items-start gap-3 mb-3">
                   <span className="text-3xl"><AppIcon value={METHOD_LABELS[analysis.recommendedMethod]?.emoji} /></span>
                   <div>
@@ -424,7 +424,7 @@ const AIAdvisor = () => {
 
               {/* Health Score + Breakdown */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-card rounded-2xl p-5 card-shadow">
+                <div className="bg-card rounded-xl p-5 card-shadow">
                   <h3 className="font-heading text-sm mb-3">Budget Health Score</h3>
                   <div className="flex items-center gap-4 mb-4">
                     <HealthScoreRing score={analysis.healthScore} colorClass={scoreColor(analysis.healthScore)} />
@@ -445,7 +445,7 @@ const AIAdvisor = () => {
                   </div>
                 </div>
 
-                <div className="bg-card rounded-2xl p-5 card-shadow">
+                <div className="bg-card rounded-xl p-5 card-shadow">
                   <h3 className="font-heading text-sm mb-3">Score Breakdown</h3>
                   <div className="space-y-3">
                     {[
@@ -470,7 +470,7 @@ const AIAdvisor = () => {
 
               {/* Insights */}
               {!!shown?.insights.length && (
-              <div className="bg-card rounded-2xl p-5 card-shadow">
+              <div className="bg-card rounded-xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Behavior Insights</h3>
                 <div className="space-y-2.5">
                   {shown.insights.map((insight) => (
@@ -487,7 +487,7 @@ const AIAdvisor = () => {
               )}
 
               {/* Suggested Envelopes */}
-              <div className="bg-card rounded-2xl p-5 card-shadow">
+              <div className="bg-card rounded-xl p-5 card-shadow">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-heading text-sm">Suggested Budget Envelopes</h3>
                   <Button size="sm" onClick={handleApplyEnvelopes} disabled={applyingEnvelopes}
@@ -502,7 +502,7 @@ const AIAdvisor = () => {
                     return (
                       <div key={env.category} className="flex items-center justify-between p-3 bg-muted rounded-xl">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-lg"><AppIcon value={env.icon} /></span>
+                          <IconTile value={env.icon} />
                           <div>
                             <p className="text-sm font-medium">{env.category}</p>
                             <p className="text-[10px] text-muted-foreground">Currently: {mask(fmt(env.currentSpending))}/mo</p>
@@ -522,7 +522,7 @@ const AIAdvisor = () => {
               </div>
 
               {/* Budget Simulation */}
-              <div className="bg-card rounded-2xl p-5 card-shadow">
+              <div className="bg-card rounded-xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Budget Method Simulation</h3>
                 <p className="text-xs text-muted-foreground mb-3">Estimated monthly savings with each method — tap to select</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -678,7 +678,7 @@ const AIAdvisor = () => {
 
               {/* Dynamic Adjustments */}
               {!!shown?.dynamicAdjustments.length && (
-              <div className="bg-card rounded-2xl p-5 card-shadow">
+              <div className="bg-card rounded-xl p-5 card-shadow">
                 <h3 className="font-heading text-sm mb-3">Recommended Adjustments</h3>
                 <div className="space-y-2.5">
                   {shown.dynamicAdjustments.map((adj) => (

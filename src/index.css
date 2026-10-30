@@ -45,7 +45,7 @@
     --input: 142 20% 88%;
     --ring: 146 63% 25%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
     /* Opaque tints: hue mixed into the surface, never see-through. */
     --primary-soft: color-mix(in srgb, hsl(var(--primary)) 12%, hsl(var(--card)));

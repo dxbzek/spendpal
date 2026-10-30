@@ -15,7 +15,7 @@ import { logger } from '@/lib/logger';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { downscaleImage } from '@/utils/downscaleImage';
 import { normalizeDate } from '@/lib/finance/normalizeDate';
-import AppIcon from '@/components/AppIcon';
+import AppIcon, { IconTile } from '@/components/AppIcon';
 
 // Chunk large statement text into ~10k-char pieces split on line boundaries.
 function chunkText(text: string, maxChunkSize = 10_000): string[] {
@@ -477,7 +477,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                 <div>
                   <input ref={fileRef} type="file" accept=".csv,.txt,.pdf,.xlsx,.xls" onChange={handleFile} className="hidden" />
                   <button onClick={() => fileRef.current?.click()}
-                    className="w-full py-8 rounded-2xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
+                    className="w-full py-8 rounded-xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
                     {parsing ? (
                       <>
                         <Loader2 size={32} className="text-primary animate-spin" />
@@ -511,7 +511,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                 <div>
                   <input ref={imageRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
                   {imageDataUrl ? (
-                    <div className="relative w-full rounded-2xl border border-border overflow-hidden bg-muted">
+                    <div className="relative w-full rounded-xl border border-border overflow-hidden bg-muted">
                       <img src={imageDataUrl} alt={imageName || 'Screenshot preview'} className="w-full max-h-64 object-contain" />
                       <button
                         onClick={clearImage}
@@ -526,7 +526,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     </div>
                   ) : (
                     <button onClick={() => imageRef.current?.click()}
-                      className="w-full py-8 rounded-2xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
+                      className="w-full py-8 rounded-xl border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center gap-2">
                       {parsing ? (
                         <><Loader2 size={32} className="text-primary animate-spin" /><span className="text-sm text-muted-foreground">Processing image…</span></>
                       ) : (
@@ -604,7 +604,7 @@ const ImportStatementSheet = ({ open, onOpenChange }: Props) => {
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${row.selected ? 'border-primary bg-primary' : 'border-border'}`}>
                       {row.selected && <Check size={12} className="text-primary-foreground" />}
                     </div>
-                    <span className="text-lg">{row.categoryIcon}</span>
+                    <IconTile value={row.categoryIcon} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-medium truncate">{row.merchant}</p>

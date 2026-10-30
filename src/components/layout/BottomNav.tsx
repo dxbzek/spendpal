@@ -41,12 +41,12 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
   <button
     onClick={onClick}
     aria-current={active ? 'page' : undefined}
-    className="w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-2xl min-h-[48px] relative transition-colors active:scale-95"
+    className="w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-xl min-h-[48px] relative transition-colors"
   >
     {active && (
       <m.div
         layoutId={`nav-indicator-${path}`}
-        className="absolute inset-0 rounded-2xl bg-accent"
+        className="absolute inset-0 rounded-xl bg-accent"
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       />
     )}
@@ -117,7 +117,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-3xl shadow-overlay overflow-y-auto max-h-[60vh]"
+                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-2xl shadow-overlay overflow-y-auto max-h-[60vh]"
                 >
                   <div className="flex justify-center pt-2 pb-0.5">
                     <div className="w-9 h-1 rounded-full bg-border" />
@@ -128,7 +128,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                       type="button"
                       onClick={() => setShowMore(false)}
                       aria-label="Close menu"
-                      className="flex items-center justify-center w-11 h-11 -mr-1.5 rounded-full hover:bg-muted active:scale-95 text-muted-foreground transition-colors"
+                      className="flex items-center justify-center w-11 h-11 -mr-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors"
                     >
                       <X size={18} />
                     </button>
@@ -141,7 +141,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                         <button
                           key={item.path}
                           onClick={() => handleMoreItem(item.path)}
-                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 px-1 min-h-[64px] rounded-2xl transition-colors active:scale-95 ${
+                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 px-1 min-h-[64px] rounded-xl transition-colors ${
                             active ? 'bg-accent text-primary' : 'hover:bg-muted text-muted-foreground'
                           }`}
                         >
@@ -172,7 +172,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           {/* FAB */}
           <button
             onClick={onAddClick}
-            className="bg-primary rounded-2xl w-14 h-14 flex items-center justify-center relative -top-5 mx-3 ring-4 ring-card active:scale-90 transition-transform shrink-0"
+            className="bg-primary rounded-xl w-14 h-14 flex items-center justify-center relative -top-5 mx-3 ring-4 ring-card transition-transform shrink-0"
             aria-label="Add transaction"
           >
             <Plus size={28} className="text-primary-foreground" />
@@ -187,12 +187,12 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
             onClick={() => setShowMore(v => !v)}
             aria-expanded={showMore}
             aria-label="More options"
-            className={`w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-2xl min-h-[48px] relative transition-colors active:scale-95 ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
+            className={`w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-xl min-h-[48px] relative transition-colors ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
           >
             {(showMore || isMoreActive) && (
               <m.div
                 layoutId="nav-indicator-more"
-                className="absolute inset-0 rounded-2xl bg-accent"
+                className="absolute inset-0 rounded-xl bg-accent"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}

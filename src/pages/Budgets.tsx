@@ -21,6 +21,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { IconTile } from '@/components/AppIcon';
 
 interface BudgetSuggestion {
   category: string;
@@ -310,7 +311,7 @@ const Budgets = () => {
 
       {/* Template picker */}
       {showTemplates && (
-        <div className="mx-5 md:mx-8 mb-2 bg-card rounded-2xl border border-border p-4 space-y-2">
+        <div className="mx-5 md:mx-8 mb-2 bg-card rounded-xl border border-border p-4 space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Load a Template</p>
           {templates.map(t => (
             <div key={t.name} className="flex items-center justify-between py-1">
@@ -332,7 +333,7 @@ const Budgets = () => {
 
       <div className="px-5 md:px-8 space-y-4 pb-6">
         {/* Overall progress card */}
-        <div className="bg-card rounded-2xl p-4 card-shadow">
+        <div className="bg-card rounded-xl p-4 card-shadow">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-semibold">{overallPct}% spent</span>
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{daysLeft} days left</span>
@@ -373,7 +374,7 @@ const Budgets = () => {
         )}
 
         {budgets.length === 0 ? (
-          <div className="bg-card rounded-2xl p-8 card-shadow text-center">
+          <div className="bg-card rounded-xl p-8 card-shadow text-center">
             <ChartPie className="mx-auto mb-3 text-primary" size={40} strokeWidth={1.5} aria-hidden="true" />
             <h3 className="font-heading text-base mb-1">No budgets yet</h3>
             <p className="text-sm text-muted-foreground mb-4">Create your first budget to start tracking your spending limits</p>
@@ -383,7 +384,7 @@ const Budgets = () => {
             </button>
           </div>
         ) : tab === 'this' && thisMonthBudgets.length === 0 ? (
-          <div className="bg-card rounded-2xl p-6 card-shadow text-center">
+          <div className="bg-card rounded-xl p-6 card-shadow text-center">
             <h3 className="font-heading text-base mb-1">No budgets for {format(now, 'MMMM')} yet</h3>
             <p className="text-sm text-muted-foreground mb-4">
               {lastMonthBudgets.length > 0 ? `Bring over ${lastMonthLabel}'s budgets or add new ones.` : 'Add a budget to start tracking this month.'}
@@ -416,10 +417,10 @@ const Budgets = () => {
               const projPct = b.amount ? Math.round((projected / b.amount) * 100) : 0;
               const lastMonthAmt = lastMonthData[b.category];
               return (
-                <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
+                <div key={b.id} className="bg-card rounded-xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl shrink-0">{b.categoryIcon}</span>
+                      <IconTile value={b.categoryIcon} />
                       <div>
                         <p className="text-sm font-semibold">{b.category}</p>
                         <p className="text-xs text-muted-foreground capitalize">{b.period} · {b.period === 'weekly' ? '7' : daysLeft}d left</p>
@@ -468,9 +469,9 @@ const Budgets = () => {
               const pct = b.amount ? Math.round((lastSpent / b.amount) * 100) : 0;
               const diff = lastSpent - b.spent;
               return (
-                <div key={b.id} className="bg-card rounded-2xl p-4 card-shadow">
+                <div key={b.id} className="bg-card rounded-xl p-4 card-shadow">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl shrink-0">{b.categoryIcon}</span>
+                    <IconTile value={b.categoryIcon} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{b.category}</p>
                       <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {mask(fmt(b.amount))}</p>
@@ -496,7 +497,7 @@ const Budgets = () => {
 
         {/* AI Suggestions — opened from the ⋯ menu */}
         {showAI && (
-        <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary-line">
+        <div className="bg-card rounded-xl p-4 card-shadow border border-dashed border-primary-line">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-xl bg-primary flex items-center justify-center shrink-0">
               <Sparkles size={13} className="text-primary-foreground" />
@@ -541,7 +542,7 @@ const Budgets = () => {
         )}
 
         <button onClick={() => { setEditBudget(null); setShowAddBudget(true); }}
-          className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-colors">
+          className="w-full py-3 rounded-xl border-2 border-dashed border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-colors">
           <Plus size={18} /> Add Budget
         </button>
       </div>

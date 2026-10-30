@@ -113,7 +113,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
                   className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
                     goalType === g.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                   }`}>
-                  <span className="text-xl"><AppIcon value={g.icon} /></span>
+                  <AppIcon value={g.icon} className="text-xl" />
                   <span className="text-muted-foreground">{g.name}</span>
                 </button>
               ))}
@@ -121,7 +121,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
                 className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
                   goalType === CUSTOM_GOAL_TYPE ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                 }`}>
-                <span className="text-xl"><AppIcon value={goalType === CUSTOM_GOAL_TYPE ? (customIcon || '🎯') : '✏️'} /></span>
+                <AppIcon value={goalType === CUSTOM_GOAL_TYPE ? (customIcon || '🎯') : '✏️'} className="text-xl" />
                 <span className="text-muted-foreground">Custom</span>
               </button>
             </div>

@@ -160,7 +160,7 @@ const Accounts = () => {
       </div>
 
       {/* Net Worth Summary */}
-      <div className="rounded-2xl bg-primary-soft border border-primary-line p-5">
+      <div className="rounded-xl bg-primary-soft border border-primary-line p-5">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Total Net Worth</p>
         <p className={`text-3xl font-bold font-heading ${netWorth >= 0 ? 'text-foreground' : 'text-destructive'}`}>
           {netWorth < 0 ? '-' : ''}{mask(fmt(Math.abs(netWorth)))}
@@ -187,7 +187,7 @@ const Accounts = () => {
             const utilization = creditUtilization(account);
 
             return (
-              <div key={account.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
+              <div key={account.id} className="bg-card rounded-xl border border-border p-4 space-y-3">
                 {/* Top row: icon + name + actions */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -325,7 +325,7 @@ const Accounts = () => {
                           {acctTxs.map(tx => (
                             <div key={tx.id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-muted">
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-base shrink-0">{tx.categoryIcon}</span>
+                                <span className="text-base shrink-0"><AppIcon value={tx.categoryIcon} /></span>
                                 <div className="min-w-0">
                                   <p className="text-xs font-medium truncate">{tx.merchant}</p>
                                   <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
@@ -355,7 +355,7 @@ const Accounts = () => {
 
       {/* Balance Projection */}
       {balanceProjection && (
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+        <div className="bg-card rounded-xl border border-border p-4 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">30-Day Balance Projection</h2>
             <span className={`text-xs font-semibold ${balanceProjection.change >= 0 ? 'text-income' : 'text-expense'}`}>

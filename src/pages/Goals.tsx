@@ -46,8 +46,6 @@ const Goals = () => {
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
   const { scheduleDelete: scheduleGoalDelete, isPending: isGoalPending } = useUndoableDelete({ deleteOne: removeGoal });
   const [showCompleted, setShowCompleted] = useState(false);
-  // Goal id currently playing the completion celebration (confetti + pulse).
-  const [celebratingId, setCelebratingId] = useState<string | null>(null);
 
   // Contribution logs keyed by goal ID.
   const [contributionLogs, setContributionLogs] = useState<Record<string, Contribution[]>>({});
@@ -162,7 +160,7 @@ const Goals = () => {
   return (
     <div>
       {/* Header */}
-      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-3xl">
+      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-2xl">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
@@ -178,7 +176,7 @@ const Goals = () => {
               </button>
             </div>
           </div>
-          <div className="bg-primary-raised rounded-2xl p-4">
+          <div className="bg-primary-raised rounded-xl p-4">
             <p className="text-primary-foreground/70 text-xs mb-1">Total Progress</p>
             <p className="text-2xl font-heading text-primary-foreground mb-2">
               {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {mask(fmt(totalTarget))}</span>
@@ -195,7 +193,7 @@ const Goals = () => {
         <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide mb-4">Active Goals</h2>
 
         {activeGoals.length === 0 ? (
-          <div className="text-center py-12 bg-card rounded-2xl card-shadow">
+          <div className="text-center py-12 bg-card rounded-xl card-shadow">
             <p className="text-muted-foreground text-sm">No active goals</p>
             <p className="text-xs text-muted-foreground/70 mt-1">Create a goal to start saving</p>
           </div>
@@ -208,10 +206,10 @@ const Goals = () => {
               const debt = isDebtGoal(goal);
               const estimate = getCompletionEstimate(remaining);
               return (
-                <div key={goal.id} className={`relative overflow-hidden bg-card rounded-2xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''} ${celebratingId === goal.id ? 'animate-celebrate-pulse' : ''}`}>
+                <div key={goal.id} className={`relative overflow-hidden bg-card rounded-xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''}`}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
+                      <span className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <p className="text-sm font-semibold truncate">{goal.name}</p>
@@ -273,15 +271,8 @@ const Goals = () => {
                     <div className="flex items-center gap-2">
                       {pct >= 100 ? (
                         <button
-                          onClick={() => {
-                            setCelebratingId(goal.id);
-                            // Let the confetti + pulse play, then mark the goal complete.
-                            window.setTimeout(() => {
-                              setCelebratingId(null);
-                              updateGoal({ ...goal, status: 'completed' });
-                            }, 800);
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-income-soft text-income text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform">
+                          onClick={() => updateGoal({ ...goal, status: 'completed' })}
+                          className="px-3 py-1.5 rounded-lg bg-income-soft text-income text-xs font-semibold flex items-center gap-1 transition-transform">
                           <CheckCircle2 size={12} /> Complete
                         </button>
                       ) : (
@@ -297,7 +288,7 @@ const Goals = () => {
                             Log
                           </button>
                           <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); setProgressMode('add'); }}
-                            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform">Add</button>
+                            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold transition-transform">Add</button>
                         </>
                       )}
                     </div>
@@ -354,8 +345,8 @@ const Goals = () => {
             {showCompleted && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {completedGoals.map(goal => (
-                  <div key={goal.id} className="bg-card rounded-2xl p-4 card-shadow opacity-70 flex items-center gap-4">
-                    <span className="w-12 h-12 rounded-2xl bg-income-soft flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
+                  <div key={goal.id} className="bg-card rounded-xl p-4 card-shadow opacity-70 flex items-center gap-4">
+                    <span className="w-12 h-12 rounded-xl bg-income-soft flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{goal.name}</p>
                       <p className="text-xs text-income font-medium">{mask(fmt(goal.savedAmount))} {isDebtGoal(goal) ? 'paid off' : 'saved'}</p>
