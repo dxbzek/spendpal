@@ -342,7 +342,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      convert_currency: {
+        Args: { p_from: string; p_to: string; p_rate: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
