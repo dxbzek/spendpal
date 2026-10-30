@@ -41,7 +41,6 @@ export default {
         "card":       "0 1px 3px hsl(220 20% 10% / 0.06), 0 1px 2px hsl(220 20% 10% / 0.04)",
         "card-hover": "0 4px 12px hsl(220 20% 10% / 0.08), 0 2px 4px hsl(220 20% 10% / 0.04)",
         "overlay":    "0 12px 32px hsl(220 20% 10% / 0.12), 0 4px 8px hsl(220 20% 10% / 0.06)",
-        "fab":        "0 4px 16px hsl(152 62% 42% / 0.4), 0 2px 4px hsl(152 62% 42% / 0.2)",
       },
       colors: {
         border: "hsl(var(--border))",
@@ -52,6 +51,10 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          soft: "var(--primary-soft)",
+          line: "var(--primary-line)",
+          raised: "var(--primary-raised)",
+          edge: "var(--primary-edge)",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -60,6 +63,8 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          soft: "var(--destructive-soft)",
+          line: "var(--destructive-line)",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -80,13 +85,25 @@ export default {
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          soft: "var(--success-soft)",
+          line: "var(--success-line)",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          soft: "var(--warning-soft)",
+          line: "var(--warning-line)",
         },
-        income: "hsl(var(--income))",
-        expense: "hsl(var(--expense))",
+        income: {
+          DEFAULT: "hsl(var(--income))",
+          soft: "var(--income-soft)",
+          line: "var(--income-line)",
+        },
+        expense: {
+          DEFAULT: "hsl(var(--expense))",
+          soft: "var(--expense-soft)",
+          line: "var(--expense-line)",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

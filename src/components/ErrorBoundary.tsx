@@ -41,7 +41,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     if (this.props.variant === 'inline') {
       return (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <span>Couldn't load {this.props.label ?? 'this section'}.</span>
           <button onClick={this.reset} className="font-medium text-primary hover:underline">
             Retry
@@ -78,7 +78,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           </div>
           <details className="text-left">
             <summary className="text-xs text-muted-foreground cursor-pointer">Show technical details</summary>
-            <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] text-muted-foreground bg-muted/50 rounded-lg p-2">
+            <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] text-muted-foreground bg-muted rounded-lg p-2">
               {this.state.message}
             </pre>
           </details>

@@ -294,7 +294,7 @@ const DataBackupCard = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmRestore} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleConfirmRestore} className="bg-destructive text-destructive-foreground hover:brightness-95">
               Yes, Replace All Data
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -371,9 +371,9 @@ const DangerZoneCard = () => {
     <>
       <section>
         <p className="text-[11px] font-semibold text-destructive uppercase tracking-wider mb-3 px-1">Danger Zone</p>
-        <div className="bg-card rounded-2xl p-5 card-shadow border border-destructive/20 space-y-5">
+        <div className="bg-card rounded-2xl p-5 card-shadow border border-destructive-line space-y-5">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
               <Trash2 size={16} className="text-destructive" />
             </div>
             <div className="flex-1">
@@ -392,7 +392,7 @@ const DangerZoneCard = () => {
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
               <Trash2 size={16} className="text-destructive" />
             </div>
             <div className="flex-1">
@@ -444,7 +444,7 @@ const DangerZoneCard = () => {
             <AlertDialogAction
               disabled={deleting || confirmText !== 'DELETE'}
               onClick={confirming === 'transactions' ? handleDeleteTransactions : handleDeleteAll}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:brightness-95"
             >
               {deleting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
               {confirming === 'transactions' ? 'Yes, Delete All Transactions' : 'Yes, Delete Everything'}
@@ -523,7 +523,7 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
         </div>
       )}
 
-      <Button onClick={handleSave} disabled={saving} className="w-full h-11 gradient-primary text-primary-foreground">
+      <Button onClick={handleSave} disabled={saving} className="w-full h-11 bg-primary text-primary-foreground">
         {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save Notifications'}
       </Button>
     </div>
@@ -697,7 +697,7 @@ const Settings = () => {
             </AvatarFallback>
           </Avatar>
           {/* 44px touch target */}
-          <label className="absolute bottom-0 right-0 w-11 h-11 rounded-full gradient-primary flex items-center justify-center cursor-pointer shadow-fab active:scale-95 transition-transform">
+          <label className="absolute bottom-0 right-0 w-11 h-11 rounded-full bg-primary flex items-center justify-center cursor-pointer active:scale-95 transition-transform">
             {uploading ? <Loader2 size={16} className="animate-spin text-primary-foreground" /> : <Camera size={16} className="text-primary-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
           </label>
@@ -769,7 +769,7 @@ const Settings = () => {
               </Select>
             </div>
 
-            <Button onClick={handleSave} disabled={saving} className="w-full h-12 gradient-primary text-primary-foreground">
+            <Button onClick={handleSave} disabled={saving} className="w-full h-12 bg-primary text-primary-foreground">
               {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
             </Button>
           </div>
@@ -796,7 +796,7 @@ const Settings = () => {
                 />
                 <Button
                   size="sm"
-                  className="mt-2 gradient-primary text-primary-foreground"
+                  className="mt-2 bg-primary text-primary-foreground"
                   onClick={() => {
                     const val = parseFloat(monthlyIncome);
                     if (monthlyIncome === '' || (!isNaN(val) && val >= 0)) {
@@ -865,8 +865,8 @@ const Settings = () => {
             </button>
 
             <button onClick={() => setShowLogoutConfirm(true)}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive/10 transition-colors">
-              <div className="w-8 h-8 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive-soft transition-colors">
+              <div className="w-8 h-8 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
                 <LogOut size={15} className="text-destructive" />
               </div>
               Sign Out
@@ -886,7 +886,7 @@ const Settings = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={signOut} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Sign Out</AlertDialogAction>
+            <AlertDialogAction onClick={signOut} className="bg-destructive text-destructive-foreground hover:brightness-95">Sign Out</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

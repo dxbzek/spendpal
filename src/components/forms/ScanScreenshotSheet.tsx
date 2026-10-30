@@ -265,7 +265,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
               <button
                 onClick={() => imageRef.current?.click()}
                 disabled={processing}
-                className="w-full border-2 border-dashed border-border rounded-2xl p-8 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors disabled:opacity-50"
+                className="w-full border-2 border-dashed border-border rounded-2xl p-8 flex flex-col items-center gap-2 hover:bg-muted transition-colors disabled:opacity-50"
               >
                 {processing
                   ? <Loader2 size={28} className="text-muted-foreground animate-spin" />
@@ -294,7 +294,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
               <Button
                 onClick={handleExtract}
                 disabled={!imageDataUrl || aiLoading || processing}
-                className="w-full h-11 gradient-primary text-primary-foreground"
+                className="w-full h-11 bg-primary text-primary-foreground"
               >
                 {aiLoading
                   ? <><Loader2 size={16} className="animate-spin mr-2" /> Scanning…</>
@@ -307,11 +307,11 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
         {step === 'review' && target === 'budget' && (
           <div className="space-y-3 mt-2">
             <p className="text-xs text-muted-foreground">
-              {budgetRows.length} row{budgetRows.length !== 1 ? 's' : ''} found. Uncheck any to skip; edit amounts inline. Rows tagged <span className="inline-flex items-center px-1 rounded bg-primary/10 text-primary text-[10px] font-semibold">NEW</span> will create a new category when applied.
+              {budgetRows.length} row{budgetRows.length !== 1 ? 's' : ''} found. Uncheck any to skip; edit amounts inline. Rows tagged <span className="inline-flex items-center px-1 rounded bg-primary-soft text-primary text-[10px] font-semibold">NEW</span> will create a new category when applied.
             </p>
             <div className="max-h-[50vh] overflow-y-auto space-y-2">
               {budgetRows.map((row, i) => (
-                <div key={i} className={`flex items-center gap-2 p-2.5 rounded-xl border ${row.selected ? 'bg-card border-border' : 'bg-muted/30 border-transparent opacity-60'}`}>
+                <div key={i} className={`flex items-center gap-2 p-2.5 rounded-xl border ${row.selected ? 'bg-card border-border' : 'bg-muted border-transparent opacity-60'}`}>
                   <input
                     type="checkbox"
                     checked={row.selected}
@@ -323,7 +323,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-medium truncate">{row.category}</span>
                       {row.isNewCategory && (
-                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">NEW</span>
+                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary-soft text-primary">NEW</span>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground">monthly budget</p>
@@ -342,7 +342,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
             </div>
             <DialogFooter className="gap-2">
               <Button variant="ghost" onClick={() => setStep('upload')}>Back</Button>
-              <Button onClick={handleApplyBudgets} disabled={applying} className="gradient-primary text-primary-foreground">
+              <Button onClick={handleApplyBudgets} disabled={applying} className="bg-primary text-primary-foreground">
                 <Check size={16} className="mr-2" /> Apply {budgetRows.filter(r => r.selected).length}
               </Button>
             </DialogFooter>
@@ -356,7 +356,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
             </p>
             <div className="max-h-[50vh] overflow-y-auto space-y-2">
               {goalRows.map((row, i) => (
-                <div key={i} className={`flex items-center gap-2 p-2.5 rounded-xl border ${row.selected ? 'bg-card border-border' : 'bg-muted/30 border-transparent opacity-60'}`}>
+                <div key={i} className={`flex items-center gap-2 p-2.5 rounded-xl border ${row.selected ? 'bg-card border-border' : 'bg-muted border-transparent opacity-60'}`}>
                   <input
                     type="checkbox"
                     checked={row.selected}
@@ -384,7 +384,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
             </div>
             <DialogFooter className="gap-2">
               <Button variant="ghost" onClick={() => setStep('upload')}>Back</Button>
-              <Button onClick={handleApplyGoals} disabled={applying} className="gradient-primary text-primary-foreground">
+              <Button onClick={handleApplyGoals} disabled={applying} className="bg-primary text-primary-foreground">
                 <Check size={16} className="mr-2" /> Apply {goalRows.filter(r => r.selected).length}
               </Button>
             </DialogFooter>

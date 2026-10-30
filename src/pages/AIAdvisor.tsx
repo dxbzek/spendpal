@@ -73,9 +73,9 @@ const INSIGHT_ICONS = {
 };
 
 const INSIGHT_COLORS = {
-  warning: 'bg-warning/10 border-warning/20 border-l-4 border-l-warning',
-  positive: 'bg-accent border-accent-foreground/10 border-l-4 border-l-income',
-  suggestion: 'bg-primary/5 border-primary/20 border-l-4 border-l-primary',
+  warning: 'bg-warning-soft border-warning-line border-l-4 border-l-warning',
+  positive: 'bg-accent border-accent-foreground border-l-4 border-l-income',
+  suggestion: 'bg-primary-soft border-primary-line border-l-4 border-l-primary',
 };
 
 // Budget Health Score ring with a count-up arc + number on mount.
@@ -259,7 +259,7 @@ const AIAdvisor = () => {
   return (
     <div>
       {/* Header */}
-      <div className="gradient-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl md:rounded-b-none">
+      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-2">
             <Brain size={28} className="text-primary-foreground" />
@@ -278,7 +278,7 @@ const AIAdvisor = () => {
           <div className="bg-card rounded-2xl card-shadow overflow-hidden">
             <button
               onClick={() => setShowHistory(h => !h)}
-              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
+              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted transition-colors">
               <div className="flex items-center gap-2">
                 <History size={14} className="text-muted-foreground" />
                 <span className="text-sm font-medium">Past Analyses ({history.length})</span>
@@ -288,11 +288,11 @@ const AIAdvisor = () => {
             {showHistory && (
               <div className="border-t border-border divide-y divide-border">
                 {history.map(session => (
-                  <div key={session.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors">
+                  <div key={session.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted transition-colors">
                     <button
                       onClick={() => { setAnalysis(session.result); setActiveSimTab(session.result.recommendedMethod); }}
                       className="flex items-center gap-3 flex-1 text-left">
-                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
                         <span className="text-base">{METHOD_DETAILS[session.result.recommendedMethod]?.emoji ?? '📊'}</span>
                       </div>
                       <div>
@@ -333,7 +333,7 @@ const AIAdvisor = () => {
             <p className="text-xs text-muted-foreground mb-3">Categories spending 2× or more above your 3-month average</p>
             <div className="space-y-2.5">
               {anomalies.map(a => (
-                <div key={a.category} className="flex items-center justify-between p-3 bg-warning/10 border border-warning/20 rounded-xl">
+                <div key={a.category} className="flex items-center justify-between p-3 bg-warning-soft border border-warning-line rounded-xl">
                   <div className="flex items-center gap-2.5">
                     <span className="text-lg">{a.icon}</span>
                     <div>
@@ -354,7 +354,7 @@ const AIAdvisor = () => {
         {/* Analyze Button */}
         {!analysis && (
           <div className="bg-card rounded-2xl p-6 card-shadow text-center">
-            <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
               <Brain size={32} className="text-primary-foreground" />
             </div>
             <h2 className="font-heading text-lg mb-2">Get Your Budget Analysis</h2>
@@ -368,15 +368,15 @@ const AIAdvisor = () => {
                 { icon: Shield, label: `${budgets.length} budgets` },
                 { icon: Target, label: `${goals.length} goals` },
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-2.5 bg-muted/50 rounded-xl p-3">
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <div key={label} className="flex items-center gap-2.5 bg-muted rounded-xl p-3">
+                  <div className="w-8 h-8 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
                     <Icon size={14} className="text-primary" />
                   </div>
                   <span className="text-xs text-muted-foreground">{label}</span>
                 </div>
               ))}
             </div>
-            <Button onClick={handleAnalyze} disabled={loading} className="gradient-primary text-primary-foreground px-8 h-12 text-base">
+            <Button onClick={handleAnalyze} disabled={loading} className="bg-primary text-primary-foreground px-8 h-12 text-base">
               {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing…</> : <><Zap size={18} className="mr-2" /> Analyze My Finances</>}
             </Button>
           </div>
@@ -409,7 +409,7 @@ const AIAdvisor = () => {
               </div>
 
               {/* Recommended Method */}
-              <div className="bg-card rounded-2xl p-5 card-shadow border-2 border-primary/20">
+              <div className="bg-card rounded-2xl p-5 card-shadow border-2 border-primary-line">
                 <div className="flex items-start gap-3 mb-3">
                   <span className="text-3xl">{METHOD_LABELS[analysis.recommendedMethod]?.emoji}</span>
                   <div>
@@ -433,9 +433,9 @@ const AIAdvisor = () => {
                       <Badge
                         variant="outline"
                         className={`text-[10px] ${
-                          analysis.healthScore >= 75 ? 'border-income text-income bg-income/10' :
-                          analysis.healthScore >= 50 ? 'border-warning text-warning bg-warning/10' :
-                          'border-expense text-expense bg-expense/10'
+                          analysis.healthScore >= 75 ? 'border-income text-income bg-income-soft' :
+                          analysis.healthScore >= 50 ? 'border-warning text-warning bg-warning-soft' :
+                          'border-expense text-expense bg-expense-soft'
                         }`}
                       >
                         {scoreLabel(analysis.healthScore)}
@@ -490,7 +490,7 @@ const AIAdvisor = () => {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-heading text-sm">Suggested Budget Envelopes</h3>
                   <Button size="sm" onClick={handleApplyEnvelopes} disabled={applyingEnvelopes}
-                    className="text-xs gradient-primary text-primary-foreground h-8">
+                    className="text-xs bg-primary text-primary-foreground h-8">
                     {applyingEnvelopes ? <Loader2 size={12} className="animate-spin mr-1" /> : null}
                     Apply All
                   </Button>
@@ -499,7 +499,7 @@ const AIAdvisor = () => {
                   {analysis.suggestedEnvelopes.map((env) => {
                     const diff = env.amount - env.currentSpending;
                     return (
-                      <div key={env.category} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                      <div key={env.category} className="flex items-center justify-between p-3 bg-muted rounded-xl">
                         <div className="flex items-center gap-2.5">
                           <span className="text-lg">{env.icon}</span>
                           <div>
@@ -539,15 +539,15 @@ const AIAdvisor = () => {
                             <button
                               onClick={() => setActiveSimTab(sim.key)}
                               className={`w-full p-3 rounded-xl text-center transition-all ${
-                                activeSimTab === sim.key ? 'bg-primary/10 border-2 border-primary' : 'bg-muted/30 border-2 border-transparent'
-                              } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card' : ''}`}>
+                                activeSimTab === sim.key ? 'bg-primary-soft border-2 border-primary' : 'bg-muted border-2 border-transparent'
+                              } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary-line ring-offset-2 ring-offset-card' : ''}`}>
                               <p className="text-xs text-muted-foreground mb-1">{sim.label}</p>
                               <p className={`text-sm font-heading ${sim.value > 0 ? 'text-income' : 'text-expense'}`}>
                                 {hidden ? '••••••' : `${sim.value > 0 ? '+' : ''}${fmt(sim.value)}`}
                               </p>
                               {sim.key === analysis.recommendedMethod && (
                                 <div className="mt-1">
-                                  <Badge variant="outline" className="text-[9px] border-primary text-primary bg-primary/10 px-1.5 py-0">★ Best</Badge>
+                                  <Badge variant="outline" className="text-[9px] border-primary text-primary bg-primary-soft px-1.5 py-0">★ Best</Badge>
                                 </div>
                               )}
                             </button>
@@ -559,7 +559,7 @@ const AIAdvisor = () => {
                         {detail && (
                           <Dialog>
                             <DialogTrigger asChild>
-                              <button className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors" onClick={e => e.stopPropagation()}>
+                              <button className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground/50 hover:text-primary hover:bg-primary-soft transition-colors" onClick={e => e.stopPropagation()}>
                                 <Info size={12} />
                               </button>
                             </DialogTrigger>
@@ -575,7 +575,7 @@ const AIAdvisor = () => {
                                   <p className="text-foreground/80">{detail.how}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
-                                  <div className="bg-income/5 border border-income/20 rounded-xl p-3">
+                                  <div className="bg-income-soft border border-income-line rounded-xl p-3">
                                     <h4 className="font-heading text-xs text-income mb-2">✅ Pros</h4>
                                     <ul className="space-y-1">
                                       {detail.pros.map((p) => (
@@ -583,7 +583,7 @@ const AIAdvisor = () => {
                                       ))}
                                     </ul>
                                   </div>
-                                  <div className="bg-expense/5 border border-expense/20 rounded-xl p-3">
+                                  <div className="bg-expense-soft border border-expense-line rounded-xl p-3">
                                     <h4 className="font-heading text-xs text-expense mb-2">⚠️ Cons</h4>
                                     <ul className="space-y-1">
                                       {detail.cons.map((c) => (
@@ -592,11 +592,11 @@ const AIAdvisor = () => {
                                     </ul>
                                   </div>
                                 </div>
-                                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
+                                <div className="bg-primary-soft border border-primary-line rounded-xl p-3">
                                   <h4 className="font-heading text-xs text-primary mb-1">🎯 Best for</h4>
                                   <p className="text-xs text-foreground/70">{detail.bestFor}</p>
                                 </div>
-                                <div className="bg-muted/50 rounded-xl p-3">
+                                <div className="bg-muted rounded-xl p-3">
                                   <h4 className="font-heading text-xs text-muted-foreground mb-1">📝 Example</h4>
                                   <p className="text-xs text-foreground/70">{detail.example}</p>
                                 </div>
@@ -665,7 +665,7 @@ const AIAdvisor = () => {
                     }
                   }}
                   disabled={applyingEnvelopes}
-                  className="w-full mt-4 gradient-primary text-primary-foreground h-11 text-sm"
+                  className="w-full mt-4 bg-primary text-primary-foreground h-11 text-sm"
                 >
                   {applyingEnvelopes ? (
                     <><Loader2 size={16} className="animate-spin mr-2 shrink-0" /> Creating…</>
@@ -681,7 +681,7 @@ const AIAdvisor = () => {
                 <h3 className="font-heading text-sm mb-3">Recommended Adjustments</h3>
                 <div className="space-y-2.5">
                   {shown.dynamicAdjustments.map((adj) => (
-                    <div key={adj.action} className="flex items-start gap-3 p-3 bg-accent/30 rounded-xl">
+                    <div key={adj.action} className="flex items-start gap-3 p-3 bg-accent rounded-xl">
                       <ArrowRight size={16} className="text-primary shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-medium">{adj.action}</p>

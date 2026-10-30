@@ -47,12 +47,25 @@
 
     --radius: 1rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(142, 72%, 36%), hsl(158, 65%, 38%));
-    --gradient-goals: linear-gradient(135deg, hsl(142, 72%, 36%), hsl(130, 60%, 42%));
+    /* Opaque tints: hue mixed into the surface, never see-through. */
+    --primary-soft: color-mix(in srgb, hsl(var(--primary)) 12%, hsl(var(--card)));
+    --primary-line: color-mix(in srgb, hsl(var(--primary)) 30%, hsl(var(--card)));
+    --destructive-soft: color-mix(in srgb, hsl(var(--destructive)) 12%, hsl(var(--card)));
+    --destructive-line: color-mix(in srgb, hsl(var(--destructive)) 30%, hsl(var(--card)));
+    --warning-soft: color-mix(in srgb, hsl(var(--warning)) 12%, hsl(var(--card)));
+    --warning-line: color-mix(in srgb, hsl(var(--warning)) 30%, hsl(var(--card)));
+    --income-soft: color-mix(in srgb, hsl(var(--income)) 12%, hsl(var(--card)));
+    --income-line: color-mix(in srgb, hsl(var(--income)) 30%, hsl(var(--card)));
+    --expense-soft: color-mix(in srgb, hsl(var(--expense)) 12%, hsl(var(--card)));
+    --expense-line: color-mix(in srgb, hsl(var(--expense)) 30%, hsl(var(--card)));
+    --success-soft: color-mix(in srgb, hsl(var(--success)) 12%, hsl(var(--card)));
+    --success-line: color-mix(in srgb, hsl(var(--success)) 30%, hsl(var(--card)));
+    --primary-raised: color-mix(in srgb, hsl(var(--primary-foreground)) 18%, hsl(var(--primary)));
+    --primary-edge: color-mix(in srgb, hsl(var(--primary-foreground)) 35%, hsl(var(--primary)));
+
     --shadow-card: 0 1px 3px hsl(220 20% 10% / 0.06), 0 1px 2px hsl(220 20% 10% / 0.04);
     --shadow-card-hover: 0 4px 12px hsl(220 20% 10% / 0.08), 0 2px 4px hsl(220 20% 10% / 0.04);
     --shadow-overlay: 0 12px 32px hsl(220 20% 10% / 0.12), 0 4px 8px hsl(220 20% 10% / 0.06);
-    --shadow-fab: 0 4px 16px hsl(142 72% 36% / 0.4), 0 2px 4px hsl(142 72% 36% / 0.2);
 
     --surface-1: hsl(0, 0%, 100%);
     --surface-2: hsl(0, 0%, 100%);
@@ -120,7 +133,6 @@
     --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.25), 0 1px 2px hsl(0 0% 0% / 0.15);
     --shadow-card-hover: 0 4px 12px hsl(0 0% 0% / 0.35), 0 2px 4px hsl(0 0% 0% / 0.2);
     --shadow-overlay: 0 12px 32px hsl(0 0% 0% / 0.5), 0 4px 8px hsl(0 0% 0% / 0.3);
-    --shadow-fab: 0 4px 16px hsl(142 62% 46% / 0.5), 0 2px 4px hsl(142 62% 46% / 0.3);
 
     --surface-1: hsl(160, 10%, 8%);
     --surface-2: hsl(160, 8%, 12%);
@@ -171,20 +183,11 @@
 }
 
 @layer utilities {
-  .gradient-primary {
-    background: var(--gradient-primary);
-  }
-  .gradient-goals {
-    background: var(--gradient-goals);
-  }
   .card-shadow {
     box-shadow: var(--shadow-card);
   }
   .card-shadow-hover {
     box-shadow: var(--shadow-card-hover);
-  }
-  .shadow-fab {
-    box-shadow: var(--shadow-fab);
   }
   .text-income {
     color: hsl(var(--income));

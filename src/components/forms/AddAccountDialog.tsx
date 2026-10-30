@@ -160,7 +160,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             )}
           </div>
           {type !== 'credit' && (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 p-2.5">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-muted p-2.5">
               <div>
                 <p className="text-sm font-medium text-foreground/80">Savings — not for spending</p>
                 <p className="text-[11px] text-muted-foreground">Left out of "Left until payday". Still counts in net position.</p>
@@ -169,7 +169,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             </div>
           )}
           {type === 'credit' && (
-            <div className="space-y-2.5 rounded-lg bg-muted/50 p-2.5">
+            <div className="space-y-2.5 rounded-lg bg-muted p-2.5">
               <div>
                 <label className="text-sm font-medium text-foreground/80 mb-1 block">Credit Limit ({currency})</label>
                 <AmountInput value={creditLimit} onChange={setCreditLimit} placeholder="20,000" className="h-11" />
@@ -218,7 +218,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               </div>
             </div>
           )}
-          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-11 text-base gradient-primary text-primary-foreground">
+          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-11 text-base bg-primary text-primary-foreground">
             {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Add Account'}
           </Button>

@@ -134,7 +134,7 @@ const Glossary = () => {
 
   return (
     <div className="animate-fade-in pb-8">
-      <div className="gradient-primary px-5 pt-12 pb-8 rounded-b-3xl mb-6">
+      <div className="bg-primary px-5 pt-12 pb-8 rounded-b-3xl mb-6">
         <div className="flex items-center gap-3">
           <BookOpen size={24} className="text-primary-foreground" />
           <h1 className="text-xl text-primary-foreground font-heading">Glossary & FAQ</h1>
@@ -151,7 +151,7 @@ const Glossary = () => {
             placeholder="Search terms…"
             value={search}
             onChange={e => { setSearch(e.target.value); setOpenIndex(null); }}
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/50 border border-primary-foreground/20 outline-none focus:border-primary-foreground/50"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-primary-raised text-primary-foreground placeholder:text-primary-foreground/50 border border-primary-edge outline-none focus:border-primary-edge"
           />
         </div>
       </div>

@@ -76,10 +76,10 @@ const CalendarView = () => {
   const dayColor = (total: number) => {
     if (!total) return '';
     const ratio = total / maxDay;
-    if (ratio > 0.7) return 'bg-expense/80';
-    if (ratio > 0.4) return 'bg-warning/70';
-    if (ratio > 0.15) return 'bg-primary/50';
-    return 'bg-primary/25';
+    if (ratio > 0.7) return 'bg-expense';
+    if (ratio > 0.4) return 'bg-warning';
+    if (ratio > 0.15) return 'bg-primary';
+    return 'bg-primary-soft';
   };
 
   if (loading) return <PageSpinner />;
@@ -124,7 +124,7 @@ const CalendarView = () => {
       {/* Legend */}
       <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
         <span>Spending:</span>
-        {[['bg-primary/25', 'Low'], ['bg-primary/50', 'Med'], ['bg-warning/70', 'High'], ['bg-expense/80', 'Very high']].map(([cls, label]) => (
+        {[['bg-primary-soft', 'Low'], ['bg-primary', 'Med'], ['bg-warning', 'High'], ['bg-expense', 'Very high']].map(([cls, label]) => (
           <span key={label} className="flex items-center gap-1">
             <span className={`w-3 h-1.5 rounded-full ${cls}`} />
             {label}
@@ -151,7 +151,7 @@ const CalendarView = () => {
         <div className="grid grid-cols-7">
           {/* Padding cells */}
           {Array.from({ length: days.startDow }).map((_, i) => (
-            <div key={`pad-${i}`} className="h-14 border-b border-r border-border/50 last:border-r-0" />
+            <div key={`pad-${i}`} className="h-14 border-b border-r border-border last:border-r-0" />
           ))}
 
           {days.all.map((day, i) => {
@@ -165,8 +165,8 @@ const CalendarView = () => {
               <button
                 key={key}
                 onClick={() => setSelectedDay(isSelected ? null : day)}
-                className={`h-14 flex flex-col items-center pt-1.5 gap-0.5 border-b border-r border-border/50 last:border-r-0 transition-colors relative
-                  ${isSelected ? 'bg-primary/10 ring-1 ring-inset ring-primary' : 'hover:bg-muted/50'}
+                className={`h-14 flex flex-col items-center pt-1.5 gap-0.5 border-b border-r border-border last:border-r-0 transition-colors relative
+                  ${isSelected ? 'bg-primary-soft ring-1 ring-inset ring-primary' : 'hover:bg-muted'}
                   ${colPos === 6 ? 'border-r-0' : ''}`}
               >
                 <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full

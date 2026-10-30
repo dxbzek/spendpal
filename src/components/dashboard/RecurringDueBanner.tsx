@@ -50,7 +50,7 @@ const RecurringDueBanner = ({ transactions }: Props) => {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
-        className="bg-accent border border-primary/20 rounded-xl px-4 py-3 flex items-start gap-3 cursor-pointer"
+        className="bg-accent border border-primary-line rounded-xl px-4 py-3 flex items-start gap-3 cursor-pointer"
         onClick={() => navigate('/transactions')}
       >
         <RefreshCw size={16} className="shrink-0 text-primary mt-0.5" />

@@ -96,7 +96,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="rounded-lg bg-muted/50 p-2.5 flex items-center justify-between text-sm">
+          <div className="rounded-lg bg-muted p-2.5 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">SpendPal's {label.toLowerCase()}</span>
             <span className="font-medium">{fmt(account.balance)}</span>
           </div>
@@ -110,7 +110,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
             drift === 0 ? (
               <p className="text-xs text-income font-medium">No drift — these match.</p>
             ) : (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2.5">
+              <div className="rounded-lg bg-destructive-soft border border-destructive-line p-2.5">
                 <p className="text-xs text-destructive font-semibold">
                   {drift > 0 ? 'SpendPal is under by ' : 'SpendPal is over by '}{fmt(Math.abs(drift))}
                 </p>
@@ -123,7 +123,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
           <Button
             onClick={handleApply}
             disabled={parsedActual === null || isNaN(parsedActual) || parsedActual < 0 || drift === 0 || submitting}
-            className="w-full h-11 text-base gradient-primary text-primary-foreground"
+            className="w-full h-11 text-base bg-primary text-primary-foreground"
           >
             {drift !== null && drift !== 0 ? `Fix it — correct to ${fmt(parsedActual!)}` : 'Apply correction'}
           </Button>

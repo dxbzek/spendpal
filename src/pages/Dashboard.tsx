@@ -36,7 +36,7 @@ const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendCha
 import type { Account } from '@/types/finance';
 
 const ChartSkeleton = ({ height = 'h-[220px]' }: { height?: string }) => (
-  <div className={`${height} w-full rounded-xl bg-muted/30 animate-pulse`} />
+  <div className={`${height} w-full rounded-xl bg-muted animate-pulse`} />
 );
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -186,10 +186,10 @@ const Dashboard = () => {
   if (dataLoading) {
     return (
       <div>
-        <div className="gradient-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl">
-          <Skeleton className="h-6 w-40 bg-primary-foreground/20 mb-4" />
-          <Skeleton className="h-10 w-48 bg-primary-foreground/20 mb-2" />
-          <Skeleton className="h-4 w-28 bg-primary-foreground/20" />
+        <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl">
+          <Skeleton className="h-6 w-40 bg-primary-raised mb-4" />
+          <Skeleton className="h-10 w-48 bg-primary-raised mb-2" />
+          <Skeleton className="h-4 w-28 bg-primary-raised" />
         </div>
         <div className="px-5 md:px-8 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -215,7 +215,7 @@ const Dashboard = () => {
     return (
       <div className="px-5 md:px-8 pt-12 pb-8 max-w-lg mx-auto">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-3xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center mx-auto mb-4">
             <Wallet size={36} className="text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-heading mb-2">Welcome to SpendPal!</h1>
@@ -226,8 +226,8 @@ const Dashboard = () => {
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
-              <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl card-shadow transition-all ${step.done ? 'bg-income/5 border border-income/20' : 'bg-card'}`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${step.done ? 'bg-income/15' : 'bg-accent'}`}>
+              <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl card-shadow transition-all ${step.done ? 'bg-income-soft border border-income-line' : 'bg-card'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${step.done ? 'bg-income-soft' : 'bg-accent'}`}>
                   {step.done
                     ? <CheckCircle2 size={20} className="text-income" />
                     : <Icon size={18} className="text-primary" />}
@@ -236,7 +236,7 @@ const Dashboard = () => {
                   <p className={`text-sm font-medium ${step.done ? 'line-through text-muted-foreground' : ''}`}>{step.label}</p>
                   <p className="text-xs text-muted-foreground">{step.hint}</p>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${step.done ? 'bg-income/15 text-income' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${step.done ? 'bg-income-soft text-income' : 'bg-muted text-muted-foreground'}`}>
                   {step.done ? 'Done' : `Step ${i + 1}`}
                 </span>
               </div>
@@ -246,7 +246,7 @@ const Dashboard = () => {
 
         <button
           onClick={() => setShowAddAccount(true)}
-          className="w-full h-14 gradient-primary text-primary-foreground rounded-2xl font-semibold text-base flex items-center justify-center gap-2 shadow-fab active:scale-95 transition-transform"
+          className="w-full h-14 bg-primary text-primary-foreground rounded-2xl font-semibold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform"
         >
           <Plus size={20} />
           Add Your First Account
@@ -264,11 +264,11 @@ const Dashboard = () => {
   return (
     <div>
       {/* Header */}
-      <div className={`gradient-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-3xl' : 'pt-8 pb-6'}`}>
+      <div className={`bg-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-3xl' : 'pt-8 pb-6'}`}>
         <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
           <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-4'}`}>
             <div className="flex items-center gap-4 min-w-0">
-              <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-foreground/20 p-0.5 shrink-0" />
+              <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-base font-heading font-bold text-primary-foreground leading-tight">Overview</p>
                 <p className="text-[11.5px] text-primary-foreground/70 mt-0.5">Financial overview</p>
@@ -289,7 +289,7 @@ const Dashboard = () => {
             {/* Secondary currency — chosen in Settings; switchable here once set */}
             {secondaryCurrency && (
             <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-foreground/10 border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
+              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-raised border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
                 <SelectValue placeholder="2nd currency" />
               </SelectTrigger>
               <SelectContent className="max-h-[240px]">
@@ -310,7 +310,7 @@ const Dashboard = () => {
           </div>
 
           {statusLine && (
-            <div className="mt-3.5 inline-flex flex-col bg-primary-foreground/15 backdrop-blur-sm rounded-xl px-3 py-2 text-[12.5px] leading-snug text-primary-foreground">
+            <div className="mt-3.5 inline-flex flex-col bg-primary-raised rounded-xl px-3 py-2 text-[12.5px] leading-snug text-primary-foreground">
               <span>{statusLine}</span>
               {outsideBudgetsLine && <span className="opacity-80">{outsideBudgetsLine}</span>}
             </div>

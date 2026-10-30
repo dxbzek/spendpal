@@ -109,7 +109,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
               {GOAL_TYPES.map(g => (
                 <button key={g.name} onClick={() => setGoalType(g.name)}
                   className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
-                    goalType === g.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                    goalType === g.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                   }`}>
                   <span className="text-xl">{g.icon}</span>
                   <span className="text-muted-foreground">{g.name}</span>
@@ -117,7 +117,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
               ))}
               <button onClick={() => setGoalType(CUSTOM_GOAL_TYPE)}
                 className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs transition-all ${
-                  goalType === CUSTOM_GOAL_TYPE ? 'bg-accent ring-2 ring-primary' : 'bg-muted/50 hover:bg-muted'
+                  goalType === CUSTOM_GOAL_TYPE ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                 }`}>
                 <span className="text-xl">{goalType === CUSTOM_GOAL_TYPE ? (customIcon || '🎯') : '✏️'}</span>
                 <span className="text-muted-foreground">Custom</span>
@@ -166,7 +166,7 @@ const AddGoalDialog = ({ open, onOpenChange, editGoal }: Props) => {
             )}
           </div>
           <Button onClick={handleSubmit} disabled={!name.trim() || !goalType || (goalType === CUSTOM_GOAL_TYPE && !customName.trim()) || !targetAmount || submitting}
-            className="w-full gradient-primary text-primary-foreground">
+            className="w-full bg-primary text-primary-foreground">
             {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
             {isEdit ? 'Save Changes' : 'Create Goal'}
           </Button>
