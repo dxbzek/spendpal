@@ -3,6 +3,7 @@ import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Budget } from '@/types/finance';
 import { m, AnimatePresence } from 'framer-motion';
+import AppIcon from '@/components/AppIcon';
 
 interface Props {
   budgets: Budget[];
@@ -44,7 +45,7 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
               <TrendingUp size={16} className="shrink-0 text-primary" />
             )}
             <div className="flex-1 min-w-0">
-              <span className="font-medium">{a.categoryIcon} {a.category}</span>
+              <span className="font-medium"><AppIcon value={a.categoryIcon} /> {a.category}</span>
               <span className="ml-2 text-xs opacity-80">
                 {a.over ? 'Over budget!' : `${a.pct}% used`} — {fmt(a.spent)} / {fmt(a.amount)}
               </span>

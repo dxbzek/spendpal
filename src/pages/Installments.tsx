@@ -13,6 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { IconTile } from '@/components/AppIcon';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -158,7 +159,7 @@ const Installments = () => {
         </div>
 
         {/* Progress card */}
-        <div className="bg-card rounded-2xl border border-border p-5 mb-4 space-y-3">
+        <div className="bg-card rounded-xl border border-border p-5 mb-4 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {hasLoan ? 'Principal Paid' : 'Paid Till Now'}
           </p>
@@ -176,7 +177,7 @@ const Installments = () => {
 
         {/* CC / quick progress stepper */}
         {!isDone && (
-          <div className="bg-primary-soft border border-primary-line rounded-2xl p-4 mb-4">
+          <div className="bg-primary-soft border border-primary-line rounded-xl p-4 mb-4">
             <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">
               Update paid installments
             </p>
@@ -208,7 +209,7 @@ const Installments = () => {
         )}
 
         {/* Detail rows */}
-        <div className="bg-card rounded-2xl border border-border divide-y divide-border mb-4">
+        <div className="bg-card rounded-xl border border-border divide-y divide-border mb-4">
           <DetailRow label="Monthly installment" value={fmt(plan.amountPerInstallment)} />
           <DetailRow label="Repayment period" value={`${plan.totalInstallments} month${plan.totalInstallments !== 1 ? 's' : ''}`} />
           {schedule && <DetailRow label="Started" value={format(schedule.startedOn, 'MMM yyyy')} />}
@@ -273,7 +274,7 @@ const Installments = () => {
         </div>
         <button
           onClick={openAdd}
-          className="bg-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-medium flex items-center gap-1.5 active:scale-95 transition-transform"
+          className="bg-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-transform"
         >
           <Plus size={15} /> New Plan
         </button>
@@ -290,15 +291,15 @@ const Installments = () => {
           {/* Summary */}
           {activePlans.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-card rounded-2xl border border-border p-4 text-center">
+              <div className="bg-card rounded-xl border border-border p-4 text-center">
                 <p className="text-2xl font-bold text-primary">{activePlans.length}</p>
                 <p className="text-xs text-muted-foreground">Active plans</p>
               </div>
-              <div className="bg-card rounded-2xl border border-border p-4 text-center">
+              <div className="bg-card rounded-xl border border-border p-4 text-center">
                 <p className="text-sm font-bold">{fmt(activePlans.reduce((s, p) => s + p.amountPerInstallment, 0))}</p>
                 <p className="text-xs text-muted-foreground">Monthly</p>
               </div>
-              <div className="bg-card rounded-2xl border border-border p-4 text-center">
+              <div className="bg-card rounded-xl border border-border p-4 text-center">
                 <p className="text-sm font-bold text-expense">{fmt(totalRemaining)}</p>
                 <p className="text-xs text-muted-foreground">Total left</p>
               </div>
@@ -313,13 +314,13 @@ const Installments = () => {
                 const progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
                 const schedule = planSchedule(plan, accountOf(plan), now);
                 return (
-                  <div key={plan.key} className="bg-card rounded-2xl border border-border p-4 space-y-3">
+                  <div key={plan.key} className="bg-card rounded-xl border border-border p-4 space-y-3">
                     {/* Tappable top row → detail view */}
                     <button
                       onClick={() => setSelectedPlan(plan)}
                       className="w-full text-left flex items-center gap-3 active:opacity-70"
                     >
-                      <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
+                      <IconTile value={plan.categoryIcon} />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{planDisplayName(plan.merchant)}</p>
                         <p className="text-xs text-muted-foreground truncate">{accountOf(plan)?.name ?? plan.category}</p>
@@ -368,10 +369,10 @@ const Installments = () => {
                 <button
                   key={plan.key}
                   onClick={() => setSelectedPlan(plan)}
-                  className="w-full text-left bg-card rounded-2xl border border-border p-4 opacity-60 active:scale-[0.99] transition-transform"
+                  className="w-full text-left bg-card rounded-xl border border-border p-4 opacity-60 active:scale-[0.99] transition-transform"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl shrink-0">{plan.categoryIcon}</span>
+                    <IconTile value={plan.categoryIcon} />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{planDisplayName(plan.merchant)}</p>
                       <p className="text-xs text-muted-foreground">{plan.totalInstallments} payments · {fmt(plan.totalAmount)} total</p>

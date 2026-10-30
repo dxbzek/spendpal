@@ -134,20 +134,20 @@ const Debt = () => {
   return (
     <div>
       {/* Header */}
-      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl md:rounded-b-none">
+      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt Tracker</h1>
           {creditDebts.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-2xl p-3">
+              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Total Owed</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalOwed))}</p>
               </div>
-              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-2xl p-3">
+              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Credit Limit</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalLimit))}</p>
               </div>
-              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-2xl p-3">
+              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
                   <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
@@ -160,7 +160,7 @@ const Debt = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-primary-raised rounded-2xl p-4 text-center">
+            <div className="bg-primary-raised rounded-xl p-4 text-center">
               <p className="text-primary-foreground/80 text-sm">No credit card debt detected</p>
               <p className="text-primary-foreground/50 text-xs mt-1">Add credit accounts to track debt</p>
             </div>
@@ -187,8 +187,8 @@ const Debt = () => {
 
         {/* Debt cards */}
         {creditDebts.length === 0 ? (
-          <div className="bg-card rounded-2xl p-8 card-shadow text-center">
-            <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4">
+          <div className="bg-card rounded-xl p-8 card-shadow text-center">
+            <div className="w-16 h-16 rounded-xl bg-accent flex items-center justify-center mx-auto mb-4">
               <CreditCard size={28} className="text-muted-foreground" />
             </div>
             <h3 className="font-heading text-base mb-2">No active debt</h3>
@@ -212,14 +212,14 @@ const Debt = () => {
               const isDueToday = dueDaysLeft !== null && dueDaysLeft === 0;
 
               return (
-                <div key={debt.id} className="bg-card rounded-2xl card-shadow overflow-hidden">
+                <div key={debt.id} className="bg-card rounded-xl card-shadow overflow-hidden">
                   <button
                     className="w-full p-4 text-left hover:bg-muted transition-colors"
                     onClick={() => setExpanded(isExpanded ? null : debt.id)}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <span className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center text-xl"><AppIcon value={debt.icon} /></span>
+                        <span className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-xl"><AppIcon value={debt.icon} /></span>
                         <div>
                           <p className="text-sm font-semibold">{debt.name}</p>
                           <p className="text-xs text-muted-foreground">
@@ -352,7 +352,7 @@ const Debt = () => {
 
             {/* Multi-card Payoff Optimizer */}
             {creditDebts.length > 1 && (
-              <div className="bg-card rounded-2xl card-shadow border border-primary-line overflow-hidden">
+              <div className="bg-card rounded-xl card-shadow border border-primary-line overflow-hidden">
                 <div className="p-4 pb-3">
                   <p className="text-sm font-heading mb-1">Payoff Optimizer</p>
                   <p className="text-xs text-muted-foreground mb-3">Best order to attack your {creditDebts.length} cards</p>
@@ -467,7 +467,7 @@ const Debt = () => {
 
             {/* Single card strategy tip */}
             {creditDebts.length === 1 && (
-              <div className="bg-card rounded-2xl p-4 card-shadow border border-dashed border-primary-line">
+              <div className="bg-card rounded-xl p-4 card-shadow border border-dashed border-primary-line">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff Strategies</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="bg-accent rounded-xl p-3">

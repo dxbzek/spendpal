@@ -43,13 +43,13 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import AppIcon from '@/components/AppIcon';
+import { IconTile } from '@/components/AppIcon';
 
 
 // Hoisted out of the component so it's a stable type — defining it inline in
 // render made React remount every card (and re-run their effects) each render.
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-card rounded-2xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
+  <div className={`bg-card rounded-xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
 );
 
 const Dashboard = () => {
@@ -187,18 +187,18 @@ const Dashboard = () => {
   if (dataLoading) {
     return (
       <div>
-        <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-3xl">
+        <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl">
           <Skeleton className="h-6 w-40 bg-primary-raised mb-4" />
           <Skeleton className="h-10 w-48 bg-primary-raised mb-2" />
           <Skeleton className="h-4 w-28 bg-primary-raised" />
         </div>
         <div className="px-5 md:px-8 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
+            <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
-          <Skeleton className="col-span-2 lg:col-span-4 h-48 rounded-2xl" />
+          <Skeleton className="col-span-2 lg:col-span-4 h-48 rounded-xl" />
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i + 4} className="h-32 rounded-2xl" />
+            <Skeleton key={i + 4} className="h-32 rounded-xl" />
           ))}
         </div>
       </div>
@@ -216,7 +216,7 @@ const Dashboard = () => {
     return (
       <div className="px-5 md:px-8 pt-12 pb-8 max-w-lg mx-auto">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center mx-auto mb-4">
+          <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
             <Wallet size={36} className="text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-heading mb-2">Welcome to SpendPal!</h1>
@@ -227,7 +227,7 @@ const Dashboard = () => {
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
-              <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl card-shadow transition-all ${step.done ? 'bg-income-soft border border-income-line' : 'bg-card'}`}>
+              <div key={i} className={`flex items-center gap-4 p-4 rounded-xl card-shadow transition-all ${step.done ? 'bg-income-soft border border-income-line' : 'bg-card'}`}>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${step.done ? 'bg-income-soft' : 'bg-accent'}`}>
                   {step.done
                     ? <CheckCircle2 size={20} className="text-income" />
@@ -247,7 +247,7 @@ const Dashboard = () => {
 
         <button
           onClick={() => setShowAddAccount(true)}
-          className="w-full h-14 bg-primary text-primary-foreground rounded-2xl font-semibold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-transform"
         >
           <Plus size={20} />
           Add Your First Account
@@ -265,7 +265,7 @@ const Dashboard = () => {
   return (
     <div>
       {/* Header */}
-      <div className={`bg-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-3xl' : 'pt-8 pb-6'}`}>
+      <div className={`bg-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-2xl' : 'pt-8 pb-6'}`}>
         <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
           <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-4'}`}>
             <div className="flex items-center gap-4 min-w-0">
@@ -423,7 +423,7 @@ const Dashboard = () => {
                           <div key={a.id} className="group">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-4 min-w-0">
-                                <span className="text-2xl shrink-0"><AppIcon value={a.icon} /></span>
+                                <IconTile value={a.icon} />
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium line-clamp-2 break-words">{a.name}</p>
                                   {a.type === 'credit' && (
@@ -633,7 +633,7 @@ const Dashboard = () => {
                   return (
                     <div key={tx.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <span className="text-xl"><AppIcon value={tx.categoryIcon} /></span>
+                        <IconTile value={tx.categoryIcon} />
                         <div>
                           <p className="text-sm font-medium">{isTransfer ? 'Transfer' : tx.merchant}</p>
                           {isTransfer && toAccName ? (

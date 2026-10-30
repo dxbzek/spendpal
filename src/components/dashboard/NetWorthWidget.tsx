@@ -95,7 +95,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   };
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
+    <div className="bg-card rounded-xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
       <div className="flex items-center gap-2 mb-2">
         <Wallet size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Net Worth</h2>

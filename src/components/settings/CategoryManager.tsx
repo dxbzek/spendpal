@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import AppIcon from '@/components/AppIcon';
+import AppIcon, { IconTile } from '@/components/AppIcon';
 import { PICKER_ICONS } from '@/lib/appIcons';
 
 const EMOJI_SUGGESTIONS = PICKER_ICONS;
@@ -155,7 +155,7 @@ const CategoryManager = () => {
   const visibleItems = showAll ? allItems : allItems.slice(0, PREVIEW_COUNT);
 
   return (
-    <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
+    <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Categories</p>
@@ -261,7 +261,7 @@ const CategoryManager = () => {
               </div>
             ) : (
               <>
-                <span className="text-lg"><AppIcon value={item.icon} /></span>
+                <IconTile value={item.icon} />
                 <span className="text-xs truncate flex-1">{item.name}</span>
                 {item.type === 'custom' && (() => {
                   const cat = customCategories.find(c => c.id === (item as { id?: string }).id);

@@ -9,7 +9,7 @@ import {
   addMonths, subMonths, isSameDay, isSameMonth,
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
-import AppIcon from '@/components/AppIcon';
+import { IconTile } from '@/components/AppIcon';
 
 const CalendarView = () => {
   const { transactions, accounts, loading } = useFinance();
@@ -105,15 +105,15 @@ const CalendarView = () => {
 
       {/* Month summary */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+        <div className="bg-card rounded-xl border border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">Income</p>
           <p className="font-bold text-primary text-sm">{mask(fmt(totalIncome))}</p>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+        <div className="bg-card rounded-xl border border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">Expenses</p>
           <p className="font-bold text-expense text-sm">{mask(fmt(totalExpenses))}</p>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-3 text-center">
+        <div className="bg-card rounded-xl border border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">Net</p>
           <p className={`font-bold text-sm ${totalIncome - totalExpenses >= 0 ? 'text-primary' : 'text-expense'}`}>
             {hidden ? '••••••' : `${totalIncome - totalExpenses < 0 ? '-' : '+'}${fmt(Math.abs(totalIncome - totalExpenses))}`}
@@ -137,7 +137,7 @@ const CalendarView = () => {
       </div>
 
       {/* Calendar grid */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
         {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-border">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
@@ -192,7 +192,7 @@ const CalendarView = () => {
 
       {/* Selected day transactions */}
       {selectedDay && (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
             <p className="text-sm font-semibold">{format(selectedDay, 'EEEE, MMMM d')}</p>
             <p className="text-xs text-muted-foreground">{selectedTxs.length} transaction{selectedTxs.length !== 1 ? 's' : ''}</p>
@@ -207,7 +207,7 @@ const CalendarView = () => {
               {selectedTxs.map(tx => (
                 <div key={tx.id} className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xl shrink-0"><AppIcon value={tx.categoryIcon} /></span>
+                    <IconTile value={tx.categoryIcon} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{tx.merchant}</p>
                       <p className="text-xs text-muted-foreground">{tx.category}</p>

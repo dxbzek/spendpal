@@ -35,7 +35,7 @@ const SecondaryCurrencyCard = () => {
     : WORLD_CURRENCIES;
 
   return (
-    <div className="bg-card rounded-2xl p-5 card-shadow space-y-3">
+    <div className="bg-card rounded-xl p-5 card-shadow space-y-3">
       <div>
         <p className="text-sm font-medium mb-1">Secondary Currency</p>
         <p className="text-xs text-muted-foreground mb-3">Show converted values alongside your primary currency</p>
@@ -266,7 +266,7 @@ const DataBackupCard = () => {
 
   return (
     <>
-      <div className="bg-card rounded-2xl p-5 card-shadow space-y-3">
+      <div className="bg-card rounded-xl p-5 card-shadow space-y-3">
         <p className="text-sm font-medium">Data Backup & Restore</p>
         <p className="text-xs text-muted-foreground">Export all your data as JSON or restore from a previous backup.</p>
         <div className="flex gap-3">
@@ -372,7 +372,7 @@ const DangerZoneCard = () => {
     <>
       <section>
         <p className="text-[11px] font-semibold text-destructive uppercase tracking-wider mb-3 px-1">Danger Zone</p>
-        <div className="bg-card rounded-2xl p-5 card-shadow border border-destructive-line space-y-5">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-destructive-line space-y-5">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
               <Trash2 size={16} className="text-destructive" />
@@ -493,7 +493,7 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
   };
 
   return (
-    <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
+    <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Email Alerts</p>
@@ -732,7 +732,7 @@ const Settings = () => {
             </AvatarFallback>
           </Avatar>
           {/* 44px touch target */}
-          <label className="absolute bottom-0 right-0 w-11 h-11 rounded-full bg-primary flex items-center justify-center cursor-pointer active:scale-95 transition-transform">
+          <label className="absolute bottom-0 right-0 w-11 h-11 rounded-full bg-primary flex items-center justify-center cursor-pointer transition-transform">
             {uploading ? <Loader2 size={16} className="animate-spin text-primary-foreground" /> : <Camera size={16} className="text-primary-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
           </label>
@@ -747,7 +747,7 @@ const Settings = () => {
         {/* Appearance */}
         <section>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Appearance</p>
-          <div className="bg-card rounded-2xl p-5 card-shadow">
+          <div className="bg-card rounded-xl p-5 card-shadow">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
@@ -766,7 +766,7 @@ const Settings = () => {
         {/* Profile */}
         <section>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Profile</p>
-          <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
+          <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
             <div>
               <label className="text-sm font-medium mb-1.5 block">Display Name</label>
               <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" className="h-12" />
@@ -835,7 +835,7 @@ const Settings = () => {
         {/* Financial */}
         <section>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Financial</p>
-          <div className="bg-card rounded-2xl p-5 card-shadow">
+          <div className="bg-card rounded-xl p-5 card-shadow">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0 mt-0.5">
                 <Wallet size={17} className="text-primary" />
@@ -874,7 +874,7 @@ const Settings = () => {
         {/* Notifications */}
         <section>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Notifications</p>
-          <div className="bg-card rounded-2xl p-5 card-shadow mb-3">
+          <div className="bg-card rounded-xl p-5 card-shadow mb-3">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
                 <Bell size={17} className="text-primary" />
@@ -914,7 +914,7 @@ const Settings = () => {
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">More</p>
           <div className="space-y-2">
             <button onClick={() => navigate('/glossary')}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
               <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
                 <BookOpen size={15} className="text-primary" />
               </div>
@@ -922,7 +922,7 @@ const Settings = () => {
             </button>
 
             <button onClick={() => setShowLogoutConfirm(true)}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive-soft transition-colors">
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive-soft transition-colors">
               <div className="w-8 h-8 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
                 <LogOut size={15} className="text-destructive" />
               </div>

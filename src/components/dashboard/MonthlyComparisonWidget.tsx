@@ -81,7 +81,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
   if (thisTotal === 0 && lastTotal === 0) return null;
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow">
+    <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Month vs Month</h2>

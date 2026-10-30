@@ -79,7 +79,7 @@ const MonthlyReportPrint = () => {
       ? report.monthBudgets.map(b => {
           const pct = b.amount > 0 ? Math.round((b.spent / b.amount) * 100) : 0;
           const status = pct >= 100 ? 'Over' : pct >= 75 ? 'High' : 'OK';
-          return `<tr><td>${b.categoryIcon} ${b.category}</td><td style="text-align:right">${fmt(Math.round(b.spent))}</td><td style="text-align:right">${fmt(b.amount)}</td><td style="text-align:center">${status}</td></tr>`;
+          return `<tr><td>${b.category}</td><td style="text-align:right">${fmt(Math.round(b.spent))}</td><td style="text-align:right">${fmt(b.amount)}</td><td style="text-align:center">${status}</td></tr>`;
         }).join('')
       : '<tr><td colspan="4" style="color:#888">No budgets set</td></tr>';
 
@@ -146,7 +146,7 @@ const MonthlyReportPrint = () => {
   }, []);
 
   return (
-    <div className="bg-card rounded-2xl p-5 card-shadow space-y-4">
+    <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
       <div className="flex items-center gap-2">
         <FileText size={16} className="text-primary" />
         <p className="text-sm font-medium">Monthly Report</p>

@@ -29,7 +29,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
   const incomeColor = incomePct == null ? '' : incomePct > 90 ? 'text-expense' : incomePct > 70 ? 'text-warning' : 'text-income';
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow">
+    <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp size={16} className="text-primary" />
         <h2 className="font-heading text-sm">Spending Forecast</h2>

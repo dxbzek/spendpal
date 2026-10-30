@@ -56,7 +56,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
   const daysTo = (d: Date) => Math.round((d.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86_400_000);
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow mb-4">
+    <div className="bg-card rounded-xl p-4 card-shadow mb-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-heading text-sm">Card payments</h2>
         <button onClick={() => navigate('/debt')} className="text-xs text-primary font-medium flex items-center gap-0.5">Debt <ChevronRight size={14} /></button>

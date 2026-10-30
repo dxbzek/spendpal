@@ -134,7 +134,7 @@ const Glossary = () => {
 
   return (
     <div className="animate-fade-in pb-8">
-      <div className="bg-primary px-5 pt-12 pb-8 rounded-b-3xl mb-6">
+      <div className="bg-primary px-5 pt-12 pb-8 rounded-b-2xl mb-6">
         <div className="flex items-center gap-3">
           <BookOpen size={24} className="text-primary-foreground" />
           <h1 className="text-xl text-primary-foreground font-heading">Glossary & FAQ</h1>

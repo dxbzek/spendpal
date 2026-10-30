@@ -115,7 +115,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
                 <button
                   onClick={onAddClick}
                   aria-label="New Transaction"
-                  className="w-full bg-primary rounded-xl p-3 flex items-center justify-center active:scale-95 transition-transform"
+                  className="w-full bg-primary rounded-xl p-3 flex items-center justify-center transition-transform"
                 >
                   <Plus size={18} className="text-primary-foreground" />
                 </button>
@@ -125,7 +125,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
           ) : (
             <button
               onClick={onAddClick}
-              className="w-full bg-primary rounded-xl py-3 text-sm font-semibold text-primary-foreground flex items-center justify-center gap-2 hover:brightness-95 active:scale-95 transition-all"
+              className="w-full bg-primary rounded-xl py-3 text-sm font-semibold text-primary-foreground flex items-center justify-center gap-2 hover:brightness-95 transition-all"
             >
               <Plus size={16} /> New Transaction
             </button>

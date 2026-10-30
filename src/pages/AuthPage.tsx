@@ -51,7 +51,7 @@ const AuthPage = () => {
         </div>
 
         {/* Form card */}
-        <div className="bg-card rounded-2xl border border-border card-shadow p-5">
+        <div className="bg-card rounded-xl border border-border card-shadow p-5">
           {/* Sign In / Sign Up toggle */}
           <div className="relative flex p-1 bg-muted rounded-xl mb-5">
             <div

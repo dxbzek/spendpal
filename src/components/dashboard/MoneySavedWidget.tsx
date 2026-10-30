@@ -30,7 +30,7 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden: _hidden, mas
   const positive = saved >= 0;
 
   return (
-    <div className="bg-card rounded-2xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
+    <div className="bg-card rounded-xl p-4 card-shadow h-full transition-shadow hover:card-shadow-hover">
       <div className="flex items-center gap-2 mb-2">
         <PiggyBank size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Saved This Month</h2>

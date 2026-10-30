@@ -11,7 +11,7 @@ import { useAI } from '@/hooks/useAI';
 import { useFinance } from '@/context/FinanceContext';
 import { useCategories } from '@/hooks/useCategories';
 import { format } from 'date-fns';
-import AppIcon from '@/components/AppIcon';
+import { IconTile } from '@/components/AppIcon';
 
 type Target = 'budget' | 'goal';
 
@@ -266,7 +266,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
               <button
                 onClick={() => imageRef.current?.click()}
                 disabled={processing}
-                className="w-full border-2 border-dashed border-border rounded-2xl p-8 flex flex-col items-center gap-2 hover:bg-muted transition-colors disabled:opacity-50"
+                className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-2 hover:bg-muted transition-colors disabled:opacity-50"
               >
                 {processing
                   ? <Loader2 size={28} className="text-muted-foreground animate-spin" />
@@ -275,7 +275,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
                 <span className="text-xs text-muted-foreground">PNG, JPG, HEIC up to 20 MB</span>
               </button>
             ) : (
-              <div className="relative border border-border rounded-2xl p-3 flex items-center gap-3">
+              <div className="relative border border-border rounded-xl p-3 flex items-center gap-3">
                 <img src={imageDataUrl} alt={imageName ? `Preview of ${imageName}` : 'Receipt screenshot preview'} className="w-16 h-16 rounded-xl object-cover" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{imageName}</p>
@@ -319,7 +319,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
                     onChange={() => setBudgetRows(rs => rs.map((r, idx) => idx === i ? { ...r, selected: !r.selected } : r))}
                     className="h-4 w-4 shrink-0"
                   />
-                  <span className="text-xl shrink-0">{row.categoryIcon}</span>
+                  <IconTile value={row.categoryIcon} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-medium truncate">{row.category}</span>
@@ -364,7 +364,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
                     onChange={() => setGoalRows(rs => rs.map((r, idx) => idx === i ? { ...r, selected: !r.selected } : r))}
                     className="h-4 w-4 shrink-0"
                   />
-                  <span className="text-xl shrink-0"><AppIcon value={row.icon} /></span>
+                  <IconTile value={row.icon} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{row.name}</p>
                     <p className="text-[11px] text-muted-foreground">
