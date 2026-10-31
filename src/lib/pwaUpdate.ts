@@ -12,10 +12,13 @@ import { recoverFromChunkError, setWaitingUpdate } from '@/lib/appReload';
 const CHECK_EVERY_MS = 60 * 60 * 1000;
 
 export function registerAppUpdates() {
-  // Vite fires this when a lazy page's file can't be fetched.
-  window.addEventListener('vite:preloadError', event => {
-    if (recoverFromChunkError()) event.preventDefault();
-  });
+  // Vite fires this when a lazy page's file can't be fetched. Never
+  // preventDefault it: that makes the import resolve to undefined, so
+  // React.lazy throws "Cannot read properties of undefined (reading
+  // 'default')" and the error screen can't tell it was a stale deploy. Let
+  // the import fail; ErrorBoundary shows "SpendPal was updated" if the
+  // reload below doesn't land first.
+  window.addEventListener('vite:preloadError', () => { recoverFromChunkError(); });
 
   const updateSW = registerSW({
     immediate: true,
