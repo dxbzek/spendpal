@@ -118,7 +118,8 @@ async function fakeBackend(route) {
 // ── Run ────────────────────────────────────────────────────────────────────
 mkdirSync(OUT, { recursive: true });
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { cwd: root, stdio: 'ignore' });
-const base = `http://localhost:${PORT}`;
+// BASE_URL screenshots a deployed site instead of the local build.
+const base = process.env.BASE_URL || `http://localhost:${PORT}`;
 for (let i = 0; i < 60; i++) {
   try { await fetch(base); break; } catch { await new Promise(r => setTimeout(r, 250)); }
 }
@@ -130,6 +131,9 @@ try {
     for (const [vpName, viewport] of Object.entries(VIEWPORTS)) {
       const context = await browser.newContext({ viewport, deviceScaleFactor: 2, serviceWorkers: 'block' });
       await context.route(`${SUPABASE_URL}/**`, fakeBackend);
+      // BLOCK_ASSET=<substring> fails matching asset requests, the way a page
+      // left open across a deploy fails to find renamed chunks.
+      if (process.env.BLOCK_ASSET) await context.route(u => u.pathname.includes(process.env.BLOCK_ASSET), r => r.abort());
       await context.route('https://open.er-api.com/**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ rates: { PHP: 1, AED: 0.0634, USD: 0.0173 } }) }));
       await context.addInitScript(([key, s, t]) => {
         localStorage.setItem(key, s);
@@ -137,6 +141,7 @@ try {
         localStorage.setItem('theme-user-set', '1');
       }, [`sb-${REF}-auth-token`, JSON.stringify(session), theme]);
       const page = await context.newPage();
+      page.on('pageerror', err => console.error(`  page error: ${err.stack || err.message}`));
       for (const route of ROUTES) {
         await page.goto(base + route, { waitUntil: 'networkidle' });
         await page.waitForTimeout(600);
