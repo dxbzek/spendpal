@@ -37,76 +37,80 @@ export function minPayment(principal: number): number {
   return Math.max(25, principal * 0.02);
 }
 
+/** This month's minimum: the statement's when known, else the typical 2% rule. */
+function minDue(minPay: number, balance: number): number {
+  return Math.min(minPay > 0 ? minPay : minPayment(balance), balance);
+}
+
 /**
- * Simulate multi-card payoff with a fixed extra payment allocated per the given
- * `order` (avalanche = highest APR first, snowball = smallest balance first).
- * Returns Infinity months/interest if the budget can't cover interest.
+ * One month's split of `budget` across cards: the minimum on every card except
+ * the first one in `order` that still has a balance, and everything left on
+ * that one. Returns payment per card id.
+ */
+export function allocateMonth(
+  debts: { id: string; balance: number; minPay: number }[],
+  order: { id: string }[],
+  budget: number,
+): Record<string, number> {
+  const pay: Record<string, number> = {};
+  const focusId = order.find(o => (debts.find(d => d.id === o.id)?.balance ?? 0) > 0)?.id;
+  let left = budget;
+  for (const d of debts) {
+    if (d.balance <= 0 || d.id === focusId) continue;
+    pay[d.id] = minDue(d.minPay, d.balance);
+    left -= pay[d.id];
+  }
+  const focus = debts.find(d => d.id === focusId);
+  if (focus) pay[focus.id] = Math.max(0, Math.min(left, focus.balance));
+  return pay;
+}
+
+/**
+ * A monthly amount that at least covers this month's interest and minimums,
+ * rounded up to a tidy figure. Below it the balances never shrink.
+ */
+export function minimumMonthlyBudget(debts: StrategyDebt[]): number {
+  const interest = debts.reduce((s, d) => s + d.owed * (d.apr / 100 / 12), 0);
+  const minimums = debts.reduce((s, d) => s + minDue(d.minPay, d.owed), 0);
+  return Math.ceil(Math.max(interest * 1.05, minimums) / 10) * 10;
+}
+
+/**
+ * Simulate paying `monthlyBudget` a month across all cards, minimums first and
+ * the rest on the first card in `order` (avalanche = highest APR first,
+ * snowball = smallest balance first). Infinity months/interest if the budget
+ * can't get ahead of the interest.
  */
 export function simulateStrategy(
   debts: StrategyDebt[],
   order: StrategyDebt[],
-  extraBudget: number,
+  monthlyBudget: number,
 ): StrategyResult {
-  // Start with min payments for all, put extra towards priority card
-  const states = debts.map((d) => ({ ...d, balance: d.owed }));
-  const minBudget = debts.reduce((s, d) => s + d.minPay, 0);
-  const totalBudget = minBudget + extraBudget;
-
+  const states = debts.map(d => ({ id: d.id, minPay: d.minPay, apr: d.apr, balance: d.owed }));
   let month = 0;
   let prevTotalBalance = debts.reduce((s, d) => s + d.owed, 0);
-  // Sum of cash actually paid. NOT totalBudget * month: in the final month(s)
-  // only the residual balance is paid and the surplus goes unused, so
-  // budget * month overstates payments — which shows up as phantom interest for
-  // 0%-APR (BNPL) debts, exactly the case per-account APR was added to support.
+  // Cash actually paid, not budget * months: the last month only pays what's
+  // left, and counting the unused surplus showed up as phantom interest on
+  // 0%-APR (BNPL) plans.
   let totalPaid = 0;
 
-  while (states.some((s) => s.balance > 0) && month < 600) {
+  while (states.some(s => s.balance > 0) && month < 600) {
     month++;
-    // Apply interest first
-    states.forEach((s) => {
-      if (s.balance > 0) {
-        s.balance += s.balance * (s.apr / 100 / 12);
-      }
-    });
-
-    // Determine priority card (first in order that still has balance)
-    const priorityId = order.find((o) => states.find((s) => s.id === o.id)!.balance > 0)?.id;
-    let remaining = totalBudget;
-
-    // Pay min on non-priority, full allocation on priority. The minimum due
-    // is recomputed from the current (shrinking) balance each month — using
-    // the original minPay forever would keep paying yesterday's minimum
-    // instead of freeing that cash up for the priority card, the whole
-    // point of avalanche/snowball.
-    for (const state of states) {
-      if (state.balance <= 0) continue;
-      if (state.id === priorityId) continue;
-      const pay = Math.min(minPayment(state.balance), state.balance);
-      state.balance = Math.max(0, state.balance - pay);
-      remaining -= pay;
-      totalPaid += pay;
+    for (const s of states) if (s.balance > 0) s.balance += s.balance * (s.apr / 100 / 12);
+    const pay = allocateMonth(states, order, monthlyBudget);
+    for (const s of states) {
+      const p = pay[s.id] ?? 0;
+      s.balance = Math.max(0, s.balance - p);
+      totalPaid += p;
     }
-
-    // Put rest on priority
-    const priorityState = states.find((s) => s.id === priorityId);
-    if (priorityState && priorityState.balance > 0) {
-      const pay = Math.min(remaining, priorityState.balance);
-      priorityState.balance = Math.max(0, priorityState.balance - pay);
-      totalPaid += pay;
-    }
-
-    // Non-convergence guard: if total balance is not decreasing, payments can't cover interest
-    const newTotalBalance = states.reduce((s, st) => s + Math.max(0, st.balance), 0);
-    if (month > 1 && newTotalBalance >= prevTotalBalance) {
+    const newTotalBalance = states.reduce((t, s) => t + s.balance, 0);
+    if (newTotalBalance >= prevTotalBalance) {
       return { totalInterest: Infinity, months: Infinity, hitCap: true };
     }
     prevTotalBalance = newTotalBalance;
   }
 
   const hitCap = month >= 600;
-  // Total interest = every dollar paid minus the principal it retired. When the
-  // debt is fully cleared, principal retired == original principal, so this is
-  // exactly the interest — and 0 for a 0%-APR plan.
   const originalPrincipal = debts.reduce((s, d) => s + d.owed, 0);
   return { totalInterest: Math.max(0, totalPaid - originalPrincipal), months: month, hitCap };
 }

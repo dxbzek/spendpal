@@ -61,6 +61,7 @@
     --success-soft: color-mix(in srgb, hsl(var(--success)) 12%, hsl(var(--card)));
     --success-line: color-mix(in srgb, hsl(var(--success)) 30%, hsl(var(--card)));
     --primary-raised: color-mix(in srgb, hsl(var(--primary-foreground)) 18%, hsl(var(--primary)));
+    --primary-subtle: color-mix(in srgb, hsl(var(--primary-foreground)) 72%, hsl(var(--primary)));
     --primary-edge: color-mix(in srgb, hsl(var(--primary-foreground)) 35%, hsl(var(--primary)));
 
     --shadow-card: 0 1px 3px hsl(220 20% 10% / 0.06), 0 1px 2px hsl(220 20% 10% / 0.04);

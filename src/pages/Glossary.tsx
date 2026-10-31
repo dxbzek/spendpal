@@ -139,19 +139,19 @@ const Glossary = () => {
           <BookOpen size={24} className="text-primary-foreground" />
           <h1 className="text-xl text-primary-foreground font-heading">Glossary & FAQ</h1>
         </div>
-        <p className="text-primary-foreground/70 text-sm mt-2">
+        <p className="text-primary-subtle text-sm mt-2">
           Learn what every term in SpendPal means
         </p>
         {/* Inline search */}
         <div className="relative mt-4">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-foreground/50" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-subtle" />
           <input
             type="search"
             aria-label="Search glossary terms"
             placeholder="Search terms…"
             value={search}
             onChange={e => { setSearch(e.target.value); setOpenIndex(null); }}
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-primary-raised text-primary-foreground placeholder:text-primary-foreground/50 border border-primary-edge outline-none focus:border-primary-edge"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-primary-raised text-primary-foreground placeholder:text-primary-subtle border border-primary-edge outline-none focus:border-primary-edge"
           />
         </div>
       </div>

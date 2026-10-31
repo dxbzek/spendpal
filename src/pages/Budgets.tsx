@@ -5,7 +5,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
-import { Sparkles, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine, MoreHorizontal, X, ChartPie } from 'lucide-react';
+import { Lightbulb, Plus, Loader2, Edit2, Trash2, TrendingUp, History, BookmarkPlus, FolderOpen, Copy, RotateCcw, ScanLine, MoreHorizontal, X, ChartPie } from 'lucide-react';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -257,7 +257,7 @@ const Budgets = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem onSelect={() => setShowAI(true)}>
-                <Sparkles size={14} className="mr-2" /> AI budget suggestions
+                <Lightbulb size={14} className="mr-2" /> AI budget suggestions
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setShowScan(true)}>
                 <ScanLine size={14} className="mr-2" /> Scan a screenshot
@@ -500,7 +500,7 @@ const Budgets = () => {
         <div className="bg-card rounded-xl p-4 card-shadow border border-dashed border-primary-line">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-xl bg-primary flex items-center justify-center shrink-0">
-              <Sparkles size={13} className="text-primary-foreground" />
+              <Lightbulb size={13} className="text-primary-foreground" />
             </div>
             <h2 className="font-heading text-sm flex-1">AI Budget Suggestions</h2>
             <button onClick={() => { setShowAI(false); setSuggestions([]); }} className="text-muted-foreground p-1" aria-label="Close suggestions">
@@ -534,7 +534,7 @@ const Budgets = () => {
               <p className="text-xs text-muted-foreground mb-3">Get AI-recommended budget amounts based on your spending</p>
               <button onClick={handleGenerateSuggestions} disabled={aiLoading}
                 className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Analyzing…</> : <><Sparkles size={14} /> Generate Suggestions</>}
+                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Analyzing…</> : <><Lightbulb size={14} /> Generate Suggestions</>}
               </button>
             </>
           )}

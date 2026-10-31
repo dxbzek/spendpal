@@ -3,11 +3,11 @@ import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, ChevronUp, Zap, Snowflake } from 'lucide-react';
+import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, ChevronUp } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
 import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
-import { DEFAULT_APR, monthsToPayoff, simulateStrategy } from '@/lib/finance/debtPayoff';
+import { DEFAULT_APR, allocateMonth, minimumMonthlyBudget, monthsToPayoff, simulateStrategy } from '@/lib/finance/debtPayoff';
 import { creditUtilization } from '@/lib/finance/credit';
 import AppIcon from '@/components/AppIcon';
 
@@ -36,7 +36,8 @@ const Debt = () => {
   };
   const clearDraft = (key: string) => setDraft(d => { const n = { ...d }; delete n[key]; return n; });
   const [strategyTab, setStrategyTab] = useState<'avalanche' | 'snowball'>('avalanche');
-  const [extraBudget, setExtraBudget] = useState(200);
+  // Total a month toward all cards; null until the user types one.
+  const [budgetInput, setBudgetInput] = useState<number | null>(null);
 
   const todayDate = getDate(new Date());
 
@@ -115,19 +116,24 @@ const Debt = () => {
     [strategyDebts]
   );
 
+  const minimumBudget = useMemo(() => minimumMonthlyBudget(strategyDebts), [strategyDebts]);
+  // Start from a budget that clearly makes progress, so the card opens on a plan.
+  const monthlyBudget = budgetInput ?? Math.ceil((minimumBudget * 1.5) / 100) * 100;
+
   const avalancheResult = useMemo(() =>
-    creditDebts.length > 1 ? simulateStrategy(strategyDebts, avalancheOrder, extraBudget) : null,
-    [strategyDebts, avalancheOrder, extraBudget, creditDebts.length]
+    creditDebts.length > 1 ? simulateStrategy(strategyDebts, avalancheOrder, monthlyBudget) : null,
+    [strategyDebts, avalancheOrder, monthlyBudget, creditDebts.length]
   );
 
   const snowballResult = useMemo(() =>
-    creditDebts.length > 1 ? simulateStrategy(strategyDebts, snowballOrder, extraBudget) : null,
-    [strategyDebts, snowballOrder, extraBudget, creditDebts.length]
+    creditDebts.length > 1 ? simulateStrategy(strategyDebts, snowballOrder, monthlyBudget) : null,
+    [strategyDebts, snowballOrder, monthlyBudget, creditDebts.length]
   );
 
   const activeOrder = strategyTab === 'avalanche' ? avalancheOrder : snowballOrder;
   const activeResult = strategyTab === 'avalanche' ? avalancheResult : snowballResult;
   const otherResult = strategyTab === 'avalanche' ? snowballResult : avalancheResult;
+  const thisMonth = allocateMonth(strategyDebts.map(d => ({ id: d.id, balance: d.owed, minPay: d.minPay })), activeOrder, monthlyBudget);
 
   if (loading) return <PageSpinner />;
 
@@ -140,15 +146,15 @@ const Debt = () => {
           {creditDebts.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Total Owed</p>
+                <p className="text-primary-subtle text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Total Owed</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalOwed))}</p>
               </div>
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Credit Limit</p>
+                <p className="text-primary-subtle text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Credit Limit</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalLimit))}</p>
               </div>
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-foreground/80 text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Utilization</p>
+                <p className="text-primary-subtle text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
                   <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
                   {worstUtil >= 30 && (
@@ -161,8 +167,8 @@ const Debt = () => {
             </div>
           ) : (
             <div className="bg-primary-raised rounded-xl p-4 text-center">
-              <p className="text-primary-foreground/80 text-sm">No credit card debt detected</p>
-              <p className="text-primary-foreground/50 text-xs mt-1">Add credit accounts to track debt</p>
+              <p className="text-primary-subtle text-sm">No credit card debt detected</p>
+              <p className="text-primary-subtle text-xs mt-1">Add credit accounts to track debt</p>
             </div>
           )}
         </div>
@@ -352,113 +358,105 @@ const Debt = () => {
 
             {/* Multi-card Payoff Optimizer */}
             {creditDebts.length > 1 && (
-              <div className="bg-card rounded-xl card-shadow border border-primary-line overflow-hidden">
-                <div className="p-4 pb-3">
-                  <p className="text-sm font-heading mb-1">Payoff Optimizer</p>
-                  <p className="text-xs text-muted-foreground mb-3">Best order to attack your {creditDebts.length} cards</p>
-
-                  {/* Extra budget input */}
-                  <div className="flex items-center gap-3 mb-4 bg-muted rounded-xl p-3">
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1">Extra monthly budget (above minimums)</p>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="50"
-                        value={extraBudget}
-                        onChange={e => setExtraBudget(parseFloat(e.target.value) || 0)}
-                        className="h-8 text-sm bg-background"
-                      />
-                    </div>
-                    {avalancheResult && snowballResult && !avalancheResult.hitCap && !snowballResult.hitCap && (
-                      <div className="text-right shrink-0">
-                        <p className="text-[10px] text-muted-foreground">Avalanche saves</p>
-                        <p className="text-sm font-heading text-income">
-                          {mask(fmt(Math.max(0, snowballResult.totalInterest - avalancheResult.totalInterest)))}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">vs Snowball</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Strategy tabs */}
-                  <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
-                    <button
-                      onClick={() => setStrategyTab('avalanche')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                        strategyTab === 'avalanche' ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
-                      }`}
-                    >
-                      <Zap size={12} className={strategyTab === 'avalanche' ? 'text-warning' : ''} />
-                      Avalanche
-                    </button>
-                    <button
-                      onClick={() => setStrategyTab('snowball')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                        strategyTab === 'snowball' ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
-                      }`}
-                    >
-                      <Snowflake size={12} className={strategyTab === 'snowball' ? 'text-info' : ''} />
-                      Snowball
-                    </button>
-                  </div>
-
-                  {/* Strategy description */}
-                  <p className="text-xs text-muted-foreground mb-3">
-                    {strategyTab === 'avalanche'
-                      ? 'Pay highest APR first — saves the most money in interest long-term'
-                      : 'Pay smallest balance first — builds momentum with quick wins'}
+              <div className="bg-card rounded-xl card-shadow border border-border p-4 space-y-4">
+                <div>
+                  <p className="text-sm font-heading">Payoff plan</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Pay the minimum on every card, and put everything else on one card until it's gone. Then move to the next.
                   </p>
+                </div>
 
-                  {/* Ranked card list */}
-                  <div className="space-y-2 mb-4">
-                    {activeOrder.map((d, i) => (
-                      <div key={d.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${i === 0 ? 'bg-primary-soft border border-primary-line' : 'bg-muted'}`}>
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
-                          i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                        }`}>{i + 1}</span>
-                        <span className="text-base shrink-0"><AppIcon value={d.icon} /></span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold line-clamp-2 break-words">{d.name}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {mask(fmt(d.owed))} · {d.apr}% APR
-                          </p>
-                        </div>
-                        {i === 0 && (
-                          <span className="text-[10px] font-semibold text-primary bg-primary-soft px-2 py-0.5 rounded-full shrink-0">
-                            Focus here
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                <div>
+                  <label htmlFor="payoff-budget" className="text-xs text-muted-foreground mb-1 block">
+                    How much can you pay toward these {creditDebts.length} cards each month?
+                  </label>
+                  <Input
+                    id="payoff-budget"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="100"
+                    value={monthlyBudget}
+                    onChange={e => setBudgetInput(parseFloat(e.target.value) || 0)}
+                    className="h-10 text-base md:text-sm tabular-nums"
+                  />
+                </div>
+
+                <div className="flex gap-1 p-1 bg-muted rounded-lg" role="tablist">
+                  {(['avalanche', 'snowball'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      role="tab"
+                      aria-selected={strategyTab === tab}
+                      onClick={() => setStrategyTab(tab)}
+                      className={`flex-1 py-2 rounded-md text-xs font-medium transition-colors ${
+                        strategyTab === tab ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {tab === 'avalanche' ? 'Least interest' : 'Smallest first'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  {strategyTab === 'avalanche'
+                    ? 'Highest interest rate first (the "avalanche" method). Costs you the least overall.'
+                    : 'Smallest balance first (the "snowball" method). Clears whole cards sooner, which some people find easier to stick with.'}
+                </p>
+
+                {activeResult?.hitCap ? (
+                  <div className="rounded-lg border border-destructive-line bg-destructive-soft p-3">
+                    <p className="text-sm font-medium text-expense">
+                      {mask(fmt(monthlyBudget))} a month won't keep up with the interest
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pay at least {mask(fmt(minimumBudget))} a month across these cards to start shrinking them.
+                    </p>
+                    <button onClick={() => setBudgetInput(minimumBudget)} className="mt-2 text-xs font-medium text-primary">
+                      Use {mask(fmt(minimumBudget))}
+                    </button>
                   </div>
+                ) : activeResult && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-muted p-3">
+                      <p className="text-[11px] text-muted-foreground">Debt-free by</p>
+                      <p className="text-sm font-semibold">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
+                      <p className="text-[11px] text-muted-foreground">{activeResult.months} months</p>
+                    </div>
+                    <div className="rounded-lg bg-muted p-3">
+                      <p className="text-[11px] text-muted-foreground">Interest you'll pay</p>
+                      <p className="text-sm font-semibold font-mono">{mask(fmt(activeResult.totalInterest))}</p>
+                      {otherResult && !otherResult.hitCap && otherResult.totalInterest !== activeResult.totalInterest && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {otherResult.totalInterest > activeResult.totalInterest
+                            ? `${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} less than the other order`
+                            : `${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} more than the other order`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-                  {/* Strategy result */}
-                  {activeResult && (
-                    activeResult.hitCap ? (
-                      <div className="bg-destructive-soft rounded-xl p-3 text-center">
-                        <p className="text-xs text-expense font-semibold">Payments don't cover interest — increase monthly budget</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">Add more to extra monthly budget above to make progress</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-accent rounded-xl p-3 text-center">
-                          <p className="text-[11px] text-muted-foreground mb-0.5">Total interest</p>
-                          <p className="text-sm font-heading text-expense">{mask(fmt(activeResult.totalInterest))}</p>
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">This month</p>
+                  <ol className="divide-y divide-border rounded-lg border border-border">
+                    {activeOrder.map((d, i) => (
+                      <li key={d.id} className="flex items-center gap-3 p-3">
+                        <span className={`w-5 text-xs font-semibold tabular-nums ${i === 0 ? 'text-primary' : 'text-muted-foreground'}`}>{i + 1}</span>
+                        <AppIcon value={d.icon} className="text-base text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{d.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{mask(fmt(d.owed))} owed · {d.apr}% APR</p>
                         </div>
-                        <div className="bg-accent rounded-xl p-3 text-center">
-                          <p className="text-[11px] text-muted-foreground mb-0.5">Debt free in</p>
-                          <p className="text-sm font-heading">{activeResult.months} mo</p>
-                          <p className="text-[10px] text-muted-foreground">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-semibold font-mono">{mask(fmt(thisMonth[d.id] ?? 0))}</p>
+                          <p className="text-[11px] text-muted-foreground">{i === 0 ? 'Focus card' : 'Minimum'}</p>
                         </div>
-                      </div>
-                    )
-                  )}
-                  {otherResult && activeResult && !activeResult.hitCap && !otherResult.hitCap && (
-                    <p className="text-[10px] text-muted-foreground text-center mt-2">
-                      {strategyTab === 'avalanche'
-                        ? `Snowball would take ${otherResult.months} mo and cost ${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} more`
-                        : `Avalanche would save ${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} in interest`}
+                      </li>
+                    ))}
+                  </ol>
+                  {strategyDebts.some(d => !d.minPay) && (
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      Cards without a statement minimum use an estimate of 2% of the balance. Add the real minimum on the card for an exact plan.
                     </p>
                   )}
                 </div>

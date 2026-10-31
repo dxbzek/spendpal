@@ -47,9 +47,9 @@ const RecurringDueBanner = ({ transactions }: Props) => {
   return (
     <AnimatePresence>
       <m.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="bg-accent border border-primary-line rounded-xl px-4 py-3 flex items-start gap-3 cursor-pointer"
         onClick={() => navigate('/transactions')}
       >

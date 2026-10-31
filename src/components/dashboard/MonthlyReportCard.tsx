@@ -131,7 +131,7 @@ const MonthlyReportCard = ({ transactions, budgets, goals, accounts }: Props) =>
       </div>
       {report ? (
         <>
-          <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">{report}</div>
+          <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">{report}</div>
           <button
             onClick={generateReport}
             disabled={loading}

@@ -266,7 +266,7 @@ const Transactions = () => {
                )}
              </div>
              {tx.note && !isLinkedTransfer && (
-               <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{tx.note}</p>
+               <p className="text-[11px] text-muted-foreground truncate mt-0.5">{tx.note}</p>
              )}
              {isDupe && (
                <button
@@ -562,9 +562,9 @@ const Transactions = () => {
       <div className="px-5 md:px-8 pb-6">
         {grouped.length === 0 ? (
           <div className="text-center py-16">
-            <Receipt size={64} className="mx-auto text-muted-foreground/20 mb-4" />
+            <Receipt size={64} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-sm">No transactions found</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">Add your first transaction to get started</p>
+            <p className="text-xs text-muted-foreground mt-1">Add your first transaction to get started</p>
           </div>
         ) : isMobile ? (
           <AnimatePresence>

@@ -101,7 +101,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
             <span className="font-medium">{fmt(account.balance)}</span>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground/80 mb-1 block">
+            <label className="text-sm font-medium text-foreground mb-1 block">
               Actual {label} from your bank/card ({currency})
             </label>
             <AmountInput value={actual} onChange={setActual} className="h-11" />
