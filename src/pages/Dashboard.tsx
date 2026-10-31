@@ -272,25 +272,25 @@ const Dashboard = () => {
               <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-base font-heading font-bold text-primary-foreground leading-tight">Overview</p>
-                <p className="text-[11.5px] text-primary-foreground/70 mt-0.5">Financial overview</p>
+                <p className="text-[11.5px] text-primary-subtle mt-0.5">Financial overview</p>
               </div>
             </div>
-            <button onClick={toggleHidden} className="text-primary-foreground/80 p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
+            <button onClick={toggleHidden} className="text-primary-subtle p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
               {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-primary-foreground/70 text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
+              <p className="text-primary-subtle text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
               <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
-              {sec(totalBalance) && <p className="text-sm text-primary-foreground/60 mt-0.5">≈ {sec(totalBalance)}</p>}
+              {sec(totalBalance) && <p className="text-sm text-primary-subtle mt-0.5">≈ {sec(totalBalance)}</p>}
             </div>
 
             {/* Secondary currency — chosen in Settings; switchable here once set */}
             {secondaryCurrency && (
             <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-raised border-0 text-primary-foreground/70 text-[11px] rounded-full px-3 gap-1">
+              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-raised border-0 text-primary-subtle text-[11px] rounded-full px-3 gap-1">
                 <SelectValue placeholder="2nd currency" />
               </SelectTrigger>
               <SelectContent className="max-h-[240px]">
@@ -440,7 +440,7 @@ const Dashboard = () => {
                                   <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
                                   {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
                                   {a.type === 'credit' && (
-                                    <p className="text-[11px] font-medium text-primary/70">
+                                    <p className="text-[11px] font-medium text-primary">
                                       Owed{available != null ? ` · ${fmt(available)} available` : ''}
                                     </p>
                                   )}

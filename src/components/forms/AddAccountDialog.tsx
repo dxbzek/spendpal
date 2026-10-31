@@ -133,11 +133,11 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
         <div className="space-y-3">
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <div>
-              <label className="text-sm font-medium text-foreground/80 mb-1 block">Name</label>
+              <label className="text-sm font-medium text-foreground mb-1 block">Name</label>
               <Input placeholder="e.g., Main Checking" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} className="h-11 text-base" maxLength={50} />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground/80 mb-1 block">Type</label>
+              <label className="text-sm font-medium text-foreground mb-1 block">Type</label>
               <Select value={type} onValueChange={v => setType(v as AccountType)}>
                 <SelectTrigger className="h-11 text-base w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -149,7 +149,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground/80 mb-1 block">
+            <label className="text-sm font-medium text-foreground mb-1 block">
               {type === 'credit' ? 'Amount Owed' : 'Balance'} ({currency})
             </label>
             <AmountInput value={balance} onChange={setBalance} className="h-11" />
@@ -162,7 +162,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           {type !== 'credit' && (
             <div className="flex items-center justify-between gap-3 rounded-lg bg-muted p-2.5">
               <div>
-                <p className="text-sm font-medium text-foreground/80">Savings — not for spending</p>
+                <p className="text-sm font-medium text-foreground">Savings — not for spending</p>
                 <p className="text-[11px] text-muted-foreground">Left out of "Left until payday". Still counts in net position.</p>
               </div>
               <Switch checked={notSpendable} onCheckedChange={setNotSpendable} aria-label="Savings, not for spending" />
@@ -171,11 +171,11 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           {type === 'credit' && (
             <div className="space-y-2.5 rounded-lg bg-muted p-2.5">
               <div>
-                <label className="text-sm font-medium text-foreground/80 mb-1 block">Credit Limit ({currency})</label>
+                <label className="text-sm font-medium text-foreground mb-1 block">Credit Limit ({currency})</label>
                 <AmountInput value={creditLimit} onChange={setCreditLimit} placeholder="20,000" className="h-11" />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground/80 mb-1 block">APR (%)</label>
+                <label className="text-sm font-medium text-foreground mb-1 block">APR (%)</label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -192,16 +192,16 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-sm font-medium text-foreground/80 mb-1 block">Statement Day</label>
+                  <label className="text-sm font-medium text-foreground mb-1 block">Statement Day</label>
                   <Input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="1" value={statementDate} onChange={e => setStatementDate(e.target.value.replace(/[^0-9]/g, ''))} className="h-11 text-base" maxLength={2} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground/80 mb-1 block">Due Day</label>
+                  <label className="text-sm font-medium text-foreground mb-1 block">Due Day</label>
                   <Input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="15" value={dueDate} onChange={e => setDueDate(e.target.value.replace(/[^0-9]/g, ''))} className="h-11 text-base" maxLength={2} />
                 </div>
               </div>
               <div className="pt-1">
-                <p className="text-sm font-medium text-foreground/80">Latest statement</p>
+                <p className="text-sm font-medium text-foreground">Latest statement</p>
                 <p className="text-[11px] text-muted-foreground mb-2">Copy these from the statement. Home shows exactly these numbers.</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>

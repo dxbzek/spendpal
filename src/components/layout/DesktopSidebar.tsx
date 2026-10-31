@@ -137,7 +137,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
           {NAV_SECTIONS.map(section => (
             <div key={section.label}>
               {!collapsed && (
-                <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest px-3 mb-1">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-1">
                   {section.label}
                 </p>
               )}

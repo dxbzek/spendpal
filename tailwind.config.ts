@@ -55,6 +55,7 @@ export default {
           soft: "var(--primary-soft)",
           line: "var(--primary-line)",
           raised: "var(--primary-raised)",
+          subtle: "var(--primary-subtle)",
           edge: "var(--primary-edge)",
         },
         secondary: {

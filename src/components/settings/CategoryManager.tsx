@@ -306,7 +306,7 @@ const CategoryManager = () => {
 
       {allItems.length > PREVIEW_COUNT && (
         <button onClick={() => setShowAll(!showAll)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors">
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-primary hover:text-primary transition-colors">
           {showAll ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {showAll ? 'Show less' : `Show all ${allItems.length} categories`}
         </button>

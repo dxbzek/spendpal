@@ -123,7 +123,7 @@ const Goals = () => {
         if (!await addGoalProgress(progressGoalId, amount)) return;
         // Persist the contribution to Supabase.
         await saveContribution(progressGoalId, amount, progressNote.trim());
-        toast.success('Progress saved!');
+        toast.success('Progress saved');
       }
     } finally {
       setSavingProgress(false);
@@ -177,9 +177,9 @@ const Goals = () => {
             </div>
           </div>
           <div className="bg-primary-raised rounded-xl p-4">
-            <p className="text-primary-foreground/70 text-xs mb-1">Total Progress</p>
+            <p className="text-primary-subtle text-xs mb-1">Total Progress</p>
             <p className="text-2xl font-heading text-primary-foreground mb-2">
-              {overallPct}% <span className="text-sm font-normal text-primary-foreground/60">of {mask(fmt(totalTarget))}</span>
+              {overallPct}% <span className="text-sm font-normal text-primary-subtle">of {mask(fmt(totalTarget))}</span>
             </p>
             <div className="h-3.5 bg-primary-raised rounded-full overflow-hidden">
               <m.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
@@ -195,7 +195,7 @@ const Goals = () => {
         {activeGoals.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl card-shadow">
             <p className="text-muted-foreground text-sm">No active goals</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">Create a goal to start saving</p>
+            <p className="text-xs text-muted-foreground mt-1">Create a goal to start saving</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -257,7 +257,7 @@ const Goals = () => {
                         <>
                           <p className="text-xs text-muted-foreground">{mask(fmt(remaining))} remaining</p>
                           {estimate && (
-                            <p className="text-[11px] text-primary/70 flex items-center gap-0.5 mt-0.5">
+                            <p className="text-[11px] text-primary flex items-center gap-0.5 mt-0.5">
                               <TrendingUp size={10} /> {estimate} at current rate
                             </p>
                           )}

@@ -266,7 +266,7 @@ const AIAdvisor = () => {
             <Brain size={28} className="text-primary-foreground" />
             <h1 className="text-2xl font-heading text-primary-foreground">AI Budget Advisor</h1>
           </div>
-          <p className="text-primary-foreground/70 text-sm">
+          <p className="text-primary-subtle text-sm">
             Smart analysis of your spending habits with personalized budgeting recommendations
           </p>
         </div>
@@ -400,7 +400,7 @@ const AIAdvisor = () => {
         {/* Results */}
         <AnimatePresence>
           {analysis && (
-            <m.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
 
               {/* Refresh button */}
               <div className="flex justify-end">
@@ -419,7 +419,7 @@ const AIAdvisor = () => {
                     <p className="text-xs text-muted-foreground">{METHOD_LABELS[analysis.recommendedMethod]?.desc}</p>
                   </div>
                 </div>
-                <p className="text-sm text-foreground/80 leading-relaxed">{shown?.methodReason}</p>
+                <p className="text-sm text-foreground leading-relaxed">{shown?.methodReason}</p>
               </div>
 
               {/* Health Score + Breakdown */}
@@ -560,7 +560,7 @@ const AIAdvisor = () => {
                         {detail && (
                           <Dialog>
                             <DialogTrigger asChild>
-                              <button className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground/50 hover:text-primary hover:bg-primary-soft transition-colors" onClick={e => e.stopPropagation()}>
+                              <button className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground hover:text-primary hover:bg-primary-soft transition-colors" onClick={e => e.stopPropagation()}>
                                 <Info size={12} />
                               </button>
                             </DialogTrigger>
@@ -573,14 +573,14 @@ const AIAdvisor = () => {
                               <div className="space-y-4 text-sm">
                                 <div>
                                   <h4 className="font-heading text-xs text-muted-foreground uppercase tracking-wider mb-1">How it works</h4>
-                                  <p className="text-foreground/80">{detail.how}</p>
+                                  <p className="text-foreground">{detail.how}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div className="bg-income-soft border border-income-line rounded-xl p-3">
                                     <h4 className="font-heading text-xs text-income mb-2">Pros</h4>
                                     <ul className="space-y-1">
                                       {detail.pros.map((p) => (
-                                        <li key={p} className="text-xs text-foreground/70">• {p}</li>
+                                        <li key={p} className="text-xs text-muted-foreground">• {p}</li>
                                       ))}
                                     </ul>
                                   </div>
@@ -588,18 +588,18 @@ const AIAdvisor = () => {
                                     <h4 className="font-heading text-xs text-expense mb-2">Cons</h4>
                                     <ul className="space-y-1">
                                       {detail.cons.map((c) => (
-                                        <li key={c} className="text-xs text-foreground/70">• {c}</li>
+                                        <li key={c} className="text-xs text-muted-foreground">• {c}</li>
                                       ))}
                                     </ul>
                                   </div>
                                 </div>
                                 <div className="bg-primary-soft border border-primary-line rounded-xl p-3">
                                   <h4 className="font-heading text-xs text-primary mb-1">Best for</h4>
-                                  <p className="text-xs text-foreground/70">{detail.bestFor}</p>
+                                  <p className="text-xs text-muted-foreground">{detail.bestFor}</p>
                                 </div>
                                 <div className="bg-muted rounded-xl p-3">
                                   <h4 className="font-heading text-xs text-muted-foreground mb-1">Example</h4>
-                                  <p className="text-xs text-foreground/70">{detail.example}</p>
+                                  <p className="text-xs text-muted-foreground">{detail.example}</p>
                                 </div>
                               </div>
                             </DialogContent>
@@ -656,7 +656,7 @@ const AIAdvisor = () => {
                       if (created === 0) {
                         toast.info('Budgets already exist for this month — check your Budgets page');
                       } else {
-                        toast.success(`${METHOD_LABELS[activeSimTab]?.name} budgets created!`);
+                        toast.success(`${METHOD_LABELS[activeSimTab]?.name} budgets created`);
                       }
                       navigate('/budgets');
                     } catch {

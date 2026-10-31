@@ -4,6 +4,8 @@ import {
   totalInterest,
   minPayment,
   simulateStrategy,
+  allocateMonth,
+  minimumMonthlyBudget,
   type StrategyDebt,
 } from "@/lib/finance/debtPayoff";
 
@@ -98,5 +100,32 @@ describe("simulateStrategy", () => {
   it("never reports negative interest even with a large surplus budget", () => {
     const debts: StrategyDebt[] = [{ id: "a", owed: 200, apr: 0, minPay: minPayment(200) }];
     expect(simulateStrategy(debts, debts, 5000).totalInterest).toBe(0);
+  });
+
+  it("estimates a 2% minimum when a card has no statement minimum", () => {
+    // 12,159.90 at 39% accrues ~395/mo. With no statement minimums the budget
+    // used to count minimums as 0, so a 700 budget looked like "can't cover
+    // interest"; it is plenty.
+    const debts: StrategyDebt[] = [
+      { id: "enbd", owed: 12159.9, apr: 39, minPay: 0 },
+      { id: "tabby", owed: 854.7, apr: 0, minPay: 0 },
+      { id: "later", owed: 197.5, apr: 0, minPay: 0 },
+    ];
+    const result = simulateStrategy(debts, debts, 700);
+    expect(result.hitCap).toBe(false);
+    expect(minimumMonthlyBudget(debts)).toBeGreaterThan(400);
+    expect(minimumMonthlyBudget(debts)).toBeLessThan(700);
+  });
+});
+
+describe("allocateMonth", () => {
+  it("pays minimums elsewhere and the rest on the focus card", () => {
+    const debts = [
+      { id: "a", balance: 5000, minPay: 150 },
+      { id: "b", balance: 800, minPay: 0 },
+    ];
+    const pay = allocateMonth(debts, [{ id: "a" }, { id: "b" }], 1000);
+    expect(pay.b).toBe(25);
+    expect(pay.a).toBe(975);
   });
 });

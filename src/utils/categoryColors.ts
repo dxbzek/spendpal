@@ -1,40 +1,45 @@
-// Distinct colors for each spending category used in charts and bars
-const COLORS_MAP: Record<string, string> = {
-  'Transfer': '#6366f1',
-  'Transport': '#3b82f6',
-  'Metro/Taxi': '#0ea5e9',
-  'Dining': '#f97316',
-  'Food & Dining': '#f97316',
-  'Coffee': '#92400e',
-  'Groceries': '#22c55e',
-  'Shopping': '#ec4899',
-  'Entertainment': '#a855f7',
-  'Bills & Utilities': '#eab308',
-  'DEWA': '#facc15',
-  'Telecom': '#0891b2',
-  'Health': '#ef4444',
-  'Education': '#7c3aed',
-  'Travel': '#06b6d4',
-  'Rent': '#8b5cf6',
-  'Subscriptions': '#14b8a6',
-  'Charity': '#f472b6',
-  'Delivery': '#fb923c',
-  'Salary': '#10b981',
-  'Freelance': '#34d399',
-  'Investment': '#6366f1',
-  'Utilities': '#f59e0b',
-  'Insurance': '#64748b',
-  'Fitness': '#22d3ee',
-  'Personal Care': '#f43f5e',
-  'Gift': '#c084fc',
-  'Bonus': '#fbbf24',
-  'Business': '#0284c7',
-  'Rental Income': '#8b5cf6',
-  'Refund': '#4ade80',
-  'Other': '#64748b',
-};
+// Category colours for charts and bars: muted hues around the brand green,
+// distinct enough to tell apart and readable on light and dark surfaces.
+const PALETTE = ['#17663a', '#2f6f8f', '#b3832d', '#8a5a44', '#5e6b8c', '#9a4d5c', '#6b7d3a', '#3f8f6b', '#7a6a9a', '#8c8a80'];
 
-const FALLBACK = ['#6366f1','#3b82f6','#f97316','#22c55e','#ec4899','#a855f7','#eab308','#ef4444','#06b6d4','#64748b'];
+const ORDER = [
+  'Transfer',
+  'Transport',
+  'Metro/Taxi',
+  'Dining',
+  'Food & Dining',
+  'Coffee',
+  'Groceries',
+  'Shopping',
+  'Entertainment',
+  'Bills & Utilities',
+  'DEWA',
+  'Telecom',
+  'Health',
+  'Education',
+  'Travel',
+  'Rent',
+  'Subscriptions',
+  'Charity',
+  'Delivery',
+  'Salary',
+  'Freelance',
+  'Investment',
+  'Utilities',
+  'Insurance',
+  'Fitness',
+  'Personal Care',
+  'Gift',
+  'Bonus',
+  'Business',
+  'Rental Income',
+  'Refund',
+  'Other',
+];
+
+const COLORS_MAP: Record<string, string> = Object.fromEntries(ORDER.map((c, i) => [c, PALETTE[i % PALETTE.length]]));
+
+const FALLBACK = PALETTE;
 
 export const CATEGORY_CHART_COLORS = {
   ...COLORS_MAP,

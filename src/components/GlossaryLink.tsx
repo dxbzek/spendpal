@@ -22,7 +22,7 @@ const GlossaryLink = ({ term, className = '' }: Props) => {
             e.stopPropagation();
             navigate('/glossary');
           }}
-          className={`inline-flex items-center text-muted-foreground/60 hover:text-primary transition-colors ${className}`}
+          className={`inline-flex items-center text-muted-foreground hover:text-primary transition-colors ${className}`}
         >
           <HelpCircle size={12} />
         </button>

@@ -31,12 +31,6 @@ const TYPE_LABELS: Record<string, string> = {
   credit: 'Credit Card',
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  cash: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
-  debit: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
-  credit: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400',
-};
-
 const Accounts = () => {
   const { accounts, transactions, removeAccount, loading } = useFinance();
   const { fmt } = useCurrency();
@@ -196,7 +190,7 @@ const Accounts = () => {
                     </div>
                     <div>
                       <p className="font-semibold line-clamp-2 break-words">{account.name}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[account.type]}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground`}>
                         {TYPE_LABELS[account.type]}
                       </span>
                       {account.excludeFromSpendable && (

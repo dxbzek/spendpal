@@ -92,7 +92,7 @@ const DataBackupCard = () => {
     a.download = `spendpal-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Backup downloaded!');
+    toast.success('Backup downloaded');
   };
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -487,7 +487,7 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
     if (error) {
       toast.error('Failed to save notification settings');
     } else {
-      toast.success('Notification settings saved!');
+      toast.success('Notification settings saved');
     }
     setSaving(false);
   };
@@ -650,7 +650,7 @@ const Settings = () => {
       toast.error('Failed to update avatar');
     } else {
       setAvatarUrl(newUrl);
-      toast.success('Avatar updated!');
+      toast.success('Avatar updated');
     }
     setUploading(false);
   };
@@ -678,7 +678,7 @@ const Settings = () => {
     } else {
       setSavedCurrency(nextCurrency);
       setGlobalCurrency(nextCurrency);
-      toast.success('Profile updated!');
+      toast.success('Profile updated');
     }
     setSaving(false);
   };

@@ -28,9 +28,9 @@ const BudgetAlertBanners = ({ budgets }: Props) => {
         {alerts.map(a => (
           <m.div
             key={a.id}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm ${
               a.over
                 ? 'bg-destructive-soft border border-destructive-line text-destructive'
