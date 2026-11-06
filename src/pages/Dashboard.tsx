@@ -26,6 +26,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import CardPaymentsCard from '@/components/dashboard/CardPaymentsCard';
+import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
 import { isSpendable } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
@@ -327,6 +328,9 @@ const Dashboard = () => {
           mask={mask}
           onEditAccount={(a) => { setEditAccount(a); setShowAddAccount(true); }}
         />
+
+        {/* Fees paid and recurring bills that went up */}
+        <ChargeAlertsCard transactions={transactions} mask={mask} />
 
         {/* Alerts */}
         <div className="mb-4">
