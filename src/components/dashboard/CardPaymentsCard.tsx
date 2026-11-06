@@ -41,10 +41,10 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
   const cards = useMemo(() => cardStatuses(accounts, now), [accounts, now]);
   const payday = paydayDay ? nextPayday(paydayDay, now) : null;
   const runway = useMemo(
-    () => (payday ? leftUntilPayday(accounts, payday, now) : null),
+    () => (payday ? leftUntilPayday(accounts, payday, now, transactions) : null),
     // payday is derived from paydayDay; depend on the primitive.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [accounts, paydayDay, now],
+    [accounts, transactions, paydayDay, now],
   );
 
   if (cards.length === 0) return null;
@@ -111,9 +111,20 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
           <>
             <p className={`text-financial-medium tabular-nums ${runway.left < 0 ? 'text-expense' : ''}`}>{mask(fmt(runway.left))}</p>
             <p className="text-[11px] text-muted-foreground">
-              {mask(fmt(runway.cash))} spendable − {mask(fmt(runway.due))} due before payday
+              {mask(fmt(runway.cash))} spendable − {mask(fmt(runway.cardsDue))} cards
+              {runway.billsDue > 0 && <> − {mask(fmt(runway.billsDue))} bills</>}
               {runway.perDay != null && <> · {mask(fmt(runway.perDay))}/day for {runway.days} days</>}
             </p>
+            {runway.bills.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {runway.bills.map(b => (
+                  <li key={b.key} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                    <span className="truncate">{b.name} · {format(b.dueOn, 'd MMM')}</span>
+                    <span className="tabular-nums shrink-0">{mask(fmt(b.amount))}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </>
         ) : (
           <p className="text-xs text-muted-foreground mt-1">Set your payday to see this.</p>

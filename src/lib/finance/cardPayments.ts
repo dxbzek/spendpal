@@ -5,7 +5,8 @@
 // (statementTotalDue / statementMinDue / statementDueOn). Nothing here derives
 // an amount from transactions or instalment plans: those can't see what the
 // bank actually billed, and a guessed number is worse than none.
-import type { Account } from '@/types/finance';
+import type { Account, Transaction } from '@/types/finance';
+import { nextRecurringBills } from '@/lib/finance/recurringBills';
 
 const toCents = (n: number) => Math.round(n * 100);
 const fromCents = (c: number) => c / 100;
@@ -66,12 +67,12 @@ export function nextPayday(day: number, now: Date): Date {
 export const isSpendable = (a: Account) => a.type !== 'credit' && !a.excludeFromSpendable;
 
 /**
- * Spendable cash/debit money minus every statement total due before the next
- * payday (a payment due on payday itself is covered by that day's salary).
- * Negative means the cash doesn't cover what's due; callers must not turn a
- * negative into a per-day allowance.
+ * Spendable cash/debit money minus every statement total and every recurring
+ * cash bill due before the next payday (anything due on payday itself is
+ * covered by that day's salary). Negative means the cash doesn't cover what's
+ * due; callers must not turn a negative into a per-day allowance.
  */
-export function leftUntilPayday(accounts: Account[], payday: Date, now: Date) {
+export function leftUntilPayday(accounts: Account[], payday: Date, now: Date, transactions: Transaction[] = []) {
   const today = startOfDay(now);
   const cashCents = accounts
     .filter(isSpendable)
@@ -79,13 +80,18 @@ export function leftUntilPayday(accounts: Account[], payday: Date, now: Date) {
   const dues = cardStatuses(accounts, now).filter(
     (s): s is Extract<CardStatus, { kind: 'due' }> => s.kind === 'due' && s.dueOn >= today && s.dueOn < payday,
   );
-  const dueCents = dues.reduce((s, d) => s + toCents(d.total), 0);
-  const leftCents = cashCents - dueCents;
+  const bills = nextRecurringBills(accounts, transactions, now).filter(b => b.dueOn < payday);
+  const cardCents = dues.reduce((s, d) => s + toCents(d.total), 0);
+  const billCents = bills.reduce((s, b) => s + toCents(b.amount), 0);
+  const leftCents = cashCents - cardCents - billCents;
   const days = Math.max(1, Math.round((startOfDay(payday).getTime() - today.getTime()) / 86_400_000));
   return {
     cash: fromCents(cashCents),
-    due: fromCents(dueCents),
+    due: fromCents(cardCents + billCents),
+    cardsDue: fromCents(cardCents),
+    billsDue: fromCents(billCents),
     dues,
+    bills,
     left: fromCents(leftCents),
     days,
     // Only meaningful when there's money left; null tells the UI to show none.
