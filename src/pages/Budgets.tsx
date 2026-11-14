@@ -290,7 +290,7 @@ const Budgets = () => {
               <button
                 onClick={copyFromLastMonth}
                 disabled={copyingLastMonth}
-                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
+                className="tap-area text-xs text-primary font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
                 title="Copy last month's budgets with the same amounts"
               >
                 {copyingLastMonth ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
@@ -299,7 +299,7 @@ const Budgets = () => {
               <button
                 onClick={copyWithRollover}
                 disabled={rollingOver}
-                className="text-xs text-income font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
+                className="tap-area text-xs text-income font-medium flex items-center gap-1 hover:underline disabled:opacity-50"
                 title="Copy budgets and add any unspent balance from last month"
               >
                 {rollingOver ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
@@ -308,12 +308,12 @@ const Budgets = () => {
             </>
           )}
           {budgets.length > 0 && (
-            <button onClick={saveTemplate} className="text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
+            <button onClick={saveTemplate} className="tap-area text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
               <BookmarkPlus size={12} /> Save
             </button>
           )}
           {templates.length > 0 && (
-            <button onClick={() => setShowTemplates(!showTemplates)} className="text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
+            <button onClick={() => setShowTemplates(!showTemplates)} className="tap-area text-xs text-muted-foreground font-medium flex items-center gap-1 hover:underline">
               <FolderOpen size={12} /> Templates
             </button>
           )}
@@ -437,7 +437,7 @@ const Budgets = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {pct > 100 ? (
-                        <Badge variant="destructive" className="text-[10px] px-2 py-0.5">Over Budget</Badge>
+                        <Badge variant="destructive" className="text-[11px] px-2 py-0.5">Over Budget</Badge>
                       ) : (
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                       )}
@@ -450,13 +450,13 @@ const Budgets = () => {
                       className={`h-full rounded-full ${pct > 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
                   </div>
                   <div className="grid grid-cols-3 gap-1 text-center mb-2">
-                    <div><p className="text-[10px] sm:text-xs text-muted-foreground">Spent</p><p className="text-xs sm:text-sm font-medium truncate">{mask(fmt(b.spent))}</p></div>
-                    <div><p className="text-[10px] sm:text-xs text-muted-foreground">Remaining</p><p className={`text-xs sm:text-sm font-medium truncate ${remaining < 0 ? 'text-expense' : ''}`}>{mask(fmt(remaining))}</p></div>
-                    <div><p className="text-[10px] sm:text-xs text-muted-foreground">Daily left</p><p className="text-xs sm:text-sm font-medium truncate">{mask(fmt(dailyLeft))}</p></div>
+                    <div><p className="text-[11px] sm:text-xs text-muted-foreground">Spent</p><p className="text-xs sm:text-sm font-medium truncate">{mask(fmt(b.spent))}</p></div>
+                    <div><p className="text-[11px] sm:text-xs text-muted-foreground">Remaining</p><p className={`text-xs sm:text-sm font-medium truncate ${remaining < 0 ? 'text-expense' : ''}`}>{mask(fmt(remaining))}</p></div>
+                    <div><p className="text-[11px] sm:text-xs text-muted-foreground">Daily left</p><p className="text-xs sm:text-sm font-medium truncate">{mask(fmt(dailyLeft))}</p></div>
                   </div>
                   {/* Velocity + last month */}
                   {daysElapsed > 0 && (
-                    <div className="flex items-center justify-between pt-2 border-t border-border text-[11px]">
+                    <div className="flex items-center justify-between pt-2 border-t border-border text-xs">
                       {pace.hasPace ? (
                         <span className={`flex items-center gap-1 ${velocityColor(projPct)}`}>
                           {projPct > 100 ? <TrendingUp size={10} /> : null}
@@ -534,7 +534,7 @@ const Budgets = () => {
                 </div>
               ))}
               <div className="flex gap-3 pt-1">
-                <button onClick={handleGenerateSuggestions} disabled={aiLoading} className="text-xs font-medium text-primary disabled:opacity-50">
+                <button onClick={handleGenerateSuggestions} disabled={aiLoading} className="tap-area text-xs font-medium text-primary disabled:opacity-50">
                   {aiLoading ? 'Analyzing…' : 'Regenerate'}
                 </button>
                 <button onClick={() => { setSuggestions([]); setShowAI(false); }} className="text-xs font-medium text-muted-foreground">Dismiss</button>

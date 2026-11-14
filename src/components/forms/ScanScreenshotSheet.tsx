@@ -308,7 +308,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
         {step === 'review' && target === 'budget' && (
           <div className="space-y-3 mt-2">
             <p className="text-xs text-muted-foreground">
-              {budgetRows.length} row{budgetRows.length !== 1 ? 's' : ''} found. Uncheck any to skip; edit amounts inline. Rows tagged <span className="inline-flex items-center px-1 rounded bg-primary-soft text-primary text-[10px] font-semibold">NEW</span> will create a new category when applied.
+              {budgetRows.length} row{budgetRows.length !== 1 ? 's' : ''} found. Uncheck any to skip; edit amounts inline. Rows tagged <span className="inline-flex items-center px-1 rounded bg-primary-soft text-primary text-[11px] font-semibold">NEW</span> will create a new category when applied.
             </p>
             <div className="max-h-[50vh] overflow-y-auto space-y-2">
               {budgetRows.map((row, i) => (
@@ -324,10 +324,10 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-medium truncate">{row.category}</span>
                       {row.isNewCategory && (
-                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary-soft text-primary">NEW</span>
+                        <span className="shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-primary-soft text-primary">NEW</span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">monthly budget</p>
+                    <p className="text-xs text-muted-foreground">monthly budget</p>
                   </div>
                   <Input
                     type="number"
@@ -367,7 +367,7 @@ const ScanScreenshotSheet = ({ open, onOpenChange, target }: Props) => {
                   <IconTile value={row.icon} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{row.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {row.type}{row.deadline ? ` · by ${row.deadline}` : ''}
                     </p>
                   </div>

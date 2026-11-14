@@ -114,7 +114,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
                 <p className="text-xs text-destructive font-semibold">
                   {drift > 0 ? 'SpendPal is under by ' : 'SpendPal is over by '}{fmt(Math.abs(drift))}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Likely cause: a transaction logged outside SpendPal, or one missing/duplicated here. Applying adds a small internal "Balance reconciliation" adjustment to your history so the balance matches — it won't affect your income/expense totals.
                 </p>
               </div>

@@ -51,7 +51,7 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
       />
     )}
     <Icon size={20} className={`relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-    <span className={`relative z-10 text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+    <span className={`relative z-10 text-[11px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
       {label}
     </span>
   </button>
@@ -146,7 +146,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
                           }`}
                         >
                           <Icon size={22} className={active ? 'text-primary' : 'text-muted-foreground'} />
-                          <span className={`text-[11px] font-medium leading-tight text-center ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                          <span className={`text-xs font-medium leading-tight text-center ${active ? 'text-primary' : 'text-muted-foreground'}`}>
                             {item.label}
                           </span>
                         </button>
@@ -200,7 +200,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               ? <X size={20} className="relative z-10" />
               : <MoreHorizontal size={20} className="relative z-10" />
             }
-            <span className="relative z-10 text-[10px] font-medium">{showMore ? 'Close' : 'More'}</span>
+            <span className="relative z-10 text-[11px] font-medium">{showMore ? 'Close' : 'More'}</span>
           </button>
         </div>
       </nav>

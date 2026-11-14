@@ -262,7 +262,7 @@ const DangerZoneCard = () => {
   return (
     <>
       <section>
-        <p className="text-[11px] font-semibold text-destructive uppercase tracking-wider mb-3 px-1">Danger Zone</p>
+        <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3 px-1">Danger Zone</p>
         <div className="bg-card rounded-xl p-5 card-shadow border border-destructive-line space-y-5">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
@@ -637,7 +637,7 @@ const Settings = () => {
       <div className="space-y-6">
         {/* Appearance */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Appearance</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Appearance</p>
           <div className="bg-card rounded-xl p-5 card-shadow">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -656,7 +656,7 @@ const Settings = () => {
 
         {/* Profile */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Profile</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Profile</p>
           <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
             <div>
               <label className="text-sm font-medium mb-1.5 block">Display Name</label>
@@ -725,7 +725,7 @@ const Settings = () => {
 
         {/* Financial */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Financial</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Financial</p>
           <div className="bg-card rounded-xl p-5 card-shadow">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0 mt-0.5">
@@ -764,7 +764,7 @@ const Settings = () => {
 
         {/* Notifications */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Notifications</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Notifications</p>
           <div className="bg-card rounded-xl p-5 card-shadow mb-3">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
@@ -781,19 +781,19 @@ const Settings = () => {
 
         {/* Categories */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Categories</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Categories</p>
           <CategoryManager />
         </section>
 
         {/* Currency */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Secondary Currency</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Secondary Currency</p>
           <SecondaryCurrencyCard />
         </section>
 
         {/* Data */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Data</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Data</p>
           <div className="space-y-3">
             <MonthlyReportPrint />
             <DataBackupCard />
@@ -802,7 +802,7 @@ const Settings = () => {
 
         {/* More */}
         <section>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">More</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">More</p>
           <div className="space-y-2">
             <button onClick={() => navigate('/glossary')}
               className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">

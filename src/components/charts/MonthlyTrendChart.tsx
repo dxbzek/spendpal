@@ -110,11 +110,11 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
       <div className="flex items-center justify-center gap-5 mt-1">
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 rounded-full bg-income inline-block" />
-          <span className="text-[11px] text-muted-foreground">Income</span>
+          <span className="text-xs text-muted-foreground">Income</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 rounded-full bg-expense inline-block" />
-          <span className="text-[11px] text-muted-foreground">Expenses</span>
+          <span className="text-xs text-muted-foreground">Expenses</span>
         </div>
       </div>
     </div>

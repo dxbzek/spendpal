@@ -360,7 +360,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                         category === c.name ? 'bg-accent ring-2 ring-primary' : 'bg-muted hover:bg-muted'
                       }`}>
                       <AppIcon value={c.icon} className="text-2xl" />
-                      <span className="truncate w-full text-center text-muted-foreground text-[10px] leading-tight">{c.name}</span>
+                      <span className="truncate w-full text-center text-muted-foreground text-[11px] leading-tight">{c.name}</span>
                     </button>
                   ))}
                 </div>
@@ -507,14 +507,14 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                           <AmountInput id="tx-loan-total" placeholder="e.g. 1200 (before interest/fees)"
                             value={loanTotalAmount} onChange={setLoanTotalAmount}
                             className="h-10" />
-                          <p className="text-[10px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">Enter the actual item price, not the total of all installments. This enables accurate principal vs. interest breakdown.</p>
                         </div>
                         <div>
                           <label htmlFor="tx-remaining-principal" className="text-xs text-muted-foreground mb-1 block">Remaining Principal ({currency}) — optional</label>
                           <AmountInput id="tx-remaining-principal" placeholder="From your latest statement"
                             value={remainingPrincipal} onChange={setRemainingPrincipal}
                             className="h-10" />
-                          <p className="text-[10px] text-muted-foreground mt-1">What the statement says is still owed on this plan. Used for "left" instead of installment × months.</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">What the statement says is still owed on this plan. Used for "left" instead of installment × months.</p>
                         </div>
                         {amount && (
                           <div className="bg-primary-soft rounded-lg p-2.5 text-center">

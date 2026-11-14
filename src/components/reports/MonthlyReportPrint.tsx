@@ -177,15 +177,15 @@ const MonthlyReportPrint = () => {
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl bg-accent p-3">
-          <p className="text-[10px] text-muted-foreground mb-1">Income</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Income</p>
           <p className="text-sm font-heading text-income">{fmt(Math.round(report.totalIncome))}</p>
         </div>
         <div className="rounded-xl bg-accent p-3">
-          <p className="text-[10px] text-muted-foreground mb-1">Expenses</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Expenses</p>
           <p className="text-sm font-heading text-expense">{fmt(Math.round(report.totalExpenses))}</p>
         </div>
         <div className="rounded-xl bg-accent p-3">
-          <p className="text-[10px] text-muted-foreground mb-1">Net</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Net</p>
           <p className={`text-sm font-heading ${report.netSavings >= 0 ? 'text-income' : 'text-expense'}`}>
             {fmt(Math.round(report.netSavings))}
           </p>

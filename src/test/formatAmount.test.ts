@@ -45,3 +45,14 @@ describe('formatAmount', () => {
     expect(formatAmount('$', 'en-US', -0)).toBe(`${LRI}$ 0.00${PDI}`);
   });
 });
+
+describe('displaySymbol', () => {
+  it('shows the code for a right-to-left symbol, so the amount reads left to right', async () => {
+    const { displaySymbol } = await import('@/lib/finance/formatAmount');
+    expect(displaySymbol('AED', 'د.إ')).toBe('AED');
+    expect(displaySymbol('ILS', '₪')).toBe('₪');
+    expect(displaySymbol('SAR', '﷼')).toBe('SAR');
+    expect(displaySymbol('USD', '$')).toBe('$');
+    expect(formatAmount(displaySymbol('AED', 'د.إ'), 'en-AE', 699.86)).toBe(`${LRI}AED 699.86${PDI}`);
+  });
+});
