@@ -188,3 +188,63 @@ describe('paid against total compares like with like', () => {
     expect(plan.paidAmount).toBe(1_210);
   });
 });
+
+describe('rows matched to a plan without a plan id (review 2)', () => {
+  it('a last instalment a cent off is still the same plan, and the plan is finished', () => {
+    const base = { merchant: 'iPhone', accountId: 'debit', totalInstallments: 3, isTrackingOnly: false, planId: null };
+    const rows = [
+      row({ ...base, amount: 333.33, currentInstallment: 1, date: '2026-09-16' }),
+      row({ ...base, amount: 333.33, currentInstallment: 2, date: '2026-10-16' }),
+      row({ ...base, amount: 333.34, currentInstallment: 3, date: '2026-11-16' }),
+    ];
+    const plans = buildPlans(rows);
+    expect(plans).toHaveLength(1); // was 2: a ghost plan at 2/3 with 333.33 left
+    expect(totalLeft(plans)).toBe(0);
+  });
+
+  it('Tabby 100.01 then 99.99 is one plan', () => {
+    const base = { merchant: 'Noon', totalInstallments: 4, planId: null };
+    const plans = buildPlans([
+      row({ ...base, amount: 100.01, currentInstallment: 1, date: '2026-10-01' }),
+      row({ ...base, amount: 99.99, currentInstallment: 2, date: '2026-11-01' }),
+    ]);
+    expect(plans).toHaveLength(1);
+    expect(totalLeft(plans)).toBe(199.98); // was 500.01
+  });
+
+  it('a row an old copy of the app saved without an id joins the plan its older rows have an id for', () => {
+    const base = { merchant: 'Noon', accountId: 'A', totalInstallments: 6, amount: 100 };
+    const rows = [
+      row({ ...base, currentInstallment: 1, date: '2026-09-01', planId: 'X' }),
+      row({ ...base, currentInstallment: 2, date: '2026-10-01', planId: 'X' }),
+      row({ ...base, currentInstallment: 3, date: '2026-11-01', planId: null }),
+    ];
+    const plans = buildPlans(rows);
+    expect(plans).toHaveLength(1); // was 2, and total left 700
+    expect(plans[0].planId).toBe('X');
+    expect(plans[0].paidInstallments).toBe(3);
+    expect(totalLeft(plans)).toBe(300);
+    expect(planRows(rows, plans[0])).toHaveLength(3);
+    // and the next payment carries the plan's id again
+    expect(planIdForNewRow(rows, { ...base, currentInstallment: 4, date: '2026-12-01' }, () => 'new')).toBe('X');
+  });
+
+  it('two identical purchases at one merchant stay two plans', () => {
+    const base = { merchant: 'Noon', accountId: 'Card', totalInstallments: 4, amount: 100, currentInstallment: 0, planId: null };
+    const plans = buildPlans([row({ ...base, date: '2026-11-02' }), row({ ...base, date: '2026-11-03' })]);
+    expect(plans).toHaveLength(2);
+    expect(totalLeft(plans)).toBe(800); // was 400
+  });
+
+  it('interleaved payments of two same-price plans each go to a plan further back', () => {
+    const base = { merchant: 'Noon', accountId: 'Card', totalInstallments: 4, amount: 100, planId: null };
+    const plans = buildPlans([
+      row({ ...base, currentInstallment: 1, date: '2026-09-01' }),
+      row({ ...base, currentInstallment: 1, date: '2026-09-05' }),
+      row({ ...base, currentInstallment: 2, date: '2026-10-01' }),
+      row({ ...base, currentInstallment: 2, date: '2026-10-05' }),
+    ]);
+    expect(plans.map(p => p.paidInstallments)).toEqual([2, 2]);
+    expect(totalLeft(plans)).toBe(400);
+  });
+});

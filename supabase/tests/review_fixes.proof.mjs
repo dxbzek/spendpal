@@ -99,6 +99,12 @@ await as(A, tx(A, card, { merchant: 'Tabby', amount: 60, total_installments: 4, 
 await as(A, tx(A, card, { merchant: 'Tabby', amount: 50, total_installments: 6, current_installment: 1, is_tracking_only: true }));
 await as(A, tx(A, bank, { merchant: 'Tabby', amount: 25, total_installments: 4, current_installment: 1 }));
 await as(A, tx(A, bank, { merchant: 'Grocer', amount: 75 }));
+// A plan whose last payment is a cent off, and two purchases at one price.
+await as(A, tx(A, bank, { merchant: 'iPhone', amount: 333.33, total_installments: 3, current_installment: 1, date: '2026-09-16' }));
+await as(A, tx(A, bank, { merchant: 'iPhone', amount: 333.33, total_installments: 3, current_installment: 2, date: '2026-10-16' }));
+await as(A, tx(A, bank, { merchant: 'iPhone', amount: 333.34, total_installments: 3, current_installment: 3, date: '2026-11-16' }));
+await as(A, tx(A, card, { merchant: 'Noon', amount: 100, total_installments: 4, current_installment: 1, is_tracking_only: true, date: '2026-11-02' }));
+await as(A, tx(A, card, { merchant: 'Noon', amount: 100, total_installments: 4, current_installment: 1, is_tracking_only: true, date: '2026-11-03' }));
 // Weekly budgets: one next to a monthly budget for the same category and month, one alone.
 await as(A, `INSERT INTO budgets (user_id, category, amount, period, month) VALUES
   ('${A}', 'Food', 1000, 'monthly', '2026-11'), ('${A}', 'Food', 100, 'weekly', '2026-11'),
@@ -135,8 +141,10 @@ console.log('\nplan_id back-fill');
 // The same key the app uses for rows with no plan_id (planKey in installments.ts).
 const plans = await q(`SELECT account_id, merchant, total_installments, amount, count(*)::int AS n, count(DISTINCT plan_id)::int AS ids
   FROM transactions WHERE total_installments IS NOT NULL GROUP BY 1, 2, 3, 4 ORDER BY merchant, total_installments, amount`);
-eq('one id per account + merchant + term + instalment', plans.map(p => [num(p.amount), p.n, p.ids]), [[25, 1, 1], [60, 1, 1], [100, 2, 1], [50, 1, 1]]);
-eq('four plans in all', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions`)), 4);
+eq('one id per account + merchant + term + instalment', plans.filter(p => p.merchant === 'Tabby').map(p => [num(p.amount), p.n, p.ids]), [[25, 1, 1], [60, 1, 1], [100, 2, 1], [50, 1, 1]]);
+eq('a last payment a cent off stays in its plan', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions WHERE merchant = 'iPhone'`)), 1);
+eq('two purchases at one price are two plans', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions WHERE merchant = 'Noon'`)), 2);
+eq('seven plans in all', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions`)), 7);
 eq('same merchant and term, different price: two plans', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions
   WHERE account_id = $1 AND merchant = 'Tabby' AND total_installments = 4`, [card])), 2);
 eq('rows that are not a plan get none', num(await one(`SELECT count(*) FROM transactions WHERE total_installments IS NULL AND plan_id IS NOT NULL`)), 0);

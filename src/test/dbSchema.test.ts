@@ -162,14 +162,21 @@ describe('what pending_migrations.sql leaves in place', () => {
     expect(squash(sql)).toContain(squash(migration));
   });
 
-  it('back-fills plan_id on the same key the app uses for rows without one', () => {
-    // planKey() in src/lib/finance/installments.ts: account + merchant + term
-    // + instalment amount. A back-fill without the amount gives two plans at
-    // one merchant with the same term one id, and the app then merges them.
-    const fill = last('WITH plan_groups AS MATERIALIZED');
-    expect(fill).toContain('GROUP BY user_id, account_id, merchant, total_installments, round(amount, 2)');
-    expect(fill).toContain('AND round(t.amount, 2) = g.instalment');
-    expect(fill).toContain('WHERE t.plan_id IS NULL');
+  it('back-fills plan_id by the rule the app uses for rows without one', () => {
+    // chainRows() in src/lib/finance/installments.ts: rows read oldest first;
+    // a row without an id is the next payment of the open plan on the same
+    // account, merchant and term with a lower paid count and about the same
+    // instalment. Grouping on the exact amount split a plan whose last
+    // payment was a cent off; grouping without the paid count merged two
+    // purchases at one price.
+    const fill = last('CREATE TEMP TABLE IF NOT EXISTS review_fix_plan_chains', 'DROP TABLE review_fix_plan_chains;');
+    expect(fill).toContain('ORDER BY date, current_installment, id');
+    expect(fill).toContain('WHERE c.user_id = r.user_id AND c.account_id = r.account_id AND c.merchant = r.merchant AND c.total = r.total_installments');
+    expect(fill).toContain('AND c.last_paid < c.total AND c.last_paid < r.current_installment');
+    expect(fill).toContain('abs(c.last_cents - r.cents) * 100 <= greatest(10000, abs(c.last_cents), abs(r.cents))');
+    expect(fill).toContain('ORDER BY c.last_paid DESC, c.last_date DESC, c.seq');
+    expect(fill).toContain('IF chain IS NULL THEN');
+    expect(fill).not.toMatch(/GROUP BY[^;]*round\(amount, 2\)/);
   });
 
   it('lets a transaction be inserted or updated only on the user\'s own account', () => {

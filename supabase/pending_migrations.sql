@@ -570,6 +570,24 @@ GRANT EXECUTE ON FUNCTION public.convert_currency(TEXT, TEXT, NUMERIC) TO authen
 --    account (expect 0; if not, that account's balance needs a reconcile):
 --      SELECT count(*) FROM public.transactions t
 --      JOIN public.accounts a ON a.id = t.account_id WHERE a.user_id <> t.user_id;
+--    Before the first run, also list instalment plans whose rows sit on more
+--    than one account, or carry instalments more than one unit (or 1%) apart.
+--    Section 22e reads each such set as separate plans and writes that into
+--    plan_id for good, so decide by hand first: one plan (give its rows one
+--    account and amount) or several.
+--      SELECT user_id, merchant, total_installments,
+--             count(DISTINCT account_id) AS accounts,
+--             min(amount) AS lowest, max(amount) AS highest
+--      FROM public.transactions
+--      WHERE type = 'expense' AND total_installments IS NOT NULL
+--      GROUP BY 1, 2, 3
+--      HAVING count(DISTINCT account_id) > 1
+--          OR (max(amount) - min(amount)) > greatest(1, 0.01 * max(amount));
+--    After the new app is live and every device has reloaded onto it (the
+--    "New version, tap to reload" prompt), run section 22e once more: an
+--    old copy of the app still open on a phone saves plan rows without a
+--    plan_id, and the second run gives them their plan's id. The app already
+--    shows them under the right plan; this makes it permanent.
 
 -- 22a. Plan and transfer ids.
 --    plan_id: one id per instalment plan, on every row of that plan. Plans
@@ -670,35 +688,58 @@ CREATE POLICY "Users can update own transactions" ON public.transactions
     AND EXISTS (SELECT 1 FROM public.accounts a WHERE a.id = transactions.account_id AND a.user_id = (select auth.uid()))
   );
 
--- 22e. Give existing instalment rows a plan_id: one new id per user + account
---    + merchant + number of payments + instalment amount. This is the key the
---    app uses for rows with no plan_id (planKey in src/lib/finance/
---    installments.ts): without the amount, two plans at one merchant with the
---    same term and different prices would get one id and merge for good.
---    Only rows with no plan_id are touched.
---    On a later run, a row added without one joins its group's plan when the
---    group has exactly one plan, and is left alone when it has several
---    (there is no way to tell which plan it belongs to).
-WITH plan_groups AS MATERIALIZED (
-  SELECT user_id, account_id, merchant, total_installments, round(amount, 2) AS instalment,
-         count(DISTINCT plan_id) AS known_plans,
-         (array_agg(plan_id) FILTER (WHERE plan_id IS NOT NULL))[1] AS known_plan,
-         gen_random_uuid() AS new_plan
-  FROM public.transactions
-  WHERE total_installments IS NOT NULL
-  GROUP BY user_id, account_id, merchant, total_installments, round(amount, 2)
-)
-UPDATE public.transactions t
-SET plan_id = COALESCE(g.known_plan, g.new_plan)
-FROM plan_groups g
-WHERE t.plan_id IS NULL
-  AND t.total_installments IS NOT NULL
-  AND g.known_plans <= 1
-  AND t.user_id = g.user_id
-  AND t.account_id = g.account_id
-  AND t.merchant = g.merchant
-  AND t.total_installments = g.total_installments
-  AND round(t.amount, 2) = g.instalment;
+-- 22e. Give existing instalment rows a plan_id, by the rule the app uses for
+--    rows with no plan_id (chainRows in src/lib/finance/installments.ts).
+--    Rows are read oldest first (date, paid count, id). A row that already
+--    has a plan_id belongs to that plan. A row without one is the next payment
+--    of the plan on the same user, account, merchant and term that is still
+--    open, has a lower paid count and about the same instalment (give or take
+--    one unit or 1%, so 333.33 then 333.34 is one plan). Several such plans:
+--    the one furthest along, then the one paid last. None: a new plan.
+--    So a second purchase at the same price (paid count back at 0 or 1) is a
+--    second plan, and a row an old copy of the app saved without a plan_id
+--    after the first run joins its plan on the next run.
+--    Only rows with no plan_id are written.
+DO $$
+DECLARE
+  r RECORD;
+  chain UUID;
+BEGIN
+  CREATE TEMP TABLE IF NOT EXISTS review_fix_plan_chains (
+    seq BIGSERIAL, plan_id UUID, user_id UUID, account_id UUID, merchant TEXT,
+    total INTEGER, last_paid INTEGER, last_cents BIGINT, last_date DATE);
+  TRUNCATE review_fix_plan_chains;
+  FOR r IN
+    SELECT id, user_id, account_id, merchant, total_installments, current_installment,
+           round(amount * 100)::BIGINT AS cents, date, plan_id
+    FROM public.transactions
+    WHERE type = 'expense' AND total_installments IS NOT NULL AND current_installment IS NOT NULL
+    ORDER BY date, current_installment, id
+  LOOP
+    chain := r.plan_id;
+    IF chain IS NULL THEN
+      SELECT c.plan_id INTO chain FROM review_fix_plan_chains c
+      WHERE c.user_id = r.user_id AND c.account_id = r.account_id AND c.merchant = r.merchant
+        AND c.total = r.total_installments
+        AND c.last_paid < c.total AND c.last_paid < r.current_installment
+        AND abs(c.last_cents - r.cents) * 100 <= greatest(10000, abs(c.last_cents), abs(r.cents))
+      ORDER BY c.last_paid DESC, c.last_date DESC, c.seq
+      LIMIT 1;
+      IF chain IS NULL THEN chain := gen_random_uuid(); END IF;
+      UPDATE public.transactions SET plan_id = chain WHERE id = r.id;
+    END IF;
+    UPDATE review_fix_plan_chains
+      SET user_id = r.user_id, account_id = r.account_id, merchant = r.merchant, total = r.total_installments,
+          last_paid = r.current_installment, last_cents = r.cents, last_date = r.date
+      WHERE plan_id = chain;
+    IF NOT FOUND THEN
+      INSERT INTO review_fix_plan_chains (plan_id, user_id, account_id, merchant, total, last_paid, last_cents, last_date)
+      VALUES (chain, r.user_id, r.account_id, r.merchant, r.total_installments, r.current_installment, r.cents, r.date);
+    END IF;
+  END LOOP;
+  DROP TABLE review_fix_plan_chains;
+END;
+$$;
 
 -- 22f. goal_contributions had no UPDATE policy, so convert_currency() changed
 --    zero contribution rows and said nothing. Same ownership rule as INSERT.
