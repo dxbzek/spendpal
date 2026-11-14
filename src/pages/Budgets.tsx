@@ -199,7 +199,10 @@ const Budgets = () => {
         ?? transactions.find(t => t.category === s.category)?.categoryIcon
         ?? '📌';
       const ok = existing
-        ? await updateBudget({ ...existing, amount: s.suggestedAmount })
+        // The suggestion is a monthly amount. A weekly row not converted yet
+        // (the migration is applied by hand) would otherwise keep 'weekly'
+        // and be read back as amount x 52 / 12.
+        ? await updateBudget({ ...asMonthly(existing), amount: s.suggestedAmount })
         : await addBudget({ category: s.category, categoryIcon: icon, amount: s.suggestedAmount, period: 'monthly', month: currentMonthKey });
       if (ok) {
         toast.success(`${s.category} budget set to ${fmt(s.suggestedAmount)}`);
