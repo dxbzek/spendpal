@@ -159,10 +159,45 @@ describe('Accounts 30-day projection', () => {
   });
 });
 
-describe('"Left until payday" bills are unchanged', () => {
-  it('still one per bill, cash and debit only', () => {
+describe('"Left until payday" bills', () => {
+  it('one per running bill, cash and debit only, the same bills as Upcoming Bills', () => {
+    // Review: the gym cancelled in June still came off "Left until payday"
+    // while Upcoming Bills, the tracker and the banner had dropped it.
     const onCard = tx({ merchant: 'Spotify', amount: 20, accountId: 'Card', date: '2026-10-10' });
     const bills = nextRecurringBills([bank, card], [...all, onCard], now);
-    expect(bills.map(b => b.name)).toEqual(['Gym', 'Old gym', 'Netflix']);
+    expect(bills.map(b => b.name)).toEqual(['Gym', 'Netflix']);
+    expect(upcomingBills([bank, card], all, now).map(b => b.name).sort()).toEqual(['Gym', 'Netflix']);
+  });
+
+  it('a bill not logged for 3 months is not subtracted', () => {
+    const stopped = tx({ merchant: 'Gym', amount: 300, date: '2026-07-20' });
+    expect(nextRecurringBills([bank], [stopped], new Date(2026, 10, 14))).toEqual([]);
+  });
+});
+
+describe('two bills from one provider in one category', () => {
+  const mobile = tx({ merchant: 'Etisalat', amount: 150, category: 'Utilities', date: '2026-10-05' });
+  const internet = tx({ merchant: 'Etisalat', amount: 389, category: 'Utilities', date: '2026-10-10' });
+
+  it('are two bills, not the latest one', () => {
+    // Review: activeRecurring kept only 389, and the 150 bill vanished everywhere.
+    const bills = activeRecurring([mobile, internet], now);
+    expect(bills.map(b => b.amount).sort((a, b) => a - b)).toEqual([150, 389]);
+    expect(monthlyRecurringTotal(bills)).toBe(539);
+    expect(upcomingBills([bank], [mobile, internet], now)).toHaveLength(2);
+    expect(nextRecurringBills([bank], [mobile, internet], now)).toHaveLength(2);
+  });
+
+  it('stay two when only one of them is logged in the new month', () => {
+    const mobileNov = { ...mobile, id: 'm-nov', amount: 155, date: '2026-11-05' };
+    const nov = new Date(2026, 10, 6);
+    const bills = activeRecurring([mobile, internet, mobileNov], nov);
+    expect(bills.map(b => b.amount).sort((a, b) => a - b)).toEqual([155, 389]);
+    expect(notLoggedThisMonth([mobile, internet, mobileNov], nov).map(b => b.amount)).toEqual([389]);
+  });
+
+  it('a price change from one month to the next is still one bill', () => {
+    const next = { ...mobile, id: 'm2', amount: 389, date: '2026-11-05' };
+    expect(activeRecurring([mobile, next], new Date(2026, 10, 6))).toHaveLength(1);
   });
 });

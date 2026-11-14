@@ -3,6 +3,8 @@
 //
 // One bill per merchant + category: the latest logged row sets the amount and
 // the day of month. A bill already logged this cycle moves to next month.
+// Two rows of one merchant + category in the same month at clearly different
+// amounts (a mobile line and home internet from one telecom) are two bills.
 // Every screen reads bills from here. Counting each logged row as its own
 // bill listed and summed the same bill once per month it was logged.
 // Instalment rows are left out: the Installments page owns them.
@@ -25,18 +27,54 @@ export const recurringKey = (t: Pick<Transaction, 'merchant' | 'category'>) =>
   `${t.merchant.trim().toLowerCase()}|${t.category}`;
 
 /**
- * Latest row of each recurring bill, keyed by merchant + category.
+ * Two amounts in one month that are the same bill logged again (a corrected
+ * amount): within 20% of each other. Further apart, they are two bills.
+ */
+const sameBillAmount = (a: number, b: number) => Math.abs(a - b) <= 0.2 * Math.max(Math.abs(a), Math.abs(b));
+
+/**
+ * The bills among one merchant + category's rows, oldest row first. A row
+ * whose month already has a row of about the same amount is that bill logged
+ * again. Otherwise it is the next payment of the bill with no row in its
+ * month yet, the one closest in amount. Otherwise it is one more bill.
+ * Returns the latest row of each bill.
+ */
+function splitBills(rows: Transaction[]): Transaction[] {
+  const bills: Transaction[][] = [];
+  const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const t of sorted) {
+    const month = t.date.slice(0, 7);
+    const last = (b: Transaction[]) => b[b.length - 1];
+    const again = bills.find(b => last(b).date.slice(0, 7) === month && sameBillAmount(last(b).amount, t.amount));
+    if (again) { again.push(t); continue; }
+    const free = bills
+      .filter(b => last(b).date.slice(0, 7) < month)
+      .sort((a, b) => Math.abs(last(a).amount - t.amount) - Math.abs(last(b).amount - t.amount));
+    if (free[0]) free[0].push(t);
+    else bills.push([t]);
+  }
+  return bills.map(b => b[b.length - 1]);
+}
+
+/**
+ * Latest row of each recurring bill, keyed by merchant + category (and #2,
+ * #3 for a second and third bill of that merchant + category).
  * `type` 'income' gives recurring income (a salary) the same way. An income
  * row is never an instalment plan, so its instalment fields are ignored.
  */
 export function latestRecurring(transactions: Transaction[], type: 'expense' | 'income' = 'expense'): Map<string, Transaction> {
-  const latest = new Map<string, Transaction>();
+  const groups = new Map<string, Transaction[]>();
   for (const t of transactions) {
     if (!t.isRecurring || t.type !== type || t.isInternal || t.isTrackingOnly) continue;
     if (type === 'expense' && t.totalInstallments) continue;
     const k = recurringKey(t);
-    const prev = latest.get(k);
-    if (!prev || t.date > prev.date) latest.set(k, t);
+    const g = groups.get(k);
+    if (g) g.push(t);
+    else groups.set(k, [t]);
+  }
+  const latest = new Map<string, Transaction>();
+  for (const [k, rows] of groups) {
+    splitBills(rows).forEach((t, i) => latest.set(i === 0 ? k : `${k}#${i + 1}`, t));
   }
   return latest;
 }
@@ -47,10 +85,14 @@ export const RECURRING_STALE_MONTHS = 3;
 const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+function activeEntries(transactions: Transaction[], now: Date, type: 'expense' | 'income') {
+  const cutoff = ymd(subMonths(startOfDay(now), RECURRING_STALE_MONTHS));
+  return [...latestRecurring(transactions, type)].filter(([, t]) => t.date.slice(0, 10) >= cutoff);
+}
+
 /** The bills still running: the latest row of each, minus those not logged in the last 3 months. */
 export function activeRecurring(transactions: Transaction[], now: Date, type: 'expense' | 'income' = 'expense'): Transaction[] {
-  const cutoff = ymd(subMonths(startOfDay(now), RECURRING_STALE_MONTHS));
-  return [...latestRecurring(transactions, type).values()].filter(t => t.date.slice(0, 10) >= cutoff);
+  return activeEntries(transactions, now, type).map(([, t]) => t);
 }
 
 /**
@@ -78,14 +120,17 @@ export function notLoggedThisMonth(transactions: Transaction[], now: Date): Tran
   return activeRecurring(transactions, now).filter(t => t.date.slice(0, 7) < month);
 }
 
-/** Recurring cash/debit bills with their next due date after today (today counts). */
+/**
+ * Running cash/debit bills with their next due date after today (today
+ * counts). The same bills as Upcoming Bills: a stopped one is not subtracted.
+ */
 export function nextRecurringBills(accounts: Account[], transactions: Transaction[], now: Date): RecurringBill[] {
   const creditIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
   const bills: RecurringBill[] = [];
-  for (const [key, t] of latestRecurring(transactions)) {
+  for (const [key, t] of activeEntries(transactions, now, 'expense')) {
     if (creditIds.has(t.accountId) || t.amount <= 0) continue;
     const dueOn = nextDueDate(t.date, now);
-    if (!dueOn) continue; // not logged for 2 years: stale, not a bill
+    if (!dueOn) continue;
     bills.push({ key, name: t.merchant || t.category, icon: t.categoryIcon, amount: t.amount, dueOn });
   }
   return bills.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime());
