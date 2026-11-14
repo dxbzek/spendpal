@@ -219,3 +219,55 @@ BEGIN
   SET amount = round(amount * 52 / 12, 2), period = 'monthly'
   WHERE period = 'weekly';
 END $$;
+
+-- 22j. user_settings: one row per user for the settings that used to live in
+--    the browser (monthly income, payday, budget templates, second currency),
+--    where the next person to sign in on that browser could read them.
+CREATE TABLE IF NOT EXISTS public.user_settings (
+  user_id    UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  data       JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own settings" ON public.user_settings;
+CREATE POLICY "Users can view own settings" ON public.user_settings
+  FOR SELECT TO authenticated USING ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "Users can insert own settings" ON public.user_settings;
+CREATE POLICY "Users can insert own settings" ON public.user_settings
+  FOR INSERT TO authenticated WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "Users can update own settings" ON public.user_settings;
+CREATE POLICY "Users can update own settings" ON public.user_settings
+  FOR UPDATE TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "Users can delete own settings" ON public.user_settings;
+CREATE POLICY "Users can delete own settings" ON public.user_settings
+  FOR DELETE TO authenticated USING ((select auth.uid()) = user_id);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_settings TO authenticated;
+
+DROP TRIGGER IF EXISTS update_user_settings_updated_at ON public.user_settings;
+CREATE TRIGGER update_user_settings_updated_at
+  BEFORE UPDATE ON public.user_settings
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- 22k. ai_usage: AI calls per user per day, so the ai-finance function can
+--    stop at a daily limit. The function counts with the service role, which
+--    skips row level security. A user can read their own count and nothing
+--    else: there is no policy for writing, and the write grants are removed.
+CREATE TABLE IF NOT EXISTS public.ai_usage (
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  day     DATE NOT NULL,
+  calls   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day)
+);
+
+ALTER TABLE public.ai_usage ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own ai usage" ON public.ai_usage;
+CREATE POLICY "Users can view own ai usage" ON public.ai_usage
+  FOR SELECT TO authenticated USING ((select auth.uid()) = user_id);
+
+REVOKE ALL ON public.ai_usage FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.ai_usage TO anon, authenticated;
+GRANT ALL ON public.ai_usage TO service_role;
