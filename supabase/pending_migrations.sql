@@ -329,9 +329,12 @@ CREATE POLICY "Users can delete own goal contributions" ON public.goal_contribut
 -- 14a. Data cleanup (required before the new constraints validate).
 DELETE FROM public.custom_categories cc
   WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = cc.user_id);
-UPDATE public.transactions SET current_installment = 1
+-- Only a negative paid count is cleaned up. This used to set 0 paid to 1 paid,
+-- which was right while the CHECK refused 0; since section 22b a plan with
+-- nothing paid is valid and a re-run of this file must leave it alone.
+UPDATE public.transactions SET current_installment = 0
   WHERE total_installments IS NOT NULL AND total_installments > 0
-    AND current_installment IS NOT NULL AND current_installment < 1;
+    AND current_installment IS NOT NULL AND current_installment < 0;
 
 -- 14b. WITH CHECK on every UPDATE policy.
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
@@ -391,7 +394,7 @@ ALTER TABLE public.accounts ADD CONSTRAINT accounts_statement_date_valid CHECK (
 ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_installments_valid;
 ALTER TABLE public.transactions ADD CONSTRAINT transactions_installments_valid
   CHECK ((total_installments IS NULL AND current_installment IS NULL)
-    OR (total_installments > 0 AND current_installment > 0 AND current_installment <= total_installments));
+    OR (total_installments > 0 AND current_installment >= 0 AND current_installment <= total_installments));
 ALTER TABLE public.budgets DROP CONSTRAINT IF EXISTS uniq_budgets_user_category_month;
 ALTER TABLE public.budgets ADD CONSTRAINT uniq_budgets_user_category_month UNIQUE (user_id, category, month, period);
 ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_merchant_nonempty;
@@ -568,6 +571,22 @@ GRANT EXECUTE ON FUNCTION public.convert_currency(TEXT, TEXT, NUMERIC) TO authen
 --      SELECT count(*) FROM public.transactions t
 --      JOIN public.accounts a ON a.id = t.account_id WHERE a.user_id <> t.user_id;
 
+-- 22a. Plan and transfer ids.
+--    plan_id: one id per instalment plan, on every row of that plan. Plans
+--    used to be matched on merchant + number of payments, so two plans at one
+--    merchant merged into one.
+--    transfer_id: one id on both halves of a transfer. Halves used to be
+--    matched on date + amount, so two equal transfers on one day could cross.
+ALTER TABLE public.transactions
+  ADD COLUMN IF NOT EXISTS plan_id UUID NULL,
+  ADD COLUMN IF NOT EXISTS transfer_id UUID NULL;
+
+-- 22b. A plan with nothing paid yet is valid: current_installment may be 0.
+ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_installments_valid;
+ALTER TABLE public.transactions ADD CONSTRAINT transactions_installments_valid
+  CHECK ((total_installments IS NULL AND current_installment IS NULL)
+    OR (total_installments > 0 AND current_installment >= 0 AND current_installment <= total_installments));
+
 -- 22c. The balance trigger only moves an account that belongs to the row's
 --    user. It runs as the table owner, so without this a row naming another
 --    user's account moved that user's balance. Otherwise the same as before:
@@ -650,3 +669,28 @@ CREATE POLICY "Users can update own transactions" ON public.transactions
     (select auth.uid()) = user_id
     AND EXISTS (SELECT 1 FROM public.accounts a WHERE a.id = transactions.account_id AND a.user_id = (select auth.uid()))
   );
+
+-- 22e. Give existing instalment rows a plan_id: one new id per user + account
+--    + merchant + number of payments. Only rows with no plan_id are touched.
+--    On a later run, a row added without one joins its group's plan when the
+--    group has exactly one plan, and is left alone when it has several
+--    (there is no way to tell which plan it belongs to).
+WITH plan_groups AS MATERIALIZED (
+  SELECT user_id, account_id, merchant, total_installments,
+         count(DISTINCT plan_id) AS known_plans,
+         (array_agg(plan_id) FILTER (WHERE plan_id IS NOT NULL))[1] AS known_plan,
+         gen_random_uuid() AS new_plan
+  FROM public.transactions
+  WHERE total_installments IS NOT NULL
+  GROUP BY user_id, account_id, merchant, total_installments
+)
+UPDATE public.transactions t
+SET plan_id = COALESCE(g.known_plan, g.new_plan)
+FROM plan_groups g
+WHERE t.plan_id IS NULL
+  AND t.total_installments IS NOT NULL
+  AND g.known_plans <= 1
+  AND t.user_id = g.user_id
+  AND t.account_id = g.account_id
+  AND t.merchant = g.merchant
+  AND t.total_installments = g.total_installments;
