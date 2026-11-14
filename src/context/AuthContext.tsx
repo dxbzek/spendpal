@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo, u
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session, AuthError } from '@supabase/supabase-js';
 import { readAuthRedirect, signUpOutcome, type SignUpOutcome } from '@/lib/auth';
-import { userSettings, connectUserSettings } from '@/lib/userSettings';
+import { userSettings, connectUserSettings, refreshUserSettingsOnReturn } from '@/lib/userSettings';
 import { runSignOutResets } from '@/lib/signOutReset';
 
 connectUserSettings(supabase);
@@ -132,6 +132,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => { cancelled = true; subscription.unsubscribe(); };
   }, [setUser, setRecovering]);
+
+  // Another device may have changed the settings while this one was in the
+  // background, and a first read that failed is tried again.
+  useEffect(() => refreshUserSettingsOnReturn(), []);
 
   const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
     try {

@@ -242,6 +242,23 @@ check('B cannot write A\'s row', !(await as(B, saveSettings(B, A, { payday: 1 })
 eq('B cannot read A\'s row', (await as(B, `SELECT * FROM user_settings`)).rows.length, 0);
 eq('anon reads nothing', (await as(null, `SELECT * FROM user_settings`, 'anon')).rows.length, 0);
 eq('A can delete their row', (await as(A, `DELETE FROM user_settings`)).affected, 1);
+// merge_user_settings: only the keys sent change; history merges by month.
+const merge = (uid, patch, removed = []) =>
+  as(uid, `SELECT public.merge_user_settings('${JSON.stringify(patch)}'::jsonb, ARRAY[${removed.map(k => `'${k}'`).join(',')}]::text[]) AS data`);
+r = await merge(A, { monthly_income: 10000, payday_day: 30, net_worth_history: { '2026-09': 1, '2026-10': 2 } });
+check('merge creates the row', r.ok, r.error);
+r = await merge(A, { payday_day: 28 });
+r = await merge(A, { net_worth_history: { '2026-11': 3 } });
+eq('a stale copy sending one month keeps the newer payday and the other months', r.rows[0].data,
+  { payday_day: 28, monthly_income: 10000, net_worth_history: { '2026-09': 1, '2026-10': 2, '2026-11': 3 } });
+r = await merge(A, {}, ['monthly_income', 'net_worth_history']);
+eq('removed keys go', r.rows[0].data, { payday_day: 28 });
+r = await merge(B, { payday_day: 1 });
+eq("B merges into B's own row only", [await one(`SELECT data FROM user_settings WHERE user_id = $1`, [A]), await one(`SELECT data FROM user_settings WHERE user_id = $1`, [B])],
+  [{ payday_day: 28 }, { payday_day: 1 }]);
+check('anon may not call merge_user_settings', !(await as(null, `SELECT public.merge_user_settings('{}'::jsonb)`, 'anon')).ok);
+check('a patch that is not an object is refused', !(await as(A, `SELECT public.merge_user_settings('[1]'::jsonb)`)).ok);
+await db.exec(`DELETE FROM user_settings`);
 
 console.log('\nai_usage');
 check('the service role counts a call', (await as(null, `INSERT INTO ai_usage (user_id, day, calls) VALUES ('${A}', CURRENT_DATE, 1), ('${B}', CURRENT_DATE, 7)

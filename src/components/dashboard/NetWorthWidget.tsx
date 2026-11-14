@@ -20,7 +20,10 @@ const NO_HISTORY: Record<string, number> = {};
 const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const { fmt } = useCurrency();
   // Goal and history are saved with the user's settings, not in this browser.
-  const { data: settings, ready } = useUserSettings();
+  const { data: settings, mode } = useUserSettings();
+  // The row has been read (or there is no table to read). 'local' means the
+  // read failed: what is shown may be missing months the row has.
+  const synced = mode === 'server' || mode === 'missing';
   const goal = settings.net_worth_goal ?? null;
   const saved = settings.net_worth_history ?? NO_HISTORY;
   const [editingGoal, setEditingGoal] = useState(false);
@@ -30,15 +33,16 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0);
   const netWorth = assets - liabilities;
 
-  // Record this month's net worth. Only once the saved history has loaded:
-  // a write before that would replace the history with this one month.
+  // Record this month's net worth, once the saved history has been read.
+  // Only this month is sent: the settings merge history by month, so another
+  // device's months are never replaced from here.
   useEffect(() => {
-    if (!ready || accounts.length === 0) return;
+    if (!synced || accounts.length === 0) return;
     const key = format(new Date(), 'yyyy-MM');
     const history = userSettings.get('net_worth_history') ?? {};
     if (history[key] === netWorth) return;
-    userSettings.set('net_worth_history', { ...history, [key]: netWorth });
-  }, [ready, netWorth, accounts.length]);
+    userSettings.set('net_worth_history', { [key]: netWorth });
+  }, [synced, netWorth, accounts.length]);
 
   const history = useMemo(
     () => Object.entries(saved).sort(([a], [b]) => a.localeCompare(b)).slice(-MAX_MONTHS),

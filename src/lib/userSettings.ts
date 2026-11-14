@@ -12,6 +12,11 @@
 // this browser under the user's own key (see userStorage.ts) and the app
 // carries on without an error. Changes made then are marked unsaved and sent
 // the next time the server answers.
+//
+// A write sends only the keys changed here, and the database merges them into
+// the row (merge_user_settings), so a phone or tab holding an old copy cannot
+// put its old income or payday back over a newer one. Net worth history is
+// merged by month. The row is read again when the app comes back into view.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { browserStorage, safeGet, safeRemove, safeSet, userKey } from '@/lib/userStorage';
 
@@ -36,7 +41,7 @@ export type SettingKey = keyof KnownSettings;
 /** Keys a newer version of the app wrote are kept as they are, so saving here does not drop them. */
 export type UserSettings = KnownSettings & { [key: string]: unknown };
 
-// Size caps. The row is rewritten whole on every change, so it must stay small.
+// Size caps. The row is read whole on every load, so it must stay small.
 // Net worth history: the widget draws the last 7 months; 24 keep two years for
 // a year-on-year view at well under 1 KB. Templates: the Budgets page always
 // kept the 12 newest. The rest only stop a broken caller from growing the row.
@@ -112,6 +117,12 @@ export const isEmptySettings = (s: UserSettings) => Object.keys(s).length === 0;
 
 /** Settings that were kept in the browser before they moved to the database. The first-use flags never were. */
 type LegacySettingKey = Exclude<SettingKey, 'currency_confirmed' | 'checklist_dismissed'>;
+/**
+ * Which user took the old browser values on this browser. They are given to
+ * that user only: a later account here never receives them, even when an old
+ * copy of the app wrote them again.
+ */
+export const LEGACY_OWNER_KEY = 'spendpal_legacy_settings_owner';
 /** Where each setting was kept in the browser before it moved to the database. */
 export const LEGACY_KEYS: Record<LegacySettingKey, string> = {
   monthly_income: 'spendpal_monthly_income',
@@ -175,30 +186,59 @@ export function convertSettingsAmounts(s: UserSettings, rate: number): Partial<K
 }
 
 /**
- * The server's settings with the changes this browser made but could not
- * send. A key changed here wins, including one that was cleared here.
+ * Net worth months changed here and not sent yet. `cleared`: the whole history
+ * was cleared here, so the server's months go too.
  */
-export function mergeUnsaved(server: UserSettings, local: UserSettings, unsaved: Iterable<string>): UserSettings {
+export interface UnsavedMonths { months: Iterable<string>; cleared: boolean }
+
+const HISTORY: string = 'net_worth_history';
+const pickMonths = (h: Record<string, number> | undefined, months: Iterable<string>) => {
+  const out: Record<string, number> = {};
+  if (h) for (const m of months) if (m in h) out[m] = h[m];
+  return out;
+};
+
+/**
+ * The server's settings with the changes this browser made but could not
+ * send. A key changed here wins, including one that was cleared here. Net
+ * worth history is merged by month when `months` says which months changed
+ * here: one month recorded here never replaces the server's other months.
+ */
+export function mergeUnsaved(
+  server: UserSettings, local: UserSettings, unsaved: Iterable<string>, months?: UnsavedMonths,
+): UserSettings {
   const out: UserSettings = { ...server };
   for (const key of unsaved) {
+    if (key === HISTORY && months) {
+      const base = months.cleared ? {} : (server.net_worth_history ?? {});
+      const merged = { ...base, ...pickMonths(local.net_worth_history, months.months) };
+      if (Object.keys(merged).length) out[key] = merged;
+      else delete out[key];
+      continue;
+    }
     if (key in local) out[key] = local[key];
     else delete out[key];
   }
   return sanitizeSettings(out);
 }
 
-/** The two calls the store makes, so tests can stand in for the database. */
+/**
+ * The two calls the store makes, so tests can stand in for the database.
+ * save() sends the changed keys (`patch`) and the cleared ones (`removed`);
+ * the server merges them into the row and answers with the whole row in
+ * `data`. net_worth_history in a patch adds or replaces those months only.
+ */
 export interface SettingsBackend {
   load(userId: string): Promise<SettingsResult>;
-  save(userId: string, data: UserSettings): Promise<SettingsResult>;
+  save(userId: string, patch: UserSettings, removed: string[]): Promise<SettingsResult>;
 }
 
 export function supabaseSettingsBackend(client: SupabaseClient): SettingsBackend {
   return {
     load: async userId => client.from('user_settings').select('data').eq('user_id', userId).maybeSingle(),
-    // The whole object every time: a write always leaves the row as this
-    // browser shows it, and two quick changes cannot land half each.
-    save: async (userId, data) => client.from('user_settings').upsert({ user_id: userId, data }, { onConflict: 'user_id' }),
+    // Merged in the database (section 22j), in one statement, so a write from
+    // another device in between is kept. The user is the caller's own.
+    save: async (_userId, patch, removed) => client.rpc('merge_user_settings', { patch, removed }),
   };
 }
 
@@ -213,7 +253,7 @@ export type SettingsMode = 'loading' | 'server' | 'local' | 'missing';
 export interface SettingsSnapshot { userId: string | null; data: UserSettings; ready: boolean; mode: SettingsMode }
 
 const CACHE_NAME = 'settings';
-interface Cached { data: UserSettings; unsaved: string[] }
+interface Cached { data: UserSettings; unsaved: string[]; months?: string[]; cleared?: boolean }
 
 export interface StoreOptions {
   backend: () => SettingsBackend;
@@ -230,6 +270,9 @@ export function createUserSettingsStore(opts: StoreOptions) {
   let gen = 0;
   let snap: SettingsSnapshot = { userId: null, data: {}, ready: false, mode: 'loading' };
   let unsaved = new Set<string>();
+  // Net worth months changed here, and whether the history was cleared here.
+  let unsavedMonths = new Set<string>();
+  let historyCleared = false;
   let version = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let inflight: Promise<boolean> | null = null;
@@ -246,12 +289,39 @@ export function createUserSettingsStore(opts: StoreOptions) {
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw) as Partial<Cached>;
-      return { data: sanitizeSettings(parsed.data), unsaved: Array.isArray(parsed.unsaved) ? parsed.unsaved.filter(k => typeof k === 'string') : [] };
+      const data = sanitizeSettings(parsed.data);
+      const strings = (v: unknown) => (Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : []);
+      const keys = strings(parsed.unsaved);
+      // A copy from before months were tracked: every month it holds was changed here.
+      const months = Array.isArray(parsed.months) ? strings(parsed.months)
+        : keys.includes(HISTORY) ? Object.keys(data.net_worth_history ?? {}) : [];
+      return { data, unsaved: keys, months, cleared: parsed.cleared === true };
     } catch { return null; }
   };
   const writeCache = () => {
     if (!userId) return false;
-    return safeSet(opts.storage(), cacheKey(userId), JSON.stringify({ data: snap.data, unsaved: [...unsaved] }));
+    const copy: Cached = { data: snap.data, unsaved: [...unsaved], months: [...unsavedMonths], cleared: historyCleared };
+    return safeSet(opts.storage(), cacheKey(userId), JSON.stringify(copy));
+  };
+  const resetUnsaved = (c?: Cached | null) => {
+    unsaved = new Set(c?.unsaved ?? []);
+    unsavedMonths = new Set(c?.months ?? []);
+    historyCleared = c?.cleared ?? false;
+  };
+  const monthsState = (): UnsavedMonths => ({ months: unsavedMonths, cleared: historyCleared });
+  /** What goes to the server: the changed keys, and the ones cleared here. */
+  const pending = () => {
+    const patch: UserSettings = {};
+    const removed: string[] = [];
+    for (const key of unsaved) {
+      if (key === HISTORY) {
+        if (historyCleared) removed.push(key);
+        const months = pickMonths(snap.data.net_worth_history, unsavedMonths);
+        if (Object.keys(months).length) patch[key] = months;
+      } else if (key in snap.data) patch[key] = snap.data[key];
+      else removed.push(key);
+    }
+    return { patch, removed };
   };
   const clearTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
 
@@ -265,21 +335,25 @@ export function createUserSettingsStore(opts: StoreOptions) {
     if (!userId || unsaved.size === 0) return true;
     if (snap.mode === 'missing' || snap.mode === 'loading') return false;
     if (snap.mode === 'local') {
-      // The row was never read this session. Writing the whole object now
-      // would overwrite what another device saved meanwhile, so read the row
-      // first; load() merges the unsaved changes over it and sends them.
+      // The row was never read this session: read it first, so the screen
+      // shows what other devices saved; load() then sends the unsaved changes.
       await load(userId, gen, true);
       return unsaved.size === 0;
     }
     const uid = userId, g = gen, sentVersion = version;
+    const { patch, removed } = pending();
     inflight = (async () => {
       let res: SettingsResult;
-      try { res = await opts.backend().save(uid, snap.data); }
+      try { res = await opts.backend().save(uid, patch, removed); }
       catch (e) { res = { error: { message: e instanceof Error ? e.message : String(e) } }; }
       if (g !== gen) return false;
       if (!res.error) {
         // A change made while the request was out is still unsaved.
-        if (version === sentVersion) unsaved.clear();
+        if (version === sentVersion) resetUnsaved();
+        // The answer is the whole row, other devices' changes included.
+        if (res.data && typeof res.data === 'object') {
+          emit({ data: mergeUnsaved(sanitizeSettings(res.data), snap.data, unsaved, monthsState()) });
+        }
         writeCache();
         if (snap.mode !== 'server') emit({ mode: 'server' });
         return true;
@@ -297,17 +371,26 @@ export function createUserSettingsStore(opts: StoreOptions) {
     timer = setTimeout(() => { void flush(); }, debounceMs);
   };
 
+  let reading = false;
   async function load(uid: string, g: number, hadCache: boolean) {
     const storage = opts.storage();
     let res: SettingsResult;
+    reading = true;
     try { res = await opts.backend().load(uid); }
     catch (e) { res = { error: { message: e instanceof Error ? e.message : String(e) } }; }
+    finally { reading = false; }
     if (g !== gen) return;
 
     if (res.error) {
-      // No error on screen: the settings this browser holds are used for now.
-      if (!hadCache) adoptLegacy(storage);
-      emit({ ready: true, mode: isMissingTable(res) ? 'missing' : 'local' });
+      // No error on screen: the settings this browser holds are used for now,
+      // and the row is read again when the app comes back into view.
+      // 'local' is not 'server': the row was not read, so a caller that adds
+      // to a saved value (NetWorthWidget) waits.
+      const missing = isMissingTable(res);
+      // With no table there is no row to hold anything yet. With no answer
+      // the row may have values; the old ones wait for a load that works.
+      if (missing && !hadCache) adoptLegacy(storage, uid);
+      emit({ ready: true, mode: missing ? 'missing' : 'local' });
       return;
     }
 
@@ -315,28 +398,44 @@ export function createUserSettingsStore(opts: StoreOptions) {
     // A synced value the row no longer has was deleted elsewhere (Delete
     // Everything on another device) and must not come back from here.
     const server = sanitizeSettings((res.data as { data?: unknown } | null)?.data);
-    emit({ data: mergeUnsaved(server, snap.data, unsaved), ready: true, mode: 'server' });
-    // An empty row and no copy here: this user's first load since settings
-    // moved to the database. Send what the browser held under the old names.
-    if (isEmptySettings(server) && !hadCache) adoptLegacy(storage);
+    emit({ data: mergeUnsaved(server, snap.data, unsaved, monthsState()), ready: true, mode: 'server' });
+    // What this browser held under the old names, for any key the row does
+    // not have yet (a second device's templates and history too).
+    adoptLegacy(storage, uid);
     writeCache();
     if (unsaved.size) await flush();
   }
 
   /**
-   * Take the values kept under the old fixed names for this user, then
-   * remove them so they are read only this once. On a shared browser they go
-   * to the first account that signs in after this change with nothing saved
-   * yet; there is no way to tell whose they were.
+   * Take the values kept under the old fixed names, for keys the settings do
+   * not have yet (the row wins; net worth history gains the missing months),
+   * then remove them so they are read only this once. They go to the first
+   * account that takes them on this browser and never to another one.
    */
-  function adoptLegacy(storage: Storage | null) {
+  function adoptLegacy(storage: Storage | null, uid: string) {
     const legacy = readLegacySettings(storage);
     if (isEmptySettings(legacy)) return;
-    for (const k of Object.keys(legacy)) unsaved.add(k);
-    version++;
-    // A change made while loading is newer than the old value.
-    emit({ data: sanitizeSettings({ ...legacy, ...snap.data }) });
-    if (writeCache()) removeLegacySettings(storage);
+    const owner = safeGet(storage, LEGACY_OWNER_KEY);
+    if (owner && owner !== uid) { removeLegacySettings(storage); return; }
+    const next: UserSettings = { ...snap.data };
+    let changed = false;
+    for (const [k, v] of Object.entries(legacy)) {
+      if (k === HISTORY) {
+        const have = next.net_worth_history ?? {};
+        const add = Object.entries(v as Record<string, number>).filter(([m]) => !(m in have));
+        if (!add.length) continue;
+        next.net_worth_history = { ...have, ...Object.fromEntries(add) };
+        for (const [m] of add) unsavedMonths.add(m);
+      } else if (k in next) continue;
+      else next[k] = v;
+      unsaved.add(k);
+      changed = true;
+    }
+    if (changed) {
+      version++;
+      emit({ data: sanitizeSettings(next) });
+    }
+    if (writeCache() && safeSet(storage, LEGACY_OWNER_KEY, uid)) removeLegacySettings(storage);
   }
 
   const store = {
@@ -355,7 +454,7 @@ export function createUserSettingsStore(opts: StoreOptions) {
       userId = uid;
       const g = ++gen;
       const cached = readCache(uid);
-      unsaved = new Set(cached?.unsaved ?? []);
+      resetUnsaved(cached);
       emit({ userId: uid, data: cached?.data ?? {}, ready: false, mode: 'loading' });
       loading = load(uid, g, cached !== null);
       return loading;
@@ -371,19 +470,27 @@ export function createUserSettingsStore(opts: StoreOptions) {
       if (userId && unsaved.size === 0 && snap.mode === 'server') safeRemove(opts.storage(), cacheKey(userId));
       userId = null;
       loading = null;
-      unsaved = new Set();
+      resetUnsaved();
       emit({ userId: null, data: {}, ready: false, mode: 'loading' });
     },
     set<K extends SettingKey>(key: K, value: KnownSettings[K] | null | undefined): void {
       store.update({ [key]: value ?? undefined } as Partial<KnownSettings>);
     },
-    /** Change several settings in one write. `undefined` clears a setting. */
+    /**
+     * Change several settings in one write. `undefined` clears a setting.
+     * net_worth_history adds or replaces the months given and keeps the rest.
+     */
     update(patch: Partial<KnownSettings>): void {
       if (!userId || Object.keys(patch).length === 0) return;
       const next: UserSettings = { ...snap.data };
       for (const [k, v] of Object.entries(patch)) {
-        if (v === undefined) delete next[k];
-        else next[k] = v;
+        if (k === HISTORY && v !== undefined) {
+          next[k] = { ...(next.net_worth_history ?? {}), ...(v as Record<string, number>) };
+          for (const m of Object.keys(v as Record<string, number>)) unsavedMonths.add(m);
+        } else if (v === undefined) {
+          delete next[k];
+          if (k === HISTORY) { historyCleared = true; unsavedMonths.clear(); }
+        } else next[k] = v;
         unsaved.add(k);
       }
       version++;
@@ -393,6 +500,14 @@ export function createUserSettingsStore(opts: StoreOptions) {
     },
     /** Send any waiting change now. True when nothing is left unsaved. */
     flush,
+    /**
+     * Read the row again: another device may have changed it, or the first
+     * read failed. Called when the app comes back into view or online.
+     */
+    async refresh(): Promise<void> {
+      if (!userId || reading || inflight || snap.mode === 'loading' || snap.mode === 'missing') return;
+      await load(userId, gen, true);
+    },
     /**
      * Delete Everything: drop every waiting change and the browser copy, and
      * stop saving, so a late write cannot put back the row being deleted.
@@ -405,7 +520,7 @@ export function createUserSettingsStore(opts: StoreOptions) {
       if (userId) safeRemove(opts.storage(), cacheKey(userId));
       userId = null;
       loading = null;
-      unsaved = new Set();
+      resetUnsaved();
       emit({ userId: null, data: {}, ready: false, mode: 'loading' });
     },
   };
@@ -425,3 +540,19 @@ export const userSettings = createUserSettingsStore({
 });
 /** Called once by the auth context with the app's Supabase client. */
 export const connectUserSettings = (client: SupabaseClient) => { backend = supabaseSettingsBackend(client); };
+
+/**
+ * Read the row again whenever the app comes back into view or online, so a
+ * phone kept in memory shows what the laptop saved meanwhile.
+ */
+export function refreshUserSettingsOnReturn(store: Pick<UserSettingsStore, 'refresh'> = userSettings): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const onVisible = () => { if (document.visibilityState === 'visible') void store.refresh(); };
+  const onOnline = () => { void store.refresh(); };
+  document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('online', onOnline);
+  return () => {
+    document.removeEventListener('visibilitychange', onVisible);
+    window.removeEventListener('online', onOnline);
+  };
+}

@@ -179,6 +179,16 @@ describe('what pending_migrations.sql leaves in place', () => {
     expect(fill).not.toMatch(/GROUP BY[^;]*round\(amount, 2\)/);
   });
 
+  it('merges settings writes in the database, the caller\'s own row only', () => {
+    // A whole-object upsert let a stale tab put old settings back.
+    const fn = last('CREATE OR REPLACE FUNCTION public.merge_user_settings(', '$$;');
+    expect(fn).toContain('SECURITY INVOKER');
+    expect(fn).toContain('uid UUID := auth.uid()');
+    expect(fn).toContain('FOR UPDATE');
+    expect(fn).toContain("merged -> 'net_worth_history'");
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.merge_user_settings\(JSONB, TEXT\[\]\) FROM PUBLIC, anon;/);
+  });
+
   it('lets a transaction be inserted or updated only on the user\'s own account', () => {
     // user_id alone let a signed-in user post a row on another user's account,
     // and the balance trigger then moved that account's balance.

@@ -863,6 +863,39 @@ CREATE TRIGGER update_user_settings_updated_at
   BEFORE UPDATE ON public.user_settings
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+--    Writes go through merge_user_settings: the keys a browser changed are
+--    merged into the row in one statement, and net worth history by month, so
+--    a phone or tab holding an old copy cannot put its old values back over a
+--    newer one. `removed` names the keys that were cleared. The caller's own
+--    row only: it runs as the caller, under the policies above.
+CREATE OR REPLACE FUNCTION public.merge_user_settings(patch JSONB, removed TEXT[] DEFAULT '{}')
+RETURNS JSONB LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE
+  uid UUID := auth.uid();
+  merged JSONB;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'not signed in' USING ERRCODE = '42501'; END IF;
+  IF patch IS NULL OR jsonb_typeof(patch) <> 'object' THEN
+    RAISE EXCEPTION 'patch must be an object' USING ERRCODE = '22023';
+  END IF;
+  INSERT INTO public.user_settings (user_id, data) VALUES (uid, '{}'::jsonb)
+  ON CONFLICT (user_id) DO NOTHING;
+  SELECT data - coalesce(removed, '{}'::TEXT[]) INTO merged
+  FROM public.user_settings WHERE user_id = uid FOR UPDATE;
+  IF jsonb_typeof(patch -> 'net_worth_history') = 'object' THEN
+    patch := jsonb_set(patch, '{net_worth_history}',
+      (CASE WHEN jsonb_typeof(merged -> 'net_worth_history') = 'object'
+            THEN merged -> 'net_worth_history' ELSE '{}'::jsonb END) || (patch -> 'net_worth_history'));
+  END IF;
+  merged := coalesce(merged, '{}'::jsonb) || patch;
+  UPDATE public.user_settings SET data = merged WHERE user_id = uid;
+  RETURN merged;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.merge_user_settings(JSONB, TEXT[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.merge_user_settings(JSONB, TEXT[]) TO authenticated;
+
 -- 22k. ai_usage: AI calls per user per day, so the ai-finance function can
 --    stop at a daily limit. The function counts with the service role, which
 --    skips row level security. A user can read their own count and nothing
