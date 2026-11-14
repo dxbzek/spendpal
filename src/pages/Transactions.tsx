@@ -12,6 +12,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { detectDuplicates } from '@/utils/detectDuplicates';
+import { pairTransfers } from '@/lib/finance/transfers';
 import { Input } from '@/components/ui/input';
 import { m, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
@@ -91,28 +92,12 @@ const Transactions = () => {
     try { await dismissDuplicate(id); } finally { setDismissingId(null); }
   };
 
-  // Merge transfer pairs: match expense+income with same date, amount, category='Transfer'
+  // Merge transfer pairs: the two halves show as one row. Paired on the
+  // transfer id; older rows on date + amount + note (see transfers.ts).
   const { mergedTransactions, transferPairs } = useMemo(() => {
-    const pairs = new Map<string, { from: typeof transactions[0]; to: typeof transactions[0] }>();
-    const pairedIds = new Set<string>();
-
-    const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
-    const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
-
-    for (const exp of transferExpenses) {
-      const match = transferIncomes.find(inc =>
-        inc.date === exp.date &&
-        inc.amount === exp.amount &&
-        !pairedIds.has(inc.id)
-      );
-      if (match) {
-        pairs.set(exp.id, { from: exp, to: match });
-        pairedIds.add(exp.id);
-        pairedIds.add(match.id);
-      }
-    }
-
-    const merged = transactions.filter(tx => !pairedIds.has(tx.id) || pairs.has(tx.id));
+    const pairs = pairTransfers(transactions);
+    const incomeHalves = new Set([...pairs.values()].map(p => p.to.id));
+    const merged = transactions.filter(tx => !incomeHalves.has(tx.id));
     return { mergedTransactions: merged, transferPairs: pairs };
   }, [transactions]);
 

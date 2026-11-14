@@ -15,6 +15,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { findNearDuplicate } from '@/utils/detectDuplicates';
+import { transferPartner } from '@/lib/finance/transfers';
 import { format } from 'date-fns';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -113,15 +114,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setIsPending(editTransaction.isPending || false);
       setNote(editTransaction.note || '');
       if (isTransferTx) {
-        // Find the matching income half to restore toAccountId
-        const match = transactions.find(t =>
-          t.type === 'income' &&
-          t.category === 'Transfer' &&
-          t.date === editTransaction.date &&
-          t.amount === editTransaction.amount &&
-          t.id !== editTransaction.id
-        );
-        setToAccountId(match?.accountId || '');
+        // The income half of this same transfer gives the destination account.
+        setToAccountId(transferPartner(transactions, editTransaction)?.accountId || '');
       } else {
         setToAccountId('');
       }
@@ -203,13 +197,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       });
       if (!saved) return;
       if (isEditing) {
-        const partner = transactions.find(t =>
-          t.type === 'income' &&
-          t.category === 'Transfer' &&
-          t.date === editTransaction.date &&
-          t.amount === editTransaction.amount &&
-          t.id !== editTransaction.id
-        );
+        // The income half of this transfer, not of another one with the same date and amount.
+        const partner = transferPartner(transactions, editTransaction);
         await removeTransaction(editTransaction.id);
         if (partner) await removeTransaction(partner.id);
       }
