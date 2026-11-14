@@ -122,7 +122,7 @@ const CalendarView = () => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+      <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
         <span>Spending:</span>
         {[['bg-primary-soft', 'Low'], ['bg-primary', 'Med'], ['bg-warning', 'High'], ['bg-expense', 'Very high']].map(([cls, label]) => (
           <span key={label} className="flex items-center gap-1">
@@ -141,7 +141,7 @@ const CalendarView = () => {
         {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-border">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-            <div key={d} className="py-2 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+            <div key={d} className="py-2 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
               {d}
             </div>
           ))}
@@ -182,7 +182,7 @@ const CalendarView = () => {
                   )}
                 </div>
                 {total > 0 && !hidden && (
-                  <span className="text-[9px] text-muted-foreground leading-none">{fmt(total)}</span>
+                  <span className="text-[10px] text-muted-foreground leading-none tabular-nums" title={fmt(total)}>{Math.round(total).toLocaleString('en')}</span>
                 )}
               </button>
             );

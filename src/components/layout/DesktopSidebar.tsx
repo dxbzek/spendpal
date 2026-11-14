@@ -99,7 +99,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
           {!collapsed && (
             <div>
               <span className="font-heading text-base font-bold">SpendPal</span>
-              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Personal Finance</p>
+              <p className="text-[11px] text-muted-foreground leading-none mt-0.5">Personal Finance</p>
             </div>
           )}
         </div>
@@ -137,7 +137,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
           {NAV_SECTIONS.map(section => (
             <div key={section.label}>
               {!collapsed && (
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-1">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-1">
                   {section.label}
                 </p>
               )}

@@ -37,24 +37,24 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
 
       <div className="flex items-end justify-between mb-3">
         <div>
-          <p className="text-[11px] text-muted-foreground mb-0.5">Projected month-end</p>
+          <p className="text-xs text-muted-foreground mb-0.5">Projected month-end</p>
           <p className={`text-financial-large font-heading ${isOnTrack ? 'text-primary' : 'text-expense'}`}>
             <span className="text-sm font-normal text-muted-foreground">about </span>{fmt(projected)}
           </p>
           {high - low >= 1 && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{fmt(low)} – {fmt(high)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{fmt(low)} – {fmt(high)}</p>
           )}
           {incomePct !== null && (
-            <p className={`text-[11px] mt-0.5 font-medium ${incomeColor}`}>
+            <p className={`text-xs mt-0.5 font-medium ${incomeColor}`}>
               {incomePct}% of monthly income
             </p>
           )}
         </div>
         <div className="text-right">
-          <p className="text-[11px] text-muted-foreground mb-0.5">Spent so far</p>
+          <p className="text-xs text-muted-foreground mb-0.5">Spent so far</p>
           <p className="text-sm font-semibold">{fmt(Math.round(spentSoFar))}</p>
           {monthlyIncome > 0 && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">of {fmt(monthlyIncome)}/mo</p>
+            <p className="text-xs text-muted-foreground mt-0.5">of {fmt(monthlyIncome)}/mo</p>
           )}
         </div>
       </div>
@@ -66,12 +66,12 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground">
+      <div className="flex justify-between text-[11px] text-muted-foreground">
         <span>Day {daysElapsed} of {daysInMonth}</span>
         <span>{fmt(Math.round(everydayPerDay))}/day everyday spend</span>
       </div>
       {oneOffs.count > 0 && (
-        <p className="text-[10px] text-muted-foreground mt-1.5">
+        <p className="text-[11px] text-muted-foreground mt-1.5">
           {oneOffs.count} one-off{oneOffs.count > 1 ? 's' : ''} over {fmt(ONE_OFF_OVER)} ({fmt(Math.round(oneOffs.total))}) counted once, not projected.
         </p>
       )}

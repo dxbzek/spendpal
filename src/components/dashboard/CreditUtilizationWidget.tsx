@@ -52,7 +52,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
             className={`h-full rounded-full ${overallBarColor}`}
           />
         </div>
-        <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
+        <div className="flex justify-between text-xs text-muted-foreground mt-1">
           <span>Used: {mask(fmt(totalUsed))}</span>
           <span>Limit: {mask(fmt(totalLimit))}</span>
         </div>
@@ -82,7 +82,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
                   className={`h-full rounded-full ${barColor}`}
                 />
               </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+              <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
                 <span>{mask(fmt(used))}</span>
                 <span>{mask(fmt(limit))}</span>
               </div>

@@ -13,8 +13,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Supabase hands over a new user object on every auth event (initial session,
+// token refresh, tab focus). Everything keyed on `user` then refetched: the
+// profile and category lists loaded four times on one page load. Keep the
+// object we have unless the user actually changed.
+const sameUser = (a: User | null, b: User | null) =>
+  a?.id === b?.id && a?.email === b?.email && a?.updated_at === b?.updated_at;
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
+  const setUser = useCallback((next: User | null) => setUserState(prev => (sameUser(prev, next) ? prev : next)), []);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => { cancelled = true; subscription.unsubscribe(); };
-  }, []);
+  }, [setUser]);
 
   const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
     const { error } = await supabase.auth.signUp({

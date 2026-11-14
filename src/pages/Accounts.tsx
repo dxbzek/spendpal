@@ -246,7 +246,7 @@ const Accounts = () => {
                   )}
                 </div>
                 {!!pendingHolds[account.id] && (
-                  <p className="text-[11px] text-muted-foreground -mt-2">
+                  <p className="text-xs text-muted-foreground -mt-2">
                     {mask(fmt(pendingHolds[account.id]))} in pending holds not yet settled
                   </p>
                 )}
@@ -322,7 +322,7 @@ const Accounts = () => {
                                 <span className="text-base shrink-0"><AppIcon value={tx.categoryIcon} /></span>
                                 <div className="min-w-0">
                                   <p className="text-xs font-medium truncate">{tx.merchant}</p>
-                                  <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                                  <p className="text-[11px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
                                 </div>
                               </div>
                               <span className={`text-xs font-semibold shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
@@ -366,7 +366,7 @@ const Accounts = () => {
             <polyline points={balanceProjection.pts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             <polygon points={`0,36 ${balanceProjection.pts} 100,36`} fill="url(#proj-grad)" />
           </svg>
-          <div className="flex justify-between text-[10px] text-muted-foreground">
+          <div className="flex justify-between text-[11px] text-muted-foreground">
             <span>Today: {mask(fmt(balanceProjection.startBalance))}</span>
             <span>+30d: {mask(fmt(balanceProjection.endBalance))}</span>
           </div>

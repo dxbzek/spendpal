@@ -250,29 +250,29 @@ const Transactions = () => {
                  <p className="text-xs text-muted-foreground truncate">{getAccountName(tx.accountId)}</p>
                )}
                {!isLinkedTransfer && tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
-                 <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
+                 <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
                    Card credit
                  </span>
                )}
                {tx.totalInstallments && tx.currentInstallment && (
-                 <span className="text-[10px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full shrink-0">
+                 <span className="text-[11px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full shrink-0">
                    {tx.currentInstallment}/{tx.totalInstallments}
                  </span>
                )}
                {tx.isPending && (
-                 <span className="text-[10px] font-medium text-warning bg-warning-soft px-1.5 py-0.5 rounded-full shrink-0">
+                 <span className="text-[11px] font-medium text-warning bg-warning-soft px-1.5 py-0.5 rounded-full shrink-0">
                    Pending
                  </span>
                )}
              </div>
              {tx.note && !isLinkedTransfer && (
-               <p className="text-[11px] text-muted-foreground truncate mt-0.5">{tx.note}</p>
+               <p className="text-xs text-muted-foreground truncate mt-0.5">{tx.note}</p>
              )}
              {isDupe && (
                <button
                  onClick={e => { e.stopPropagation(); handleNotDuplicate(tx.id); }}
                  disabled={dismissingId === tx.id}
-                 className="mt-1 text-[11px] font-medium text-warning bg-warning-soft px-2 py-0.5 rounded-full disabled:opacity-50"
+                 className="mt-1 text-xs font-medium text-warning bg-warning-soft px-2 py-0.5 rounded-full disabled:opacity-50"
                >
                  Not a duplicate
                </button>
@@ -443,14 +443,14 @@ const Transactions = () => {
         {showAccountFilter && (
           <div className="flex gap-1.5 mb-4 flex-wrap">
             <button onClick={() => { setFilter('account', 'all'); setShowAccountFilter(false); }}
-              className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                 filterAccount === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
               }`}>
               All Accounts
             </button>
             {accounts.map(acc => (
               <button key={acc.id} onClick={() => { setFilter('account', acc.id); setShowAccountFilter(false); }}
-                className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all max-w-full truncate ${
+                className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all max-w-full truncate ${
                   filterAccount === acc.id ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
                 }`}>
                 <AppIcon value={acc.icon} /> {acc.name}
@@ -462,14 +462,14 @@ const Transactions = () => {
         {showCategoryFilter && (
           <div className="flex gap-1.5 mb-4 flex-wrap">
             <button onClick={() => { setFilter('category', 'all'); setShowCategoryFilter(false); }}
-              className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                 filterCategory === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
               }`}>
               All Categories
             </button>
             {allCategories.map(cat => (
               <button key={cat.name} onClick={() => { setFilter('category', cat.name); setShowCategoryFilter(false); }}
-                className={`px-2 sm:px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all max-w-full truncate ${
+                className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all max-w-full truncate ${
                   filterCategory === cat.name ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
                 }`}>
                 <AppIcon value={cat.icon} /> {cat.name}
@@ -491,7 +491,7 @@ const Transactions = () => {
                 <button
                   key={preset.label}
                   onClick={() => { setFilter('from', preset.from); setFilter('to', preset.to); }}
-                  className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     dateFrom === preset.from && dateTo === preset.to
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -502,7 +502,7 @@ const Transactions = () => {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <label className="text-[11px] text-muted-foreground shrink-0">From</label>
+                <label className="text-xs text-muted-foreground shrink-0">From</label>
                 <input
                   type="date"
                   value={dateFrom}
@@ -511,7 +511,7 @@ const Transactions = () => {
                 />
               </div>
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <label className="text-[11px] text-muted-foreground shrink-0">To</label>
+                <label className="text-xs text-muted-foreground shrink-0">To</label>
                 <input
                   type="date"
                   value={dateTo}
@@ -570,7 +570,7 @@ const Transactions = () => {
           <AnimatePresence>
             {grouped.map(([date, txs]) => (
               <m.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
                 <div className="bg-card rounded-xl card-shadow overflow-hidden divide-y divide-border">
                   {txs.map((tx, idx) => (
                     <SwipeableTransaction key={tx.id} onDelete={() => handleDeleteSingle(tx.id)} onCategorize={() => setCategorizeTxId(tx.id)}>
@@ -587,16 +587,16 @@ const Transactions = () => {
             {/* Table header */}
             <div className={`grid ${selectMode ? 'grid-cols-[28px_150px_1fr_160px_110px_60px]' : 'grid-cols-[150px_1fr_160px_110px_60px]'} gap-0 border-b border-border px-4 py-3`}>
               {selectMode && <span />}
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Date</span>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Merchant / Category</span>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Account</span>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-right">Amount</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Merchant / Category</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Account</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Amount</span>
               <span />
             </div>
             <AnimatePresence>
               {grouped.map(([date, txs]) => (
                 <m.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <div className="px-4 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted border-b border-border">
+                  <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted border-b border-border">
                     {date}
                   </div>
                   {txs.map((tx, _idx) => {
@@ -638,13 +638,13 @@ const Transactions = () => {
                                 <button
                                   onClick={e => { e.stopPropagation(); handleNotDuplicate(tx.id); }}
                                   disabled={dismissingId === tx.id}
-                                  className="text-[11px] font-medium text-warning bg-warning-soft px-2 py-0.5 rounded-full shrink-0 disabled:opacity-50"
+                                  className="text-xs font-medium text-warning bg-warning-soft px-2 py-0.5 rounded-full shrink-0 disabled:opacity-50"
                                 >
                                   Not a duplicate
                                 </button>
                               )}
                             </p>
-                            <p className="text-[11px] font-medium text-muted-foreground truncate">{tx.category}</p>
+                            <p className="text-xs font-medium text-muted-foreground truncate">{tx.category}</p>
                           </div>
                         </div>
                         <span className="text-xs text-muted-foreground truncate">
@@ -711,7 +711,7 @@ const Transactions = () => {
                   <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                     <div>
                       <p className="text-xs font-medium">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
-                      <p className="text-[11px] text-muted-foreground">{tx.category}</p>
+                      <p className="text-xs text-muted-foreground">{tx.category}</p>
                     </div>
                     <span className={`text-sm font-semibold ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
                       {hidden ? '••••••' : `${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}`}
@@ -743,7 +743,7 @@ const Transactions = () => {
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted hover:bg-accent hover:text-accent-foreground transition-colors"
               >
                 <IconTile value={cat.icon} />
-                <span className="text-[10px] font-medium text-center leading-tight">{cat.name}</span>
+                <span className="text-[11px] font-medium text-center leading-tight">{cat.name}</span>
               </button>
             ))}
           </div>

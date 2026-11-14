@@ -1,3 +1,4 @@
+import { budgetCategoryOf } from '@/lib/finance/categories';
 import { useState, useMemo } from 'react';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { activeBudgets } from '@/utils/budgets';
@@ -57,9 +58,14 @@ const MonthlyReportPrint = () => {
     // month-equality filter that would show nothing for carry-forward months.
     // Spend is recomputed from monthTxs rather than Budget.spent, which is
     // always the real current month's spend regardless of which budget it's on.
-    const monthBudgets = activeBudgets(budgets, selectedMonth)
-      .filter(b => b.period === 'monthly')
-      .map(b => ({ ...b, spent: byCategory[b.category]?.total ?? 0 }));
+    const active = activeBudgets(budgets, selectedMonth).filter(b => b.period === 'monthly');
+    const names = new Set(active.map(b => b.category));
+    const spentByBudget: Record<string, number> = {};
+    for (const [cat, v] of Object.entries(byCategory)) {
+      const target = budgetCategoryOf(cat, names);
+      spentByBudget[target] = (spentByBudget[target] ?? 0) + v.total;
+    }
+    const monthBudgets = active.map(b => ({ ...b, spent: spentByBudget[b.category] ?? 0 }));
 
     return { totalIncome, totalExpenses, netSavings, categories, monthBudgets, txCount: monthTxs.length };
   }, [transactions, budgets, accounts, selectedMonth]);
@@ -171,15 +177,15 @@ const MonthlyReportPrint = () => {
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl bg-accent p-3">
-          <p className="text-[10px] text-muted-foreground mb-1">Income</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Income</p>
           <p className="text-sm font-heading text-income">{fmt(Math.round(report.totalIncome))}</p>
         </div>
         <div className="rounded-xl bg-accent p-3">
-          <p className="text-[10px] text-muted-foreground mb-1">Expenses</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Expenses</p>
           <p className="text-sm font-heading text-expense">{fmt(Math.round(report.totalExpenses))}</p>
         </div>
         <div className="rounded-xl bg-accent p-3">
-          <p className="text-[10px] text-muted-foreground mb-1">Net</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Net</p>
           <p className={`text-sm font-heading ${report.netSavings >= 0 ? 'text-income' : 'text-expense'}`}>
             {fmt(Math.round(report.netSavings))}
           </p>

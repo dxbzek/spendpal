@@ -4,6 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, type TransactionType } from '@/types/finance';
+import { useFinance } from '@/context/FinanceContext';
+import { pickerCategories, usedCategories } from '@/lib/finance/categories';
 
 export interface Category {
   name: string;
@@ -14,34 +16,64 @@ export interface Category {
   originalName?: string | null;
 }
 
-export const useCategories = () => {
-  const { user } = useAuth();
-  const [customCategories, setCustomCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+// One copy of the custom categories for the whole app. Every picker used to
+// fetch its own on mount, so the same list loaded again on each page.
+let cache: { userId: string; rows: Category[] } | null = null;
+let inflight: { userId: string; promise: Promise<Category[] | null> } | null = null;
+const listeners = new Set<(rows: Category[]) => void>();
 
-  const fetchCustom = useCallback(async () => {
-    if (!user) { setLoading(false); return; }
+async function loadCustom(userId: string, force: boolean): Promise<Category[] | null> {
+  if (!force && cache?.userId === userId) return cache.rows;
+  if (!force && inflight?.userId === userId) return inflight.promise;
+  const promise = (async () => {
     const { data, error } = await supabase
       .from('custom_categories')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('sort_order');
-    if (error) {
+    if (error || !data) {
       logger.error('Failed to fetch custom categories', error);
-    } else if (data) {
-      setCustomCategories(data.map(r => ({
-        name: r.name,
-        icon: r.icon,
-        isCustom: true,
-        id: r.id,
-        type: (r.type as 'expense' | 'income' | 'both') ?? 'both',
-        originalName: r.original_name ?? null,
-      })));
+      return null;
     }
-    setLoading(false);
-  }, [user]);
+    const rows: Category[] = data.map(r => ({
+      name: r.name,
+      icon: r.icon,
+      isCustom: true,
+      id: r.id,
+      type: (r.type as 'expense' | 'income' | 'both') ?? 'both',
+      originalName: r.original_name ?? null,
+    }));
+    cache = { userId, rows };
+    listeners.forEach(l => l(rows));
+    return rows;
+  })();
+  inflight = { userId, promise };
+  try { return await promise; } finally { if (inflight?.promise === promise) inflight = null; }
+}
 
-  useEffect(() => { fetchCustom(); }, [fetchCustom]);
+/** Test hook: forget the shared copy. */
+export const resetCategoryCache = () => { cache = null; inflight = null; };
+
+export const useCategories = () => {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const { transactions } = useFinance();
+  const [customCategories, setCustomCategories] = useState<Category[]>(() => (cache && cache.userId === userId ? cache.rows : []));
+  const [loading, setLoading] = useState(!(cache && cache.userId === userId));
+
+  // `force` after a change; otherwise the shared copy is used.
+  const fetchCustom = useCallback(async (force = true) => {
+    if (!userId) { setLoading(false); return; }
+    const rows = await loadCustom(userId, force);
+    if (rows) setCustomCategories(rows);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    fetchCustom(false);
+    listeners.add(setCustomCategories);
+    return () => { listeners.delete(setCustomCategories); };
+  }, [fetchCustom]);
 
   // Names that shadow or replace a default (either same name or via original_name rename)
   const shadowedDefaultNames = new Set([
@@ -121,19 +153,13 @@ export const useCategories = () => {
     await fetchCustom();
   }, [user, customCategories, fetchCustom]);
 
+  // What the pickers offer: the categories this user's rows already use
+  // (most used first), then their other custom ones, then the built-in rest.
   const getCategoriesForType = (type: TransactionType): Category[] => {
-    const typeDefaults = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    // Names shadowed by custom overrides (same name or renamed)
-    const shadowed = new Set([
-      ...customCategories.map(c => c.name),
-      ...customCategories.map(c => c.originalName).filter(Boolean) as string[],
-    ]);
-    // Include custom categories that match the type (or are set to 'both')
-    const filteredCustom = customCategories.filter(c => !c.type || c.type === 'both' || c.type === type);
-    const defaults: Category[] = (typeDefaults as readonly { name: string; icon: string }[])
-      .filter(c => !shadowed.has(c.name))
-      .map(c => ({ name: c.name, icon: c.icon, isCustom: false }));
-    return [...filteredCustom, ...defaults];
+    const kind = type === 'income' ? 'income' : 'expense';
+    const typeDefaults = kind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const custom = customCategories.filter(c => !c.type || c.type === 'both' || c.type === kind);
+    return pickerCategories(usedCategories(transactions, kind), custom, typeDefaults);
   };
 
   return {

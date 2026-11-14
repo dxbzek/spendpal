@@ -85,9 +85,9 @@ const RecurringTracker = () => {
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.merchant}</p>
                           <div className="flex items-center gap-2">
-                            <p className="text-[11px] text-muted-foreground">Next: {getNextDate(item.date)}</p>
+                            <p className="text-xs text-muted-foreground">Next: {getNextDate(item.date)}</p>
                             {hasInstallments && (
-                              <span className="text-[11px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full">
+                              <span className="text-xs font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full">
                                 {item.currentInstallment}/{item.totalInstallments}
                               </span>
                             )}
@@ -97,7 +97,7 @@ const RecurringTracker = () => {
                       <div className="text-right shrink-0">
                         <span className="text-sm font-heading">{fmt(item.amount)}</span>
                         {hasInstallments && (
-                          <p className="text-[10px] text-muted-foreground">{fmt(remaining!)} left ({remainingInstallments} mo)</p>
+                          <p className="text-[11px] text-muted-foreground">{fmt(remaining!)} left ({remainingInstallments} mo)</p>
                         )}
                       </div>
                     </div>
@@ -113,7 +113,7 @@ const RecurringTracker = () => {
                             className="h-full rounded-full bg-primary"
                           />
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{paidPct}% paid</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{paidPct}% paid</p>
                       </div>
                     )}
                   </div>
@@ -127,7 +127,7 @@ const RecurringTracker = () => {
       {/* Category breakdown */}
       {byCategory.length > 1 && (
         <div className="mt-3 pt-3 border-t border-border">
-          <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-2">By Category</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">By Category</p>
           <div className="flex gap-2 flex-wrap">
             {byCategory.map(([cat, data], i) => {
               const color = getCategoryChartColor(cat, i);

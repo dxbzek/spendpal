@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
 import { fetchAllRows } from '@/lib/backup';
+import { budgetCategoryOf } from '@/lib/finance/categories';
 import {
   AccountRowSchema,
   TransactionRowSchema,
@@ -111,7 +112,18 @@ const mapGoal = (row: unknown): Goal | null => {
 
 // ─── Compute budget spent from transactions ───────────────────────────────────
 
-function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
+/** Names of this month's budgets (or of every budget, when this month has none yet and last month's carry forward). */
+function budgetNamesFor(budgets: { category: string; month: string }[], month: string): Set<string> {
+  const current = budgets.filter(b => b.month === month);
+  return new Set((current.length ? current : budgets).map(b => b.category));
+}
+
+const thisMonthKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+function computeSpentByCategory(txs: Transaction[], budgetNames: ReadonlySet<string> = new Set()): Record<string, number> {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`;
@@ -123,7 +135,8 @@ function computeSpentByCategory(txs: Transaction[]): Record<string, number> {
   const monthExpenses = txs.filter(t => isCountableExpense(t) && t.date.startsWith(currentMonth) && t.date <= today);
   const spent: Record<string, number> = {};
   for (const t of monthExpenses) {
-    spent[t.category] = (spent[t.category] ?? 0) + t.amount;
+    const category = budgetCategoryOf(t.category, budgetNames);
+    spent[category] = (spent[category] ?? 0) + t.amount;
   }
   return spent;
 }
@@ -191,9 +204,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Memoized budget spending - computed once from the transactions array,
   // not recalculated inside every mutation's nested state setter.
+  // The budget names as a string, so adding spend to a budget (a new array)
+  // doesn't re-run the sum that produced it.
+  const budgetNamesKey = [...budgetNamesFor(budgets, thisMonthKey())].sort().join('\n');
   const spentByCategory = useMemo(
-    () => computeSpentByCategory(transactions),
-    [transactions]
+    () => computeSpentByCategory(transactions, new Set(budgetNamesKey ? budgetNamesKey.split('\n') : [])),
+    [transactions, budgetNamesKey]
   );
 
   // Apply the memoized spending map to budgets whenever either changes.
@@ -229,7 +245,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const validTxs = txRows.map(mapTransaction).filter((t): t is Transaction => t !== null);
       setTransactions(validTxs);
 
-      const spentByCategory = computeSpentByCategory(validTxs);
+      const budgetNames = budgetNamesFor((bgtRes.data ?? []) as { category: string; month: string }[], thisMonthKey());
+      const spentByCategory = computeSpentByCategory(validTxs, budgetNames);
       const validBudgets = (bgtRes.data ?? []).map(row => mapBudget(row, spentByCategory)).filter((b): b is Budget => b !== null);
       setBudgets(validBudgets);
 

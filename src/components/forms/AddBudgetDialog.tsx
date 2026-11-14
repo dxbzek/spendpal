@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
-import { EXPENSE_CATEGORIES, FIXED_EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
+import { FIXED_EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
+import { useCategories } from '@/hooks/useCategories';
 import { format, subMonths, getMonth, getYear, parseISO } from 'date-fns';
 import AppIcon from '@/components/AppIcon';
 
@@ -30,6 +31,7 @@ function setRolloverCats(cats: Set<string>) {
 const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   const { addBudget, updateBudget, budgets, transactions } = useFinance();
   const { currency, fmt } = useCurrency();
+  const { getCategoriesForType } = useCategories();
   const isEdit = !!editBudget;
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
@@ -53,7 +55,8 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
     }
   }, [open, editBudget]);
 
-  const selectedCat = EXPENSE_CATEGORIES.find(c => c.name === category);
+  const expenseCategories = getCategoriesForType('expense');
+  const selectedCat = expenseCategories.find(c => c.name === category);
 
   // Categories that already have a budget this month can't be added again — the
   // DB enforces one budget per (category, month, period), so offering them would
@@ -66,8 +69,10 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
         .filter(b => b.month === monthKey && b.category !== editBudget?.category)
         .map(b => b.category)
     );
-    return EXPENSE_CATEGORIES.filter(c => !taken.has(c.name));
-  }, [budgets, editBudget]);
+    return expenseCategories.filter(c => !taken.has(c.name));
+    // expenseCategories is rebuilt each render from the same rows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [budgets, editBudget, expenseCategories.length]);
 
   // Last month's unspent for this category
   const lastMonthUnspent = useMemo(() => {
@@ -185,7 +190,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
           <div className="flex items-center justify-between p-3 bg-accent rounded-xl">
             <div>
               <p className="text-xs font-medium">Fixed expense</p>
-              <p className="text-[11px] text-muted-foreground">Skip budget alerts (e.g. rent, utilities)</p>
+              <p className="text-xs text-muted-foreground">Skip budget alerts (e.g. rent, utilities)</p>
             </div>
             <Switch checked={isFixed} onCheckedChange={setIsFixed} />
           </div>
@@ -197,7 +202,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
                 <RotateCcw size={14} className="text-primary" />
                 <div>
                   <p className="text-xs font-medium">Roll over {fmt(lastMonthUnspent)}</p>
-                  <p className="text-[11px] text-muted-foreground">Add last month's unspent to this budget</p>
+                  <p className="text-xs text-muted-foreground">Add last month's unspent to this budget</p>
                 </div>
               </div>
               <Switch checked={rollover} onCheckedChange={setRollover} />

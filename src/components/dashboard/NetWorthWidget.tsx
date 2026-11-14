@@ -101,7 +101,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
         <h2 className="font-heading text-sm">Net Worth</h2>
         <GlossaryLink term="Net Worth" />
         {trend !== 0 && !hidden && (
-          <span className={`ml-auto flex items-center gap-0.5 text-[11px] font-medium ${trend >= 0 ? 'text-income' : 'text-expense'}`}>
+          <span className={`ml-auto flex items-center gap-0.5 text-xs font-medium ${trend >= 0 ? 'text-income' : 'text-expense'}`}>
             {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
             {trend >= 0 ? '+' : ''}{fmt(trend)}
           </span>
@@ -124,7 +124,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
       {/* Sparkline */}
       {sparkPoints && !hidden && (
         <div className="mt-3 pt-2 border-t border-border">
-          <p className="text-[10px] text-muted-foreground mb-1">{history.length}-month trend</p>
+          <p className="text-[11px] text-muted-foreground mb-1">{history.length}-month trend</p>
           <svg viewBox={`0 0 100 28`} className="w-full h-7" preserveAspectRatio="none">
             <defs>
               <linearGradient id="nw-grad" x1="0" y1="0" x2="0" y2="1">
@@ -138,7 +138,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
               fill="url(#nw-grad)"
             />
           </svg>
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+          <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
             <span>{history[0]?.[0]?.slice(0, 7)}</span>
             <span>{history[history.length - 1]?.[0]?.slice(0, 7)}</span>
           </div>
@@ -165,7 +165,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
             </div>
           ) : goalProgress !== null ? (
             <div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                 <span className="flex items-center gap-1"><Target size={10} /> Goal progress</span>
                 <button onClick={() => setEditingGoal(true)} className="hover:text-primary">{goalProgress}% · {fmt(goal!)}</button>
               </div>
@@ -174,7 +174,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
               </div>
             </div>
           ) : (
-            <button onClick={() => setEditingGoal(true)} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
+            <button onClick={() => setEditingGoal(true)} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
               <Target size={10} /> Set net worth goal
             </button>
           )}
