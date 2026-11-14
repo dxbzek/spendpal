@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { logger } from '@/lib/logger';
+import { aiUsage, batchBlockedMessage } from '@/lib/aiUsage';
 import type { Json } from '@/integrations/supabase/types';
 
 const FUNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`;
@@ -73,10 +74,14 @@ async function invokeWithTimeout<T>(
         try {
           const payload = await ctx.json() as { error?: string };
           if (payload?.error) msg = payload.error;
+          // A refused or failed call still says how many uses are left (0 at the daily limit).
+          aiUsage.note(session.user?.id, payload);
         } catch { /* non-JSON body — keep the generic message */ }
       }
       throw new Error(msg);
     }
+    // Every answer carries the uses left today; keep it for the AI Advisor page.
+    aiUsage.note(session.user?.id, data);
     return data as T;
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
@@ -141,6 +146,19 @@ export const useAI = () => {
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const lastRequestAt = useRef<number>(0);
+  // AI uses left today, as last told by the server. Null until it is known.
+  const userIdRef = useRef(user?.id);
+  userIdRef.current = user?.id;
+  const remaining = useSyncExternalStore(aiUsage.subscribe, () => aiUsage.get(user?.id));
+
+  // Ask the server how many uses are left. This calls no model and is not
+  // counted. A failure is not shown: the number is extra, and the page works
+  // without it (for example before the server side is deployed).
+  const refreshUsage = useCallback(async () => {
+    try {
+      await invokeWithTimeout<{ remaining?: number }>('ai-finance', { type: 'usage' }, 15_000);
+    } catch { /* the uses-left line stays hidden */ }
+  }, []);
 
   // Shared cooldown guard - enforced before every AI call.
   // Advances the timer only when called, so a failed request still starts the cooldown
@@ -172,6 +190,7 @@ export const useAI = () => {
 
       if (!resp.ok) {
         const err = await resp.json() as { error?: string };
+        aiUsage.note(userIdRef.current, err);
         throw new Error(err.error ?? 'Failed to generate summary');
       }
 
@@ -197,7 +216,8 @@ export const useAI = () => {
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') break;
           try {
-            const parsed = JSON.parse(jsonStr) as { text?: string; error?: string };
+            const parsed = JSON.parse(jsonStr) as { text?: string; error?: string; remaining?: number };
+            aiUsage.note(userIdRef.current, parsed);
             if (parsed.error) throw new Error(parsed.error);
             if (parsed.text) {
               fullText += parsed.text;
@@ -449,6 +469,13 @@ export const useAI = () => {
     onProgress?: (current: number, total: number) => void,
   ): Promise<unknown[] | null> => {
     if (!chunks.length) return [];
+    // Each chunk is one counted AI use, and a refused chunk loses the whole
+    // import. Stop before the first call when the uses left cannot cover it.
+    const blocked = batchBlockedMessage(chunks.length, aiUsage.get(userIdRef.current));
+    if (blocked) {
+      toast.error(blocked);
+      return null;
+    }
     // Consume a single cooldown slot for the whole batch (rate limit is per session, not per chunk).
     if (!checkCooldown()) return null;
     setLoading(true);
@@ -502,6 +529,7 @@ export const useAI = () => {
 
   return {
     loading, summaryText,
+    remaining, refreshUsage,
     generateSummary, generateBudgetSuggestions, categorizeStatement, categorizeCSV,
     categorizeStatementBatch,
     categorizeImage, extractBudgetsFromImage, extractGoalsFromImage,
