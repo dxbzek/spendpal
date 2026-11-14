@@ -1,6 +1,6 @@
 import { PageSpinner } from '@/components/ui/spinner';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
-import { useState, useMemo, useCallback } from 'react';
+import { goalPace } from '@/lib/finance/pace';
+import { useState, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
@@ -11,7 +11,7 @@ import { m } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { differenceInDays, parseISO, subMonths, getMonth, getYear, format } from 'date-fns';
+import { differenceInCalendarDays, parseISO, format } from 'date-fns';
 import AddGoalDialog from '@/components/forms/AddGoalDialog';
 import type { Goal } from '@/types/finance';
 
@@ -30,7 +30,7 @@ import AppIcon from '@/components/AppIcon';
 interface Contribution { id?: string; amount: number; note: string; date: string; }
 
 const Goals = () => {
-  const { goals, transactions, accounts, addGoalProgress, withdrawGoalProgress, removeGoal, updateGoal, loading } = useFinance();
+  const { goals, addGoalProgress, withdrawGoalProgress, removeGoal, updateGoal, loading } = useFinance();
   const { fmt } = useCurrency();
   const { mask } = useBalanceMask();
   const { user } = useAuth();
@@ -68,46 +68,25 @@ const Goals = () => {
   }, [user]);
 
   const saveContribution = useCallback(async (goalId: string, amount: number, note: string) => {
-    if (!user) return;
+    if (!user) return false;
     const { data, error } = await supabase
       .from('goal_contributions')
       .insert({ goal_id: goalId, user_id: user.id, amount, note: note || null })
       .select('id, amount, note, created_at')
       .single();
-    if (error) { toast.error('Could not save contribution'); return; }
+    if (error) { toast.error('Progress was added, but its history entry could not be saved'); return false; }
     if (data) {
       setContributionLogs(prev => ({
         ...prev,
         [goalId]: [{ id: data.id, amount: data.amount, note: data.note ?? '', date: data.created_at }, ...(prev[goalId] ?? [])],
       }));
     }
+    return true;
   }, [user]);
 
   const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
   const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0);
   const overallPct = totalTarget ? Math.round((totalSaved / totalTarget) * 100) : 0;
-
-  // Compute avg monthly savings from the last 3 full months
-  const monthlySavingsRate = useMemo(() => {
-    const creditIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
-    const now = new Date();
-    let totalRate = 0;
-    let validMonths = 0;
-    for (let i = 1; i <= 3; i++) {
-      const d = subMonths(now, i);
-      const m = getMonth(d);
-      const y = getYear(d);
-      const monthTx = transactions.filter(tx => {
-        const td = parseISO(tx.date);
-        return getMonth(td) === m && getYear(td) === y;
-      });
-      const inc = monthTx.filter(t => isCountableIncome(t, creditIds)).reduce((s, t) => s + t.amount, 0);
-      const exp = monthTx.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0);
-      const savings = inc - exp;
-      if (savings > 0) { totalRate += savings; validMonths++; }
-    }
-    return validMonths > 0 ? totalRate / validMonths : 0;
-  }, [transactions, accounts]);
 
   const [savingProgress, setSavingProgress] = useState(false);
   const handleAddProgress = async () => {
@@ -122,8 +101,7 @@ const Goals = () => {
       } else {
         if (!await addGoalProgress(progressGoalId, amount)) return;
         // Persist the contribution to Supabase.
-        await saveContribution(progressGoalId, amount, progressNote.trim());
-        toast.success('Progress saved');
+        if (await saveContribution(progressGoalId, amount, progressNote.trim())) toast.success('Progress saved');
       }
     } finally {
       setSavingProgress(false);
@@ -142,17 +120,7 @@ const Goals = () => {
 
   const getDaysRemaining = (deadline?: string) => {
     if (!deadline) return null;
-    return differenceInDays(parseISO(deadline), new Date());
-  };
-
-  // No estimate without a savings rate to base it on.
-  const getCompletionEstimate = (remaining: number): string | null => {
-    if (remaining <= 0 || monthlySavingsRate <= 0) return null;
-    const months = remaining / monthlySavingsRate;
-    if (months < 1) return 'Less than a month';
-    if (months < 12) return `~${Math.ceil(months)} month${Math.ceil(months) > 1 ? 's' : ''}`;
-    const years = months / 12;
-    return `~${years.toFixed(1)} year${years >= 2 ? 's' : ''}`;
+    return differenceInCalendarDays(parseISO(deadline), new Date());
   };
 
   if (loading) return <PageSpinner />;
@@ -204,7 +172,7 @@ const Goals = () => {
               const remaining = goal.targetAmount - goal.savedAmount;
               const daysLeft = getDaysRemaining(goal.deadline);
               const debt = isDebtGoal(goal);
-              const estimate = getCompletionEstimate(remaining);
+              const pace = goalPace(remaining, daysLeft);
               return (
                 <div key={goal.id} className={`relative overflow-hidden bg-card rounded-xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''}`}>
                   <div className="flex items-start justify-between mb-3">
@@ -256,9 +224,14 @@ const Goals = () => {
                       {remaining > 0 ? (
                         <>
                           <p className="text-xs text-muted-foreground">{mask(fmt(remaining))} remaining</p>
-                          {estimate && (
-                            <p className="text-[11px] text-primary flex items-center gap-0.5 mt-0.5">
-                              <TrendingUp size={10} /> {estimate} at current rate
+                          {pace?.kind === 'perMonth' && (
+                            <p className="text-xs text-primary flex items-center gap-0.5 mt-0.5">
+                              <TrendingUp size={10} /> Needs {mask(fmt(pace.amount))}/mo for {pace.months} months
+                            </p>
+                          )}
+                          {pace?.kind === 'inDays' && (
+                            <p className="text-xs text-warning flex items-center gap-0.5 mt-0.5">
+                              <TrendingUp size={10} /> Needs all of it in {pace.days} day{pace.days === 1 ? '' : 's'}
                             </p>
                           )}
                         </>

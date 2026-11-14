@@ -1,3 +1,4 @@
+import { savingsSummary } from '@/lib/finance/pace';
 import { PageSpinner } from '@/components/ui/spinner';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { activeBudgets } from '@/utils/budgets';
@@ -71,7 +72,9 @@ const Reports = () => {
 
   const expenseChange = prevExpenses > 0 ? ((expenses - prevExpenses) / prevExpenses) * 100 : null;
   const net = income - expenses;
-  const savingsRate = income > 0 ? Math.round((net / income) * 100) : null;
+  // No rate when more went out than came in: the Net tile already says by how much.
+  const savings = savingsSummary(income, expenses);
+  const savingsRate = savings.kind === 'saved' ? savings.rate : null;
 
   const exportCsv = () => {
     const rows = [
