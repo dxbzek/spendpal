@@ -59,7 +59,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
     <div className="bg-card rounded-xl p-4 card-shadow mb-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-heading text-sm">Card payments</h2>
-        <button onClick={() => navigate('/debt')} className="text-xs text-primary font-medium flex items-center gap-0.5">Debt <ChevronRight size={14} /></button>
+        <button onClick={() => navigate('/debt')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">Debt <ChevronRight size={14} /></button>
       </div>
 
       <div className="divide-y divide-border">
@@ -68,7 +68,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
             <div className="min-w-0">
               <p className="text-sm font-medium line-clamp-2 break-words">{c.account.name}</p>
               {c.kind === 'due' && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {c.min != null && <>Min {mask(fmt(c.min))} · </>}
                   {daysTo(c.dueOn) === 0 ? 'due today' : `${daysTo(c.dueOn)}d left`}
                 </p>
@@ -83,10 +83,10 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
             {c.kind === 'due' ? (
               <p className="text-sm font-heading tabular-nums text-right shrink-0">
                 {mask(fmt(c.total))}
-                <span className="block text-[11px] font-normal text-muted-foreground">by {format(c.dueOn, 'd MMM yyyy')}</span>
+                <span className="block text-xs font-normal text-muted-foreground">by {format(c.dueOn, 'd MMM yyyy')}</span>
               </p>
             ) : (
-              <button onClick={() => onEditAccount(c.account)} className="text-xs font-medium text-primary shrink-0">
+              <button onClick={() => onEditAccount(c.account)} className="tap-area text-xs font-medium text-primary shrink-0">
                 {c.kind === 'missing' ? 'Add statement' : 'Update statement'}
               </button>
             )}
@@ -100,7 +100,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
             Left until payday{payday ? ` (${format(payday, 'd MMM')})` : ''}
           </p>
           <Select value={paydayDay ? String(paydayDay) : ''} onValueChange={v => setPayday(Number(v))}>
-            <SelectTrigger className="h-7 w-auto gap-1 px-2 text-[11px] border-0 bg-muted rounded-lg" aria-label="Payday">
+            <SelectTrigger className="h-7 w-auto gap-1 px-2 text-xs border-0 bg-muted rounded-lg" aria-label="Payday">
               <SelectValue placeholder="Set payday" />
             </SelectTrigger>
             <SelectContent className="max-h-[240px]">
@@ -113,7 +113,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
         {runway ? (
           <>
             <p className={`text-financial-medium tabular-nums ${runway.left < 0 ? 'text-expense' : ''}`}>{mask(fmt(runway.left))}</p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {mask(fmt(runway.cash))} spendable − {mask(fmt(runway.cardsDue))} cards
               {runway.billsDue > 0 && <> − {mask(fmt(runway.billsDue))} bills</>}
               {runway.perDay != null && <> · {mask(fmt(runway.perDay))}/day for {runway.days} days</>}
@@ -121,7 +121,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
             {runway.bills.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {runway.bills.map(b => (
-                  <li key={b.key} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                  <li key={b.key} className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span className="truncate">{b.name} · {format(b.dueOn, 'd MMM')}</span>
                     <span className="tabular-nums shrink-0">{mask(fmt(b.amount))}</span>
                   </li>

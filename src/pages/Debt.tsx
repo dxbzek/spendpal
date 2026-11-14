@@ -146,19 +146,19 @@ const Debt = () => {
           {creditDebts.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-subtle text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Total Owed</p>
+                <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Total Owed</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalOwed))}</p>
               </div>
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-subtle text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Credit Limit</p>
+                <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Credit Limit</p>
                 <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalLimit))}</p>
               </div>
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-subtle text-[10px] sm:text-[11px] uppercase tracking-wide mb-1">Utilization</p>
+                <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
                   <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
                   {worstUtil >= 30 && (
-                    <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-raised text-primary-foreground shrink-0">
+                    <span className="text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-raised text-primary-foreground shrink-0">
                       {worstUtil >= 75 ? 'High' : 'Watch'}
                     </span>
                   )}
@@ -325,16 +325,16 @@ const Debt = () => {
                           {months < Infinity ? (
                             <div className="grid grid-cols-3 gap-3 text-center">
                               <div className="bg-accent rounded-xl p-3">
-                                <p className="text-[11px] text-muted-foreground mb-0.5">Payoff in</p>
+                                <p className="text-xs text-muted-foreground mb-0.5">Payoff in</p>
                                 <p className="text-sm font-heading">{months} mo</p>
-                                <p className="text-[10px] text-muted-foreground">{payoffDate ? format(payoffDate, 'MMM yyyy') : ''}</p>
+                                <p className="text-[11px] text-muted-foreground">{payoffDate ? format(payoffDate, 'MMM yyyy') : ''}</p>
                               </div>
                               <div className="bg-accent rounded-xl p-3">
-                                <p className="text-[11px] text-muted-foreground mb-0.5">Total paid</p>
+                                <p className="text-xs text-muted-foreground mb-0.5">Total paid</p>
                                 <p className="text-sm font-heading">{mask(fmt(totalCost))}</p>
                               </div>
                               <div className="bg-destructive-soft rounded-xl p-3">
-                                <p className="text-[11px] text-muted-foreground mb-0.5">Interest</p>
+                                <p className="text-xs text-muted-foreground mb-0.5">Interest</p>
                                 <p className="text-sm font-heading text-expense">{mask(fmt(interest))}</p>
                               </div>
                             </div>
@@ -343,7 +343,7 @@ const Debt = () => {
                           ) : (
                             <div className="bg-destructive-soft rounded-xl p-3 text-center">
                               <p className="text-xs text-expense font-semibold">Payment too low — doesn't cover interest</p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                              <p className="text-xs text-muted-foreground mt-0.5">
                                 Minimum to cover interest: {mask(fmt(Math.ceil((debt.owed * apr) / 100 / 12 * 100) / 100))}/mo
                               </p>
                             </div>
@@ -418,15 +418,15 @@ const Debt = () => {
                 ) : activeResult && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg bg-muted p-3">
-                      <p className="text-[11px] text-muted-foreground">Debt-free by</p>
+                      <p className="text-xs text-muted-foreground">Debt-free by</p>
                       <p className="text-sm font-semibold">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
-                      <p className="text-[11px] text-muted-foreground">{activeResult.months} months</p>
+                      <p className="text-xs text-muted-foreground">{activeResult.months} months</p>
                     </div>
                     <div className="rounded-lg bg-muted p-3">
-                      <p className="text-[11px] text-muted-foreground">Interest you'll pay</p>
+                      <p className="text-xs text-muted-foreground">Interest you'll pay</p>
                       <p className="text-sm font-semibold font-mono">{mask(fmt(activeResult.totalInterest))}</p>
                       {otherResult && !otherResult.hitCap && otherResult.totalInterest !== activeResult.totalInterest && (
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {otherResult.totalInterest > activeResult.totalInterest
                             ? `${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} less than the other order`
                             : `${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} more than the other order`}
@@ -437,7 +437,7 @@ const Debt = () => {
                 )}
 
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">This month</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">This month</p>
                   <ol className="divide-y divide-border rounded-lg border border-border">
                     {activeOrder.map((d, i) => (
                       <li key={d.id} className="flex items-center gap-3 p-3">
@@ -445,17 +445,17 @@ const Debt = () => {
                         <AppIcon value={d.icon} className="text-base text-muted-foreground" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{d.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{mask(fmt(d.owed))} owed · {d.apr}% APR</p>
+                          <p className="text-xs text-muted-foreground">{mask(fmt(d.owed))} owed · {d.apr}% APR</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-semibold font-mono">{mask(fmt(thisMonth[d.id] ?? 0))}</p>
-                          <p className="text-[11px] text-muted-foreground">{i === 0 ? 'Focus card' : 'Minimum'}</p>
+                          <p className="text-xs text-muted-foreground">{i === 0 ? 'Focus card' : 'Minimum'}</p>
                         </div>
                       </li>
                     ))}
                   </ol>
                   {strategyDebts.some(d => !d.minPay) && (
-                    <p className="text-[11px] text-muted-foreground mt-2">
+                    <p className="text-xs text-muted-foreground mt-2">
                       Cards without a statement minimum use an estimate of 2% of the balance. Add the real minimum on the card for an exact plan.
                     </p>
                   )}

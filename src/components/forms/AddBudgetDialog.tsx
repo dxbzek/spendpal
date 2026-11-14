@@ -190,7 +190,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
           <div className="flex items-center justify-between p-3 bg-accent rounded-xl">
             <div>
               <p className="text-xs font-medium">Fixed expense</p>
-              <p className="text-[11px] text-muted-foreground">Skip budget alerts (e.g. rent, utilities)</p>
+              <p className="text-xs text-muted-foreground">Skip budget alerts (e.g. rent, utilities)</p>
             </div>
             <Switch checked={isFixed} onCheckedChange={setIsFixed} />
           </div>
@@ -202,7 +202,7 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
                 <RotateCcw size={14} className="text-primary" />
                 <div>
                   <p className="text-xs font-medium">Roll over {fmt(lastMonthUnspent)}</p>
-                  <p className="text-[11px] text-muted-foreground">Add last month's unspent to this budget</p>
+                  <p className="text-xs text-muted-foreground">Add last month's unspent to this budget</p>
                 </div>
               </div>
               <Switch checked={rollover} onCheckedChange={setRollover} />

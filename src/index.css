@@ -272,3 +272,8 @@
     text-overflow: ellipsis;
   }
 }
+
+/* Text-only buttons ("View all", "Update statement") are 16px tall. This widens
+   what a thumb can hit to about 40px without moving anything on the page. */
+.tap-area { position: relative; }
+.tap-area::after { content: ''; position: absolute; inset: -12px -8px; }

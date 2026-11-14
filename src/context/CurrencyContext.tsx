@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { CURRENCY_MAP } from '@/utils/currencies';
-import { formatAmount } from '@/lib/finance/formatAmount';
+import { formatAmount, displaySymbol } from '@/lib/finance/formatAmount';
 import { toast } from 'sonner';
 
 interface CurrencyContextType {
@@ -144,7 +144,11 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const info = CURRENCY_MAP[currency] || CURRENCY_MAP.AED;
-  const secondaryInfo = secondaryCurrency ? CURRENCY_MAP[secondaryCurrency] : null;
+  // A second currency equal to the first is no second currency: it printed
+  // "≈ the same number" under every amount.
+  const secondary = secondaryCurrency && secondaryCurrency !== currency ? secondaryCurrency : null;
+  const secondaryInfo = secondary ? CURRENCY_MAP[secondary] : null;
+  const symbol = displaySymbol(currency, info.symbol);
 
   // Amounts are wrapped in an LTR isolate, with the sign outside it, so that an
   // RTL currency symbol cannot flush a minus to the wrong side of the digits.
@@ -152,30 +156,30 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Memoized so consumers (and their React.memo children) don't re-render on
   // every provider render; non-finite input falls back to 0 rather than "NaN".
   const fmt = useCallback(
-    (n: number) => formatAmount(info.symbol, info.locale, n),
-    [info]
+    (n: number) => formatAmount(symbol, info.locale, n),
+    [symbol, info]
   );
 
   const fmtSigned = useCallback((n: number, type: 'income' | 'expense' | 'transfer') => {
     // Transfers carry no sign of their own, so they fall back to the amount's.
     const prefix = type === 'income' ? '+' : type === 'expense' ? '-' : undefined;
-    return formatAmount(info.symbol, info.locale, n, prefix);
-  }, [info]);
+    return formatAmount(symbol, info.locale, n, prefix);
+  }, [symbol, info]);
 
   const fmtSecondary = useCallback((n: number): string | null => {
-    if (!secondaryCurrency || !secondaryInfo || secondaryRate === null) return null;
+    if (!secondary || !secondaryInfo || secondaryRate === null) return null;
     const converted = (Number.isFinite(n) ? n : 0) * secondaryRate;
-    return formatAmount(secondaryInfo.symbol, secondaryInfo.locale, converted);
-  }, [secondaryCurrency, secondaryInfo, secondaryRate]);
+    return formatAmount(displaySymbol(secondary, secondaryInfo.symbol), secondaryInfo.locale, converted);
+  }, [secondary, secondaryInfo, secondaryRate]);
 
   const setCurrency = useCallback((code: string) => {
     setCurrencyState(code);
   }, []);
 
   const value = useMemo(() => ({
-    currency, symbol: info.symbol, fmt, fmtSigned, setCurrency,
-    secondaryCurrency, setSecondaryCurrency, fmtSecondary, secondaryRate,
-  }), [currency, info.symbol, fmt, fmtSigned, setCurrency, secondaryCurrency, setSecondaryCurrency, fmtSecondary, secondaryRate]);
+    currency, symbol, fmt, fmtSigned, setCurrency,
+    secondaryCurrency: secondary, setSecondaryCurrency, fmtSecondary, secondaryRate,
+  }), [currency, symbol, fmt, fmtSigned, setCurrency, secondary, setSecondaryCurrency, fmtSecondary, secondaryRate]);
 
   return (
     <CurrencyContext.Provider value={value}>

@@ -79,7 +79,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           </div>
           <details className="text-left">
             <summary className="text-xs text-muted-foreground cursor-pointer">Show technical details</summary>
-            <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] text-muted-foreground bg-muted rounded-lg p-2">
+            <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground bg-muted rounded-lg p-2">
               {this.state.message}
             </pre>
           </details>

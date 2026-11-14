@@ -8,7 +8,7 @@ import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
 import { activeBudgets } from '@/utils/budgets';
 import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { buildAdvisorData, presentAnalysis } from '@/lib/finance/advisorData';
-import { format, parseISO, subMonths, getMonth, getYear } from 'date-fns';
+import { format, parseISO, subMonths, getMonth, getYear, differenceInCalendarDays } from 'date-fns';
 import { m, AnimatePresence } from 'framer-motion';
 import {
   Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
@@ -126,6 +126,8 @@ const AIAdvisor = () => {
   const [analysis, setAnalysis] = useState<BudgetAnalysis | null>(null);
   const [activeSimTab, setActiveSimTab] = useState<string>('envelope');
   const [applyingEnvelopes, setApplyingEnvelopes] = useState(false);
+  // When the analysis on screen was made. Its figures are from that day, not today.
+  const [analysisAt, setAnalysisAt] = useState<string | null>(null);
   const [history, setHistory] = useState<AdvisorSession[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -135,6 +137,7 @@ const AIAdvisor = () => {
     // Pre-load the most recent session so the last results show without re-running.
     if (sessions.length > 0 && !analysis) {
       setAnalysis(sessions[0].result);
+      setAnalysisAt(sessions[0].created_at);
     }
   }, [fetchAdvisorHistory, analysis]);
 
@@ -211,6 +214,7 @@ const AIAdvisor = () => {
     const result = await generateBudgetAnalysis(financialData);
     if (result) {
       setAnalysis(result);
+      setAnalysisAt(new Date().toISOString());
       loadHistory(); // refresh history list
     }
   };
@@ -291,7 +295,7 @@ const AIAdvisor = () => {
                 {history.map(session => (
                   <div key={session.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted transition-colors">
                     <button
-                      onClick={() => { setAnalysis(session.result); setActiveSimTab(session.result.recommendedMethod); }}
+                      onClick={() => { setAnalysis(session.result); setAnalysisAt(session.created_at); setActiveSimTab(session.result.recommendedMethod); }}
                       className="flex items-center gap-3 flex-1 text-left">
                       <div className="w-9 h-9 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
                         <span className="text-base"><AppIcon value={METHOD_DETAILS[session.result.recommendedMethod]?.emoji ?? '📊'} /></span>
@@ -339,12 +343,12 @@ const AIAdvisor = () => {
                     <IconTile value={a.icon} />
                     <div>
                       <p className="text-sm font-medium">{a.category}</p>
-                      <p className="text-[11px] text-muted-foreground">Avg: {mask(fmt(a.avg))}/mo</p>
+                      <p className="text-xs text-muted-foreground">Avg: {mask(fmt(a.avg))}/mo</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-heading text-warning">{mask(fmt(a.current))}</p>
-                    <p className="text-[10px] font-semibold text-warning">{a.multiple}× average</p>
+                    <p className="text-[11px] font-semibold text-warning">{a.multiple}× average</p>
                   </div>
                 </div>
               ))}
@@ -403,7 +407,13 @@ const AIAdvisor = () => {
             <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
 
               {/* Refresh button */}
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-3">
+                {analysisAt ? (
+                  <p className={`text-xs ${differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? 'text-warning' : 'text-muted-foreground'}`}>
+                    Analysis from {format(parseISO(analysisAt), 'd MMM yyyy')}
+                    {differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? '. The figures below are from that day; re-analyze for today.' : ''}
+                  </p>
+                ) : <span />}
                 <Button variant="ghost" size="sm" onClick={handleAnalyze} disabled={loading} className="text-xs text-muted-foreground">
                   <RefreshCw size={14} className={loading ? 'animate-spin mr-1' : 'mr-1'} /> Re-analyze
                 </Button>
@@ -433,7 +443,7 @@ const AIAdvisor = () => {
                       <p className="text-xs text-muted-foreground mb-2">out of 100</p>
                       <Badge
                         variant="outline"
-                        className={`text-[10px] ${
+                        className={`text-[11px] ${
                           analysis.healthScore >= 75 ? 'border-income text-income bg-income-soft' :
                           analysis.healthScore >= 50 ? 'border-warning text-warning bg-warning-soft' :
                           'border-expense text-expense bg-expense-soft'
@@ -505,12 +515,12 @@ const AIAdvisor = () => {
                           <IconTile value={env.icon} />
                           <div>
                             <p className="text-sm font-medium">{env.category}</p>
-                            <p className="text-[10px] text-muted-foreground">Currently: {mask(fmt(env.currentSpending))}/mo</p>
+                            <p className="text-[11px] text-muted-foreground">Currently: {mask(fmt(env.currentSpending))}/mo</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-heading">{mask(fmt(env.amount))}</p>
-                          <p className={`text-[10px] font-medium ${diff >= 0 ? 'text-income' : 'text-expense'}`}>
+                          <p className={`text-[11px] font-medium ${diff >= 0 ? 'text-income' : 'text-expense'}`}>
                             {diff >= 0 ? <TrendingUp size={10} className="inline mr-0.5" /> : <TrendingDown size={10} className="inline mr-0.5" />}
                             {hidden ? '••••••' : `${diff >= 0 ? '+' : ''}${fmt(Math.abs(diff))}`}
                           </p>
@@ -548,7 +558,7 @@ const AIAdvisor = () => {
                               </p>
                               {sim.key === analysis.recommendedMethod && (
                                 <div className="mt-1">
-                                  <Badge variant="outline" className="text-[9px] border-primary text-primary bg-primary-soft px-1.5 py-0">Best</Badge>
+                                  <Badge variant="outline" className="text-[10px] border-primary text-primary bg-primary-soft px-1.5 py-0">Best</Badge>
                                 </div>
                               )}
                             </button>

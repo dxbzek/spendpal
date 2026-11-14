@@ -297,7 +297,7 @@ const Dashboard = () => {
             {/* Secondary currency — chosen in Settings; switchable here once set */}
             {secondaryCurrency && (
             <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-raised border-0 text-primary-subtle text-[11px] rounded-full px-3 gap-1">
+              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-raised border-0 text-primary-subtle text-xs rounded-full px-3 gap-1">
                 <SelectValue placeholder="2nd currency" />
               </SelectTrigger>
               <SelectContent className="max-h-[240px]">
@@ -347,12 +347,12 @@ const Dashboard = () => {
         {/* ── OVERVIEW ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4 pt-1">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
             <div className="flex-1 h-px bg-border" />
             <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
               {(['all', 'month', 'year'] as const).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                     period === p ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
                   }`}>
                   {p === 'all' ? 'All' : p === 'month' ? 'Month' : 'Year'}
@@ -365,13 +365,13 @@ const Dashboard = () => {
             <div className="w-[26px] h-[26px] rounded-lg bg-income/[0.12] text-income flex items-center justify-center mb-2"><ArrowUpRight size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-financial-medium text-income tabular-nums">{mask(fmt(animatedIncome))}</p>
-            {sec(income) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(income)}</p>}
+            {sec(income) && <p className="text-xs text-muted-foreground truncate">≈ {sec(income)}</p>}
           </Card>
           <Card className="col-span-1 overflow-hidden">
             <div className="w-[26px] h-[26px] rounded-lg bg-expense/[0.12] text-expense flex items-center justify-center mb-2"><ArrowDown size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
-            {sec(expenses) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(expenses)}</p>}
+            {sec(expenses) && <p className="text-xs text-muted-foreground truncate">≈ {sec(expenses)}</p>}
           </Card>
 
           {savings.kind === 'saved' && (
@@ -419,14 +419,14 @@ const Dashboard = () => {
         {/* ── ACCOUNTS ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Accounts</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Accounts</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           <Card className="col-span-2 lg:col-span-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Accounts</h2>
-              <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="text-xs text-primary font-medium flex items-center gap-1">
+              <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="tap-area text-xs text-primary font-medium flex items-center gap-1">
                 <Plus size={14} /> Add
               </button>
             </div>
@@ -453,7 +453,7 @@ const Dashboard = () => {
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium line-clamp-2 break-words">{a.name}</p>
                                   {a.type === 'credit' && (
-                                    <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                                    <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                                       {a.statementDate && a.statementDate > 0 && <span>Stmt: {ordinal(a.statementDate)}</span>}
                                       {a.dueDate && <span>Due: {ordinal(a.dueDate)}</span>}
                                       {a.creditLimit != null && <span>Limit: {fmt(a.creditLimit)}</span>}
@@ -464,9 +464,9 @@ const Dashboard = () => {
                               <div className="flex items-center gap-1 shrink-0">
                                 <div className="text-right">
                                   <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
-                                  {sec(a.balance) && <p className="text-[10px] text-muted-foreground">≈ {sec(a.balance)}</p>}
+                                  {sec(a.balance) && <p className="text-[11px] text-muted-foreground">≈ {sec(a.balance)}</p>}
                                   {a.type === 'credit' && (
-                                    <p className="text-[11px] font-medium text-primary">
+                                    <p className="text-xs font-medium text-primary">
                                       Owed{available != null ? ` · ${fmt(available)} available` : ''}
                                     </p>
                                   )}
@@ -481,7 +481,7 @@ const Dashboard = () => {
                             </div>
                             {a.type === 'credit' && a.creditLimit != null && (
                               <div className="mt-1.5 ml-11">
-                                <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                   <span>{utilization}% used</span>
                                   <span>{fmt(spent)} / {fmt(a.creditLimit)}</span>
                                 </div>
@@ -505,7 +505,7 @@ const Dashboard = () => {
         {/* ── SPENDING ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
@@ -565,14 +565,14 @@ const Dashboard = () => {
         {/* ── PLANNING ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           <Card className="col-span-2 lg:col-span-2">
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-heading text-sm">Budget Overview</h2>
-              <button onClick={() => navigate('/budgets')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+              <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
               <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
@@ -610,20 +610,20 @@ const Dashboard = () => {
             <Card className="col-span-2 lg:col-span-2">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Installment Plans</h2>
-                <button onClick={() => navigate('/installments')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+                <button onClick={() => navigate('/installments')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
                   <p className="text-2xl font-bold text-primary">{installmentSummary.count}</p>
-                  <p className="text-[11px] text-muted-foreground">Active plans</p>
+                  <p className="text-xs text-muted-foreground">Active plans</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold">{mask(fmt(installmentSummary.monthlyTotal))}</p>
-                  <p className="text-[11px] text-muted-foreground">Monthly</p>
+                  <p className="text-xs text-muted-foreground">Monthly</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-expense">{mask(fmt(installmentSummary.totalRemaining))}</p>
-                  <p className="text-[11px] text-muted-foreground">Total left</p>
+                  <p className="text-xs text-muted-foreground">Total left</p>
                 </div>
               </div>
             </Card>
@@ -637,7 +637,7 @@ const Dashboard = () => {
         {/* ── INSIGHTS ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
@@ -649,7 +649,7 @@ const Dashboard = () => {
             <Card className="col-span-2 lg:col-span-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Recent Transactions</h2>
-                <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
+                <button onClick={() => navigate('/transactions')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
               </div>
               <div className="space-y-5">
                 {recentTx.map(tx => {

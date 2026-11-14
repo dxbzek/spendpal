@@ -34,4 +34,18 @@ export function formatAmount(
   return `${sign}${LRI}${symbol} ${digits}${PDI}`;
 }
 
+/** Arabic, Hebrew and related scripts: written right to left. */
+const RTL_SCRIPT = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+
+/**
+ * The symbol to show beside an amount. A right-to-left symbol (AED's "د.إ")
+ * drags the digits into its own direction, so "د.إ 699.86" was drawn as
+ * "699.86" followed by the symbol backwards, and the number font has no Arabic
+ * letters. In this left-to-right interface those currencies show their code:
+ * "AED 699.86".
+ */
+export function displaySymbol(code: string, symbol: string): string {
+  return RTL_SCRIPT.test(symbol) ? code : symbol;
+}
+
 export { LRI, PDI };

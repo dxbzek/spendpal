@@ -154,7 +154,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             </label>
             <AmountInput value={balance} onChange={setBalance} className="h-11" />
             {type === 'credit' && (
-              <p className="text-[11px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 How much you currently owe on this card — not your total credit limit. Available credit is shown as limit minus this.
               </p>
             )}
@@ -163,7 +163,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             <div className="flex items-center justify-between gap-3 rounded-lg bg-muted p-2.5">
               <div>
                 <p className="text-sm font-medium text-foreground">Savings — not for spending</p>
-                <p className="text-[11px] text-muted-foreground">Left out of "Left until payday". Still counts in net position.</p>
+                <p className="text-xs text-muted-foreground">Left out of "Left until payday". Still counts in net position.</p>
               </div>
               <Switch checked={notSpendable} onCheckedChange={setNotSpendable} aria-label="Savings, not for spending" />
             </div>
@@ -186,7 +186,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
                   onChange={e => setApr(e.target.value)}
                   className="h-11 text-base"
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Leave blank to use the {DEFAULT_APR}% default in the Debt payoff calculator. Set to 0 for interest-free BNPL (Tabby, Tamara, etc).
                 </p>
               </div>
@@ -202,7 +202,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
               </div>
               <div className="pt-1">
                 <p className="text-sm font-medium text-foreground">Latest statement</p>
-                <p className="text-[11px] text-muted-foreground mb-2">Copy these from the statement. Home shows exactly these numbers.</p>
+                <p className="text-xs text-muted-foreground mb-2">Copy these from the statement. Home shows exactly these numbers.</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Total due</label>

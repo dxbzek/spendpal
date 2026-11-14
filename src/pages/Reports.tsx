@@ -221,7 +221,7 @@ const Reports = () => {
           <p className="text-xs text-muted-foreground">Expenses</p>
           <p className="font-bold text-sm">{mask(fmt(expenses))}</p>
           {expenseChange !== null && (
-            <p className={`text-[10px] font-medium ${expenseChange > 0 ? 'text-destructive' : 'text-primary'}`}>
+            <p className={`text-[11px] font-medium ${expenseChange > 0 ? 'text-destructive' : 'text-primary'}`}>
               {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs prev
             </p>
           )}
@@ -291,7 +291,7 @@ const Reports = () => {
                         <Receipt size={11} className="text-muted-foreground shrink-0" />
                         <div className="min-w-0">
                           <p className="text-xs font-medium truncate">{tx.merchant}</p>
-                          <p className="text-[10px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d')}</p>
+                          <p className="text-[11px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d')}</p>
                         </div>
                       </div>
                       <span className="text-xs font-semibold text-expense shrink-0 ml-2">{mask(fmt(tx.amount))}</span>
@@ -388,12 +388,12 @@ const Reports = () => {
           <div className="flex items-end gap-1.5">
             {dayOfWeekData.map(({ label, total, pct }) => (
               <div key={label} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[9px] text-muted-foreground leading-none">{total > 0 && !hidden ? fmt(total) : ''}</span>
+                <span className="text-[10px] text-muted-foreground leading-none tabular-nums">{total > 0 && !hidden ? Math.round(total).toLocaleString('en') : ''}</span>
                 <div
                   className={`w-full rounded-t-sm transition-all ${total > 0 ? 'bg-primary' : 'bg-muted'}`}
                   style={{ height: `${Math.max(pct * 0.52, total > 0 ? 4 : 2)}px` }}
                 />
-                <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
+                <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
               </div>
             ))}
           </div>

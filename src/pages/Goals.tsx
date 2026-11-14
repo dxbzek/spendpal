@@ -182,7 +182,7 @@ const Goals = () => {
                         <div className="flex items-center gap-1.5 min-w-0">
                           <p className="text-sm font-semibold truncate">{goal.name}</p>
                           {goal.status === 'paused' && (
-                            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Paused</span>
+                            <span className="shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Paused</span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">{goal.type}</p>
@@ -190,7 +190,7 @@ const Goals = () => {
                     </div>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {daysLeft !== null && (
-                        <span className={`flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                        <span className={`flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
                           daysLeft <= 7 ? 'bg-destructive-soft text-expense' : daysLeft <= 30 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'
                         }`}>
                           <CalendarClock size={10} />
@@ -272,7 +272,7 @@ const Goals = () => {
                     const visible = isShowingAll ? log : log.slice(0, 5);
                     return (
                       <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Contribution History</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Contribution History</p>
                         {log.length === 0 ? (
                           <p className="text-xs text-muted-foreground">No contributions yet</p>
                         ) : (
@@ -289,7 +289,7 @@ const Goals = () => {
                             {log.length > 5 && (
                               <button
                                 onClick={() => setShowAllLog(isShowingAll ? null : goal.id)}
-                                className="text-[11px] text-primary hover:underline mt-1"
+                                className="text-xs text-primary hover:underline mt-1"
                               >
                                 {isShowingAll ? 'Show less' : `Show all ${log.length} entries`}
                               </button>

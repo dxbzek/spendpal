@@ -360,7 +360,7 @@ const Installments = () => {
               <button
                 onClick={() => setShowCompleted(v => !v)}
                 aria-expanded={showCompleted}
-                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                className="tap-area flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
               >
                 Completed ({completedPlans.length})
                 <ChevronDown size={14} className={showCompleted ? 'rotate-180' : ''} />

@@ -71,7 +71,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
     if (pct === 0) return <Minus size={12} className="text-muted-foreground" />;
     const isUp = pct > 0;
     return (
-      <span className={`text-[11px] font-medium flex items-center gap-0.5 ${isUp ? 'text-expense' : 'text-income'}`}>
+      <span className={`text-xs font-medium flex items-center gap-0.5 ${isUp ? 'text-expense' : 'text-income'}`}>
         {isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
         {Math.abs(pct)}%
       </span>
@@ -89,7 +89,7 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
       </div>
 
       {/* Header row */}
-      <div className="grid grid-cols-4 gap-2 text-[11px] text-muted-foreground mb-2 px-1">
+      <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground mb-2 px-1">
         <span>Type</span>
         <span className="text-right">{lastLabel}</span>
         <span className="text-right">{thisLabel}</span>

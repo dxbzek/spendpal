@@ -43,12 +43,12 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
                 <IconTile value={bill.icon} />
                 <div className="min-w-0">
                   <p className="text-sm font-medium leading-tight truncate">{bill.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{format(bill.dueDate, 'MMM d')}</p>
+                  <p className="text-xs text-muted-foreground">{format(bill.dueDate, 'MMM d')}</p>
                 </div>
               </div>
               <div className="text-right shrink-0 pl-2">
                 <p className="text-sm font-heading">{fmt(bill.amount)}</p>
-                <p className={`text-[11px] font-semibold ${
+                <p className={`text-xs font-semibold ${
                   urgent ? 'text-expense' : soon ? 'text-warning' : 'text-muted-foreground'
                 }`}>
                   {bill.daysLeft === 0 ? 'Today!' : bill.daysLeft === 1 ? 'Tomorrow' : `${bill.daysLeft}d`}

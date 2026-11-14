@@ -24,7 +24,7 @@ const ChargeAlertsCard = ({ transactions, mask }: Props) => {
     <div className="bg-card rounded-xl p-4 card-shadow mb-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-heading text-sm">Check these charges</h2>
-        <button onClick={() => navigate('/transactions')} className="text-xs text-primary font-medium flex items-center gap-0.5">
+        <button onClick={() => navigate('/transactions')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">
           Transactions <ChevronRight size={14} />
         </button>
       </div>
@@ -37,13 +37,13 @@ const ChargeAlertsCard = ({ transactions, mask }: Props) => {
           </div>
           <ul className="mt-1 space-y-0.5">
             {fees.fees.slice(0, 5).map(t => (
-              <li key={t.id} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <li key={t.id} className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="truncate">{t.merchant || t.category} · {format(parseISO(t.date.slice(0, 10)), 'd MMM')}</span>
                 <span className="tabular-nums shrink-0">{mask(fmt(t.amount))}</span>
               </li>
             ))}
             {fees.fees.length > 5 && (
-              <li className="text-[11px] text-muted-foreground">+{fees.fees.length - 5} more</li>
+              <li className="text-xs text-muted-foreground">+{fees.fees.length - 5} more</li>
             )}
           </ul>
         </div>
@@ -54,7 +54,7 @@ const ChargeAlertsCard = ({ transactions, mask }: Props) => {
           <p className="text-sm font-medium">Bills that went up</p>
           <ul className="mt-1 space-y-0.5">
             {rises.slice(0, 5).map(r => (
-              <li key={r.key} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <li key={r.key} className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="truncate">{r.name}</span>
                 <span className="tabular-nums shrink-0">
                   {mask(fmt(r.before))} → <span className="text-expense">{mask(fmt(r.now))}</span>
