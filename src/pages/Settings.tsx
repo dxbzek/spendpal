@@ -17,6 +17,7 @@ import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload
 import CategoryManager from '@/components/settings/CategoryManager';
 import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
+import ChangePasswordCard from '@/components/settings/ChangePasswordCard';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import {
@@ -721,6 +722,12 @@ const Settings = () => {
               {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
             </Button>
           </div>
+        </section>
+
+        {/* Password */}
+        <section>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Password</p>
+          <ChangePasswordCard />
         </section>
 
         {/* Financial */}
