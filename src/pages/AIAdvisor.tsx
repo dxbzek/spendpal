@@ -272,13 +272,10 @@ const AIAdvisor = () => {
       {/* Header */}
       <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3">
             <Brain size={28} className="text-primary-foreground" />
             <h1 className="text-2xl font-heading text-primary-foreground">AI Advisor</h1>
           </div>
-          <p className="text-primary-subtle text-sm">
-            Smart analysis of your spending habits with personalized budgeting recommendations
-          </p>
         </div>
       </div>
 
@@ -339,9 +336,8 @@ const AIAdvisor = () => {
           <div className="bg-card rounded-xl p-5 card-shadow">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle size={16} className="text-warning" />
-              <h3 className="font-heading text-sm">Spending Anomalies This Month</h3>
+              <h3 className="font-heading text-sm">Unusual spending this month</h3>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">Categories spending 2× or more above your 3-month average</p>
             <div className="space-y-2.5">
               {anomalies.map(a => (
                 <div key={a.category} className="flex items-center justify-between p-3 bg-warning-soft border border-warning-line rounded-xl">
@@ -419,8 +415,8 @@ const AIAdvisor = () => {
               <div className="flex items-center justify-between gap-3">
                 {analysisAt ? (
                   <p className={`text-xs ${differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? 'text-warning' : 'text-muted-foreground'}`}>
-                    Analysis from {format(parseISO(analysisAt), 'd MMM yyyy')}
-                    {differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? '. The figures below are from that day; re-analyze for today.' : ''}
+                    From {format(parseISO(analysisAt), 'd MMM')}
+                    {differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? ' · out of date' : ''}
                   </p>
                 ) : <span />}
                 <Button variant="ghost" size="sm" onClick={handleAnalyze} disabled={loading || limitReached} className="text-xs text-muted-foreground">
