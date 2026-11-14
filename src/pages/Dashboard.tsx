@@ -395,7 +395,7 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
             {sec(expenses) && <p className="text-xs text-muted-foreground truncate">≈ {sec(expenses)}</p>}
-            {refunds > 0 && <p className="text-xs text-muted-foreground truncate">After {mask(fmt(refunds))} in refunds</p>}
+            {refunds > 0 && <p className="text-xs text-muted-foreground">−{mask(fmt(refunds))} refunds</p>}
           </Card>
 
           {savings.kind === 'saved' && (
