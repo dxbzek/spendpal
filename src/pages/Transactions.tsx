@@ -239,7 +239,8 @@ const Transactions = () => {
                    Card credit
                  </span>
                )}
-               {tx.totalInstallments && tx.currentInstallment && (
+               {/* != null, not truthy: 0 paid is a valid count and must not print a bare "0". */}
+               {tx.totalInstallments != null && tx.currentInstallment != null && (
                  <span className="text-[11px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full shrink-0">
                    {tx.currentInstallment}/{tx.totalInstallments}
                  </span>

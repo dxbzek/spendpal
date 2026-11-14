@@ -16,7 +16,9 @@ import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { findNearDuplicate } from '@/utils/detectDuplicates';
 import { transferPartner } from '@/lib/finance/transfers';
-import { isPlanForm, planFields, setRecurring } from '@/lib/finance/transactionForm';
+import {
+  defaultPaidInstallments, isPlanForm, paidInstallmentsFrom, planFields, setRecurring,
+} from '@/lib/finance/transactionForm';
 import { planIdForNewRow } from '@/lib/finance/installments';
 import { format } from 'date-fns';
 import {
@@ -67,6 +69,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [hasInstallments, setHasInstallments] = useState(false);
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
+  // Until the user types a paid count, it follows Tracking Only (0 on a card, 1 from cash).
+  const [paidTouched, setPaidTouched] = useState(false);
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -150,6 +154,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     setHasInstallments(false);
     setTotalInstallments('12');
     setCurrentInstallment('1');
+    setPaidTouched(false);
     setLoanTotalAmount('');
     setRemainingPrincipal('');
     setIsTrackingOnly(false);
@@ -310,7 +315,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const perInstallment = parseFloat(amount) || 0;
   const totalInst = parseInt(totalInstallments) || 0;
-  const currentInst = parseInt(currentInstallment) || 0;
+  const currentInst = paidInstallmentsFrom(currentInstallment, totalInst);
   const loanTotal = parseFloat(loanTotalAmount) || 0;
   const displayTotal = isPlan
     ? (loanTotal || perInstallment * totalInst)
@@ -479,7 +484,11 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                             <p className="text-sm font-medium">Tracking Only</p>
                             <p className="text-xs text-muted-foreground">From CC / Tabby — no balance deduction</p>
                           </div>
-                          <Switch checked={isTrackingOnly} onCheckedChange={setIsTrackingOnly} />
+                          <Switch checked={isTrackingOnly} onCheckedChange={(v) => {
+                            setIsTrackingOnly(v);
+                            // A new plan on a card has nothing paid until its first bill.
+                            if (!isEditing && !paidTouched) setCurrentInstallment(String(defaultPaidInstallments(v)));
+                          }} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -496,17 +505,22 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                             </Select>
                           </div>
                           <div>
-                            <label htmlFor="tx-current-installment" className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
-                            <Input id="tx-current-installment" type="number" min="1" max={totalInstallments}
+                            <label htmlFor="tx-current-installment" className="text-xs text-muted-foreground mb-1 block">Installments paid so far</label>
+                            <Input id="tx-current-installment" type="number" inputMode="numeric" min="0" max={totalInstallments}
                               value={currentInstallment}
                               onChange={e => {
-                                const v = parseInt(e.target.value);
-                                const max = parseInt(totalInstallments) || 1;
-                                if (!isNaN(v) && v >= 1 && v <= max) setCurrentInstallment(String(v));
+                                const raw = e.target.value;
+                                const v = parseInt(raw, 10);
+                                const max = parseInt(totalInstallments, 10) || 1;
+                                // 0 is valid: nothing paid yet. Empty is allowed while typing and saves as 0.
+                                if (raw !== '' && (isNaN(v) || v < 0 || v > max)) return;
+                                setCurrentInstallment(raw === '' ? '' : String(v));
+                                setPaidTouched(true);
                               }}
                               className="h-10" />
                           </div>
                         </div>
+                        <p className="text-[11px] text-muted-foreground -mt-1">Enter 0 if the first payment is not made yet.</p>
                         <div>
                           <label htmlFor="tx-loan-total" className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
                           <AmountInput id="tx-loan-total" placeholder="e.g. 1200 (before interest/fees)"
@@ -525,7 +539,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                           <div className="bg-primary-soft rounded-lg p-2.5 text-center">
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                             <p className="text-sm font-heading text-foreground">
-                              {fmt(totalAmount)} ({currentInstallment}/{totalInstallments})
+                              {fmt(totalAmount)} ({currentInst}/{totalInstallments} paid)
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               Remaining: {fmt(remainingBalance)} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
