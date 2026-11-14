@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Transaction } from '@/types/finance';
-import { openPlansByAccount, splitOwedByPlans } from '@/lib/finance/debtPlans';
+import { openPlansByAccount, planPrincipalLeft, splitOwedByPlans } from '@/lib/finance/debtPlans';
 
 let n = 0;
 const row = (o: Partial<Transaction>): Transaction => ({
@@ -32,6 +32,25 @@ describe('openPlansByAccount', () => {
 
   it('leaves out a plan that posts each instalment: its remainder is not in the balance yet', () => {
     expect(plans.card.some(p => p.merchant === 'Gym')).toBe(false);
+  });
+});
+
+describe('planPrincipalLeft', () => {
+  const only = (t: Transaction) => openPlansByAccount([t])[t.accountId][0];
+
+  it('uses the remaining principal typed from the statement', () => {
+    expect(planPrincipalLeft(only(laptop))).toBe(4_200.5); // not 42 x 150 = 6,300
+  });
+
+  it('is instalment x instalments left for a plan with nothing else entered', () => {
+    expect(planPrincipalLeft(only(phone))).toBe(500);
+  });
+
+  it('takes a straight-line share of the item price when that was entered', () => {
+    // 1,200 item, 12 instalments of 110 (interest inside). 9 left: 900 of
+    // principal, not 9 x 110 = 990. Same as the Installments page.
+    const tv = row({ merchant: '[CC] TV', amount: 110, totalInstallments: 12, currentInstallment: 3, loanTotalAmount: 1_200 });
+    expect(planPrincipalLeft(only(tv))).toBe(900);
   });
 });
 

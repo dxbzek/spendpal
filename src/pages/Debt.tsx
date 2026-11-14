@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input';
 import {
   DEFAULT_APR, allocateMonth, minimumMonthlyBudget, monthsToPayoff, revolvingMinimum, simulateStrategy,
 } from '@/lib/finance/debtPayoff';
-import { openPlansByAccount, splitOwedByPlans } from '@/lib/finance/debtPlans';
-import { planDisplayName, planLeft, planSchedule, remainingInstallments } from '@/lib/finance/installments';
+import { openPlansByAccount, planPrincipalLeft, splitOwedByPlans } from '@/lib/finance/debtPlans';
+import { planDisplayName, planSchedule, remainingInstallments } from '@/lib/finance/installments';
 import { creditTotals, creditUtilization } from '@/lib/finance/credit';
 import AppIcon from '@/components/AppIcon';
 
@@ -329,7 +329,7 @@ const Debt = () => {
                                 {planDisplayName(plan.merchant)} · {left} × {mask(fmt(plan.amountPerInstallment))}
                                 {endsOn ? ` · ends ${format(endsOn, 'MMM yyyy')}` : ''}
                               </span>
-                              <span className="tabular-nums shrink-0">{mask(fmt(planLeft(plan)))}</span>
+                              <span className="tabular-nums shrink-0">{mask(fmt(planPrincipalLeft(plan)))}</span>
                             </li>
                           );
                         })}
