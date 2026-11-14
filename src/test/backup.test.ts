@@ -1,27 +1,38 @@
 // Restore must never leave the account empty, and a load must not stop at 1,000 rows.
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fetchAllRows, prepareRestore, restoreBackup, exportBackup, RestoreError } from '@/lib/backup';
+import { fetchAllRows, fetchAllById, prepareRestore, restoreBackup, exportBackup, RestoreError } from '@/lib/backup';
 
 type Row = Record<string, unknown>;
 
 /** In-memory stand-in for the Supabase client: just the calls backup.ts makes. */
-function fakeDb(seed: Record<string, Row[]>, opts: { failInsert?: (table: string, call: number) => boolean; pageCap?: number } = {}) {
+interface FakeOpts {
+  failInsert?: (table: string, call: number) => boolean;
+  pageCap?: number;
+  /** Runs before each select is answered: a write from another device between two pages. */
+  beforeSelect?: (table: string, call: number, tables: Record<string, Row[]>) => void;
+}
+function fakeDb(seed: Record<string, Row[]>, opts: FakeOpts = {}) {
   const tables: Record<string, Row[]> = JSON.parse(JSON.stringify(seed));
   const inserts: Record<string, number> = {};
+  const selects: Record<string, number> = {};
   const from = (name: string) => {
     tables[name] ??= [];
     const filters: Array<[string, unknown]> = [];
     let op: 'select' | 'delete' | 'update' = 'select';
     let patch: Row = {};
     let range: [number, number] | null = null;
-    const match = (r: Row) => filters.every(([k, v]) => r[k] === v);
+    let after: string | null = null;
+    let limit = Infinity;
+    const match = (r: Row) => filters.every(([k, v]) => r[k] === v) && (after === null || String(r.id) > after);
     const run = () => {
       if (op === 'delete') { tables[name] = tables[name].filter(r => !match(r)); return { data: null, error: null }; }
       if (op === 'update') { tables[name].filter(match).forEach(r => Object.assign(r, patch)); return { data: null, error: null }; }
-      const all = tables[name].filter(match).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      selects[name] = (selects[name] ?? 0) + 1;
+      opts.beforeSelect?.(name, selects[name], tables);
+      const all = tables[name].filter(match).sort((a, b) => (String(a.id) < String(b.id) ? -1 : 1));
       const [f, t] = range ?? [0, all.length - 1];
-      const cap = opts.pageCap ?? Infinity;
+      const cap = Math.min(opts.pageCap ?? Infinity, limit);
       return { data: all.slice(f, Math.min(t + 1, f + cap)), error: null, count: all.length };
     };
     const q = {
@@ -29,6 +40,8 @@ function fakeDb(seed: Record<string, Row[]>, opts: { failInsert?: (table: string
       order: () => q,
       eq: (k: string, v: unknown) => { filters.push([k, v]); return q; },
       range: (f: number, t: number) => { range = [f, t]; return q; },
+      gt: (_k: string, v: string) => { after = v; return q; },
+      limit: (n: number) => { limit = n; return q; },
       delete: () => { op = 'delete'; return q; },
       update: (p: Row) => { op = 'update'; patch = p; return q; },
       insert: (rows: Row[]) => {
@@ -85,7 +98,105 @@ describe('fetchAllRows', () => {
     let n = 0;
     await fetchAllRows(async () => { n++; return { data: [1, 2], error: null, count: 2 }; });
     expect(n).toBe(1);
-    await expect(fetchAllRows(async () => ({ data: null, error: { message: 'offline' } }))).rejects.toMatchObject({ message: 'offline' });
+    // A real Error, so a caller that prints err.message shows the reason.
+    const err = await fetchAllRows(async () => ({ data: null, error: { message: 'offline' } })).catch(e => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe('offline');
+  });
+
+  // A list that another device changes while page `changeOn` is being asked for.
+  const movingList = (n: number, changeOn: number, change: (list: Array<{ id: number }>) => void) => {
+    const list = Array.from({ length: n }, (_, i) => ({ id: i }));
+    let calls = 0;
+    const page = async (from: number, to: number) => {
+      if (++calls === changeOn) change(list);
+      return { data: list.slice(from, to + 1), error: null, count: list.length };
+    };
+    return { list, page };
+  };
+  const ids = (rows: Array<{ id: number }>) => rows.map(r => r.id).sort((a, b) => a - b);
+
+  it('returns no row twice when a row is added between pages', async () => {
+    const { list, page } = movingList(2500, 2, l => l.unshift({ id: -1 }));
+    const rows = await fetchAllRows(page);
+    expect(new Set(ids(rows)).size).toBe(rows.length);
+    expect(ids(rows)).toEqual(ids(list));
+  });
+
+  it('drops no live row when a row is removed between pages', async () => {
+    const { list, page } = movingList(2500, 2, l => l.splice(0, 1));
+    const rows = await fetchAllRows(page);
+    expect(ids(rows)).toContain(1000);
+    expect(ids(rows)).toEqual(ids(list));
+  });
+
+  it('stops re-reading a list that never stops moving, still without repeats', async () => {
+    let next = -1;
+    const list = Array.from({ length: 1500 }, (_, i) => ({ id: i }));
+    let calls = 0;
+    const rows = await fetchAllRows(async (from, to) => {
+      calls++;
+      if (from > 0) list.unshift({ id: next-- });
+      return { data: list.slice(from, to + 1), error: null, count: list.length };
+    });
+    expect(new Set(ids(rows)).size).toBe(rows.length);
+    expect(calls).toBeLessThanOrEqual(7);
+  });
+
+  it('drops repeats when the server sends no count', async () => {
+    const list = Array.from({ length: 1200 }, (_, i) => ({ id: i }));
+    let calls = 0;
+    const rows = await fetchAllRows(async (from, to) => {
+      if (++calls === 2) list.unshift({ id: -1 });
+      return { data: list.slice(from, to + 1), error: null };
+    });
+    expect(new Set(ids(rows)).size).toBe(rows.length);
+  });
+});
+
+describe('fetchAllById', () => {
+  const store = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `r${String(i).padStart(5, '0')}` }));
+  const pageOf = (list: Array<{ id: string }>, onCall?: (call: number) => void) => {
+    let calls = 0;
+    const afters: Array<string | null> = [];
+    const page = async (after: string | null, limit: number) => {
+      onCall?.(++calls);
+      afters.push(after);
+      const left = list.filter(r => after === null || r.id > after).sort((a, b) => (a.id < b.id ? -1 : 1));
+      return { data: left.slice(0, limit), error: null, count: left.length };
+    };
+    return { page, afters };
+  };
+
+  it('asks for each page after the last id of the one before', async () => {
+    const { page, afters } = pageOf(store(2350));
+    const rows = await fetchAllById(page);
+    expect(rows).toHaveLength(2350);
+    expect(afters).toEqual([null, 'r00999', 'r01999']);
+  });
+
+  it('neither repeats nor skips a row when rows are added and removed between pages', async () => {
+    const list = store(2500);
+    const { page } = pageOf(list, call => {
+      if (call !== 2) return;
+      list.unshift({ id: 'a-new-first-row' }); // sorts before every row already read
+      list.splice(list.findIndex(r => r.id === 'r00500'), 1);
+    });
+    const got = (await fetchAllById(page)).map(r => r.id);
+    expect(new Set(got).size).toBe(got.length);
+    // Every row that was there the whole time is in the result once.
+    expect(got).toContain('r01000');
+    expect(got.filter(id => id !== 'r00500')).toEqual(list.filter(r => r.id !== 'a-new-first-row').map(r => r.id));
+  });
+
+  it('reads on to an empty page when there is no count, and throws a real Error', async () => {
+    const list = store(1200);
+    const rows = await fetchAllById(async (after, limit) =>
+      ({ data: list.filter(r => after === null || r.id > after).slice(0, Math.min(limit, 500)), error: null }));
+    expect(rows).toHaveLength(1200);
+    const err = await fetchAllById(async () => ({ data: null, error: { message: 'offline' } })).catch(e => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe('offline');
   });
 });
 
@@ -131,6 +242,25 @@ describe('restoreBackup', () => {
     const many = { ...live(), transactions: Array.from({ length: 2100 }, (_, i) => tx(`t${String(i).padStart(5, '0')}`, 'a1', 1)) };
     const backup = await exportBackup(fakeDb(many, { pageCap: 1000 }).client, USER);
     expect(backup.transactions).toHaveLength(2100);
+  });
+
+  // 2,100 transactions, and another device writes while the second page is asked for.
+  const exportDuring = async (write: (tables: Record<string, Row[]>) => void) => {
+    const many = { ...live(), transactions: Array.from({ length: 2100 }, (_, i) => tx(`t${String(i).padStart(5, '0')}`, 'a1', 1)) };
+    const db = fakeDb(many, { beforeSelect: (table, call, tables) => { if (table === 'transactions' && call === 2) write(tables); } });
+    return (await exportBackup(db.client, USER)).transactions.map(r => r.id);
+  };
+
+  it('exports no row twice when a row is added while the pages load', async () => {
+    const got = await exportDuring(t => { t.transactions.unshift(tx('a-new-first-row', 'a1', 7)); });
+    expect(new Set(got).size).toBe(got.length);
+    expect(got).toHaveLength(2100);
+  });
+
+  it('exports every live row when a row is deleted while the pages load', async () => {
+    const got = await exportDuring(t => { t.transactions = t.transactions.filter(r => r.id !== 't00500'); });
+    expect(got).toContain('t01000');
+    expect(got).toHaveLength(2100);
   });
 
   it('puts the previous data back when the restore fails part-way', async () => {

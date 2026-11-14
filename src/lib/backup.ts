@@ -13,24 +13,89 @@ type Row = Record<string, unknown>;
 type QueryError = { message: string };
 type PageResult<T> = { data: T[] | null; error: QueryError | null; count?: number | null };
 
+/** The message of anything a failed call can hand back. Supabase errors are plain objects, not Error instances. */
+export function errorMessage(err: unknown): string {
+  const message = (err as { message?: unknown } | null)?.message;
+  if (typeof message === 'string' && message.trim()) return message;
+  return typeof err === 'string' && err.trim() ? err : 'no reason given';
+}
+
+const idOf = (row: unknown): unknown =>
+  row !== null && typeof row === 'object' ? (row as { id?: unknown }).id : undefined;
+
+/** How many times fetchAllRows starts again when the list changes under it. */
+const MAX_READS = 3;
+
 /**
  * Read every row of a query, one page at a time. PostgREST returns at most
  * 1,000 rows per request and says nothing about the rest, so a plain select
  * silently loses rows past that. Ask for `count: 'exact'` in the query to be
  * safe against a server page size smaller than `size`.
+ *
+ * Pages are cut by row position, so a row added between two requests pushes
+ * an old row onto the next page (it arrives twice) and a row removed pulls
+ * one off it (it never arrives). No row is returned twice: repeats are
+ * dropped by id. A count that changes between pages means the list moved, so
+ * the read starts again; after MAX_READS tries the last read is used.
  */
 export async function fetchAllRows<T>(
   page: (from: number, to: number) => PromiseLike<PageResult<T>>,
   size = PAGE_SIZE,
 ): Promise<T[]> {
+  for (let read = 1; ; read++) {
+    const rows: T[] = [];
+    const seen = new Set<unknown>();
+    // Rows the server has sent, repeats included: the position of the next page.
+    let sent = 0;
+    let total: number | null = null;
+    let moved = false;
+    for (;;) {
+      const { data, error, count } = await page(sent, sent + size - 1);
+      if (error) throw new Error(errorMessage(error));
+      const got = data ?? [];
+      if (count != null) {
+        if (total != null && count !== total && read < MAX_READS) { moved = true; break; }
+        total = count;
+      }
+      sent += got.length;
+      for (const row of got) {
+        const id = idOf(row);
+        if (id !== undefined) {
+          if (seen.has(id)) continue;
+          seen.add(id);
+        }
+        rows.push(row);
+      }
+      if (got.length === 0) break;
+      if (total != null ? sent >= total : got.length < size) break;
+    }
+    if (!moved) return rows;
+  }
+}
+
+/**
+ * Read every row in id order, each page starting after the last id of the one
+ * before. A row added or removed between two requests cannot repeat or hide
+ * another row, because no page depends on how many rows came before it.
+ * With `count: 'exact'` the count is the rows left from this page on.
+ */
+export async function fetchAllById<T>(
+  page: (afterId: string | null, limit: number) => PromiseLike<PageResult<T>>,
+  size = PAGE_SIZE,
+): Promise<T[]> {
   const rows: T[] = [];
+  let last: string | null = null;
   for (;;) {
-    const { data, error, count } = await page(rows.length, rows.length + size - 1);
-    if (error) throw error;
+    const { data, error, count } = await page(last, size);
+    if (error) throw new Error(errorMessage(error));
     const got = data ?? [];
     rows.push(...got);
-    if (got.length === 0) return rows;
-    if (count != null ? rows.length >= count : got.length < size) return rows;
+    // No count: only an empty page proves the end, the server may cap pages below `size`.
+    if (got.length === 0 || (count != null && got.length >= count)) return rows;
+    const next = String(idOf(got[got.length - 1]));
+    // A query that ignores the "after" id would loop forever.
+    if (next === last) throw new Error('Paging did not move past the last row.');
+    last = next;
   }
 }
 
@@ -53,8 +118,12 @@ const table = (client: SupabaseClient, name: string) =>
 
 /** Every row the user owns, straight from the server (not just what the app has loaded). */
 export async function exportBackup(client: SupabaseClient, userId: string): Promise<BackupV2> {
-  const read = (name: BackupTable) => fetchAllRows<Row>((from, to) =>
-    table(client, name).select('*', { count: 'exact' }).eq('user_id', userId).order('id').range(from, to));
+  // By id, not by position: a write from another device or the bot while the
+  // pages load must not put a row in the file twice or leave one out.
+  const read = (name: BackupTable) => fetchAllById<Row>((afterId, limit) => {
+    const mine = table(client, name).select('*', { count: 'exact' }).eq('user_id', userId);
+    return (afterId ? mine.gt('id', afterId) : mine).order('id').limit(limit);
+  });
   const [accounts, transactions, budgets, goals, goal_contributions] = await Promise.all(BACKUP_TABLES.map(read));
   return { version: 2, exportedAt: new Date().toISOString(), accounts, transactions, budgets, goals, goal_contributions };
 }
