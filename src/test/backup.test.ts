@@ -1,7 +1,7 @@
 // Restore must never leave the account empty, and a load must not stop at 1,000 rows.
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fetchAllRows, fetchAllById, prepareRestore, restoreBackup, exportBackup, RestoreError } from '@/lib/backup';
+import { fetchAllRows, fetchAllById, prepareRestore, instalmentsOk, weeklyToMonthly, restoreBackup, exportBackup, RestoreError } from '@/lib/backup';
 
 type Row = Record<string, unknown>;
 
@@ -204,7 +204,152 @@ describe('prepareRestore', () => {
   it('rejects a bad file before anything is written', () => {
     expect(() => prepareRestore({ accounts: [] }, USER)).toThrow(/Invalid backup file/);
     const bad = { version: 2, ...live(), transactions: [tx('t1', 'a1', 10, '11/01/2026')] };
-    expect(() => prepareRestore(bad, USER)).toThrow(/transaction 1: date must be YYYY-MM-DD.*Nothing was changed/);
+    expect(() => prepareRestore(bad, USER)).toThrow(/transaction 1: date must be a real date, YYYY-MM-DD.*Nothing was changed/);
+  });
+
+  // The database allows an amount of 0 (CHECK amount >= 0). Refusing it here
+  // made an account that holds one such row impossible to export and restore.
+  it('accepts a zero-amount transaction and budget, as the database does', () => {
+    const file = {
+      version: 2, ...live(),
+      transactions: [tx('t1', 'a1', 10), tx('t2', 'a1', 0)],
+      budgets: [{ ...live().budgets[0], amount: 0 }],
+    };
+    const prep = prepareRestore(file, USER);
+    expect(prep.transactions.map(t => t.amount)).toEqual([10, 0]);
+    expect(prep.budgets[0].amount).toBe(0);
+  });
+
+  it('refuses every row the database would refuse, naming the row', () => {
+    const base = () => ({ version: 2, ...live() });
+    const withTx = (patch: Row) => ({ ...base(), transactions: [tx('t1', 'a1', 10), { ...tx('t2', 'a1', 25), ...patch }] });
+    const withAccount = (patch: Row) => ({ ...base(), accounts: [{ ...account('a1', 'Debit', 500), ...patch }] });
+    const withGoal = (patch: Row) => ({ ...base(), goals: [{ ...live().goals[0], ...patch }] });
+    const withBudget = (patch: Row) => ({ ...base(), budgets: [{ ...live().budgets[0], ...patch }] });
+    const cases: Array<[string, unknown, RegExp]> = [
+      ['negative amount', withTx({ amount: -1 }), /transaction 2: amount must be 0 or more/],
+      ['amount as text', withTx({ amount: '25' }), /transaction 2: amount must be 0 or more/],
+      ['missing amount', withTx({ amount: null }), /transaction 2: amount must be 0 or more/],
+      ['blank merchant', withTx({ merchant: '  ' }), /transaction 2: needs a merchant/],
+      ['missing merchant', withTx({ merchant: undefined }), /transaction 2: needs a merchant/],
+      ['blank category', withTx({ category: ' ' }), /transaction 2: needs a category/],
+      ['a date that does not exist', withTx({ date: '2026-02-31' }), /transaction 2: date must be a real date/],
+      ['unknown type', withTx({ type: 'refund' }), /transaction 2: type must be/],
+      ['instalment 5 of 3', withTx({ total_installments: 3, current_installment: 5 }), /transaction 2: instalments paid must be between 0 and the instalment count/],
+      ['a plan of 0 instalments', withTx({ total_installments: 0, current_installment: 0 }), /transaction 2: instalments paid/],
+      ['half an instalment', withTx({ total_installments: 3, current_installment: 1.5 }), /transaction 2: instalments paid must be a whole number/],
+      ['negative remaining principal', withTx({ remaining_principal: -1 }), /transaction 2: remaining principal/],
+      ['a plan id that is not an id', withTx({ plan_id: 'plan-1' }), /transaction 2: plan_id is not an id/],
+      ['a flag that is not true or false', withTx({ is_pending: 'yes' }), /transaction 2: is_pending/],
+      ['blank account name', withAccount({ name: '' }), /account 1: needs a name/],
+      ['unknown account type', withAccount({ type: 'loan' }), /account 1: type must be/],
+      ['negative credit limit', withAccount({ credit_limit: -1 }), /account 1: credit limit/],
+      ['due day 45', withAccount({ due_date: 45 }), /account 1: due day must be 1 to 31/],
+      ['statement day 0', withAccount({ statement_date: 0 }), /account 1: statement day/],
+      ['negative APR', withAccount({ apr: -2 }), /account 1: APR/],
+      ['negative statement total', withAccount({ statement_total_due: -1 }), /account 1: statement total/],
+      ['budget period yearly', withBudget({ period: 'yearly' }), /budget 1: period must be monthly or weekly/],
+      ['negative budget', withBudget({ amount: -5 }), /budget 1: amount must be 0 or more/],
+      ['blank budget category', withBudget({ category: '' }), /budget 1: needs a category/],
+      ['two budgets for one category and month',
+        { ...base(), budgets: [live().budgets[0], { ...live().budgets[0], id: 'b2', amount: 90 }] },
+        /budget 2: same category and month as budget 1/],
+      ['goal status archived', withGoal({ status: 'archived' }), /goal 1: status must be/],
+      ['negative saved amount', withGoal({ saved_amount: -5 }), /goal 1: saved amount/],
+      ['target of 0', withGoal({ target_amount: 0 }), /goal 1: target must be above 0/],
+      ['goal without a type', withGoal({ type: null }), /goal 1: needs a type/],
+      ['blank goal name', withGoal({ name: ' ' }), /goal 1: needs a name/],
+      ['contribution of -5', { ...base(), goal_contributions: [{ ...live().goal_contributions[0], amount: -5 }] }, /goal contribution 1: amount must be above 0/],
+      ['contribution of 0', { ...base(), goal_contributions: [{ ...live().goal_contributions[0], amount: 0 }] }, /goal contribution 1: amount must be above 0/],
+    ];
+    for (const [name, file, reason] of cases) {
+      expect(() => prepareRestore(file, USER), name).toThrow(reason);
+    }
+    // The untouched file passes, so each case fails for its own reason only.
+    expect(() => prepareRestore(base(), USER)).not.toThrow();
+  });
+
+  it('names a row by its place in the file, not its place after sorting', () => {
+    const file = {
+      version: 2, ...live(),
+      // Sorted by creation time the bad row would come first.
+      accounts: [account('a2', 'Later', 1), { ...account('a1', '', 1) }],
+      transactions: [],
+    };
+    expect(() => prepareRestore(file, USER)).toThrow(/account 2: needs a name/);
+  });
+
+  it('reads the instalment rule the way the database does', () => {
+    expect(instalmentsOk(null, null)).toBe(true);
+    expect(instalmentsOk(undefined, undefined)).toBe(true);
+    expect(instalmentsOk(12, 0)).toBe(true);   // a plan with nothing paid yet
+    expect(instalmentsOk(12, 12)).toBe(true);
+    expect(instalmentsOk(12, 13)).toBe(false);
+    expect(instalmentsOk(12, -1)).toBe(false);
+    expect(instalmentsOk(0, 0)).toBe(false);
+    // One value on its own is "unknown" to a CHECK and passes, unless its own half fails.
+    expect(instalmentsOk(12, null)).toBe(true);
+    expect(instalmentsOk(null, 3)).toBe(true);
+    expect(instalmentsOk(-1, null)).toBe(false);
+    expect(instalmentsOk(null, -1)).toBe(false);
+    const file = { version: 2, ...live(), transactions: [{ ...tx('t1', 'a1', 100), total_installments: 12, current_installment: 0 }] };
+    expect(prepareRestore(file, USER).transactions[0]).toMatchObject({ total_installments: 12, current_installment: 0 });
+  });
+
+  it('turns a weekly budget into a monthly one, to the cent', () => {
+    expect(weeklyToMonthly(100)).toBe(433.33);
+    expect(weeklyToMonthly(150)).toBe(650);
+    expect(weeklyToMonthly(0)).toBe(0);
+    const file = {
+      version: 2, ...live(),
+      budgets: [
+        { ...live().budgets[0], period: 'weekly', amount: 100 },
+        { ...live().budgets[0], id: 'b2', category: 'Fuel', amount: 300 },
+      ],
+    };
+    expect(prepareRestore(file, USER).budgets.map(b => [b.category, b.period, b.amount]))
+      .toEqual([['Food', 'monthly', 433.33], ['Fuel', 'monthly', 300]]);
+    // A weekly and a monthly budget for one category and month would become two monthly ones.
+    const clash = { ...file, budgets: [file.budgets[0], { ...live().budgets[0], id: 'b3' }] };
+    expect(() => prepareRestore(clash, USER)).toThrow(/budget 2: same category and month as budget 1/);
+  });
+
+  it('keeps the plan and transfer ids, and leaves empty values out', () => {
+    const plan = '11111111-2222-4333-8444-555555555555';
+    const pair = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    const file = {
+      version: 2, ...live(),
+      transactions: [
+        { ...tx('t1', 'a1', 50), plan_id: plan, total_installments: 4, current_installment: 1, note: null },
+        { ...tx('t2', 'a1', 50), plan_id: plan, total_installments: 4, current_installment: 2 },
+        { ...tx('t3', 'a1', 20), type: 'transfer', transfer_id: pair, plan_id: null },
+        { ...tx('t4', 'a2', 20), type: 'transfer', transfer_id: pair },
+      ],
+    };
+    const prep = prepareRestore(file, USER);
+    expect(prep.transactions.map(t => t.plan_id)).toEqual([plan, plan, undefined, undefined]);
+    expect(prep.transactions.map(t => t.transfer_id)).toEqual([undefined, undefined, pair, pair]);
+    expect('note' in prep.transactions[0]).toBe(false);
+    expect('plan_id' in prep.transactions[2]).toBe(false);
+    // The database makes these ids, so the file's own never go back in.
+    expect('id' in prep.transactions[0]).toBe(false);
+  });
+
+  it('gives accounts and goals a creation time each, so their order survives one transaction', () => {
+    const file = {
+      version: 2, ...live(),
+      accounts: [account('a2', 'Second', 1), account('a1', 'First', 1), { ...account('a3', 'No time', 1), created_at: undefined }],
+      transactions: [],
+    };
+    const now = Date.parse('2026-11-14T10:00:00.000Z');
+    const prep = prepareRestore(file, USER, undefined, now);
+    expect(prep.accounts.map(a => [a.name, a.created_at])).toEqual([
+      // Rows without a time sort first (as before) and get one from the clock.
+      ['No time', '2026-11-14T10:00:00.000Z'],
+      ['First', '2026-01-01T00:00:00Z'],
+      ['Second', '2026-01-02T00:00:00Z'],
+    ]);
+    expect(prep.goals[0].created_at).toBe('2026-11-14T10:00:00.001Z');
   });
 
   it('reads a version 1 file (camelCase app objects)', () => {
