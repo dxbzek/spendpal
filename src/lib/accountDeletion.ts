@@ -23,12 +23,15 @@ const isMissingTable = (e: QueryError) => e.code === 'PGRST205' || e.code === '4
 /**
  * Remove everything the signed-in user stored, except the sign-in itself.
  *
- * What stays, because row level security gives the browser no way to remove
- * it: the profile row (name and phone are blanked here; currency and email
- * alerts are kept as plain preferences), the notification log (send times
- * only) and the photo. Storage has no DELETE policy, so the photo file cannot
- * be removed from here; its link stays on the profile too, so the user still
- * sees the photo that is still stored. Deleting the account removes all of it.
+ * What stays: the profile row (name and phone are blanked here; currency and
+ * email alerts are kept as plain preferences; row level security has no
+ * DELETE for it), the notification log (send times only, SELECT only) and
+ * the photo. The photo file is not removed here: the storage DELETE policy
+ * for a user's own folder arrives with the review-fixes migration, which is
+ * applied by hand, and without it a remove call answers "ok" and deletes
+ * nothing. Its link stays on the profile too, so the user still sees the
+ * photo that is still stored, and the Settings copy says the photo stays.
+ * Deleting the account removes all of it.
  *
  * Runs table by table and stops at the first error. There is no transaction
  * across the calls, so a failure can leave some tables already empty; running
