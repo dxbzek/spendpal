@@ -34,6 +34,13 @@ describe('page names', () => {
     expect(page('NotFound')).not.toContain('"Dashboard"');
   });
 
+  it('the public pages call the advisor by its page name', () => {
+    for (const name of ['Landing', 'Privacy', 'Terms']) {
+      expect(page(name)).not.toMatch(/AI budget advisor/i);
+      expect(page(name)).toContain(PAGE_NAMES['/advisor']);
+    }
+  });
+
   it('account types have one name each', () => {
     expect(ACCOUNT_TYPE_NAMES).toEqual({ cash: 'Cash', debit: 'Bank account', credit: 'Credit card' });
     expect(ACCOUNT_TYPE_GROUP_NAMES.debit).toBe('Bank accounts');

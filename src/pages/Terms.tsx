@@ -37,7 +37,7 @@ const Terms = () => {
 
       <LegalSection title="The AI features">
         <p>
-          The AI Budget Advisor, budget suggestions and statement and screenshot import use an AI model. It can be wrong: it can
+          The AI Advisor, budget suggestions and statement and screenshot import use an AI model. It can be wrong: it can
           misread a statement, miss a transaction or suggest something that does not suit you. Treat what it says as a suggestion,
           not advice. The <Link to="/privacy" className="text-primary font-medium">Privacy policy</Link> says what each feature sends.
         </p>

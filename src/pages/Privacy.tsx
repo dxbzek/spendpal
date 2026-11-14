@@ -50,7 +50,7 @@ const Privacy = () => (
       <LegalList items={[
         <><strong>Import a statement:</strong> the text of the file you pick. A PDF or Excel file is read in your browser first, and its text is sent.</>,
         <><strong>Import or scan a screenshot:</strong> the image you pick, and the note you type with it, if any.</>,
-        <><strong>AI Budget Advisor:</strong> this month's income, spending and spending by category, your spendable cash, your recurring
+        <><strong>AI Advisor:</strong> this month's income, spending and spending by category, your spendable cash, your recurring
           payments (merchant and amount), your cards (name, amount owed, limit, minimum due), your budgets, your goals (name, target, saved), how many accounts and transactions you have, and your currency.</>,
         <><strong>Budget suggestions</strong> on the Budgets page: the category, amount and date of each of your expenses.</>,
       ]} />

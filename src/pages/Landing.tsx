@@ -15,7 +15,7 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: CreditCard,
     title: 'Accounts and cards',
-    body: 'Cash, debit and credit accounts. For a card, set the limit, statement day and due day, and type in what the latest statement asks you to pay.',
+    body: 'Cash, bank accounts and credit cards. For a card, set the limit, statement day and due day, and type in what the latest statement asks you to pay.',
   },
   {
     icon: PiggyBank,
@@ -44,7 +44,7 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   },
   {
     icon: Sparkles,
-    title: 'AI budget advisor',
+    title: 'AI Advisor',
     body: "Looks at this month's spending, cards, budgets and goals, and suggests a budgeting method and an amount per category. Advice that does not refer to your own figures is not shown.",
   },
 ];

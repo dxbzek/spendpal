@@ -15,6 +15,7 @@ import Terms from '@/pages/Terms';
 import AuthPage from '@/pages/AuthPage';
 import { OPERATOR_PENDING, GOVERNING_LAW_PENDING } from '@/lib/operator';
 import { LEGAL_LAST_CHANGED, publicPage } from '@/lib/publicSite';
+import { PAGE_NAMES } from '@/lib/pageNames';
 
 const setUser = (user: { id: string } | null) => {
   auth.current = {
@@ -63,7 +64,7 @@ describe('home page for visitors', () => {
     renderAt('/', <Landing />);
     for (const name of [
       'Accounts and cards', 'Budgets with month-end pace', 'Instalment plans', 'Savings goals',
-      'Reports', 'Statement and screenshot import', 'AI budget advisor',
+      'Reports', 'Statement and screenshot import', PAGE_NAMES['/advisor'],
     ]) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument();
     }
