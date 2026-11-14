@@ -7,7 +7,7 @@ import { logger } from '@/lib/logger';
 import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
 import { fetchAllRows } from '@/lib/backup';
 import { budgetCategoryOf } from '@/lib/finance/categories';
-import { retryWithoutLinks, roundAmount, roundAmountOrNull } from '@/lib/finance/transactionWrite';
+import { newUuid, retryWithoutLinks, roundAmount, roundAmountOrNull } from '@/lib/finance/transactionWrite';
 import {
   AccountRowSchema,
   TransactionRowSchema,
@@ -378,7 +378,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const amount = roundAmount(transfer.amount);
     // One id on both halves, so they are paired by it and not by date and
     // amount, which two equal transfers on one day share.
-    const transferId = crypto.randomUUID();
+    const transferId = newUuid();
     const rows = [
       {
         user_id: userId,

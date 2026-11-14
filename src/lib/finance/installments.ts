@@ -14,6 +14,7 @@
 // and one more falls due each month after that.
 import type { Account, Transaction } from '@/types/finance';
 import { parseDay } from '@/lib/finance/cardPayments';
+import { newUuid } from '@/lib/finance/transactionWrite';
 
 export interface InstallmentPlan {
   key: string;
@@ -151,7 +152,7 @@ export function principalAfterProgress(
 export function planIdForNewRow(
   transactions: Transaction[],
   row: Pick<Transaction, 'accountId' | 'merchant' | 'totalInstallments' | 'currentInstallment' | 'amount' | 'date'>,
-  newId: () => string = () => crypto.randomUUID(),
+  newId: () => string = newUuid,
 ): string | undefined {
   const fallbackKey = planKey({ ...row, planId: null });
   const open = buildPlans(transactions).find(p =>

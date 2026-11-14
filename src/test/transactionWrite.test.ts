@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isMissingLinkColumn, retryWithoutLinks, roundAmount, roundAmountOrNull, withoutLinkColumns,
+  isMissingLinkColumn, newUuid, retryWithoutLinks, roundAmount, roundAmountOrNull, withoutLinkColumns,
 } from '@/lib/finance/transactionWrite';
 import { TransactionRowSchema } from '@/lib/schemas';
 
@@ -89,6 +89,25 @@ describe('plan_id and transfer_id on rows read from the database', () => {
     if (r.success) {
       expect(r.data.plan_id).toBe('00000000-0000-0000-0000-00000000000a');
       expect(r.data.transfer_id).toBeNull();
+    }
+  });
+});
+
+describe('new plan and transfer ids', () => {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it('are uuids, and differ', () => {
+    expect(newUuid()).toMatch(uuid);
+    expect(newUuid()).not.toBe(newUuid());
+  });
+
+  it('are still uuids where crypto.randomUUID is missing (plain http)', () => {
+    const original = crypto.randomUUID;
+    Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true, writable: true });
+    try {
+      expect(newUuid()).toMatch(uuid);
+    } finally {
+      Object.defineProperty(crypto, 'randomUUID', { value: original, configurable: true, writable: true });
     }
   });
 });
