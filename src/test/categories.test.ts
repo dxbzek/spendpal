@@ -20,9 +20,14 @@ describe('budgetCategoryOf', () => {
 });
 
 describe('usedCategories', () => {
-  it('lists the categories in the rows, most used first, with the newest icon', () => {
+  it('uses the icon most rows carry, not the one on the newest row', () => {
+    const rows = [row('Entertainment', '2026-09-25', '🎟️'), row('Entertainment', '2026-09-26', '🎟️'), row('Entertainment', '2026-11-03', '🎤')];
+    expect(usedCategories(rows, 'expense')).toEqual([{ name: 'Entertainment', icon: '🎟️' }]);
+  });
+
+  it('lists the categories in the rows, most used first, with the newest icon on a tie', () => {
     const rows = [
-      row('Food', '2026-11-01', '🍽️'), row('Food', '2026-11-09', '🍕'), row('Food', '2026-11-03', '🍽️'),
+      row('Food', '2026-11-01', '🍽️'), row('Food', '2026-11-09', '🍕'), row('Food', '2026-11-10', '🍕'), row('Food', '2026-11-03', '🍽️'),
       row('Church', '2026-11-02', '🤲'),
       row('Transfer', '2026-11-02', '🔁', { isInternal: true }),
       row('Salary', '2026-10-30', '💰', { type: 'income' }),

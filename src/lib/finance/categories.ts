@@ -43,7 +43,8 @@ export const MIN_USES = 2;
 
 /**
  * Categories the user's recent rows use for this type, most used first, with
- * the icon of the newest row. Only rows on or after `since` (YYYY-MM-DD) count,
+ * the icon most of those rows carry (the newest of them on a tie). One row
+ * with its own icon, a concert under Entertainment, doesn't restyle the category. Only rows on or after `since` (YYYY-MM-DD) count,
  * and a name needs MIN_USES of them: all of history would bring back every
  * name an old import ever produced.
  */
@@ -52,20 +53,23 @@ export function usedCategories(
   type: TransactionType,
   since = '',
 ): PickerCategory[] {
-  const seen = new Map<string, { count: number; icon: string; latest: string }>();
+  const seen = new Map<string, { count: number; icons: Map<string, { n: number; latest: string }> }>();
   for (const t of transactions) {
     if (t.type !== type || t.isInternal || !t.category || t.date < since) continue;
-    const e = seen.get(t.category);
-    if (!e) seen.set(t.category, { count: 1, icon: t.categoryIcon, latest: t.date });
-    else {
-      e.count++;
-      if (t.date > e.latest) { e.latest = t.date; e.icon = t.categoryIcon; }
-    }
+    let e = seen.get(t.category);
+    if (!e) seen.set(t.category, e = { count: 0, icons: new Map() });
+    e.count++;
+    const i = e.icons.get(t.categoryIcon);
+    if (!i) e.icons.set(t.categoryIcon, { n: 1, latest: t.date });
+    else { i.n++; if (t.date > i.latest) i.latest = t.date; }
   }
   return [...seen.entries()]
     .filter(([, e]) => e.count >= MIN_USES)
     .sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
-    .map(([name, e]) => ({ name, icon: e.icon }));
+    .map(([name, e]) => ({
+      name,
+      icon: [...e.icons.entries()].sort((a, b) => b[1].n - a[1].n || b[1].latest.localeCompare(a[1].latest))[0][0],
+    }));
 }
 
 /**
