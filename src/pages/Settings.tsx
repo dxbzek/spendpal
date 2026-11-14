@@ -23,6 +23,7 @@ import ChangePasswordCard from '@/components/settings/ChangePasswordCard';
 import { EMAIL_ALERTS_ENABLED } from '@/lib/notifications';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
+import { PAGE_NAMES } from '@/lib/pageNames';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -881,7 +882,7 @@ const Settings = () => {
               <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
                 <BookOpen size={15} className="text-primary" />
               </div>
-              Glossary & FAQ
+              {PAGE_NAMES['/glossary']}
             </button>
 
             <button onClick={() => setShowLogoutConfirm(true)}

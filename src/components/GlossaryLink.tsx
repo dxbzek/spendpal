@@ -1,5 +1,6 @@
 import { HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { glossaryHref } from '@/lib/glossary';
 import {
   Tooltip,
   TooltipContent,
@@ -20,9 +21,11 @@ const GlossaryLink = ({ term, className = '' }: Props) => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            navigate('/glossary');
+            navigate(glossaryHref(term));
           }}
-          className={`inline-flex items-center text-muted-foreground hover:text-primary transition-colors ${className}`}
+          aria-label={`What is ${term}?`}
+          // tap-area widens the target to about 40 px without moving the icon.
+          className={`tap-area inline-flex items-center p-1.5 -m-1.5 text-muted-foreground hover:text-primary transition-colors ${className}`}
         >
           <HelpCircle size={12} />
         </button>

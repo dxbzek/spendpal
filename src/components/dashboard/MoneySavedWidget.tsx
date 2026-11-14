@@ -1,7 +1,6 @@
 import { useCurrency } from '@/context/CurrencyContext';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { PiggyBank, TrendingUp, TrendingDown } from 'lucide-react';
-import GlossaryLink from '@/components/GlossaryLink';
 import type { Transaction } from '@/types/finance';
 import { memo, useMemo } from 'react';
 
@@ -34,7 +33,6 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden: _hidden, mas
       <div className="flex items-center gap-2 mb-2">
         <PiggyBank size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Saved This Month</h2>
-        <GlossaryLink term="Saved This Month" />
       </div>
       <p className={`text-financial-large min-w-0 ${positive ? 'text-income' : 'text-expense'} mt-1`}>
         {mask(fmt(saved))}

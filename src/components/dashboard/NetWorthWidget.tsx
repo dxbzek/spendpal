@@ -99,7 +99,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
       <div className="flex items-center gap-2 mb-2">
         <Wallet size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Net Worth</h2>
-        <GlossaryLink term="Net Worth" />
+        <GlossaryLink term="Total Net Worth" />
         {trend !== 0 && !hidden && (
           <span className={`ml-auto flex items-center gap-0.5 text-xs font-medium ${trend >= 0 ? 'text-income' : 'text-expense'}`}>
             {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
