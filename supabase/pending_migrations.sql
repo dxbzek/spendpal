@@ -694,3 +694,14 @@ WHERE t.plan_id IS NULL
   AND t.account_id = g.account_id
   AND t.merchant = g.merchant
   AND t.total_installments = g.total_installments;
+
+-- 22f. goal_contributions had no UPDATE policy, so convert_currency() changed
+--    zero contribution rows and said nothing. Same ownership rule as INSERT.
+DROP POLICY IF EXISTS "Users can update own goal contributions" ON public.goal_contributions;
+CREATE POLICY "Users can update own goal contributions"
+  ON public.goal_contributions FOR UPDATE
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK (
+    (select auth.uid()) = user_id
+    AND EXISTS (SELECT 1 FROM public.goals g WHERE g.id = goal_contributions.goal_id AND g.user_id = (select auth.uid()))
+  );
