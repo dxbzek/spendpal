@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { normalizeAmount } from "@/components/ui/AmountInput";
+import { parseBalance } from "@/lib/finance/normalizeAmount";
 
 describe("normalizeAmount", () => {
   it("converts a comma decimal to a dot", () => {
@@ -97,5 +98,28 @@ describe("normalizeAmount reads separators by position", () => {
     expect(normalizeAmount("-1,234.50", { allowNegative: true })).toBe("-1234.50");
     expect(normalizeAmount("12-3", { allowNegative: true })).toBe("123");
     expect(normalizeAmount("-", { allowNegative: true })).toBe("-");
+  });
+});
+
+// Regression: Edit Account refused to save any change while the balance was
+// below zero, and the balance trigger can take it there.
+describe("parseBalance", () => {
+  it("accepts a negative balance: an overdrawn account or a card in credit", () => {
+    expect(parseBalance("-150.25")).toBe(-150.25);
+    expect(parseBalance((-150.25).toString())).toBe(-150.25);
+  });
+
+  it("reads an empty field as zero", () => {
+    expect(parseBalance("")).toBe(0);
+    expect(parseBalance("  ")).toBe(0);
+  });
+
+  it("returns null for text that is not a number", () => {
+    expect(parseBalance("-")).toBeNull();
+    expect(parseBalance(".")).toBeNull();
+  });
+
+  it("reads a normal balance", () => {
+    expect(parseBalance("5212.49")).toBe(5212.49);
   });
 });

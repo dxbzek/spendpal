@@ -52,3 +52,15 @@ export function normalizeAmount(raw: string, options: NormalizeAmountOptions = {
   if (isGrouped(groups) && (hasComma || groups.length > 2)) return sign + groups.join('');
   return sign + firstDotOnly(s.replace(/,/g, '.'));
 }
+
+/**
+ * A balance field's text as a number, or null when it is not one. An empty
+ * field is 0. A negative figure is valid: a bank account can be overdrawn and
+ * a card can be in credit (a refund larger than what is owed), and refusing it
+ * blocked every edit of such an account.
+ */
+export function parseBalance(text: string): number | null {
+  if (text.trim() === '') return 0;
+  const n = parseFloat(text);
+  return Number.isFinite(n) ? n : null;
+}

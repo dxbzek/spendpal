@@ -51,12 +51,6 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
 
   const handleApply = async () => {
     if (parsedActual === null || isNaN(parsedActual) || !adjustment) return;
-    // Same constraint as AddAccountDialog: balance/owed can't be negative,
-    // for credit accounts or otherwise.
-    if (parsedActual < 0) {
-      toast.error(isCredit ? 'Amount owed cannot be negative' : 'Balance cannot be negative');
-      return;
-    }
     setSubmitting(true);
     try {
       // Post an internal adjustment that nudges the trigger-maintained balance
@@ -103,7 +97,13 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
             <label className="text-sm font-medium text-foreground mb-1 block">
               Actual {label} from your bank/card ({currency})
             </label>
-            <AmountInput value={actual} onChange={setActual} className="h-11" />
+            {/* Negative is a real figure: an overdrawn account, or a card in credit. */}
+            <AmountInput value={actual} onChange={setActual} allowNegative className="h-11" />
+            {hasActual && parsedActual < 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {isCredit ? 'A negative amount means the card is in credit.' : 'A negative balance means the account is overdrawn.'}
+              </p>
+            )}
           </div>
           {drift !== null && (
             drift === 0 ? (
@@ -121,7 +121,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
           )}
           <Button
             onClick={handleApply}
-            disabled={parsedActual === null || isNaN(parsedActual) || parsedActual < 0 || drift === 0 || submitting}
+            disabled={!adjustment || submitting}
             className="w-full h-11 text-base bg-primary text-primary-foreground"
           >
             {drift !== null && drift !== 0 ? `Fix it — correct to ${fmt(parsedActual!)}` : 'Apply correction'}

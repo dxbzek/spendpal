@@ -10,6 +10,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
 import { DEFAULT_APR } from '@/lib/finance/debtPayoff';
+import { parseBalance } from '@/lib/finance/normalizeAmount';
 import { toast } from 'sonner';
 
 interface Props {
@@ -55,18 +56,17 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
 
   const handleSubmit = async () => {
     if (!name.trim() || submitting) return;
-    const parsedBalance = balance.trim() === '' ? 0 : parseFloat(balance);
-    if (isNaN(parsedBalance)) { toast.error('Balance must be a valid number'); return; }
+    // Negative is allowed: an overdrawn account, or a card in credit. The
+    // balance trigger can take a balance below zero, and refusing it here
+    // blocked every later edit of that account.
+    const parsedBalance = parseBalance(balance);
+    if (parsedBalance === null) { toast.error('Balance must be a valid number'); return; }
     // For credit accounts, credit limit is required
     if (type === 'credit' && !creditLimit.trim()) {
       toast.error('Credit limit is required for credit accounts');
       return;
     }
     const parsedCreditLimit = type === 'credit' && creditLimit ? parseFloat(creditLimit) : undefined;
-    // Balance can't be negative — for credit accounts it's the amount owed,
-    // which can exceed the credit limit (over-limit charges, unpaid interest)
-    // but can't be negative.
-    if (parsedBalance < 0) { toast.error(type === 'credit' ? 'Amount owed cannot be negative' : 'Balance cannot be negative'); return; }
     const parsedDueDate = type === 'credit' && dueDate ? parseInt(dueDate) : undefined;
     const parsedStatementDate = type === 'credit' && statementDate ? parseInt(statementDate) : undefined;
     if (parsedDueDate !== undefined && (isNaN(parsedDueDate) || parsedDueDate < 1 || parsedDueDate > 31)) {
@@ -152,7 +152,12 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             <label className="text-sm font-medium text-foreground mb-1 block">
               {type === 'credit' ? 'Amount Owed' : 'Balance'} ({currency})
             </label>
-            <AmountInput value={balance} onChange={setBalance} className="h-11" />
+            <AmountInput value={balance} onChange={setBalance} allowNegative className="h-11" />
+            {(parseBalance(balance) ?? 0) < 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {type === 'credit' ? 'A negative amount means the card is in credit.' : 'A negative balance means the account is overdrawn.'}
+              </p>
+            )}
             {type === 'credit' && (
               <p className="text-xs text-muted-foreground mt-1">
                 How much you currently owe on this card — not your total credit limit. Available credit is shown as limit minus this.
