@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { savingsSummary, budgetPace, goalPace } from '@/lib/finance/pace';
+import { savingsSummary, budgetPace, goalPace, goalDeadlineLabel, goalPaceLabel } from '@/lib/finance/pace';
 
 const row = (amount: number, day: number, isRecurring = false) =>
   ({ amount, date: `2026-11-${String(day).padStart(2, '0')}`, isRecurring });
@@ -42,6 +42,16 @@ describe('budgetPace', () => {
     expect(budgetPace({ amount: 1900, spent: 0, isFixed: true }, [], 3, 30)).toEqual({ projected: 1900, hasPace: false });
     expect(budgetPace({ amount: 1900, spent: 2000, isFixed: true }, [row(2000, 1)], 3, 30).projected).toBe(2000);
   });
+
+  it('uses the one-off limit it is given, so yen-sized lunches still make a pace', () => {
+    // A 1,200 lunch on 14 days. Against the fixed 500 every one was a one-off:
+    // no pace, and the budget "ended the month" where it stood (16,800).
+    const rows = Array.from({ length: 14 }, (_, i) => row(1200, i + 1));
+    const budget = { amount: 40_000, spent: 16_800 };
+    expect(budgetPace(budget, rows, 14, 30, 10_000)).toEqual({ projected: 36_000, hasPace: true });
+    // And the other way: with a limit of 20, a 400 purchase is a one-off.
+    expect(budgetPace({ amount: 100, spent: 400 }, [row(400, 2)], 14, 30, 20)).toEqual({ projected: 400, hasPace: false });
+  });
 });
 
 describe('goalPace', () => {
@@ -55,8 +65,26 @@ describe('goalPace', () => {
     expect(goalPace(500, 20)).toEqual({ kind: 'inDays', amount: 500, days: 20 });
   });
   it('flags a passed deadline and stays quiet without one or when done', () => {
-    expect(goalPace(500, 0)).toEqual({ kind: 'overdue' });
+    expect(goalPace(500, -1)).toEqual({ kind: 'overdue' });
     expect(goalPace(500, null)).toBeNull();
     expect(goalPace(0, 30)).toBeNull();
+  });
+  it('treats a deadline of today as due today, not overdue', () => {
+    expect(goalPace(500, 0)).toEqual({ kind: 'dueToday', amount: 500 });
+    expect(goalDeadlineLabel(0)).toBe('Due today');
+    expect(goalDeadlineLabel(-1)).toBe('Overdue');
+    expect(goalDeadlineLabel(12)).toBe('12d');
+  });
+  it('asks nothing of a paused goal', () => {
+    expect(goalPace(4700, 77, true)).toBeNull();
+    expect(goalPaceLabel(goalPace(4700, 77, true), String)).toBeNull();
+  });
+  it('words the need in the singular for one month and one day', () => {
+    const money = (n: number) => n.toFixed(0);
+    expect(goalPaceLabel(goalPace(1000, 45), money)).toBe('Needs 1000/mo for 1 month'); // was "1 months"
+    expect(goalPaceLabel(goalPace(1000, 60), money)).toBe('Needs 500/mo for 2 months');
+    expect(goalPaceLabel(goalPace(1000, 1), money)).toBe('Needs all of it in 1 day');
+    expect(goalPaceLabel(goalPace(1000, 0), money)).toBe('Needs all of it today');
+    expect(goalPaceLabel(goalPace(1000, -3), money)).toBeNull();
   });
 });
