@@ -11,6 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import { format } from 'date-fns';
+import { exportBackup, restoreBackup, RestoreError } from '@/lib/backup';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
 import CategoryManager from '@/components/settings/CategoryManager';
 import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
@@ -69,30 +71,38 @@ const SecondaryCurrencyCard = () => {
   );
 };
 const DataBackupCard = () => {
-  const { accounts, transactions, budgets, goals, refresh } = useFinance();
+  const { refresh } = useFinance();
   const { user } = useAuth();
   const [restoring, setRestoring] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleExport = () => {
-    const data = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      accounts,
-      transactions,
-      budgets,
-      goals,
-    };
+  const download = (data: unknown, name: string) => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `spendpal-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `${name}-${format(new Date(), 'yyyy-MM-dd')}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Backup downloaded');
+  };
+
+  const handleExport = async () => {
+    if (!user) return;
+    setExporting(true);
+    try {
+      // Read from the server, so the file holds everything, not just what this page has loaded.
+      const backup = await exportBackup(supabase, user.id);
+      download(backup, 'spendpal-backup');
+      toast.success(`Backup downloaded: ${backup.transactions.length} transactions, ${backup.accounts.length} accounts`);
+    } catch (err) {
+      logger.error('Export failed', err);
+      toast.error('Could not export your data. Check your connection and try again.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,17 +118,9 @@ const DataBackupCard = () => {
     setShowConfirm(false);
     setRestoring(true);
 
-    // 1. Parse and validate the backup file
-    let data: {
-      version: number;
-      accounts: Array<Record<string, unknown>>;
-      transactions: Array<Record<string, unknown>>;
-      budgets?: Array<Record<string, unknown>>;
-      goals?: Array<Record<string, unknown>>;
-    };
+    let data: unknown;
     try {
-      const text = await pendingFile.text();
-      data = JSON.parse(text) as typeof data;
+      data = JSON.parse(await pendingFile.text());
     } catch {
       toast.error('Invalid backup file: could not parse JSON.');
       setRestoring(false);
@@ -126,138 +128,27 @@ const DataBackupCard = () => {
       return;
     }
 
-    if (!data.version || !Array.isArray(data.accounts) || !Array.isArray(data.transactions)) {
-      toast.error('Invalid backup file: missing required fields (version, accounts, transactions).');
-      setRestoring(false);
-      setPendingFile(null);
-      return;
-    }
-
     try {
-      // 2. Delete existing data one table at a time (in parallel, deleting
-      // accounts while transactions are going can deadlock on the balance trigger).
-      for (const table of ['transactions', 'budgets', 'goals', 'accounts'] as const) {
-        const { error } = await supabase.from(table).delete().eq('user_id', user.id);
-        if (error) throw error;
-      }
-
-      // 3. Re-insert accounts
-      if (data.accounts.length) {
-        const { error } = await supabase.from('accounts').insert(
-          data.accounts.map((a) => ({
-            user_id: user.id,
-            name: String(a.name),
-            type: a.type as 'cash' | 'debit' | 'credit',
-            // Start at 0: re-inserting the transactions below replays them onto
-            // the balance via the DB trigger. The exported balance is set after.
-            balance: 0,
-            currency: String(a.currency),
-            icon: String(a.icon),
-            credit_limit: a.creditLimit != null ? Number(a.creditLimit) : null,
-            due_date: a.dueDate != null ? Number(a.dueDate) : null,
-            statement_date: a.statementDate != null ? Number(a.statementDate) : null,
-            apr: a.apr != null ? Number(a.apr) : null,
-            // Only present in newer backups (and needs the statement migration).
-            ...(a.statementTotalDue !== undefined && { statement_total_due: a.statementTotalDue != null ? Number(a.statementTotalDue) : null }),
-            ...(a.statementMinDue !== undefined && { statement_min_due: a.statementMinDue != null ? Number(a.statementMinDue) : null }),
-            ...(a.statementDueOn !== undefined && { statement_due_on: (a.statementDueOn as string | null) ?? null }),
-            ...(a.excludeFromSpendable !== undefined && { exclude_from_spendable: Boolean(a.excludeFromSpendable) }),
-          }))
-        );
-        if (error) throw error;
-      }
-
-      // 4. Build old→new account ID map
-      const { data: newAccounts, error: accFetchErr } = await supabase
-        .from('accounts').select('*').eq('user_id', user.id);
-      if (accFetchErr) throw accFetchErr;
-      const accountMap: Record<string, string> = {};
-      data.accounts.forEach((old) => {
-        const match = (newAccounts ?? []).find(
-          (n) => n.name === old.name && n.type === old.type
-        );
-        if (match) accountMap[old.id as string] = match.id as string;
-      });
-
-      // 5. Re-insert transactions
-      if (data.transactions.length) {
-        const mapped = data.transactions
-          .filter((t) => accountMap[t.accountId as string])
-          .map((t) => ({
-            user_id: user.id,
-            account_id: accountMap[t.accountId as string],
-            type: t.type as 'expense' | 'income' | 'transfer',
-            amount: Number(t.amount),
-            currency: String(t.currency),
-            category: String(t.category),
-            category_icon: String(t.categoryIcon),
-            merchant: String(t.merchant),
-            date: String(t.date),
-            note: (t.note as string | null | undefined) ?? null,
-            is_recurring: Boolean(t.isRecurring ?? false),
-            total_installments: t.totalInstallments != null ? Number(t.totalInstallments) : null,
-            current_installment: t.currentInstallment != null ? Number(t.currentInstallment) : null,
-            is_tracking_only: Boolean(t.isTrackingOnly ?? false),
-            is_internal: Boolean(t.isInternal ?? false),
-            is_pending: Boolean(t.isPending ?? false),
-            loan_total_amount: t.loanTotalAmount != null ? Number(t.loanTotalAmount) : null,
-            ...(t.remainingPrincipal !== undefined && { remaining_principal: t.remainingPrincipal != null ? Number(t.remainingPrincipal) : null }),
-          }));
-        if (mapped.length) {
-          const { error } = await supabase.from('transactions').insert(mapped);
-          if (error) throw error;
-        }
-      }
-
-      // 5b. Put each account back on its exported balance (the trigger's replay
-      // only matches it if the backup held the account's full history).
-      for (const old of data.accounts) {
-        const newId = accountMap[old.id as string];
-        if (!newId) continue;
-        const { error } = await supabase.from('accounts').update({ balance: Number(old.balance) }).eq('id', newId);
-        if (error) throw error;
-      }
-
-      // 6. Re-insert budgets
-      if (data.budgets?.length) {
-        const { error } = await supabase.from('budgets').insert(
-          data.budgets.map((b) => ({
-            user_id: user.id,
-            category: String(b.category),
-            category_icon: String(b.categoryIcon),
-            amount: Number(b.amount),
-            period: b.period as 'monthly' | 'weekly',
-            month: String(b.month),
-          }))
-        );
-        if (error) throw error;
-      }
-
-      // 7. Re-insert goals
-      if (data.goals?.length) {
-        const { error } = await supabase.from('goals').insert(
-          data.goals.map((g) => ({
-            user_id: user.id,
-            name: String(g.name),
-            icon: String(g.icon),
-            type: String(g.type),
-            target_amount: Number(g.targetAmount),
-            saved_amount: Number(g.savedAmount),
-            deadline: (g.deadline as string | null | undefined) ?? null,
-            status: g.status as 'active' | 'completed' | 'paused',
-          }))
-        );
-        if (error) throw error;
-      }
-
+      // Checks the file, saves a copy of what's there now, then replaces it.
+      // A restore that fails part-way puts the copy back.
+      const result = await restoreBackup(supabase, user.id, data,
+        snapshot => download(snapshot, 'spendpal-before-restore'));
       await refresh();
-      toast.success(
-        `Restored ${data.accounts.length} accounts and ${data.transactions.length} transactions.`
-      );
+      const skipped = result.skippedTransactions
+        ? ` ${result.skippedTransactions} transactions had no account in the file and were left out.` : '';
+      toast.success(`Restored ${result.accounts} accounts and ${result.transactions} transactions.${skipped}`);
     } catch (err: unknown) {
       logger.error('Restore failed', err);
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Restore failed: ${msg}`);
+      if (err instanceof RestoreError) {
+        await refresh();
+        toast.error(err.rolledBack
+          ? `Restore failed (${msg}). Your previous data was put back.`
+          : `Restore failed (${msg}) and your previous data could not be put back. Import the "spendpal-before-restore" file that was just downloaded.`,
+          { duration: Infinity });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setRestoring(false);
       setPendingFile(null);
@@ -270,8 +161,9 @@ const DataBackupCard = () => {
         <p className="text-sm font-medium">Data Backup & Restore</p>
         <p className="text-xs text-muted-foreground">Export all your data as JSON or restore from a previous backup.</p>
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 h-11 gap-2" onClick={handleExport}>
-            <Download size={16} /> Export
+          <Button variant="outline" className="flex-1 h-11 gap-2" disabled={exporting} onClick={handleExport}>
+            {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {exporting ? 'Exporting…' : 'Export'}
           </Button>
           <Button variant="outline" className="flex-1 h-11 gap-2" disabled={restoring}
             onClick={() => fileRef.current?.click()}>
@@ -290,7 +182,7 @@ const DataBackupCard = () => {
               <AlertDialogTitle>Restore Backup?</AlertDialogTitle>
             </div>
             <AlertDialogDescription>
-              This will permanently delete all your current accounts, transactions, budgets, and goals, then replace them with the data from <span className="font-medium text-foreground">{pendingFile?.name}</span>. This action cannot be undone.
+              This replaces all your current accounts, transactions, budgets, and goals with the data from <span className="font-medium text-foreground">{pendingFile?.name}</span>. A copy of your current data is downloaded first, in case you need to go back.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -320,8 +212,7 @@ const DangerZoneCard = () => {
     if (!user || confirmText !== 'DELETE') return;
     setDeleting(true);
     try {
-      // Server-side by user, so it covers rows older than the 13 months the
-      // app loads. The balance trigger reverses each row on its account.
+      // Server-side by user. The balance trigger reverses each row on its account.
       const { error } = await supabase.from('transactions').delete().eq('user_id', user.id);
       if (error) throw error;
       toast.success('All transactions deleted');

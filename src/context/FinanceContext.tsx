@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { isCountableExpense } from '@/lib/finance/transactionFilters';
-import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
+import { fetchAllRows } from '@/lib/backup';
 import {
   AccountRowSchema,
   TransactionRowSchema,
@@ -146,6 +146,8 @@ interface FinanceContextType {
   budgets: Budget[];
   goals: Goal[];
   loading: boolean;
+  /** The last load failed, so empty lists mean "unknown", not "no data". */
+  loadError: boolean;
   // Accounts
   addAccount: (account: Omit<Account, 'id'>) => Promise<boolean>;
   updateAccount: (account: Account) => Promise<boolean>;
@@ -185,6 +187,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // Memoized budget spending - computed once from the transactions array,
   // not recalculated inside every mutation's nested state setter.
@@ -205,29 +208,25 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!userId) { setLoading(false); return; }
     setLoading(true);
     try {
-      // Load transactions from the last 13 months by default (covers current +
-      // previous year for Reports), instead of loading every transaction ever recorded.
-      // Older data can be fetched on demand (e.g., from the Reports page range picker).
-      const thirteenMonthsAgo = new Date();
-      thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
-      const cutoffDate = format(thirteenMonthsAgo, 'yyyy-MM-dd');
-
-      const [accRes, txRes, bgtRes, goalRes] = await Promise.all([
+      // Every transaction, a page at a time. A plain select stops at 1,000
+      // rows without saying so, and a date cutoff drops old instalment plans
+      // and the "All" totals.
+      const [accRes, txRows, bgtRes, goalRes] = await Promise.all([
         supabase.from('accounts').select('*').order('created_at'),
-        supabase.from('transactions').select('*').gte('date', cutoffDate).order('date', { ascending: false }),
+        fetchAllRows((from, to) => supabase.from('transactions').select('*', { count: 'exact' })
+          .order('date', { ascending: false }).order('id').range(from, to)),
         supabase.from('budgets').select('*').order('created_at'),
         supabase.from('goals').select('*').order('created_at'),
       ]);
 
       if (accRes.error) throw accRes.error;
-      if (txRes.error) throw txRes.error;
       if (bgtRes.error) throw bgtRes.error;
       if (goalRes.error) throw goalRes.error;
 
       const validAccounts = (accRes.data ?? []).map(mapAccount).filter((a): a is Account => a !== null);
       setAccounts(validAccounts);
 
-      const validTxs = (txRes.data ?? []).map(mapTransaction).filter((t): t is Transaction => t !== null);
+      const validTxs = txRows.map(mapTransaction).filter((t): t is Transaction => t !== null);
       setTransactions(validTxs);
 
       const spentByCategory = computeSpentByCategory(validTxs);
@@ -236,9 +235,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const validGoals = (goalRes.data ?? []).map(mapGoal).filter((g): g is Goal => g !== null);
       setGoals(validGoals);
+      setLoadError(false);
     } catch (err) {
       logger.error('Failed to fetch finance data', err);
-      toast.error('Failed to load your financial data. Please refresh.');
+      // Not a toast: an empty app after a failed load reads as "you have no data".
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -684,14 +685,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [goals]);
 
   const contextValue = useMemo(() => ({
-    accounts, transactions, budgets, goals, loading,
+    accounts, transactions, budgets, goals, loading, loadError,
     addAccount, updateAccount, removeAccount,
     addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions, dismissDuplicate,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
     addGoal, updateGoal, removeGoal, addGoalProgress, withdrawGoalProgress,
     refresh: fetchAll,
   }), [
-    accounts, transactions, budgets, goals, loading,
+    accounts, transactions, budgets, goals, loading, loadError,
     addAccount, updateAccount, removeAccount,
     addTransaction, addTransfer, bulkAddTransactions, bulkUpdateCategory, updateTransaction, removeTransaction, bulkRemoveTransactions, dismissDuplicate,
     addBudget, updateBudget, removeBudget, bulkRemoveBudgets,
