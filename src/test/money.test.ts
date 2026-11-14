@@ -10,7 +10,7 @@ describe('roundMoney', () => {
   });
 
   it('leaves an amount that is already to the cent unchanged', () => {
-    for (const n of [0, 0.01, 5319.71, 17800, 198.53, 1287.38, -150.25]) expect(roundMoney(n)).toBe(n);
+    for (const n of [0, 0.01, 5319.71, 17800, 199.99, 1250.38, -150.25]) expect(roundMoney(n)).toBe(n);
   });
 
   it('rounds a half cent away from zero', () => {
@@ -52,9 +52,9 @@ describe('addMoney', () => {
 describe('roundAccountMoney', () => {
   it('rounds every money field of an account', () => {
     const out = roundAccountMoney({
-      name: 'ENBD', balance: 0.1 + 0.2, creditLimit: 20000.004, statementTotalDue: 5681.979999, statementMinDue: null,
+      name: 'Card', balance: 0.1 + 0.2, creditLimit: 20000.004, statementTotalDue: 4321.979999, statementMinDue: null,
     });
-    expect(out).toEqual({ name: 'ENBD', balance: 0.3, creditLimit: 20000, statementTotalDue: 5681.98, statementMinDue: null });
+    expect(out).toEqual({ name: 'Card', balance: 0.3, creditLimit: 20000, statementTotalDue: 4321.98, statementMinDue: null });
   });
 
   it('does not add a field the caller left out', () => {

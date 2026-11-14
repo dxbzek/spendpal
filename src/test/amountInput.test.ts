@@ -120,6 +120,6 @@ describe("parseBalance", () => {
   });
 
   it("reads a normal balance", () => {
-    expect(parseBalance("5212.49")).toBe(5212.49);
+    expect(parseBalance("3000.49")).toBe(3000.49);
   });
 });
