@@ -188,3 +188,34 @@ DROP TRIGGER IF EXISTS trg_clear_phone_verification ON public.profiles;
 CREATE TRIGGER trg_clear_phone_verification
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.clear_phone_verification();
+
+-- 22i. Weekly budgets are retired: nothing in the app measured a week, so a
+--    weekly amount was compared with a month of spending. Each weekly row
+--    becomes monthly at amount * 52 / 12. Where the same category and month
+--    already has a monthly row, the converted amount is added to it and the
+--    weekly row is deleted (one row per category, month and period is allowed).
+--    One block, so a failure part-way cannot add an amount twice.
+DO $$
+BEGIN
+  UPDATE public.budgets m
+  SET amount = m.amount + w.converted
+  FROM (
+    SELECT user_id, category, month, sum(round(amount * 52 / 12, 2)) AS converted
+    FROM public.budgets WHERE period = 'weekly'
+    GROUP BY user_id, category, month
+  ) w
+  WHERE m.period = 'monthly'
+    AND m.user_id = w.user_id AND m.category = w.category AND m.month = w.month;
+
+  DELETE FROM public.budgets w
+  WHERE w.period = 'weekly'
+    AND EXISTS (
+      SELECT 1 FROM public.budgets m
+      WHERE m.period = 'monthly'
+        AND m.user_id = w.user_id AND m.category = w.category AND m.month = w.month
+    );
+
+  UPDATE public.budgets
+  SET amount = round(amount * 52 / 12, 2), period = 'monthly'
+  WHERE period = 'weekly';
+END $$;
