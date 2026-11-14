@@ -504,8 +504,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...planColumns(tx),
     })).eq('id', tx.id));
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
-    // Keep what the database now holds: the rounded amount.
-    setTransactions(prev => prev.map(t => t.id === tx.id ? { ...tx, amount } : t));
+    // Keep what the database now holds: the rounded amount, and the fields
+    // this update does not send (the transfer id, "not a duplicate").
+    setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, ...tx, amount } : t));
 
     // Refresh balances for the new account and the old one (if account changed)
     const accountIdsToRefresh = [...new Set([tx.accountId, oldTx?.accountId].filter(Boolean) as string[])];

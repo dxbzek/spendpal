@@ -17,6 +17,7 @@ import type { Transaction } from '@/types/finance';
 import { findNearDuplicate } from '@/utils/detectDuplicates';
 import { transferPartner } from '@/lib/finance/transfers';
 import { isPlanForm, planFields, setRecurring } from '@/lib/finance/transactionForm';
+import { planIdForNewRow } from '@/lib/finance/installments';
 import { format } from 'date-fns';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -215,19 +216,32 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     if (!category) { toast.error('Please select a category'); return; }
     if (!accountId) { toast.error('Please select an account'); return; }
 
+    // Instalment fields only when the row is a plan (see transactionForm.ts).
+    const plan = planFields({ type, isRecurring, hasInstallments, totalInstallments, currentInstallment, loanTotalAmount, isTrackingOnly });
+    const txMerchant = merchant || category;
+    // Which plan the row belongs to. An edited plan row keeps the id it has
+    // (or has none, and stays with its older rows). A row that becomes a plan
+    // gets one. A row that stops being a plan gives its id up.
+    const wasPlan = editTransaction?.totalInstallments != null;
+    const planId = !isPlan
+      ? (editTransaction?.planId != null ? null : undefined)
+      : wasPlan
+        ? editTransaction?.planId
+        : planIdForNewRow(transactions, { ...plan, accountId, merchant: txMerchant, amount: parsedAmount, date });
+
     const txData = {
       type,
       amount: parsedAmount,
       currency,
       category,
       categoryIcon,
-      merchant: merchant || category,
+      merchant: txMerchant,
       accountId,
       date,
       note: note || undefined,
       isRecurring: isTransfer ? false : isRecurring,
-      // Instalment fields only when the row is a plan (see transactionForm.ts).
-      ...planFields({ type, isRecurring, hasInstallments, totalInstallments, currentInstallment, loanTotalAmount, isTrackingOnly }),
+      ...plan,
+      planId,
       isInternal,
       isPending,
       // Sent only when entered, or when clearing one that was entered, so a
