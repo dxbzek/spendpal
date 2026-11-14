@@ -7,6 +7,9 @@ import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import type { Transaction } from '@/types/finance';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useFinance } from '@/context/FinanceContext';
+import { Button } from '@/components/ui/button';
+import { WifiOff } from 'lucide-react';
 
 interface EditTxContextType {
   openEditSheet: (tx: Transaction) => void;
@@ -22,6 +25,9 @@ const AppLayout = () => {
   const isTablet = useIsTablet();
   const location = useLocation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { loadError, loading, accounts, refresh } = useFinance();
+  // A failed load with nothing on screen must not look like an empty account.
+  const nothingLoaded = loadError && !loading && accounts.length === 0 && location.pathname !== '/settings';
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
@@ -66,7 +72,22 @@ const AppLayout = () => {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
                 >
-                  <Outlet />
+                  {loadError && !nothingLoaded && accounts.length > 0 && (
+                    <div role="alert" className="mx-5 md:mx-8 mt-4 flex items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+                      <span>Couldn't refresh. These numbers may be out of date.</span>
+                      <Button size="sm" variant="outline" onClick={() => refresh()}>Retry</Button>
+                    </div>
+                  )}
+                  {nothingLoaded ? (
+                    <div role="alert" className="px-5 md:px-8 pt-16 max-w-md mx-auto text-center">
+                      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                        <WifiOff size={28} className="text-muted-foreground" />
+                      </div>
+                      <h1 className="text-xl font-heading mb-2">Couldn't load your data</h1>
+                      <p className="text-sm text-muted-foreground mb-5">Your data is safe. Check your connection and try again.</p>
+                      <Button className="h-11 px-6" onClick={() => refresh()}>Try again</Button>
+                    </div>
+                  ) : <Outlet />}
                 </m.div>
               </ErrorBoundary>
             </AnimatePresence>
