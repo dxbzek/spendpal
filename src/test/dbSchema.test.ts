@@ -162,6 +162,16 @@ describe('what pending_migrations.sql leaves in place', () => {
     expect(squash(sql)).toContain(squash(migration));
   });
 
+  it('back-fills plan_id on the same key the app uses for rows without one', () => {
+    // planKey() in src/lib/finance/installments.ts: account + merchant + term
+    // + instalment amount. A back-fill without the amount gives two plans at
+    // one merchant with the same term one id, and the app then merges them.
+    const fill = last('WITH plan_groups AS MATERIALIZED');
+    expect(fill).toContain('GROUP BY user_id, account_id, merchant, total_installments, round(amount, 2)');
+    expect(fill).toContain('AND round(t.amount, 2) = g.instalment');
+    expect(fill).toContain('WHERE t.plan_id IS NULL');
+  });
+
   it('lets a transaction be inserted or updated only on the user\'s own account', () => {
     // user_id alone let a signed-in user post a row on another user's account,
     // and the balance trigger then moved that account's balance.

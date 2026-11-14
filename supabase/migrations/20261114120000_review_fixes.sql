@@ -105,18 +105,22 @@ CREATE POLICY "Users can update own transactions" ON public.transactions
   );
 
 -- 22e. Give existing instalment rows a plan_id: one new id per user + account
---    + merchant + number of payments. Only rows with no plan_id are touched.
+--    + merchant + number of payments + instalment amount. This is the key the
+--    app uses for rows with no plan_id (planKey in src/lib/finance/
+--    installments.ts): without the amount, two plans at one merchant with the
+--    same term and different prices would get one id and merge for good.
+--    Only rows with no plan_id are touched.
 --    On a later run, a row added without one joins its group's plan when the
 --    group has exactly one plan, and is left alone when it has several
 --    (there is no way to tell which plan it belongs to).
 WITH plan_groups AS MATERIALIZED (
-  SELECT user_id, account_id, merchant, total_installments,
+  SELECT user_id, account_id, merchant, total_installments, round(amount, 2) AS instalment,
          count(DISTINCT plan_id) AS known_plans,
          (array_agg(plan_id) FILTER (WHERE plan_id IS NOT NULL))[1] AS known_plan,
          gen_random_uuid() AS new_plan
   FROM public.transactions
   WHERE total_installments IS NOT NULL
-  GROUP BY user_id, account_id, merchant, total_installments
+  GROUP BY user_id, account_id, merchant, total_installments, round(amount, 2)
 )
 UPDATE public.transactions t
 SET plan_id = COALESCE(g.known_plan, g.new_plan)
@@ -127,7 +131,8 @@ WHERE t.plan_id IS NULL
   AND t.user_id = g.user_id
   AND t.account_id = g.account_id
   AND t.merchant = g.merchant
-  AND t.total_installments = g.total_installments;
+  AND t.total_installments = g.total_installments
+  AND round(t.amount, 2) = g.instalment;
 
 -- 22f. goal_contributions had no UPDATE policy, so convert_currency() changed
 --    zero contribution rows and said nothing. Same ownership rule as INSERT.

@@ -90,10 +90,12 @@ const tx = (uid, account, extra = {}) => {
   const vals = cols.map(c => row[c] === null ? 'NULL' : typeof row[c] === 'string' ? `'${row[c]}'` : row[c]);
   return `INSERT INTO transactions (${cols.join(', ')}) VALUES (${vals.join(', ')}) RETURNING id`;
 };
-// Two plans on the card (same merchant, different terms), and the first plan's
-// merchant and term again on the bank account.
+// Three plans on the card at one merchant: two with the same term and
+// different prices, one with another term. The first plan's merchant and term
+// again on the bank account.
 await as(A, tx(A, card, { merchant: 'Tabby', amount: 100, total_installments: 4, current_installment: 1, is_tracking_only: true, date: '2026-09-01' }));
 await as(A, tx(A, card, { merchant: 'Tabby', amount: 100, total_installments: 4, current_installment: 2, is_tracking_only: true, date: '2026-10-01' }));
+await as(A, tx(A, card, { merchant: 'Tabby', amount: 60, total_installments: 4, current_installment: 1, is_tracking_only: true, date: '2026-10-15' }));
 await as(A, tx(A, card, { merchant: 'Tabby', amount: 50, total_installments: 6, current_installment: 1, is_tracking_only: true }));
 await as(A, tx(A, bank, { merchant: 'Tabby', amount: 25, total_installments: 4, current_installment: 1 }));
 await as(A, tx(A, bank, { merchant: 'Grocer', amount: 75 }));
@@ -130,17 +132,22 @@ check('applies a second time', await apply(NEW, newSql));
 check('second run changes nothing', (await snapshot()) === afterFirst);
 
 console.log('\nplan_id back-fill');
-const plans = await q(`SELECT account_id, merchant, total_installments, count(*)::int AS n, count(DISTINCT plan_id)::int AS ids
-  FROM transactions WHERE total_installments IS NOT NULL GROUP BY 1, 2, 3 ORDER BY merchant, total_installments, n`);
-eq('one id per account + merchant + term', plans.map(p => [p.n, p.ids]), [[1, 1], [2, 1], [1, 1]]);
-eq('three plans in all', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions`)), 3);
+// The same key the app uses for rows with no plan_id (planKey in installments.ts).
+const plans = await q(`SELECT account_id, merchant, total_installments, amount, count(*)::int AS n, count(DISTINCT plan_id)::int AS ids
+  FROM transactions WHERE total_installments IS NOT NULL GROUP BY 1, 2, 3, 4 ORDER BY merchant, total_installments, amount`);
+eq('one id per account + merchant + term + instalment', plans.map(p => [num(p.amount), p.n, p.ids]), [[25, 1, 1], [60, 1, 1], [100, 2, 1], [50, 1, 1]]);
+eq('four plans in all', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions`)), 4);
+eq('same merchant and term, different price: two plans', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions
+  WHERE account_id = $1 AND merchant = 'Tabby' AND total_installments = 4`, [card])), 2);
 eq('rows that are not a plan get none', num(await one(`SELECT count(*) FROM transactions WHERE total_installments IS NULL AND plan_id IS NOT NULL`)), 0);
 eq('balances did not move', [await balance(bank), await balance(card)], [before - 40, 0]);
 // A row added later without a plan_id (an old copy of the app, or a script).
 await as(A, tx(A, card, { merchant: 'Tabby', amount: 100, total_installments: 4, current_installment: 3, is_tracking_only: true }));
 await apply(NEW, newSql);
 eq('a later row joins its plan on the next run', await q(`SELECT count(*)::int AS n, count(DISTINCT plan_id)::int AS ids FROM transactions
-  WHERE account_id = $1 AND merchant = 'Tabby' AND total_installments = 4`, [card]), [{ n: 3, ids: 1 }]);
+  WHERE account_id = $1 AND merchant = 'Tabby' AND total_installments = 4 AND amount = 100`, [card]), [{ n: 3, ids: 1 }]);
+eq('and the other plan at that merchant keeps its own id', num(await one(`SELECT count(DISTINCT plan_id) FROM transactions
+  WHERE account_id = $1 AND merchant = 'Tabby' AND total_installments = 4`, [card])), 2);
 
 console.log('\nAccount ownership');
 let bal = await balance(bank);
