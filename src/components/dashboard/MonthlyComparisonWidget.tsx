@@ -3,9 +3,11 @@ import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
-import { startOfMonth, subMonths, format, parseISO, isWithinInterval, endOfMonth } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import type { Account, Transaction } from '@/types/finance';
 import AppIcon from '@/components/AppIcon';
+import { useToday } from '@/hooks/useToday';
+import { lastMonthSameDays } from '@/lib/today';
 
 interface Props {
   accounts: Account[];
@@ -22,20 +24,20 @@ const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
 
 const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask }: Props) => {
   const { fmt } = useCurrency();
+  const today = useToday();
 
   const comparison = useMemo(() => {
-    const now = new Date();
-    const thisMonthStart = startOfMonth(now);
-    const thisMonthEnd = now; // cap at today so future-dated transactions aren't counted
-    const lastMonthStart = startOfMonth(subMonths(now, 1));
-    const lastMonthEnd = endOfMonth(subMonths(now, 1));
+    // This month to today against the same days of last month. Against the
+    // whole of last month, any day before month end read as a large drop.
+    const thisStart = `${today.slice(0, 7)}-01`;
+    const last = lastMonthSameDays(today);
 
     const accountTypeMap = new Map(accounts.map(a => [a.id, a.type]));
 
-    const calcByType = (start: Date, end: Date) => {
+    const calcByType = (start: string, end: string) => {
       const totals: Record<string, number> = { cash: 0, debit: 0, credit: 0 };
       transactions
-        .filter(t => isCountableExpense(t) && isWithinInterval(parseISO(t.date), { start, end }))
+        .filter(t => isCountableExpense(t) && t.date >= start && t.date <= end)
         .forEach(t => {
           const aType = accountTypeMap.get(t.accountId);
           if (aType && aType in totals) totals[aType] += t.amount;
@@ -43,21 +45,27 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
       return totals;
     };
 
-    const thisMonth = calcByType(thisMonthStart, thisMonthEnd);
-    const lastMonth = calcByType(lastMonthStart, lastMonthEnd);
+    // Ends at today, so future-dated rows aren't counted.
+    const thisMonth = calcByType(thisStart, today);
+    const lastMonth = calcByType(last.start, last.end);
 
     const thisTotal = thisMonth.cash + thisMonth.debit + thisMonth.credit;
     const lastTotal = lastMonth.cash + lastMonth.debit + lastMonth.credit;
+
+    // The headers say which days are compared, unless both months are whole.
+    const label = (start: string, endDay: number) => last.monthComplete
+      ? format(parseISO(start), 'MMM yyyy')
+      : `${format(parseISO(start), 'MMM')} 1-${endDay}`;
 
     return {
       thisMonth,
       lastMonth,
       thisTotal,
       lastTotal,
-      thisLabel: format(thisMonthStart, 'MMM yyyy'),
-      lastLabel: format(lastMonthStart, 'MMM yyyy'),
+      thisLabel: label(thisStart, Number(today.slice(8, 10))),
+      lastLabel: label(last.start, last.endDay),
     };
-  }, [accounts, transactions]);
+  }, [accounts, transactions, today]);
 
   const { thisMonth, lastMonth, thisTotal, lastTotal, thisLabel, lastLabel } = comparison;
 
