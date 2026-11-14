@@ -27,6 +27,7 @@ const Debt          = lazy(() => import("@/pages/Debt"));
 const Installments  = lazy(() => import("@/pages/Installments"));
 const CalendarView  = lazy(() => import("@/pages/CalendarView"));
 const NotFound      = lazy(() => import("@/pages/NotFound"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
 export const PageFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -35,9 +36,12 @@ export const PageFallback = () => (
 );
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, recovering } = useAuth();
   if (loading) return <PageFallback />;
   if (!user) return <Navigate to="/auth" replace />;
+  // A reset link signs the user in. If Supabase sent them to "/" and not to
+  // /reset (the address is missing from its redirect list), still show the form.
+  if (recovering) return <Navigate to="/reset" replace />;
   return <>{children}</>;
 };
 
@@ -59,6 +63,8 @@ const App = () => (
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
+                {/* Open to both: a reset link arrives signed in, a stale one signed out. */}
+                <Route path="/reset" element={<ResetPassword />} />
                 <Route element={
                   <ProtectedRoute>
                     <CurrencyProvider>
