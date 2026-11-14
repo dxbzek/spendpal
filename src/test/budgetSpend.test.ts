@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { asMonthly, budgetPercent, rolloverAmount, spentByBudgetCategory, unspentOf } from '@/lib/finance/budgetSpend';
+import { asMonthly, budgetPercent, isBudgetAmount, rolloverAmount, spentByBudgetCategory, unspentOf } from '@/lib/finance/budgetSpend';
 import { activeBudgets, budgetsForMonth } from '@/utils/budgets';
 import type { Budget } from '@/types/finance';
 
@@ -54,6 +54,18 @@ describe('budgetPercent', () => {
   });
   it('is 0 without a budget amount', () => {
     expect(budgetPercent(50, 0)).toBe(0);
+  });
+});
+
+describe('a budget amount the app may save', () => {
+  it('is a number above zero', () => {
+    expect(isBudgetAmount(400)).toBe(true);
+    expect(isBudgetAmount(0.01)).toBe(true);
+  });
+  it('is never 0, negative, not a number, or text', () => {
+    // A saved 0 passes the database CHECK (amount >= 0) and is then dropped
+    // on load, so the user cannot see or delete it.
+    for (const bad of [0, -5, NaN, Infinity, '400', null, undefined]) expect(isBudgetAmount(bad)).toBe(false);
   });
 });
 

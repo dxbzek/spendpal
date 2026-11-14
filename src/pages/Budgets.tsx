@@ -19,7 +19,7 @@ import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
 import { budgetPace } from '@/lib/finance/pace';
 import { budgetCategoryOf } from '@/lib/finance/categories';
-import { asMonthly, budgetPercent, rolloverAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
+import { asMonthly, budgetPercent, isBudgetAmount, rolloverAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
 import { oneOffLimit } from '@/lib/finance/spendingForecast';
 import { budgetsForMonth } from '@/utils/budgets';
 import { useToday } from '@/hooks/useToday';
@@ -187,6 +187,11 @@ const Budgets = () => {
   // Apply one AI suggestion: update this month's budget for the category, or create it.
   const [applyingSuggestion, setApplyingSuggestion] = useState<string | null>(null);
   const applySuggestion = async (s: BudgetSuggestion) => {
+    if (!isBudgetAmount(s.suggestedAmount)) {
+      toast.error(`${s.category}: the suggested amount is not above zero, so nothing was saved.`);
+      setSuggestions(prev => prev.filter(x => x.category !== s.category));
+      return;
+    }
     setApplyingSuggestion(s.category);
     try {
       const existing = budgets.find(b => b.month === currentMonthKey && b.category === s.category);

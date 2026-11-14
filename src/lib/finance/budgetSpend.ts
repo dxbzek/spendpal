@@ -56,6 +56,16 @@ export function budgetPercent(spent: number, amount: number): number {
 }
 
 /**
+ * A budget amount the app may save: a real number above zero. The database
+ * accepts 0, but the app drops a zero-amount budget when it loads (schemas.ts),
+ * so a saved 0 is a row the user can never see or delete. An AI suggestion
+ * is the one place a 0 could come from; the form already refuses it.
+ */
+export function isBudgetAmount(n: unknown): n is number {
+  return typeof n === 'number' && Number.isFinite(n) && n > 0;
+}
+
+/**
  * Weekly budgets are retired. Spending is only ever summed per month, so a
  * weekly amount was compared with a month of spending and read "Over Budget"
  * from the second week. The database converts old weekly rows to monthly with

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { logger } from '@/lib/logger';
 import { aiUsage, batchBlockedMessage } from '@/lib/aiUsage';
+import { isBudgetAmount } from '@/lib/finance/budgetSpend';
 import type { Json } from '@/integrations/supabase/types';
 
 const FUNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance`;
@@ -253,7 +254,8 @@ export const useAI = () => {
         const raw = JSON.parse(jsonMatch[0]);
         if (!Array.isArray(raw)) return [];
         return raw
-          .filter((s: unknown) => s && typeof (s as Record<string, unknown>).category === 'string' && typeof (s as Record<string, unknown>).suggestedAmount === 'number')
+          // A suggestion of 0 (or less) is left out: applying it saved a budget the app then hides.
+          .filter((s: unknown) => s && typeof (s as Record<string, unknown>).category === 'string' && isBudgetAmount((s as Record<string, unknown>).suggestedAmount))
           .map((s: Record<string, unknown>) => ({
             category: s.category as string,
             suggestedAmount: s.suggestedAmount as number,
