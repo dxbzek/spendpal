@@ -39,9 +39,36 @@ const sameBillAmount = (a: number, b: number) => Math.abs(a - b) <= 0.2 * Math.m
  * month yet, the one closest in amount. Otherwise it is one more bill.
  * Returns the latest row of each bill.
  */
+const byDate = (a: Transaction, b: Transaction) => a.date.localeCompare(b.date) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/**
+ * Months in which this merchant + category has two rows of clearly different
+ * amounts. One such month is not enough to call it two bills: a variable bill
+ * paid early (next month's 300 on the 30th, after this month's 410 on the 2nd)
+ * or one rent paid in two parts looks the same, and a phantom second bill then
+ * inflates every total for three months. Two months of it is a pattern.
+ */
+function monthsWithTwoAmounts(rows: Transaction[]): number {
+  const byMonth = new Map<string, number[]>();
+  for (const t of rows) {
+    const m = t.date.slice(0, 7);
+    const list = byMonth.get(m);
+    if (list) list.push(t.amount);
+    else byMonth.set(m, [t.amount]);
+  }
+  let n = 0;
+  for (const amounts of byMonth.values()) {
+    if (amounts.some((a, i) => amounts.some((b, j) => j > i && !sameBillAmount(a, b)))) n++;
+  }
+  return n;
+}
+
+export const MIN_MONTHS_FOR_SECOND_BILL = 2;
+
 function splitBills(rows: Transaction[]): Transaction[] {
+  const sorted = [...rows].sort(byDate);
+  if (monthsWithTwoAmounts(rows) < MIN_MONTHS_FOR_SECOND_BILL) return [sorted[sorted.length - 1]];
   const bills: Transaction[][] = [];
-  const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   for (const t of sorted) {
     const month = t.date.slice(0, 7);
     const last = (b: Transaction[]) => b[b.length - 1];

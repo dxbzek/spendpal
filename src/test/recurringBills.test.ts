@@ -176,24 +176,52 @@ describe('"Left until payday" bills', () => {
 });
 
 describe('two bills from one provider in one category', () => {
+  // Both bills logged in September and in October: a pattern, so two bills.
+  const mobileSep = tx({ merchant: 'Etisalat', amount: 150, category: 'Utilities', date: '2026-09-05' });
+  const internetSep = tx({ merchant: 'Etisalat', amount: 389, category: 'Utilities', date: '2026-09-10' });
   const mobile = tx({ merchant: 'Etisalat', amount: 150, category: 'Utilities', date: '2026-10-05' });
   const internet = tx({ merchant: 'Etisalat', amount: 389, category: 'Utilities', date: '2026-10-10' });
+  const both = [mobileSep, internetSep, mobile, internet];
 
   it('are two bills, not the latest one', () => {
     // Review: activeRecurring kept only 389, and the 150 bill vanished everywhere.
-    const bills = activeRecurring([mobile, internet], now);
+    const bills = activeRecurring(both, now);
     expect(bills.map(b => b.amount).sort((a, b) => a - b)).toEqual([150, 389]);
     expect(monthlyRecurringTotal(bills)).toBe(539);
-    expect(upcomingBills([bank], [mobile, internet], now)).toHaveLength(2);
-    expect(nextRecurringBills([bank], [mobile, internet], now)).toHaveLength(2);
+    expect(upcomingBills([bank], both, now)).toHaveLength(2);
+    expect(nextRecurringBills([bank], both, now)).toHaveLength(2);
   });
 
   it('stay two when only one of them is logged in the new month', () => {
     const mobileNov = { ...mobile, id: 'm-nov', amount: 155, date: '2026-11-05' };
     const nov = new Date(2026, 10, 6);
-    const bills = activeRecurring([mobile, internet, mobileNov], nov);
+    const bills = activeRecurring([...both, mobileNov], nov);
     expect(bills.map(b => b.amount).sort((a, b) => a - b)).toEqual([155, 389]);
-    expect(notLoggedThisMonth([mobile, internet, mobileNov], nov).map(b => b.amount)).toEqual([389]);
+    expect(notLoggedThisMonth([...both, mobileNov], nov).map(b => b.amount)).toEqual([389]);
+  });
+
+  it('a variable bill paid early is one bill, not two (final review)', () => {
+    // DEWA 400 in September, 410 on 2 Oct, then November's 300 paid on 30 Oct.
+    const rows = [
+      tx({ merchant: 'DEWA', amount: 400, category: 'Utilities', date: '2026-09-02' }),
+      tx({ merchant: 'DEWA', amount: 410, category: 'Utilities', date: '2026-10-02' }),
+      tx({ merchant: 'DEWA', amount: 300, category: 'Utilities', date: '2026-10-30' }),
+    ];
+    const nov = new Date(2026, 10, 14);
+    const bills = activeRecurring(rows, nov);
+    expect(bills.map(b => b.amount)).toEqual([300]);
+    expect(monthlyRecurringTotal(bills)).toBe(300);
+    expect(upcomingBills([bank], rows, nov)).toHaveLength(1);
+    expect(nextRecurringBills([bank], rows, nov)).toHaveLength(1);
+  });
+
+  it('rent paid in two parts in one month is one bill', () => {
+    const rows = [
+      tx({ merchant: 'Landlord', amount: 3000, category: 'Rent', date: '2026-09-01' }),
+      tx({ merchant: 'Landlord', amount: 2000, category: 'Rent', date: '2026-10-01' }),
+      tx({ merchant: 'Landlord', amount: 1000, category: 'Rent', date: '2026-10-15' }),
+    ];
+    expect(activeRecurring(rows, now)).toHaveLength(1);
   });
 
   it('a price change from one month to the next is still one bill', () => {

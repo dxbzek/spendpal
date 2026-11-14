@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { isCountableExpense } from '@/lib/finance/transactionFilters';
+import { isCountableExpense, netSpending } from '@/lib/finance/transactionFilters';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
@@ -50,8 +50,11 @@ const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask
     const thisMonth = calcByType(thisStart, today);
     const lastMonth = calcByType(last.start, last.end);
 
-    const thisTotal = thisMonth.cash + thisMonth.debit + thisMonth.credit;
-    const lastTotal = lastMonth.cash + lastMonth.debit + lastMonth.credit;
+    // Totals are after refunds, like the Expenses card; a refund row has no
+    // account type, so the per-type rows stay before refunds.
+    const inRange = (start: string, end: string) => transactions.filter(t => t.date >= start && t.date <= end);
+    const thisTotal = netSpending(inRange(thisStart, today));
+    const lastTotal = netSpending(inRange(last.start, last.end));
 
     // The headers say which days are compared, unless both months are whole.
     const label = (start: string, endDay: number) => last.monthComplete
