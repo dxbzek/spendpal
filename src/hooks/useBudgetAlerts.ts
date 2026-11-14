@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { useSettingsUserId } from '@/hooks/useUserSettings';
+import { browserStorage, readUserItem, writeUserItem } from '@/lib/userStorage';
 import { format, subMonths } from 'date-fns';
 import type { Budget } from '@/types/finance';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,15 +27,19 @@ async function sendBudgetNotification(budgetId: string, threshold: AlertThreshol
   }
 }
 
-const STORAGE_KEY = 'spendpal-budget-alerted';
+// Kept per user on this device, under the user's own key. The list under the
+// old fixed name moves to the first user who loads it.
+const NAME = 'budget_alerted';
+const LEGACY_KEY = 'spendpal-budget-alerted';
 // Include current month in alert keys so January's fired alerts cannot
 // suppress February's. Keys also expire naturally - any key older than 2 months
 // is pruned on load to prevent unbounded localStorage growth.
 const CURRENT_MONTH = format(new Date(), 'yyyy-MM');
 
-function loadAlerted(): Set<string> {
+function loadAlerted(userId: string | null): Set<string> {
+  if (!userId) return new Set();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readUserItem(browserStorage(), userId, NAME, LEGACY_KEY);
     if (!raw) return new Set();
     const all = JSON.parse(raw) as string[];
     // Prune keys from months more than 1 month ago
@@ -48,22 +54,21 @@ function loadAlerted(): Set<string> {
   }
 }
 
-function saveAlerted(set: Set<string>) {
-  try {
-    let arr = [...set];
-    // Hard cap: keep only the 200 most recently added keys to bound storage size
-    if (arr.length > 200) arr = arr.slice(arr.length - 200);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-  } catch {
-    // localStorage unavailable - degrade silently
-  }
+function saveAlerted(userId: string, set: Set<string>) {
+  let arr = [...set];
+  // Hard cap: keep only the 200 most recently added keys to bound storage size
+  if (arr.length > 200) arr = arr.slice(arr.length - 200);
+  writeUserItem(browserStorage(), userId, NAME, JSON.stringify(arr));
 }
 
 export const useBudgetAlerts = (budgets: Budget[]) => {
-  const alerted = useRef<Set<string>>(loadAlerted());
+  const userId = useSettingsUserId();
+  const store = useRef<{ userId: string | null; keys: Set<string> } | null>(null);
 
   useEffect(() => {
-    if (budgets.length === 0) return;
+    if (budgets.length === 0 || !userId) return;
+    if (store.current?.userId !== userId) store.current = { userId, keys: loadAlerted(userId) };
+    const alerted = { current: store.current.keys };
 
     // Month-namespaced key prevents cross-month alert suppression
     const keyOf = (b: Budget, threshold: AlertThreshold) => `${b.id}-${threshold}-${CURRENT_MONTH}`;
@@ -94,6 +99,6 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
       sendBudgetNotification(b.id, top);
     });
 
-    saveAlerted(alerted.current);
-  }, [budgets]);
+    saveAlerted(userId, alerted.current);
+  }, [budgets, userId]);
 };
