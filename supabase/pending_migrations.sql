@@ -34,6 +34,8 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_id
 --    Debit accounts keep the normal convention (income adds, expense subtracts).
 --    Tracking-only and pending rows don't move the balance (columns: sections
 --    5 and 18; plpgsql resolves them when the trigger fires, not here).
+--    Section 22c replaces this body with one that also checks the account
+--    belongs to the row's user. Run the whole file, never this section alone.
 
 CREATE OR REPLACE FUNCTION public.sync_account_balance()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -261,7 +263,8 @@ CREATE POLICY "Users can update own accounts" ON public.accounts FOR UPDATE USIN
 DROP POLICY IF EXISTS "Users can delete own accounts" ON public.accounts;
 CREATE POLICY "Users can delete own accounts" ON public.accounts FOR DELETE USING ((select auth.uid()) = user_id);
 
--- transactions
+-- transactions (INSERT and UPDATE are replaced in section 22d, which also
+-- requires the account to belong to the user)
 DROP POLICY IF EXISTS "Users can view own transactions" ON public.transactions;
 CREATE POLICY "Users can view own transactions" ON public.transactions FOR SELECT USING ((select auth.uid()) = user_id);
 DROP POLICY IF EXISTS "Users can insert own transactions" ON public.transactions;
@@ -556,3 +559,94 @@ $$;
 
 REVOKE ALL ON FUNCTION public.convert_currency(TEXT, TEXT, NUMERIC) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.convert_currency(TEXT, TEXT, NUMERIC) TO authenticated;
+
+
+-- ── 22. Review fixes (20261114120000) ───────────────────────
+--    Fixes from the 14 Nov 2026 review. Same statements as the migration file.
+--    Before the first run, check that no row already sits on another user's
+--    account (expect 0; if not, that account's balance needs a reconcile):
+--      SELECT count(*) FROM public.transactions t
+--      JOIN public.accounts a ON a.id = t.account_id WHERE a.user_id <> t.user_id;
+
+-- 22c. The balance trigger only moves an account that belongs to the row's
+--    user. It runs as the table owner, so without this a row naming another
+--    user's account moved that user's balance. Otherwise the same as before:
+--    a credit account stores the amount owed, and tracking-only and pending
+--    rows move nothing.
+CREATE OR REPLACE FUNCTION public.sync_account_balance()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  delta NUMERIC := 0;
+  acct_type TEXT;
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    IF NEW.is_tracking_only OR NEW.is_pending THEN RETURN NULL; END IF;
+    SELECT type INTO acct_type FROM accounts WHERE id = NEW.account_id AND user_id = NEW.user_id;
+    IF acct_type = 'credit' THEN
+      delta := CASE WHEN NEW.type = 'income' THEN -NEW.amount ELSE NEW.amount END;
+    ELSE
+      delta := CASE WHEN NEW.type = 'income' THEN NEW.amount ELSE -NEW.amount END;
+    END IF;
+    UPDATE accounts SET balance = balance + delta WHERE id = NEW.account_id AND user_id = NEW.user_id;
+
+  ELSIF (TG_OP = 'DELETE') THEN
+    IF OLD.is_tracking_only OR OLD.is_pending THEN RETURN NULL; END IF;
+    SELECT type INTO acct_type FROM accounts WHERE id = OLD.account_id AND user_id = OLD.user_id;
+    IF acct_type = 'credit' THEN
+      delta := CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END;
+    ELSE
+      delta := CASE WHEN OLD.type = 'income' THEN -OLD.amount ELSE OLD.amount END;
+    END IF;
+    UPDATE accounts SET balance = balance + delta WHERE id = OLD.account_id AND user_id = OLD.user_id;
+
+  ELSIF (TG_OP = 'UPDATE') THEN
+    -- Reverse the old row's effect (if it had one), on the account it WAS
+    -- posted against in case account_id changed.
+    IF NOT (OLD.is_tracking_only OR OLD.is_pending) THEN
+      SELECT type INTO acct_type FROM accounts WHERE id = OLD.account_id AND user_id = OLD.user_id;
+      IF acct_type = 'credit' THEN
+        delta := CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END;
+      ELSE
+        delta := CASE WHEN OLD.type = 'income' THEN -OLD.amount ELSE OLD.amount END;
+      END IF;
+      UPDATE accounts SET balance = balance + delta WHERE id = OLD.account_id AND user_id = OLD.user_id;
+    END IF;
+
+    -- Apply the new row's effect (if it has one now, for example it just went
+    -- from pending to settled), on the account it is NOW posted against.
+    IF NOT (NEW.is_tracking_only OR NEW.is_pending) THEN
+      SELECT type INTO acct_type FROM accounts WHERE id = NEW.account_id AND user_id = NEW.user_id;
+      IF acct_type = 'credit' THEN
+        delta := CASE WHEN NEW.type = 'income' THEN -NEW.amount ELSE NEW.amount END;
+      ELSE
+        delta := CASE WHEN NEW.type = 'income' THEN NEW.amount ELSE -NEW.amount END;
+      END IF;
+      UPDATE accounts SET balance = balance + delta WHERE id = NEW.account_id AND user_id = NEW.user_id;
+    END IF;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.sync_account_balance() FROM PUBLIC, anon, authenticated;
+
+-- 22d. A transaction can only be written against the writer's own account.
+--    The policies checked user_id alone, which is what let a signed-in user
+--    post a row on someone else's account. account_id is written with its
+--    table name so it can never be read as a column of accounts.
+DROP POLICY IF EXISTS "Users can insert own transactions" ON public.transactions;
+CREATE POLICY "Users can insert own transactions" ON public.transactions
+  FOR INSERT
+  WITH CHECK (
+    (select auth.uid()) = user_id
+    AND EXISTS (SELECT 1 FROM public.accounts a WHERE a.id = transactions.account_id AND a.user_id = (select auth.uid()))
+  );
+DROP POLICY IF EXISTS "Users can update own transactions" ON public.transactions;
+CREATE POLICY "Users can update own transactions" ON public.transactions
+  FOR UPDATE
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK (
+    (select auth.uid()) = user_id
+    AND EXISTS (SELECT 1 FROM public.accounts a WHERE a.id = transactions.account_id AND a.user_id = (select auth.uid()))
+  );
