@@ -276,6 +276,12 @@ describe('sanitizeSettings', () => {
       monthly_income: -5, payday_day: 32, secondary_currency: 'usd', net_worth_goal: 'x', future_key: { a: 1 },
     })).toEqual({ future_key: { a: 1 } });
   });
+
+  it('keeps the first-use flags only when they are true', () => {
+    expect(sanitizeSettings({ currency_confirmed: true, checklist_dismissed: true }))
+      .toEqual({ currency_confirmed: true, checklist_dismissed: true });
+    expect(sanitizeSettings({ currency_confirmed: '1', checklist_dismissed: false })).toEqual({});
+  });
 });
 
 describe('readLegacySettings', () => {

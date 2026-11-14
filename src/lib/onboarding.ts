@@ -135,18 +135,9 @@ export function showChecklist(
   return !(age >= NEW_USER_DAYS);
 }
 
-// Per user and per browser. localStorage until settings move to the
-// database; the key has the user id so two people on one browser don't share it.
-export const currencyConfirmedKey = (userId: string) => `spendpal_currency_confirmed_${userId}`;
-export const checklistDismissedKey = (userId: string) => `spendpal_checklist_dismissed_${userId}`;
-
-export function readFlag(key: string): boolean {
-  try { return localStorage.getItem(key) === '1'; } catch { return false; }
-}
-
-export function writeFlag(key: string): void {
-  try { localStorage.setItem(key, '1'); } catch { /* storage blocked: the step shows again next time */ }
-}
+// The two first-use flags (currency chosen, checklist hidden) are user
+// settings: currency_confirmed and checklist_dismissed in lib/userSettings,
+// so they follow the user to another device and go with Delete Everything.
 
 /**
  * Save the currency on the profile. True only when the row was updated: the

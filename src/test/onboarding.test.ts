@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   FALLBACK_CURRENCY, NEW_USER_DAYS, checklistSteps, needsCurrencyStep, regionOfLocale,
-  saveProfileCurrency, showChecklist, suggestedCurrency, currencyConfirmedKey, checklistDismissedKey,
+  saveProfileCurrency, showChecklist, suggestedCurrency,
 } from '@/lib/onboarding';
 
 const none = { accounts: 0, transactions: 0, budgets: 0, goals: 0 };
@@ -83,11 +83,6 @@ describe('getting-started checklist', () => {
     expect(showChecklist(steps, false, '2026-03-01', '2026-11-14')).toBe(false);
     expect(showChecklist(steps, false, '2026-11-01', '2026-11-14')).toBe(true);
     expect(NEW_USER_DAYS).toBe(30);
-  });
-
-  it('keeps flags per user', () => {
-    expect(currencyConfirmedKey('u1')).not.toBe(currencyConfirmedKey('u2'));
-    expect(checklistDismissedKey('u1')).toContain('u1');
   });
 });
 

@@ -7,7 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { browserLocales, currencyConfirmedKey, saveProfileCurrency, suggestedCurrency, writeFlag } from '@/lib/onboarding';
+import { browserLocales, saveProfileCurrency, suggestedCurrency } from '@/lib/onboarding';
+import { userSettings } from '@/lib/userSettings';
 import { logger } from '@/lib/logger';
 
 interface Props {
@@ -41,7 +42,7 @@ const CurrencyStep = ({ onSaved }: Props) => {
         return;
       }
       setCurrency(code);
-      writeFlag(currencyConfirmedKey(user.id));
+      userSettings.set('currency_confirmed', true);
       onSaved();
     } catch (err) {
       logger.error('Saving the first-use currency failed', err);

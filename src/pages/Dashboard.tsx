@@ -40,9 +40,10 @@ import { useEditTransaction } from '@/components/layout/AppLayout';
 import CurrencyStep from '@/components/onboarding/CurrencyStep';
 import GettingStartedCard from '@/components/dashboard/GettingStartedCard';
 import {
-  OPEN_ADD_STATE, checklistDismissedKey, checklistSteps, currencyConfirmedKey, needsCurrencyStep, readFlag,
-  showChecklist, writeFlag, type ChecklistStepId,
+  OPEN_ADD_STATE, checklistSteps, needsCurrencyStep, showChecklist, type ChecklistStepId,
 } from '@/lib/onboarding';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { userSettings } from '@/lib/userSettings';
 import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
@@ -93,9 +94,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { openAddSheet } = useEditTransaction();
-  // First-use flags, per user, in this browser (see lib/onboarding).
-  const [currencyConfirmed, setCurrencyConfirmed] = useState(() => !!user && readFlag(currencyConfirmedKey(user.id)));
-  const [checklistDismissed, setChecklistDismissed] = useState(() => !!user && readFlag(checklistDismissedKey(user.id)));
+  // First-use flags are user settings, so they follow the user to another device.
+  const { data: settings, ready: settingsReady } = useUserSettings();
+  const currencyConfirmed = settings.currency_confirmed === true;
+  // Until the settings row has loaded, a card the user hid on another device
+  // must not flash up and vanish, so the card waits for it.
+  const checklistDismissed = settings.checklist_dismissed === true || !settingsReady;
   // Shared hook keeps the balance mask in sync across the app.
   const { hidden, mask, setBalancesHidden } = useBalanceMask();
   const toggleHidden = () => setBalancesHidden(!hidden);
@@ -200,8 +204,7 @@ const Dashboard = () => {
     else navigate('/goals', { state: OPEN_ADD_STATE });
   };
   const dismissChecklist = () => {
-    setChecklistDismissed(true);
-    if (user) writeFlag(checklistDismissedKey(user.id));
+    userSettings.set('checklist_dismissed', true);
   };
 
   // Skeleton keeps the layout stable while data loads.
@@ -272,7 +275,7 @@ const Dashboard = () => {
         </div>
 
         {askCurrency ? (
-          <CurrencyStep onSaved={() => { setCurrencyConfirmed(true); setShowAddAccount(true); }} />
+          <CurrencyStep onSaved={() => setShowAddAccount(true)} />
         ) : (
           <button
             onClick={() => setShowAddAccount(true)}

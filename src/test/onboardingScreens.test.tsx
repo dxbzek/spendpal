@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const db = vi.hoisted(() => ({
@@ -20,7 +20,8 @@ vi.mock('@/context/CurrencyContext', () => ({ useCurrency: () => ({ setCurrency 
 
 import CurrencyStep from '@/components/onboarding/CurrencyStep';
 import GettingStartedCard from '@/components/dashboard/GettingStartedCard';
-import { checklistSteps, currencyConfirmedKey } from '@/lib/onboarding';
+import { checklistSteps } from '@/lib/onboarding';
+import { userSettings } from '@/lib/userSettings';
 
 describe('CurrencyStep', () => {
   beforeEach(() => {
@@ -28,7 +29,11 @@ describe('CurrencyStep', () => {
     db.answer = { data: [{ user_id: 'u1' }], error: null };
     setCurrency.mockReset();
     localStorage.clear();
+    // No settings backend here: the store keeps the value in memory and in
+    // this user's browser copy, which is what Home reads.
+    void userSettings.start('u1');
   });
+  afterEach(() => userSettings.stop());
 
   it('saves the preselected currency to the profile before moving on', async () => {
     const onSaved = vi.fn();
@@ -39,7 +44,7 @@ describe('CurrencyStep', () => {
     const saved = (db.updates[0] as { currency: string }).currency;
     expect(saved).toMatch(/^[A-Z]{3}$/);
     expect(setCurrency).toHaveBeenCalledWith(saved);
-    expect(localStorage.getItem(currencyConfirmedKey('u1'))).toBe('1');
+    expect(userSettings.get('currency_confirmed')).toBe(true);
   });
 
   it('stays on the step when the save fails', async () => {
@@ -50,7 +55,7 @@ describe('CurrencyStep', () => {
     await waitFor(() => expect(db.updates).toHaveLength(1));
     expect(onSaved).not.toHaveBeenCalled();
     expect(setCurrency).not.toHaveBeenCalled();
-    expect(localStorage.getItem(currencyConfirmedKey('u1'))).toBeNull();
+    expect(userSettings.get('currency_confirmed')).toBeUndefined();
   });
 });
 

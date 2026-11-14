@@ -27,6 +27,10 @@ export interface KnownSettings {
   budget_templates?: BudgetTemplate[];
   rollover_categories?: string[];
   secondary_currency?: string;
+  /** First use: the user chose a currency on the first-run screen. */
+  currency_confirmed?: boolean;
+  /** First use: the user hid the Getting started card on Home. */
+  checklist_dismissed?: boolean;
 }
 export type SettingKey = keyof KnownSettings;
 /** Keys a newer version of the app wrote are kept as they are, so saving here does not drop them. */
@@ -94,6 +98,8 @@ export function sanitizeSettings(raw: unknown): UserSettings {
       ? [...new Set(r.rollover_categories.filter(isText))].slice(0, MAX_ROLLOVER)
       : undefined,
     secondary_currency: typeof r.secondary_currency === 'string' && /^[A-Z]{3}$/.test(r.secondary_currency) ? r.secondary_currency : undefined,
+    currency_confirmed: r.currency_confirmed === true ? true : undefined,
+    checklist_dismissed: r.checklist_dismissed === true ? true : undefined,
   };
   if (known.rollover_categories?.length === 0) known.rollover_categories = undefined;
   const out: UserSettings = {};
@@ -104,8 +110,10 @@ export function sanitizeSettings(raw: unknown): UserSettings {
 
 export const isEmptySettings = (s: UserSettings) => Object.keys(s).length === 0;
 
+/** Settings that were kept in the browser before they moved to the database. The first-use flags never were. */
+type LegacySettingKey = Exclude<SettingKey, 'currency_confirmed' | 'checklist_dismissed'>;
 /** Where each setting was kept in the browser before it moved to the database. */
-export const LEGACY_KEYS: Record<SettingKey, string> = {
+export const LEGACY_KEYS: Record<LegacySettingKey, string> = {
   monthly_income: 'spendpal_monthly_income',
   payday_day: 'spendpal_payday',
   net_worth_goal: 'spendpal_nw_goal',
@@ -114,8 +122,8 @@ export const LEGACY_KEYS: Record<SettingKey, string> = {
   rollover_categories: 'spendpal_rollover_cats',
   secondary_currency: 'secondaryCurrency',
 };
-const LEGACY_NUMBERS: SettingKey[] = ['monthly_income', 'payday_day', 'net_worth_goal'];
-const LEGACY_JSON: SettingKey[] = ['net_worth_history', 'budget_templates', 'rollover_categories'];
+const LEGACY_NUMBERS: LegacySettingKey[] = ['monthly_income', 'payday_day', 'net_worth_goal'];
+const LEGACY_JSON: LegacySettingKey[] = ['net_worth_history', 'budget_templates', 'rollover_categories'];
 
 /** The settings this browser held under the old fixed names. */
 export function readLegacySettings(storage: Storage | null): UserSettings {
