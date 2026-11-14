@@ -7,6 +7,19 @@ const LRI = '⁦';
 const PDI = '⁩';
 
 /**
+ * The same locale, asked for Latin digits (0 to 9). Arabic, Persian, Bengali,
+ * Nepali, Burmese and Dzongkha locales print their own numerals by default, so
+ * SAR, QAR, KWD and 16 more showed digits the rest of this English interface
+ * and its number font do not use, while the amount fields only take 0 to 9.
+ * The locale still sets the grouping and the decimal mark.
+ */
+export function latinDigits(locale: string): string {
+  // "-u-nu-latn" is the Unicode extension for the numbering system. A locale
+  // that already carries an extension keeps it.
+  return locale.includes('-u-') ? locale : `${locale}-u-nu-latn`;
+}
+
+/**
  * Formats one amount as "<sign><isolate><symbol> <digits></isolate>".
  *
  * The symbol and digits sit inside an LTR isolate so that an RTL currency
@@ -27,7 +40,7 @@ export function formatAmount(
 ): string {
   const safe = Number.isFinite(n) ? n : 0;
   const sign = signOverride ?? (safe < 0 ? '-' : '');
-  const digits = Math.abs(safe).toLocaleString(locale, {
+  const digits = Math.abs(safe).toLocaleString(latinDigits(locale), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });

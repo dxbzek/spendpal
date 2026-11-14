@@ -7,15 +7,15 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const INCOME_KEY = 'spendpal_monthly_income';
+import { convertSettingsAmounts, userSettings } from '@/lib/userSettings';
 
 interface Props {
   open: boolean;
   from: string;
   to: string;
-  /** Offers "Only change the symbol" when the user is changing currency, not fixing old data. */
+  /** Offers "Amounts are already in <to>" when the user is changing currency, not fixing old data. */
   allowRelabel?: boolean;
+  /** Called once every stored amount carries the new currency. Always true now; the flag is kept for the caller. */
   onDone: (converted: boolean) => void;
   onCancel: () => void;
 }
@@ -44,20 +44,33 @@ const ConvertCurrencyDialog = ({ open, from, to, allowRelabel, onDone, onCancel 
   const parsed = Number(rate);
   const valid = Number.isFinite(parsed) && parsed > 0;
 
-  const convert = async () => {
-    if (!valid) return;
+  // Both choices go through convert_currency, which rewrites the currency
+  // code on every account and transaction in one database transaction. There
+  // is no way left to change only the profile's symbol: that kept old rows in
+  // the old currency, and every total then added two currencies together
+  // under one symbol.
+  const run = async (byRate: number, doneMessage: string) => {
     setConverting(true);
-    const { error } = await supabase.rpc('convert_currency', { p_from: from, p_to: to, p_rate: parsed });
+    const { error } = await supabase.rpc('convert_currency', { p_from: from, p_to: to, p_rate: byRate });
     setConverting(false);
     if (error) {
       toast.error('Conversion failed: ' + error.message);
       return;
     }
-    const income = Number(localStorage.getItem(INCOME_KEY));
-    if (income > 0) localStorage.setItem(INCOME_KEY, String(Math.round(income * parsed * 100) / 100));
-    toast.success(`Converted your amounts to ${to}`);
+    // The income, net worth goal and history, and budget templates are
+    // amounts too. Left alone they would read as the new currency unconverted.
+    userSettings.update(convertSettingsAmounts(userSettings.getSnapshot().data, byRate));
+    toast.success(doneMessage);
     onDone(true);
   };
+
+  const convert = () => {
+    if (valid) run(parsed, `Converted your amounts to ${to}`);
+  };
+
+  // The wrong currency was set and the numbers were in the new one all along:
+  // a rate of 1 keeps every number and moves every row to the new code.
+  const relabel = () => run(1, `Your amounts are now in ${to}`);
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o && !converting) onCancel(); }}>
@@ -85,12 +98,17 @@ const ConvertCurrencyDialog = ({ open, from, to, allowRelabel, onDone, onCancel 
           <p className="text-xs text-muted-foreground mt-1.5">
             Today's market rate is filled in. Change it to match what your bank used.
           </p>
+          {allowRelabel && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              If the numbers you entered were in {to} all along, choose "Amounts are already in {to}". Every number stays the same.
+            </p>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
           {allowRelabel && (
-            <Button variant="outline" disabled={converting} onClick={() => onDone(false)}>
-              Only change the symbol
+            <Button variant="outline" disabled={converting} onClick={relabel}>
+              Amounts are already in {to}
             </Button>
           )}
           <Button disabled={!valid || converting} onClick={convert}>

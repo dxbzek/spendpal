@@ -45,20 +45,20 @@ describe("BottomNav More menu", () => {
     );
   });
 
-  it("has five slots: Home, Txns, +, Budgets, More; the rest is in More", async () => {
+  it("has five slots: Home, Transactions, +, Budgets, More; the rest is in More", async () => {
     renderNav();
     const bar = screen.getByRole("navigation", { name: /main navigation/i });
     expect(bar.querySelectorAll("button")).toHaveLength(5);
-    for (const label of ["Home", "Txns", "Budgets", "More"]) {
+    for (const label of ["Home", "Transactions", "Budgets", "More"]) {
       expect(bar).toHaveTextContent(label);
     }
-    for (const label of ["Installments", "Goals", "Advisor"]) {
+    for (const label of ["Installments", "Goals", "AI Advisor"]) {
       expect(bar).not.toHaveTextContent(label);
     }
 
     fireEvent.click(screen.getByRole("button", { name: /more/i }));
     const sheet = await screen.findByRole("dialog", { name: /more/i });
-    for (const label of ["Installments", "Goals", "Advisor"]) {
+    for (const label of ["Installments", "Goals", "AI Advisor"]) {
       expect(sheet).toHaveTextContent(label);
     }
     expect(sheet).not.toHaveTextContent("Budgets");

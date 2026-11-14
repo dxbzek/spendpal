@@ -8,6 +8,7 @@ import { useAI, type BudgetAnalysis, type AdvisorSession } from '@/hooks/useAI';
 import { activeBudgets } from '@/utils/budgets';
 import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { buildAdvisorData, presentAnalysis } from '@/lib/finance/advisorData';
+import { nextResetAt, usageLine } from '@/lib/aiUsage';
 import { format, parseISO, subMonths, getMonth, getYear, differenceInCalendarDays } from 'date-fns';
 import { m, AnimatePresence } from 'framer-motion';
 import {
@@ -120,7 +121,12 @@ const AIAdvisor = () => {
   const navigate = useNavigate();
   const { transactions, accounts, budgets, goals, addBudget } = useFinance();
   const { fmt, currency } = useCurrency();
-  const { loading, generateBudgetAnalysis, fetchAdvisorHistory, deleteAdvisorSession } = useAI();
+  const { loading, generateBudgetAnalysis, fetchAdvisorHistory, deleteAdvisorSession, remaining, refreshUsage } = useAI();
+
+  // AI uses left today. The server counts them; ask once when the page opens.
+  useEffect(() => { refreshUsage(); }, [refreshUsage]);
+  const limitReached = remaining === 0;
+  const usageText = usageLine(remaining, format(nextResetAt(new Date()), 'HH:mm'));
 
   const { hidden, mask } = useBalanceMask();
   const [analysis, setAnalysis] = useState<BudgetAnalysis | null>(null);
@@ -268,7 +274,7 @@ const AIAdvisor = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-2">
             <Brain size={28} className="text-primary-foreground" />
-            <h1 className="text-2xl font-heading text-primary-foreground">AI Budget Advisor</h1>
+            <h1 className="text-2xl font-heading text-primary-foreground">AI Advisor</h1>
           </div>
           <p className="text-primary-subtle text-sm">
             Smart analysis of your spending habits with personalized budgeting recommendations
@@ -381,9 +387,12 @@ const AIAdvisor = () => {
                 </div>
               ))}
             </div>
-            <Button onClick={handleAnalyze} disabled={loading} className="bg-primary text-primary-foreground px-8 h-12 text-base">
+            <Button onClick={handleAnalyze} disabled={loading || limitReached} className="bg-primary text-primary-foreground px-8 h-12 text-base">
               {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing…</> : <><Zap size={18} className="mr-2" /> Analyze My Finances</>}
             </Button>
+            {usageText && (
+              <p className={`text-xs mt-3 ${limitReached ? 'text-warning' : 'text-muted-foreground'}`}>{usageText}</p>
+            )}
           </div>
         )}
 
@@ -414,10 +423,13 @@ const AIAdvisor = () => {
                     {differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? '. The figures below are from that day; re-analyze for today.' : ''}
                   </p>
                 ) : <span />}
-                <Button variant="ghost" size="sm" onClick={handleAnalyze} disabled={loading} className="text-xs text-muted-foreground">
+                <Button variant="ghost" size="sm" onClick={handleAnalyze} disabled={loading || limitReached} className="text-xs text-muted-foreground">
                   <RefreshCw size={14} className={loading ? 'animate-spin mr-1' : 'mr-1'} /> Re-analyze
                 </Button>
               </div>
+              {usageText && (
+                <p className={`text-xs text-right ${limitReached ? 'text-warning' : 'text-muted-foreground'}`}>{usageText}</p>
+              )}
 
               {/* Recommended Method */}
               <div className="bg-card rounded-xl p-5 card-shadow border-2 border-primary-line">

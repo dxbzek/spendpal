@@ -34,6 +34,8 @@ supabase secrets set ANTHROPIC_API_KEY=<your_key>
 supabase functions deploy ai-finance
 ```
 
+Optional secrets for the AI limits: `AI_DAILY_CEILING` (calls all users together may make per UTC day, default 300; 0 turns AI off) and `AI_UNCAPPED_USERS` (user ids, comma separated, that the shared ceiling does not stop, so other accounts cannot turn AI off for the owner). Each account may make 30 calls a day, or 3 while it is less than a day old or its email is unconfirmed.
+
 Create a key at [platform.claude.com](https://platform.claude.com).
 
 ## Deployment
@@ -43,3 +45,9 @@ Deploy the frontend to any static host (Vercel, Netlify, etc.) and deploy Supaba
 ```sh
 supabase functions deploy ai-finance
 ```
+
+### Database changes
+
+Run new SQL from `supabase/pending_migrations.sql` (or `supabase/migrations/`) in the Supabase SQL editor before deploying the app that needs it, and read the checks in the section's header first.
+
+For the review-fixes section (22, `20261114120000_review_fixes.sql`): after the new app is live and every device has tapped "New version, tap to reload", run step 22e once more. A copy of the old app still open on a phone saves instalment rows without a `plan_id`; the second run gives them their plan's id.

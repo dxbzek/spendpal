@@ -1,7 +1,28 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "fs";
 import { VitePWA } from "vite-plugin-pwa";
+import { PUBLIC_PAGES, withNotFoundHead, withPageHead } from "./src/lib/publicSite";
+
+// After the build, write one HTML file per public page (its own title,
+// description and canonical) and 404.html. All of them are the same app; only
+// the head differs. vercel.json serves the page files at /privacy, /terms and
+// /auth, and Vercel answers any address it has no rule for with 404.html and a
+// real 404 status, where the app then shows its own "Page not found".
+const publicPageFiles = (): Plugin => ({
+  name: "spendpal-public-page-files",
+  apply: "build",
+  closeBundle() {
+    const dist = path.resolve(__dirname, "dist");
+    const index = fs.readFileSync(path.join(dist, "index.html"), "utf8");
+    for (const page of PUBLIC_PAGES) {
+      if (page.file === "index.html") continue;
+      fs.writeFileSync(path.join(dist, page.file), withPageHead(index, page));
+    }
+    fs.writeFileSync(path.join(dist, "404.html"), withNotFoundHead(index));
+  },
+});
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
@@ -41,6 +62,7 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
+    publicPageFiles(),
     VitePWA({
       // "prompt": a new build waits until the user taps the "New version"
       // toast (src/lib/pwaUpdate.ts), which then reloads onto it. We register
@@ -61,7 +83,14 @@ export default defineConfig(() => ({
         theme_color: "#17663a",
         background_color: "#ffffff",
         display: "standalone",
-        orientation: "portrait",
+        // "any": the app has a desktop sidebar layout; "portrait" locked an
+        // installed tablet or desktop window to a phone shape.
+        orientation: "any",
+        // A fixed id keeps an installed copy the same app if start_url changes.
+        id: "/",
+        categories: ["finance", "productivity"],
+        // No "screenshots" yet: Chrome's richer install sheet needs real
+        // captures of the app in public/, and none exist.
         scope: "/",
         start_url: "/",
         icons: [

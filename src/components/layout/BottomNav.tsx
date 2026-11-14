@@ -8,25 +8,26 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { m } from 'framer-motion';
+import { PAGE_NAMES } from '@/lib/pageNames';
 
 const NAV_ITEMS_LEFT = [
-  { path: '/', label: 'Home', icon: LayoutDashboard },
-  { path: '/transactions', label: 'Txns', icon: Receipt },
+  { path: '/', label: PAGE_NAMES['/'], icon: LayoutDashboard },
+  { path: '/transactions', label: PAGE_NAMES['/transactions'], icon: Receipt },
 ];
 
 const NAV_ITEMS_RIGHT = [
-  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
+  { path: '/budgets', label: PAGE_NAMES['/budgets'], icon: PiggyBank },
 ];
 
 const MORE_ITEMS = [
-  { path: '/installments', label: 'Installments', icon: Layers },
-  { path: '/goals', label: 'Goals', icon: Target },
-  { path: '/accounts', label: 'Accounts', icon: Wallet },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/debt', label: 'Debt', icon: CreditCard },
-  { path: '/advisor', label: 'Advisor', icon: Brain },
-  { path: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/installments', label: PAGE_NAMES['/installments'], icon: Layers },
+  { path: '/goals', label: PAGE_NAMES['/goals'], icon: Target },
+  { path: '/accounts', label: PAGE_NAMES['/accounts'], icon: Wallet },
+  { path: '/reports', label: PAGE_NAMES['/reports'], icon: BarChart3 },
+  { path: '/debt', label: PAGE_NAMES['/debt'], icon: CreditCard },
+  { path: '/advisor', label: PAGE_NAMES['/advisor'], icon: Brain },
+  { path: '/calendar', label: PAGE_NAMES['/calendar'], icon: CalendarDays },
+  { path: '/settings', label: PAGE_NAMES['/settings'], icon: Settings },
 ];
 
 const ALL_MORE_PATHS = MORE_ITEMS.map(i => i.path);
@@ -51,7 +52,10 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
       />
     )}
     <Icon size={20} className={`relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-    <span className={`relative z-10 text-[11px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+    {/* 10px so "Transactions" (62 px in Geist 500) fits a slot on a 360 px
+        wide phone (64 px with the + button at mx-2). truncate stays for
+        narrower screens. */}
+    <span title={label} className={`relative z-10 max-w-full text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
       {label}
     </span>
   </button>
@@ -172,7 +176,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           {/* FAB */}
           <button
             onClick={onAddClick}
-            className="bg-primary rounded-xl w-14 h-14 flex items-center justify-center relative -top-5 mx-3 ring-4 ring-card transition-transform shrink-0"
+            className="bg-primary rounded-xl w-14 h-14 flex items-center justify-center relative -top-5 mx-2 ring-4 ring-card transition-transform shrink-0"
             aria-label="Add transaction"
           >
             <Plus size={28} className="text-primary-foreground" />
@@ -200,7 +204,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               ? <X size={20} className="relative z-10" />
               : <MoreHorizontal size={20} className="relative z-10" />
             }
-            <span className="relative z-10 text-[11px] font-medium">{showMore ? 'Close' : 'More'}</span>
+            <span className="relative z-10 text-[10px] font-medium">{showMore ? 'Close' : 'More'}</span>
           </button>
         </div>
       </nav>

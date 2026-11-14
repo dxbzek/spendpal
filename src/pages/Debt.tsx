@@ -7,12 +7,16 @@ import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, Chev
 import { m, AnimatePresence } from 'framer-motion';
 import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
-import { DEFAULT_APR, allocateMonth, minimumMonthlyBudget, monthsToPayoff, simulateStrategy } from '@/lib/finance/debtPayoff';
-import { creditUtilization } from '@/lib/finance/credit';
+import {
+  DEFAULT_APR, allocateMonth, minimumMonthlyBudget, monthsToPayoff, revolvingMinimum, simulateStrategy,
+} from '@/lib/finance/debtPayoff';
+import { openPlansByAccount, planPrincipalLeft, splitOwedByPlans } from '@/lib/finance/debtPlans';
+import { planDisplayName, planSchedule, remainingInstallments } from '@/lib/finance/installments';
+import { creditTotals, creditUtilization } from '@/lib/finance/credit';
 import AppIcon from '@/components/AppIcon';
 
 const Debt = () => {
-  const { accounts, loading } = useFinance();
+  const { accounts, transactions, loading } = useFinance();
   const { fmt } = useCurrency();
   const { mask } = useBalanceMask();
 
@@ -41,24 +45,38 @@ const Debt = () => {
 
   const todayDate = getDate(new Date());
 
+  // Open instalment plans by the card they are billed to (the plans whose
+  // principal is inside that card's balance).
+  const plansByAccount = useMemo(() => openPlansByAccount(transactions), [transactions]);
+
   const creditDebts = useMemo(() =>
     accounts
       .filter(a => a.type === 'credit')
-      .map(a => ({
-        ...a,
+      .map(a => {
         // balance IS the amount owed for credit accounts (see Account type).
-        owed: Math.max(0, a.balance),
-        // Clamped 0–100 via the shared helper. No limit (Tabby and the like)
-        // means no utilization at all, not 0% or 100%.
-        utilization: a.creditLimit ? creditUtilization(a) : null,
-      }))
+        const owed = Math.max(0, a.balance);
+        const plans = plansByAccount[a.id] ?? [];
+        return {
+          ...a,
+          owed,
+          plans,
+          // Plan principal is paid by fixed instalments at the plan's own
+          // rate. Only the rest is card debt at the card APR.
+          ...splitOwedByPlans(owed, plans),
+          // Clamped 0–100 via the shared helper. No limit (Tabby and the like)
+          // means no utilization at all, not 0% or 100%.
+          utilization: a.creditLimit ? creditUtilization(a) : null,
+        };
+      })
       .filter(a => a.owed > 0)
-  , [accounts]);
+  , [accounts, plansByAccount]);
 
   const totalOwed = creditDebts.reduce((s, d) => s + d.owed, 0);
   const limited = creditDebts.filter(d => d.utilization != null);
-  const totalLimit = limited.reduce((s, d) => s + (d.creditLimit || 0), 0);
-  const overallUtil = totalLimit ? (limited.reduce((s, d) => s + d.owed, 0) / totalLimit) * 100 : 0;
+  // Limit and utilization come from every card with a limit, paid off or not:
+  // the same totals as Home. Only the list below is limited to cards that owe.
+  const { limit: totalLimit, utilization: overallUtilization } = useMemo(() => creditTotals(accounts), [accounts]);
+  const overallUtil = Math.round(overallUtilization ?? 0);
   // The label follows the most-used card: a maxed-out card hurts even when
   // the total across cards looks fine.
   const worstCard = limited.reduce<(typeof limited)[number] | null>(
@@ -67,8 +85,14 @@ const Debt = () => {
 
   const getApr = (id: string, accountApr?: number) => aprs[id] ?? accountApr ?? DEFAULT_APR;
   // The statement's minimum when entered; otherwise there is none to show
-  // (no guessing a 2% rule the card may not have).
-  const getMinPay = (d: { statementMinDue?: number | null }) => d.statementMinDue ?? null;
+  // (no guessing a 2% rule the card may not have). The statement bills the
+  // plan instalments inside that minimum, so only the rest pays down the
+  // revolving part.
+  const getMinPay = (d: { statementMinDue?: number | null; planMonthly: number }) =>
+    revolvingMinimum(d.statementMinDue, d.planMonthly);
+  // No APR on the account and none typed here: the default is a guess, and
+  // the page says so beside the number.
+  const isAprAssumed = (id: string, accountApr?: number) => aprs[id] == null && accountApr == null;
   const getPayment = (id: string, minPay: number | null) => payments[id] ?? minPay;
 
   const utilizationColor = (pct: number) => {
@@ -94,17 +118,21 @@ const Debt = () => {
     return diff < 0 ? diff + getDaysInMonth(new Date()) : diff;
   };
 
-  // Multi-card strategy data
+  // Multi-card strategy data: the revolving part of each card. Plan principal
+  // is left out; it is paid by its own instalments whatever the order.
   const strategyDebts = useMemo(() =>
-    creditDebts.map(d => ({
+    creditDebts.filter(d => d.revolving > 0).map(d => ({
       id: d.id,
       name: d.name,
       icon: d.icon,
-      owed: d.owed,
+      owed: d.revolving,
+      hasPlans: d.inPlans > 0,
       apr: getApr(d.id, d.apr),
+      aprAssumed: isAprAssumed(d.id, d.apr),
       minPay: getMinPay(d) ?? 0,
     }))
   , [creditDebts, aprs]); // eslint-disable-line react-hooks/exhaustive-deps
+  const planMonthlyTotal = creditDebts.reduce((s, d) => s + d.planMonthly, 0);
 
   const avalancheOrder = useMemo(() =>
     [...strategyDebts].sort((a, b) => b.apr - a.apr),
@@ -121,13 +149,13 @@ const Debt = () => {
   const monthlyBudget = budgetInput ?? Math.ceil((minimumBudget * 1.5) / 100) * 100;
 
   const avalancheResult = useMemo(() =>
-    creditDebts.length > 1 ? simulateStrategy(strategyDebts, avalancheOrder, monthlyBudget) : null,
-    [strategyDebts, avalancheOrder, monthlyBudget, creditDebts.length]
+    strategyDebts.length > 1 ? simulateStrategy(strategyDebts, avalancheOrder, monthlyBudget) : null,
+    [strategyDebts, avalancheOrder, monthlyBudget]
   );
 
   const snowballResult = useMemo(() =>
-    creditDebts.length > 1 ? simulateStrategy(strategyDebts, snowballOrder, monthlyBudget) : null,
-    [strategyDebts, snowballOrder, monthlyBudget, creditDebts.length]
+    strategyDebts.length > 1 ? simulateStrategy(strategyDebts, snowballOrder, monthlyBudget) : null,
+    [strategyDebts, snowballOrder, monthlyBudget]
   );
 
   const activeOrder = strategyTab === 'avalanche' ? avalancheOrder : snowballOrder;
@@ -142,7 +170,7 @@ const Debt = () => {
       {/* Header */}
       <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt Tracker</h1>
+          <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt</h1>
           {creditDebts.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
@@ -156,7 +184,7 @@ const Debt = () => {
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
-                  <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
+                  <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil}%</p>
                   {worstUtil >= 30 && (
                     <span className="text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-raised text-primary-foreground shrink-0">
                       {worstUtil >= 75 ? 'High' : 'Watch'}
@@ -207,10 +235,13 @@ const Debt = () => {
               const apr = getApr(debt.id, debt.apr);
               const minPay = getMinPay(debt);
               const payment = getPayment(debt.id, minPay);
+              // The payoff maths works on the revolving part only. Plan
+              // principal has its own fixed schedule, listed below the card.
+              const hasRevolving = debt.revolving > 0;
               // No payment to work from (no minimum, nothing typed): no payoff date.
-              const months = payment ? monthsToPayoff(debt.owed, apr, payment) : Infinity;
+              const months = payment && hasRevolving ? monthsToPayoff(debt.revolving, apr, payment) : Infinity;
               const totalCost = months < Infinity ? payment * months : Infinity;
-              const interest = months < Infinity ? totalCost - debt.owed : Infinity;
+              const interest = months < Infinity ? totalCost - debt.revolving : Infinity;
               const payoffDate = months < Infinity ? addMonths(new Date(), months) : null;
               const isExpanded = expanded === debt.id;
               const dueDaysLeft = getDueDaysRemaining(debt.dueDate);
@@ -259,7 +290,7 @@ const Debt = () => {
                     <div className="flex items-center justify-between mt-2 text-xs gap-2 flex-wrap">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <TrendingDown size={11} />
-                        {minPay != null ? <>Min: {mask(fmt(minPay))}/mo</> : 'No minimum'}
+                        {debt.statementMinDue != null ? <>Min: {mask(fmt(debt.statementMinDue))}/mo</> : 'No minimum'}
                       </span>
                       {payoffDate && (
                         <span className="text-muted-foreground flex items-center gap-1">
@@ -281,6 +312,35 @@ const Debt = () => {
                     </div>
                   </button>
 
+                  {/* Instalment plans billed to this card: fixed lines, not part of the payoff maths */}
+                  {debt.plans.length > 0 && (
+                    <div className="px-4 pb-3 text-xs">
+                      <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                        <span>In instalment plans</span>
+                        <span className="font-medium text-foreground tabular-nums">{mask(fmt(debt.inPlans))}</span>
+                      </div>
+                      <ul className="mt-1 space-y-1">
+                        {debt.plans.map(plan => {
+                          const left = remainingInstallments(plan);
+                          const endsOn = planSchedule(plan, debt, new Date())?.endsOn;
+                          return (
+                            <li key={plan.key} className="flex items-center justify-between gap-2 text-muted-foreground">
+                              <span className="truncate">
+                                {planDisplayName(plan.merchant)} · {left} × {mask(fmt(plan.amountPerInstallment))}
+                                {endsOn ? ` · ends ${format(endsOn, 'MMM yyyy')}` : ''}
+                              </span>
+                              <span className="tabular-nums shrink-0">{mask(fmt(planPrincipalLeft(plan)))}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <div className="flex items-center justify-between gap-2 text-muted-foreground mt-1.5 pt-1.5 border-t border-border">
+                        <span>Rest of the balance, at the card rate</span>
+                        <span className="font-medium text-foreground tabular-nums">{mask(fmt(debt.revolving))}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Expanded payoff calculator */}
                   <AnimatePresence>
                     {isExpanded && (
@@ -293,6 +353,19 @@ const Debt = () => {
                       >
                         <div className="px-4 pb-4 pt-0 border-t border-border">
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 mt-3">Payoff Calculator</p>
+                          {!hasRevolving ? (
+                            <p className="text-xs text-muted-foreground text-center">
+                              All of this balance is in instalment plans. Each plan ends on its own date.
+                            </p>
+                          ) : (<>
+                          {debt.inPlans > 0 && (
+                            <p className="text-xs text-muted-foreground mb-3">
+                              For the {mask(fmt(debt.revolving))} that is not in a plan.
+                              {debt.statementMinDue != null && debt.planMonthly > 0 && (
+                                <> The statement minimum includes {mask(fmt(debt.planMonthly))} of instalments.</>
+                              )}
+                            </p>
+                          )}
                           <div className="grid grid-cols-2 gap-3 mb-4">
                             <div>
                               <label className="text-xs text-muted-foreground mb-1 block">Monthly Payment</label>
@@ -319,6 +392,9 @@ const Debt = () => {
                                 onBlur={() => clearDraft(`apr:${debt.id}`)}
                                 className="h-9 text-sm"
                               />
+                              {isAprAssumed(debt.id, debt.apr) && (
+                                <p className="text-[11px] text-muted-foreground mt-1">No APR set on this card. {DEFAULT_APR}% is assumed.</p>
+                              )}
                             </div>
                           </div>
 
@@ -344,10 +420,11 @@ const Debt = () => {
                             <div className="bg-destructive-soft rounded-xl p-3 text-center">
                               <p className="text-xs text-expense font-semibold">Payment too low — doesn't cover interest</p>
                               <p className="text-xs text-muted-foreground mt-0.5">
-                                Minimum to cover interest: {mask(fmt(Math.ceil((debt.owed * apr) / 100 / 12 * 100) / 100))}/mo
+                                Minimum to cover interest: {mask(fmt(Math.ceil((debt.revolving * apr) / 100 / 12 * 100) / 100))}/mo
                               </p>
                             </div>
                           )}
+                          </>)}
                         </div>
                       </m.div>
                     )}
@@ -357,7 +434,7 @@ const Debt = () => {
             })}
 
             {/* Multi-card Payoff Optimizer */}
-            {creditDebts.length > 1 && (
+            {strategyDebts.length > 1 && (
               <div className="bg-card rounded-xl card-shadow border border-border p-4 space-y-4">
                 <div>
                   <p className="text-sm font-heading">Payoff plan</p>
@@ -368,7 +445,7 @@ const Debt = () => {
 
                 <div>
                   <label htmlFor="payoff-budget" className="text-xs text-muted-foreground mb-1 block">
-                    How much can you pay toward these {creditDebts.length} cards each month?
+                    How much can you pay toward these {strategyDebts.length} cards each month?
                   </label>
                   <Input
                     id="payoff-budget"
@@ -380,6 +457,11 @@ const Debt = () => {
                     onChange={e => setBudgetInput(parseFloat(e.target.value) || 0)}
                     className="h-10 text-base md:text-sm tabular-nums"
                   />
+                  {planMonthlyTotal > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Instalment plans are not part of this. They take {mask(fmt(planMonthlyTotal))} a month until they end.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-1 p-1 bg-muted rounded-lg" role="tablist">
@@ -445,7 +527,9 @@ const Debt = () => {
                         <AppIcon value={d.icon} className="text-base text-muted-foreground" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{d.name}</p>
-                          <p className="text-xs text-muted-foreground">{mask(fmt(d.owed))} owed · {d.apr}% APR</p>
+                          <p className="text-xs text-muted-foreground">
+                            {mask(fmt(d.owed))} {d.hasPlans ? 'not in a plan' : 'owed'} · {d.apr}% APR{d.aprAssumed ? ' (assumed)' : ''}
+                          </p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-semibold font-mono">{mask(fmt(thisMonth[d.id] ?? 0))}</p>
@@ -459,12 +543,17 @@ const Debt = () => {
                       Cards without a statement minimum use an estimate of 2% of the balance. Add the real minimum on the card for an exact plan.
                     </p>
                   )}
+                  {strategyDebts.some(d => d.aprAssumed) && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Cards with no APR set use {DEFAULT_APR}%. Add the real rate on the card (0 for interest-free plans).
+                    </p>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Single card strategy tip */}
-            {creditDebts.length === 1 && (
+            {strategyDebts.length === 1 && (
               <div className="bg-card rounded-xl p-4 card-shadow border border-dashed border-primary-line">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff Strategies</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">

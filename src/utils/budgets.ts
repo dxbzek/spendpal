@@ -1,22 +1,32 @@
 import type { Budget } from '@/types/finance';
+import { asMonthly } from '@/lib/finance/budgetSpend';
 
 /**
- * The budget month currently in effect. Budgets are stored per-month
- * (month = 'YYYY-MM'). If the current month has its own budgets we use those;
- * otherwise we carry the most recent prior month's budgets forward so the
- * active set never silently empties when a new month begins.
+ * A month's own budgets (month = 'YYYY-MM'), nothing carried forward. This is
+ * what Home and the Budgets page show: until last month's budgets are copied
+ * over, the month has none, and both screens say so.
  */
-export function activeBudgetMonth(budgets: Budget[], currentMonthKey: string): string | null {
-  if (budgets.some(b => b.month === currentMonthKey)) return currentMonthKey;
-  const months = budgets.map(b => b.month).filter(Boolean);
-  if (months.length === 0) return null;
+export function budgetsForMonth(budgets: Budget[], monthKey: string): Budget[] {
+  return budgets.filter(b => b.month === monthKey).map(asMonthly);
+}
+
+/**
+ * The budget month in effect for `monthKey`, for reports. If that month has
+ * its own budgets we use those; otherwise the most recent month before it, so
+ * a report on a month without budgets still has something to measure against.
+ * A later month is never used: budgets made in November say nothing about
+ * September.
+ */
+export function activeBudgetMonth(budgets: Budget[], monthKey: string): string | null {
   // 'YYYY-MM' strings sort chronologically.
+  const months = budgets.map(b => b.month).filter(m => m && m <= monthKey);
+  if (months.length === 0) return null;
   return months.sort().at(-1)!;
 }
 
-/** Budgets that apply to the current month (current month, or carried forward). */
-export function activeBudgets(budgets: Budget[], currentMonthKey: string): Budget[] {
-  const month = activeBudgetMonth(budgets, currentMonthKey);
+/** Budgets in effect for `monthKey` (its own, or carried forward from the latest earlier month). */
+export function activeBudgets(budgets: Budget[], monthKey: string): Budget[] {
+  const month = activeBudgetMonth(budgets, monthKey);
   if (month === null) return [];
-  return budgets.filter(b => b.month === month);
+  return budgetsForMonth(budgets, month);
 }

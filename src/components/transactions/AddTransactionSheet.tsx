@@ -9,12 +9,18 @@ import { AmountInput } from '@/components/ui/AmountInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
-import { Target, ChevronDown } from 'lucide-react';
+import { Target, ChevronDown, Wallet } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useCategories } from '@/hooks/useCategories';
 import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { findNearDuplicate } from '@/utils/detectDuplicates';
+import { transferPartner } from '@/lib/finance/transfers';
+import {
+  defaultAccountId, defaultPaidInstallments, isPlanForm, paidInstallmentsFrom, planFields, setRecurring,
+} from '@/lib/finance/transactionForm';
+import AddAccountDialog from '@/components/forms/AddAccountDialog';
+import { planIdForNewRow } from '@/lib/finance/installments';
 import { format } from 'date-fns';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -48,7 +54,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 const INSTALLMENT_OPTIONS = [3, 4, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, recurringMode }: Props) => {
-  const { accounts, transactions, goals, addTransaction, addTransfer, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
+  const { accounts, transactions, goals, loading, loadError, addTransaction, addTransfer, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
   const [submitting, setSubmitting] = useState(false);
   const { currency, fmt } = useCurrency();
   const { getCategoriesForType, refresh: refreshCategories } = useCategories();
@@ -64,6 +70,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [hasInstallments, setHasInstallments] = useState(false);
   const [totalInstallments, setTotalInstallments] = useState('12');
   const [currentInstallment, setCurrentInstallment] = useState('1');
+  // Until the user types a paid count, it follows Tracking Only (0 on a card, 1 from cash).
+  const [paidTouched, setPaidTouched] = useState(false);
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -75,6 +83,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [goalAllocationAmount, setGoalAllocationAmount] = useState('');
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAddAccount, setShowAddAccount] = useState(false);
 
   // Duplicate detection state
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
@@ -113,15 +122,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       setIsPending(editTransaction.isPending || false);
       setNote(editTransaction.note || '');
       if (isTransferTx) {
-        // Find the matching income half to restore toAccountId
-        const match = transactions.find(t =>
-          t.type === 'income' &&
-          t.category === 'Transfer' &&
-          t.date === editTransaction.date &&
-          t.amount === editTransaction.amount &&
-          t.id !== editTransaction.id
-        );
-        setToAccountId(match?.accountId || '');
+        // The income half of this same transfer gives the destination account.
+        setToAccountId(transferPartner(transactions, editTransaction)?.accountId || '');
       } else {
         setToAccountId('');
       }
@@ -142,6 +144,14 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     }
   }, [editTransaction, prefill, open]);
 
+  // With one account there is nothing to choose, so it is selected. With
+  // several the user picks: a guessed account would save to the wrong one.
+  useEffect(() => {
+    if (!open || editTransaction || accountId) return;
+    const only = defaultAccountId(accounts);
+    if (only) setAccountId(only);
+  }, [open, editTransaction, accounts, accountId]);
+
   const resetForm = () => {
     setType('expense');
     setAmount('');
@@ -154,6 +164,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     setHasInstallments(false);
     setTotalInstallments('12');
     setCurrentInstallment('1');
+    setPaidTouched(false);
     setLoanTotalAmount('');
     setRemainingPrincipal('');
     setIsTrackingOnly(false);
@@ -170,6 +181,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   };
 
   const isTransfer = type === 'transfer';
+  // Saved as an instalment plan: an expense with Recurring and Installment Plan on.
+  const isPlan = isPlanForm(type, { isRecurring, hasInstallments });
 
   // Same amount + merchant within a few days (not an exact date match) —
   // bank statements often post a charge a day or two after it was first
@@ -203,13 +216,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       });
       if (!saved) return;
       if (isEditing) {
-        const partner = transactions.find(t =>
-          t.type === 'income' &&
-          t.category === 'Transfer' &&
-          t.date === editTransaction.date &&
-          t.amount === editTransaction.amount &&
-          t.id !== editTransaction.id
-        );
+        // The income half of this transfer, not of another one with the same date and amount.
+        const partner = transferPartner(transactions, editTransaction);
         await removeTransaction(editTransaction.id);
         if (partner) await removeTransaction(partner.id);
       }
@@ -223,26 +231,37 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
     if (!category) { toast.error('Please select a category'); return; }
     if (!accountId) { toast.error('Please select an account'); return; }
 
+    // Instalment fields only when the row is a plan (see transactionForm.ts).
+    const plan = planFields({ type, isRecurring, hasInstallments, totalInstallments, currentInstallment, loanTotalAmount, isTrackingOnly });
+    const txMerchant = merchant || category;
+    // Which plan the row belongs to. An edited plan row keeps the id it has
+    // (or has none, and stays with its older rows). A row that becomes a plan
+    // gets one. A row that stops being a plan gives its id up.
+    const wasPlan = editTransaction?.totalInstallments != null;
+    const planId = !isPlan
+      ? (editTransaction?.planId != null ? null : undefined)
+      : wasPlan
+        ? editTransaction?.planId
+        : planIdForNewRow(transactions, { ...plan, accountId, merchant: txMerchant, amount: parsedAmount, date });
+
     const txData = {
       type,
       amount: parsedAmount,
       currency,
       category,
       categoryIcon,
-      merchant: merchant || category,
+      merchant: txMerchant,
       accountId,
       date,
       note: note || undefined,
       isRecurring: isTransfer ? false : isRecurring,
-      totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : undefined,
-      currentInstallment: (hasInstallments && isRecurring) ? Math.max(0, isNaN(parseInt(currentInstallment)) ? 0 : parseInt(currentInstallment)) : undefined,
-      loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || undefined) : undefined,
-      isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
+      ...plan,
+      planId,
       isInternal,
       isPending,
       // Sent only when entered, or when clearing one that was entered, so a
       // database without the column still saves new transactions.
-      remainingPrincipal: (hasInstallments && isRecurring && remainingPrincipal.trim() !== '')
+      remainingPrincipal: (isPlan && remainingPrincipal.trim() !== '')
         ? (parseFloat(remainingPrincipal) || 0)
         : editTransaction?.remainingPrincipal != null ? null : undefined,
     };
@@ -306,12 +325,12 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const perInstallment = parseFloat(amount) || 0;
   const totalInst = parseInt(totalInstallments) || 0;
-  const currentInst = parseInt(currentInstallment) || 0;
+  const currentInst = paidInstallmentsFrom(currentInstallment, totalInst);
   const loanTotal = parseFloat(loanTotalAmount) || 0;
-  const displayTotal = hasInstallments
+  const displayTotal = isPlan
     ? (loanTotal || perInstallment * totalInst)
     : perInstallment;
-  const remainingInstCount = hasInstallments ? Math.max(0, totalInst - currentInst) : 0;
+  const remainingInstCount = isPlan ? Math.max(0, totalInst - currentInst) : 0;
   const remainingBalance = Math.round(remainingInstCount * perInstallment * 100) / 100;
   const totalAmount = displayTotal;
 
@@ -319,12 +338,30 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const isMobile = useIsMobile();
   const title = isEditing ? 'Edit Transaction' : 'Add Transaction';
+  // A transaction needs an account. With none, the form ended at "Please
+  // select an account" over an empty list. A failed or unfinished load is
+  // not "no accounts".
+  const noAccounts = !isEditing && !loading && !loadError && accounts.length === 0;
+  const noAccountsBody = (
+    <div className="py-8 text-center space-y-4">
+      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+        <Wallet size={24} className="text-muted-foreground" aria-hidden="true" />
+      </div>
+      <div className="space-y-1">
+        <p className="font-medium">Add an account first</p>
+        <p className="text-sm text-muted-foreground">A transaction is saved to an account. You have none yet.</p>
+      </div>
+      <Button onClick={() => setShowAddAccount(true)} className="h-11 px-6 bg-primary text-primary-foreground">
+        Add account
+      </Button>
+    </div>
+  );
   // Shared form body — rendered inside a bottom Sheet on mobile (keyboard-safe,
   // thumb-reachable) and a centered Dialog on desktop.
   const formBody = (
           <div className="space-y-5 mt-4">
             <div className="flex gap-1 p-1 bg-muted rounded-xl">
-              {TYPES.filter(t => !recurringMode || t.value !== 'transfer').map(t => (
+              {TYPES.filter(t => !recurringMode || t.value === 'expense').map(t => (
                 <button key={t.value} onClick={() => { setType(t.value); setCategory(''); setCategoryIcon(''); }}
                   className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
                     type === t.value
@@ -342,7 +379,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
             <div>
               <label htmlFor="tx-amount" className="text-sm font-medium mb-1.5 block">
-                {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
+                {isPlan ? `Per Installment (${currency})` : `Amount (${currency})`}
               </label>
               <AmountInput id="tx-amount" placeholder="0.00" value={amount} onChange={setAmount}
                 className="text-3xl font-heading h-16 text-center tracking-tight" />
@@ -431,12 +468,13 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">Recurring</p>
-                          <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
+                          <p className="text-xs text-muted-foreground">{type === 'income' ? 'Comes in every month' : 'A bill you pay every month'}</p>
                         </div>
+                        {/* Recurring alone is a bill. Installment Plan is its own switch below. */}
                         <Switch checked={isRecurring} onCheckedChange={(v) => {
-                          setIsRecurring(v);
-                          if (v) setHasInstallments(true);
-                          if (!v) setHasInstallments(false);
+                          const next = setRecurring({ isRecurring, hasInstallments }, v);
+                          setIsRecurring(next.isRecurring);
+                          setHasInstallments(next.hasInstallments);
                         }} />
                       </div>
                     )}
@@ -457,24 +495,28 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       <Switch checked={isPending} onCheckedChange={setIsPending} />
                     </div>
 
-                    {isRecurring && (
+                    {isRecurring && type === 'expense' && (
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">Installment Plan</p>
-                          <p className="text-xs text-muted-foreground">Track payment progress</p>
+                          <p className="text-xs text-muted-foreground">A fixed number of payments. Shows on Installments.</p>
                         </div>
                         <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
                       </div>
                     )}
 
-                    {hasInstallments && isRecurring && (
+                    {isPlan && (
                       <div className="space-y-3 pt-2 border-t border-border">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium">Tracking Only</p>
-                            <p className="text-xs text-muted-foreground">From CC / Tabby — no balance deduction</p>
+                            <p className="text-xs text-muted-foreground">Paid by card or pay-later. This account's balance is not reduced.</p>
                           </div>
-                          <Switch checked={isTrackingOnly} onCheckedChange={setIsTrackingOnly} />
+                          <Switch checked={isTrackingOnly} onCheckedChange={(v) => {
+                            setIsTrackingOnly(v);
+                            // A new plan on a card has nothing paid until its first bill.
+                            if (!isEditing && !paidTouched) setCurrentInstallment(String(defaultPaidInstallments(v)));
+                          }} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -491,17 +533,22 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                             </Select>
                           </div>
                           <div>
-                            <label htmlFor="tx-current-installment" className="text-xs text-muted-foreground mb-1 block">Current Installment</label>
-                            <Input id="tx-current-installment" type="number" min="1" max={totalInstallments}
+                            <label htmlFor="tx-current-installment" className="text-xs text-muted-foreground mb-1 block">Installments paid so far</label>
+                            <Input id="tx-current-installment" type="number" inputMode="numeric" min="0" max={totalInstallments}
                               value={currentInstallment}
                               onChange={e => {
-                                const v = parseInt(e.target.value);
-                                const max = parseInt(totalInstallments) || 1;
-                                if (!isNaN(v) && v >= 1 && v <= max) setCurrentInstallment(String(v));
+                                const raw = e.target.value;
+                                const v = parseInt(raw, 10);
+                                const max = parseInt(totalInstallments, 10) || 1;
+                                // 0 is valid: nothing paid yet. Empty is allowed while typing and saves as 0.
+                                if (raw !== '' && (isNaN(v) || v < 0 || v > max)) return;
+                                setCurrentInstallment(raw === '' ? '' : String(v));
+                                setPaidTouched(true);
                               }}
                               className="h-10" />
                           </div>
                         </div>
+                        <p className="text-[11px] text-muted-foreground -mt-1">Enter 0 if the first payment is not made yet.</p>
                         <div>
                           <label htmlFor="tx-loan-total" className="text-xs text-muted-foreground mb-1 block">Original Purchase Price ({currency}) — optional</label>
                           <AmountInput id="tx-loan-total" placeholder="e.g. 1200 (before interest/fees)"
@@ -520,7 +567,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                           <div className="bg-primary-soft rounded-lg p-2.5 text-center">
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                             <p className="text-sm font-heading text-foreground">
-                              {fmt(totalAmount)} ({currentInstallment}/{totalInstallments})
+                              {fmt(totalAmount)} ({currentInst}/{totalInstallments} paid)
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               Remaining: {fmt(remainingBalance)} ({remainingInstCount} installment{remainingInstCount !== 1 ? 's' : ''})
@@ -540,7 +587,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                 )}
 
                 {/* Allocate to Goal */}
-                {!isEditing && !hasInstallments && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
+                {!isEditing && !isPlan && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
                   <div className="bg-muted rounded-xl p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -590,7 +637,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
             <SheetHeader className="text-left mb-1">
               <SheetTitle className="text-lg">{title}</SheetTitle>
             </SheetHeader>
-            {formBody}
+            {noAccounts ? noAccountsBody : formBody}
           </SheetContent>
         </Sheet>
       ) : (
@@ -599,10 +646,13 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
             <DialogHeader>
               <DialogTitle className="text-lg">{title}</DialogTitle>
             </DialogHeader>
-            {formBody}
+            {noAccounts ? noAccountsBody : formBody}
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Opened from "Add an account first". Once saved, the form shows with that account selected. */}
+      <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} />
 
       {/* Duplicate transaction warning */}
       <AlertDialog open={showDuplicateWarning} onOpenChange={(o) => { if (!o) { setShowDuplicateWarning(false); setPendingSubmit(null); setDuplicateMatch(null); } }}>

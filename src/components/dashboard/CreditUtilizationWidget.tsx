@@ -4,7 +4,7 @@ import { CreditCard } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
 import { m } from 'framer-motion';
 import type { Account } from '@/types/finance';
-import { creditUtilization } from '@/lib/finance/credit';
+import { creditTotals, creditUtilization } from '@/lib/finance/credit';
 import AppIcon from '@/components/AppIcon';
 
 interface Props {
@@ -19,14 +19,10 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
 
   if (creditCards.length === 0) return null;
 
-  // Aggregate utilization is only meaningful over cards that have a real limit;
-  // a $0-limit card's owed balance would inflate `totalUsed` against a limit it
-  // never contributed to. It still appears in the per-card list below.
-  const limitedCards = creditCards.filter(a => (a.creditLimit || 0) > 0);
-  const totalLimit = limitedCards.reduce((s, a) => s + (a.creditLimit || 0), 0);
-  // balance IS the amount owed/used for credit accounts (see Account type).
-  const totalUsed = limitedCards.reduce((s, a) => s + a.balance, 0);
-  const overallUtil = totalLimit ? Math.min(Math.round((totalUsed / totalLimit) * 100), 100) : 0;
+  // The same totals the Debt page shows. Only cards with a real limit count;
+  // a $0-limit card still appears in the per-card list below.
+  const { limit: totalLimit, used: totalUsed, utilization } = creditTotals(accounts);
+  const overallUtil = Math.round(utilization ?? 0);
   const overallColor = overallUtil > 75 ? 'text-expense' : overallUtil > 50 ? 'text-warning' : 'text-primary';
   const overallBarColor = overallUtil > 75 ? 'bg-expense' : overallUtil > 50 ? 'bg-warning' : 'bg-primary';
 

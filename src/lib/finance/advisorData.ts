@@ -8,7 +8,7 @@
 // into a "monthly" subscription bill.
 import type { Account, Budget, Goal, Transaction } from '@/types/finance';
 import type { BudgetAnalysis } from '@/hooks/useAI';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending, isCountableExpense } from '@/lib/finance/transactionFilters';
 import { isSpendable } from '@/lib/finance/cardPayments';
 import { creditUtilization } from '@/lib/finance/credit';
 
@@ -29,8 +29,8 @@ export function buildAdvisorData(
   // This month so far; future-dated rows haven't happened yet.
   const monthTx = transactions.filter(t => t.date.startsWith(month) && t.date <= today);
   const spend = monthTx.filter(isCountableExpense);
-  const income = monthTx.filter(t => isCountableIncome(t, creditIds)).reduce((s, t) => s + t.amount, 0);
-  const expenses = spend.reduce((s, t) => s + t.amount, 0);
+  // Spending after refunds, the same rule as Home.
+  const { income, spending: expenses } = incomeAndSpending(monthTx, creditIds);
 
   const categories: Record<string, { total: number; icon: string; count: number }> = {};
   for (const t of spend) {

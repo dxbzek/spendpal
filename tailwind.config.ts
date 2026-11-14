@@ -117,6 +117,12 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      // text-warning only: a darker amber that passes 4.5:1 as small text.
+      // bg-warning, border-warning and the soft tints keep the fill colour.
+      // Merged into the colors entry above, so text-warning-foreground stays.
+      textColor: {
+        warning: { DEFAULT: "hsl(var(--warning-text))" },
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 4px)",

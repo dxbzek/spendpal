@@ -1,5 +1,7 @@
 import { PageSpinner } from '@/components/ui/spinner';
-import { goalPace } from '@/lib/finance/pace';
+import { goalPace, goalDeadlineLabel, goalPaceLabel } from '@/lib/finance/pace';
+import { useToday } from '@/hooks/useToday';
+import { useOpenAddFromRoute } from '@/hooks/useOpenAddFromRoute';
 import { useState, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -40,7 +42,9 @@ const Goals = () => {
   const [progressNote, setProgressNote] = useState('');
   const [showLog, setShowLog] = useState<string | null>(null);
   const [showAllLog, setShowAllLog] = useState<string | null>(null);
-  const [showAddGoal, setShowAddGoal] = useState(false);
+  // Opened from the Home checklist: start with the Add dialog open.
+  const openAdd = useOpenAddFromRoute();
+  const [showAddGoal, setShowAddGoal] = useState(openAdd);
   const [showScan, setShowScan] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
@@ -118,9 +122,10 @@ const Goals = () => {
   const activeGoals = visibleGoals.filter(g => g.status !== 'completed');
   const completedGoals = visibleGoals.filter(g => g.status === 'completed');
 
+  const today = useToday();
   const getDaysRemaining = (deadline?: string) => {
     if (!deadline) return null;
-    return differenceInCalendarDays(parseISO(deadline), new Date());
+    return differenceInCalendarDays(parseISO(deadline), parseISO(today));
   };
 
   if (loading) return <PageSpinner />;
@@ -131,7 +136,7 @@ const Goals = () => {
       <div className="bg-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-2xl">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
+            <h1 className="text-2xl font-heading text-primary-foreground">Goals</h1>
             <div className="flex items-center gap-2">
               <button onClick={() => setShowScan(true)}
                 className="bg-primary-raised rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1"
@@ -172,7 +177,9 @@ const Goals = () => {
               const remaining = goal.targetAmount - goal.savedAmount;
               const daysLeft = getDaysRemaining(goal.deadline);
               const debt = isDebtGoal(goal);
-              const pace = goalPace(remaining, daysLeft);
+              // A paused goal asks for nothing until it's resumed.
+              const pace = goalPace(remaining, daysLeft, goal.status === 'paused');
+              const paceLabel = goalPaceLabel(pace, n => mask(fmt(n)));
               return (
                 <div key={goal.id} className={`relative overflow-hidden bg-card rounded-xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''}`}>
                   <div className="flex items-start justify-between mb-3">
@@ -194,7 +201,7 @@ const Goals = () => {
                           daysLeft <= 7 ? 'bg-destructive-soft text-expense' : daysLeft <= 30 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'
                         }`}>
                           <CalendarClock size={10} />
-                          {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d`}
+                          {goalDeadlineLabel(daysLeft)}
                         </span>
                       )}
                       <button
@@ -224,14 +231,9 @@ const Goals = () => {
                       {remaining > 0 ? (
                         <>
                           <p className="text-xs text-muted-foreground">{mask(fmt(remaining))} remaining</p>
-                          {pace?.kind === 'perMonth' && (
-                            <p className="text-xs text-primary flex items-center gap-0.5 mt-0.5">
-                              <TrendingUp size={10} /> Needs {mask(fmt(pace.amount))}/mo for {pace.months} months
-                            </p>
-                          )}
-                          {pace?.kind === 'inDays' && (
-                            <p className="text-xs text-warning flex items-center gap-0.5 mt-0.5">
-                              <TrendingUp size={10} /> Needs all of it in {pace.days} day{pace.days === 1 ? '' : 's'}
+                          {paceLabel && (
+                            <p className={`text-xs flex items-center gap-0.5 mt-0.5 ${pace?.kind === 'perMonth' ? 'text-primary' : 'text-warning'}`}>
+                              <TrendingUp size={10} /> {paceLabel}
                             </p>
                           )}
                         </>

@@ -1,4 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -6,13 +7,15 @@ import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { type Account } from '@/types/finance';
 import { creditUtilization } from '@/lib/finance/credit';
 import { isCountableExpense } from '@/lib/finance/transactionFilters';
+import { pendingHolds as holdsByAccount } from '@/lib/finance/cardPayments';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import ReconcileDialog from '@/components/forms/ReconcileDialog';
 import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, addDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { projectBalance } from '@/lib/finance/balanceProjection';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,12 +27,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import AppIcon from '@/components/AppIcon';
+import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
 
-const TYPE_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  debit: 'Debit Card',
-  credit: 'Credit Card',
-};
 
 const Accounts = () => {
   const { accounts, transactions, removeAccount, loading } = useFinance();
@@ -68,37 +67,16 @@ const Accounts = () => {
 
   // Pending expense holds per account — not yet posted, but they reduce what's
   // actually available to spend even though the settled balance doesn't reflect them yet.
-  const pendingHolds = useMemo(() => {
-    const holds: Record<string, number> = {};
-    transactions.forEach(tx => {
-      if (tx.type === 'expense' && tx.isPending && !tx.isTrackingOnly) {
-        holds[tx.accountId] = (holds[tx.accountId] ?? 0) + tx.amount;
-      }
-    });
-    return holds;
-  }, [transactions]);
+  // The same helper Home's cash figures use, so "Available" here and
+  // "Spendable Cash" there subtract the same holds.
+  const pendingHolds = useMemo(() => holdsByAccount(transactions), [transactions]);
 
-  // Balance projection: project total assets 30 days forward using recurring transactions
+  // Balance projection: cash and debit balances 30 days forward, each running
+  // bill and recurring income counted once (see balanceProjection.ts).
   const balanceProjection = useMemo(() => {
-    const assetAccs = accounts.filter(a => a.type !== 'credit');
-    if (assetAccs.length === 0) return null;
-    const startBalance = assetAccs.reduce((s, a) => s + a.balance, 0);
-    const recurring = transactions.filter(t => t.isRecurring);
-    const now = new Date();
-    const points: Array<{ day: number; balance: number }> = [{ day: 0, balance: startBalance }];
-    let running = startBalance;
-    for (let d = 1; d <= 30; d++) {
-      const date = addDays(now, d);
-      // Check for recurring transactions due this day of month
-      recurring.forEach(r => {
-        const lastDate = parseISO(r.date);
-        if (lastDate.getDate() === date.getDate()) {
-          if (r.type === 'expense') running -= r.amount;
-          else if (r.type === 'income') running += r.amount;
-        }
-      });
-      points.push({ day: d, balance: running });
-    }
+    const projection = projectBalance(accounts, transactions, new Date());
+    if (!projection) return null;
+    const { points, startBalance } = projection;
     // Build SVG path
     const vals = points.map(p => p.balance);
     const min = Math.min(...vals);
@@ -110,9 +88,7 @@ const Accounts = () => {
       const y = H - ((p.balance - min) / range) * H;
       return `${x},${y}`;
     }).join(' ');
-    const end = points[points.length - 1].balance;
-    const change = end - startBalance;
-    return { pts, startBalance, endBalance: end, change };
+    return { pts, startBalance, endBalance: projection.endBalance, change: projection.change };
   }, [accounts, transactions]);
 
   const handleDelete = () => {
@@ -137,7 +113,7 @@ const Accounts = () => {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-6 space-y-6">
+    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -191,7 +167,7 @@ const Accounts = () => {
                     <div>
                       <p className="font-semibold line-clamp-2 break-words">{account.name}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground`}>
-                        {TYPE_LABELS[account.type]}
+                        {ACCOUNT_TYPE_NAMES[account.type]}
                       </span>
                       {account.excludeFromSpendable && (
                         <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Savings</span>

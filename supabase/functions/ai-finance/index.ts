@@ -1,18 +1,41 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.135.0";
+import { corsHeadersFor } from "../_shared/cors.ts";
+import {
+  AI_REQUEST_TYPES, type AiRequestType, MAX_TOKENS,
+  countCall, dailyLimitFor, parseCeiling, parseUserList, refusalMessage, remainingAfter, usageDay,
+} from "../_shared/aiLimits.ts";
+import { type AiFailure, AI_UNAVAILABLE_MESSAGE, mapAiError } from "../_shared/aiErrors.ts";
+import { usageStore } from "./usageStore.ts";
 
 const MODEL = "claude-opus-5-5";
 
-// Always allow all origins. The Authorization header is validated server-side
-// so wildcard CORS does not reduce security here.
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Shown when the call counter cannot be read or written. The request is
+// refused: an uncounted call would spend the API key with no limit.
+// What a user sees when the server is missing a setting. The setting goes to
+// the function log; a user cannot fix it, so it is not in the message.
+const METER_DOWN = AI_UNAVAILABLE_MESSAGE;
+
+/** The status and message for a failed model call, or null when it is not an API failure. */
+function aiFailure(err: unknown): AiFailure | null {
+  if (err instanceof Anthropic.APIConnectionTimeoutError) return mapAiError({ timeout: true });
+  if (err instanceof Anthropic.APIError) {
+    // The real cause stays in the function log; the user gets a plain message.
+    console.error("Anthropic API error:", err.status, err.type, err.message);
+    return mapAiError({ status: err.status, type: err.type, message: err.message });
+  }
+  return null;
+}
 
 serve(async (req) => {
+  // Only the app's own pages may call this from a browser (see _shared/cors.ts).
+  const corsHeaders = corsHeadersFor(req.headers.get("Origin"), Deno.env.get("ALLOWED_ORIGINS"));
+  const reply = (status: number, body: Record<string, unknown>) =>
+    new Response(JSON.stringify(body), {
+      status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -48,7 +71,39 @@ serve(async (req) => {
       });
     }
 
-    const { type, data, currency } = JSON.parse(body);
+    let parsedBody: { type?: unknown; data?: unknown; currency?: unknown };
+    try {
+      parsedBody = JSON.parse(body);
+    } catch {
+      return reply(400, { error: "Invalid request body" });
+    }
+    const { type, data, currency } = parsedBody ?? {};
+
+    // The call counter. It needs the service role: users can read their own
+    // count but must not be able to write it.
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const meter = serviceKey
+      ? usageStore(createClient(Deno.env.get("SUPABASE_URL")!, serviceKey))
+      : null;
+    // A new or unconfirmed account gets a small daily limit, and the owner
+    // (AI_UNCAPPED_USERS) is not stopped by the limit shared by all users.
+    const userLimit = dailyLimitFor(user, new Date());
+    const capped = !parseUserList(Deno.env.get("AI_UNCAPPED_USERS")).has(user.id.toLowerCase());
+
+    // "usage" asks how many uses are left today. It calls no model and is not counted.
+    if (type === "usage") {
+      if (!meter) {
+        console.error("SUPABASE_SERVICE_ROLE_KEY is not set: AI usage cannot be counted");
+        return reply(503, { error: METER_DOWN });
+      }
+      try {
+        const calls = await meter.read(user.id, usageDay(new Date()));
+        return reply(200, { remaining: remainingAfter(calls ?? 0, userLimit), limit: userLimit });
+      } catch (err) {
+        console.error("AI usage read failed:", err);
+        return reply(503, { error: METER_DOWN });
+      }
+    }
     // Sanitize the optional currency code from the client (defends the prompt
     // against injection) and fall back to neutral, region-agnostic wording.
     const userCurrency = typeof currency === "string" && /^[A-Za-z]{2,4}$/.test(currency)
@@ -56,23 +111,27 @@ serve(async (req) => {
       : "the user's local currency";
 
     const IMAGE_TYPES = new Set(["categorize-image", "categorize-image-budgets", "categorize-image-goals"]);
-    if (!IMAGE_TYPES.has(type) && body.length > 512_000) {
+    if (!IMAGE_TYPES.has(type as string) && body.length > 512_000) {
       return new Response(JSON.stringify({ error: "Payload too large" }), {
         status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const ALLOWED_TYPES = ["summary", "budget-suggestions", "categorize-csv", "categorize-image", "categorize-image-budgets", "categorize-image-goals", "monthly-report", "budget-advisor"] as const;
-    type AllowedType = typeof ALLOWED_TYPES[number];
-    if (!ALLOWED_TYPES.includes(type as AllowedType)) {
+    if (!AI_REQUEST_TYPES.includes(type as AiRequestType)) {
       return new Response(JSON.stringify({ error: "Invalid request type" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const requestType = type as AiRequestType;
+    // A statement is text. An object here would reach the model as "[object Object]".
+    if (requestType === "categorize-csv" && typeof data !== "string") {
+      return reply(400, { error: "Statement text is missing" });
+    }
 
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI is not available on this server. Please contact support." }), {
+      console.error("ANTHROPIC_API_KEY is not set");
+      return new Response(JSON.stringify({ error: AI_UNAVAILABLE_MESSAGE }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -187,7 +246,7 @@ WHAT TO LOOK FOR:
 AMOUNT HANDLING:
 - Strip currency symbols (AED, د.إ, $, €, £, ₹) and "/mo", "monthly", "per month" suffixes
 - Always output a positive number
-- If the row is annotated as weekly or yearly, convert to monthly: weekly × 4.33, yearly ÷ 12
+- If the row is annotated as weekly or yearly, convert to monthly: weekly × 52 ÷ 12, yearly ÷ 12
 
 CATEGORY MAPPING — prefer these standard names when the label clearly maps:
   Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Utilities, Insurance, Fitness, Personal Care, Gift, Other.
@@ -375,7 +434,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
 
     }
 
-    const isImage = IMAGE_TYPES.has(type);
+    const isImage = IMAGE_TYPES.has(requestType);
 
     // Build the user message. Images arrive as a base64 data URL from the
     // client upload, or an https URL.
@@ -412,6 +471,25 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       ];
     }
 
+    // Count the call before the model runs. Everything above this line is free
+    // to fail without using one of the user's daily uses.
+    let remaining: number;
+    try {
+      if (!meter) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+      const counted = await countCall(
+        meter, user.id, usageDay(new Date()),
+        userLimit, parseCeiling(Deno.env.get("AI_DAILY_CEILING")), capped,
+      );
+      if (!counted.ok) {
+        if (counted.reason === "ceiling") console.error("AI daily ceiling reached; request refused");
+        return reply(429, { error: refusalMessage(counted.reason, userLimit), remaining: 0 });
+      }
+      remaining = counted.remaining;
+    } catch (err) {
+      console.error("AI usage metering failed; request refused:", err);
+      return reply(503, { error: METER_DOWN });
+    }
+
     const client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
       // Stay under the client's own 60s (90s for images) abort.
@@ -421,7 +499,7 @@ For simulation, estimate monthly savings potential if the user adopted each budg
 
     const params: Anthropic.Beta.MessageCreateParamsNonStreaming = {
       model: MODEL,
-      max_tokens: 16000,
+      max_tokens: MAX_TOKENS[requestType],
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
       // Extraction and summaries are routine; the budget analysis gets more thought.
@@ -435,17 +513,33 @@ For simulation, estimate monthly savings potential if the user adopted each budg
 
     if (type === "summary" || type === "monthly-report") {
       const stream = client.beta.messages.stream(params);
+      // Text can arrive before the response below exists, so hold it until then.
+      const early: string[] = [];
+      let onText = (text: string) => { early.push(text); };
+      stream.on("text", (text) => onText(text));
+      try {
+        // Wait until the API has accepted the request. A refused request (no
+        // credit, bad key) then gets a real HTTP status, not a 200 with an
+        // error inside the stream.
+        await stream.withResponse();
+      } catch (err) {
+        const failure = aiFailure(err);
+        if (!failure) throw err;
+        return reply(failure.status, { error: failure.error, remaining });
+      }
       const encoder = new TextEncoder();
       const send = (payload: unknown) => encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
       const body = new ReadableStream({
         async start(controller) {
           try {
-            stream.on("text", (text) => controller.enqueue(send({ text })));
+            controller.enqueue(send({ remaining }));
+            for (const text of early) controller.enqueue(send({ text }));
+            onText = (text) => controller.enqueue(send({ text }));
             const final = await stream.finalMessage();
             if (final.stop_reason === "refusal") controller.enqueue(send({ error: "The AI declined this request." }));
           } catch (err) {
             console.error("AI stream error:", err);
-            controller.enqueue(send({ error: "AI service error" }));
+            controller.enqueue(send({ error: aiFailure(err)?.error ?? "AI service error" }));
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
@@ -460,35 +554,18 @@ For simulation, estimate monthly savings potential if the user adopted each budg
     try {
       message = await client.beta.messages.create(params);
     } catch (err) {
-      if (err instanceof Anthropic.APIConnectionTimeoutError) {
-        return new Response(JSON.stringify({ error: "AI request timed out. Please try again." }), {
-          status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (err instanceof Anthropic.RateLimitError) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
-        console.error("Anthropic auth error:", err.message);
-        return new Response(JSON.stringify({ error: "AI is not available on this server. Please contact support." }), {
-          status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (err instanceof Anthropic.APIError) {
-        console.error("Anthropic API error:", err.status, err.message);
-        return new Response(JSON.stringify({ error: "AI service error" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw err;
+      const failure = aiFailure(err);
+      if (!failure) throw err;
+      return reply(failure.status, { error: failure.error, remaining });
     }
 
     if (message.stop_reason === "refusal") {
-      return new Response(JSON.stringify({ error: "The AI declined this request." }), {
-        status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return reply(422, { error: "The AI declined this request.", remaining });
+    }
+    // A cut-off answer is not valid JSON. Without this the app would read it
+    // as "nothing found" and drop the rows without a word.
+    if (message.stop_reason === "max_tokens") {
+      return reply(422, { error: "The AI answer was too long and was cut off. Try again with less data.", remaining });
     }
 
     const content = message.content
@@ -498,20 +575,14 @@ For simulation, estimate monthly savings potential if the user adopted each budg
 
     if (outputSchema) {
       try {
-        return new Response(JSON.stringify({ result: JSON.parse(content) }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return reply(200, { result: JSON.parse(content), remaining });
       } catch (parseError) {
         console.error("Failed to parse structured output:", parseError);
-        return new Response(JSON.stringify({ error: "Failed to parse AI analysis" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return reply(500, { error: "Failed to parse AI analysis", remaining });
       }
     }
 
-    return new Response(JSON.stringify({ result: content }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return reply(200, { result: content, remaining });
   } catch (e) {
     console.error("ai-finance error:", e);
     return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {

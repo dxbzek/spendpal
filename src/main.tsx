@@ -19,8 +19,9 @@ Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   environment: import.meta.env.MODE,
   enabled: import.meta.env.PROD && !!import.meta.env.VITE_SENTRY_DSN,
-  integrations: [Sentry.browserTracingIntegration()],
-  tracesSampleRate: 0.2,
+  // Errors only. Performance tracing sent a timing record for one visit in
+  // five with no error at all, each request URL (user id, date filters)
+  // included, which the privacy page does not describe.
   sendDefaultPii: false,
   // Strip financial PII from error traces - amounts, merchants, and
   // category names must not appear in Sentry breadcrumbs or extra context.
@@ -37,7 +38,11 @@ Sentry.init({
         ...b,
         message: b.message?.replace(/\d[\d,. ]*/g, '[amount]'),
         data: b.data ? Object.fromEntries(
-          Object.entries(b.data).map(([k, v]) => [k, typeof v === 'number' ? '[amount]' : v])
+          Object.entries(b.data).map(([k, v]) => [k,
+            typeof v === 'number' ? '[amount]'
+              // A request's address without its query: the filters name the user and dates.
+              : k === 'url' && typeof v === 'string' ? v.split('?')[0]
+              : v])
         ) : b.data,
       }));
     }

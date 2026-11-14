@@ -7,6 +7,7 @@ import { CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, type TransactionType
 import { useFinance } from '@/context/FinanceContext';
 import { pickerCategories, usedCategories, RECENT_DAYS } from '@/lib/finance/categories';
 import { format, subDays } from 'date-fns';
+import { onSignOut } from '@/lib/signOutReset';
 
 export interface Category {
   name: string;
@@ -21,11 +22,16 @@ export interface Category {
 // fetch its own on mount, so the same list loaded again on each page.
 let cache: { userId: string; rows: Category[] } | null = null;
 let inflight: { userId: string; promise: Promise<Category[] | null> } | null = null;
-const listeners = new Set<(rows: Category[]) => void>();
+// Each listener is told whose list it is. A request for the last user can
+// still answer after a sign-out, and its rows must not reach the next user's pickers.
+const listeners = new Set<(userId: string, rows: Category[]) => void>();
+// Bumped on sign-out, so such a late answer is not kept either.
+let generation = 0;
 
 async function loadCustom(userId: string, force: boolean): Promise<Category[] | null> {
   if (!force && cache?.userId === userId) return cache.rows;
   if (!force && inflight?.userId === userId) return inflight.promise;
+  const gen = generation;
   const promise = (async () => {
     const { data, error } = await supabase
       .from('custom_categories')
@@ -44,16 +50,18 @@ async function loadCustom(userId: string, force: boolean): Promise<Category[] | 
       type: (r.type as 'expense' | 'income' | 'both') ?? 'both',
       originalName: r.original_name ?? null,
     }));
+    if (gen !== generation) return null;
     cache = { userId, rows };
-    listeners.forEach(l => l(rows));
+    listeners.forEach(l => l(userId, rows));
     return rows;
   })();
   inflight = { userId, promise };
   try { return await promise; } finally { if (inflight?.promise === promise) inflight = null; }
 }
 
-/** Test hook: forget the shared copy. */
-export const resetCategoryCache = () => { cache = null; inflight = null; };
+/** Forget the shared copy. Runs on sign-out; tests call it too. */
+export const resetCategoryCache = () => { cache = null; inflight = null; generation++; };
+onSignOut(resetCategoryCache);
 
 export const useCategories = () => {
   const { user } = useAuth();
@@ -71,10 +79,13 @@ export const useCategories = () => {
   }, [userId]);
 
   useEffect(() => {
+    // A new user starts from their own list (or none), never the last one's.
+    setCustomCategories(cache && cache.userId === userId ? cache.rows : []);
     fetchCustom(false);
-    listeners.add(setCustomCategories);
-    return () => { listeners.delete(setCustomCategories); };
-  }, [fetchCustom]);
+    const listener = (owner: string, rows: Category[]) => { if (owner === userId) setCustomCategories(rows); };
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  }, [fetchCustom, userId]);
 
   // Names that shadow or replace a default (either same name or via original_name rename)
   const shadowedDefaultNames = new Set([

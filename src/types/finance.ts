@@ -14,14 +14,14 @@ export interface Account {
   creditLimit?: number;
   dueDate?: number; // day of month
   statementDate?: number;
-  apr?: number; // annual interest rate, % (e.g. 0 for BNPL/Tabby, ~36+ for typical UAE cards)
+  apr?: number; // annual interest rate, % (0 for an interest-free pay-later plan)
   // From the card's latest statement, typed in by hand. Shown as-is on Home;
   // null means "not entered" and Home asks for the statement instead of guessing.
   statementTotalDue?: number | null;
   statementMinDue?: number | null;
   statementDueOn?: string | null; // YYYY-MM-DD
   // Non-credit money that isn't spendable (savings held for someone else).
-  // Left out of "Left until payday"; still counted in net position.
+  // Left out of Spendable Cash and "Left until payday"; still counted in net worth.
   // undefined = column not on the database yet.
   excludeFromSpendable?: boolean;
 }
@@ -55,6 +55,12 @@ export interface Transaction {
   remainingPrincipal?: number | null;
   // The user said this isn't a duplicate; Transactions stops flagging it.
   dupeDismissed?: boolean;
+  // One id per instalment plan, on every row of that plan.
+  // null = row has none (logged before the column, or imported);
+  // undefined = column not on the database yet.
+  planId?: string | null;
+  // One id shared by the two halves of a transfer. Same null/undefined meaning.
+  transferId?: string | null;
 }
 
 export interface Budget {
@@ -68,6 +74,8 @@ export interface Budget {
   isFixed?: boolean;
 }
 
+// 'DEWA' is no longer a built-in name but stays here: a user who still has a
+// DEWA category gets a new DEWA budget marked fixed, as before.
 export const FIXED_EXPENSE_CATEGORIES = new Set(['Rent', 'DEWA', 'Utilities', 'Insurance', 'Telecom', 'Subscriptions', 'Loans']);
 
 export interface Goal {
@@ -81,18 +89,20 @@ export interface Goal {
   status: 'active' | 'completed' | 'paused';
 }
 
+// Built-in names, offered to every new user, so none is local to one country.
+// 'DEWA' (a Dubai utility) and 'Metro/Taxi' were removed: rows and budgets
+// already under those names keep working, and CATEGORY_ALIASES still counts
+// them toward Bills and Transport budgets.
 export const EXPENSE_CATEGORIES = [
   { name: 'Coffee', icon: '☕' },
   { name: 'Groceries', icon: '🛒' },
   { name: 'Transport', icon: '🚗' },
   { name: 'Dining', icon: '🍽️' },
   { name: 'Telecom', icon: '📱' },
-  { name: 'Metro/Taxi', icon: '🚇' },
   { name: 'Travel', icon: '✈️' },
   { name: 'Entertainment', icon: '🎬' },
   { name: 'Charity', icon: '🤲' },
   { name: 'Delivery', icon: '📦' },
-  { name: 'DEWA', icon: '💡' },
   { name: 'Rent', icon: '🏠' },
   { name: 'Loans', icon: '🏦' },
   { name: 'Shopping', icon: '🛍️' },

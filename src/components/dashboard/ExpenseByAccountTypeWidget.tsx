@@ -1,8 +1,9 @@
 import { memo, useMemo } from 'react';
-import { isCountableExpense } from '@/lib/finance/transactionFilters';
+import { isCountableExpense, netSpending } from '@/lib/finance/transactionFilters';
 import { useCurrency } from '@/context/CurrencyContext';
 import { PieChart } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
+import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
 import { m } from 'framer-motion';
 import type { Account, Transaction } from '@/types/finance';
 
@@ -14,9 +15,9 @@ interface Props {
 }
 
 const TYPE_CONFIG = {
-  cash: { label: 'Cash', color: 'bg-income' },
-  debit: { label: 'Debit', color: 'bg-primary' },
-  credit: { label: 'Credit', color: 'bg-warning' },
+  cash: { label: ACCOUNT_TYPE_NAMES.cash, color: 'bg-income' },
+  debit: { label: ACCOUNT_TYPE_NAMES.debit, color: 'bg-primary' },
+  credit: { label: ACCOUNT_TYPE_NAMES.credit, color: 'bg-warning' },
 } as const;
 
 const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, mask }: Props) => {
@@ -36,8 +37,11 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, m
     return totals;
   }, [accounts, transactions]);
 
-  const total = breakdown.cash + breakdown.debit + breakdown.credit;
-  if (total === 0) return null;
+  const grossTotal = breakdown.cash + breakdown.debit + breakdown.credit;
+  // The total is after refunds, like the Expenses card beside it; a refund row
+  // has no account type, so the per-type rows stay before refunds.
+  const total = useMemo(() => (grossTotal === 0 ? 0 : netSpending(transactions)), [grossTotal, transactions]);
+  if (grossTotal === 0) return null;
 
   return (
     <div className="bg-card rounded-xl p-4 card-shadow">
@@ -50,7 +54,7 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, m
       <div className="space-y-3">
         {(Object.entries(TYPE_CONFIG) as [string, { label: string; color: string }][]).map(([key, config]) => {
           const amount = breakdown[key] || 0;
-          const pct = total ? Math.round((amount / total) * 100) : 0;
+          const pct = grossTotal ? Math.round((amount / grossTotal) * 100) : 0;
           if (amount === 0) return null;
 
           return (

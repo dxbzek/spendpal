@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
+import { findMissingColumns, SCHEMA_BEHIND_MESSAGE, supabaseProbe } from '@/lib/dbSchema';
 import { fetchAllRows } from '@/lib/backup';
-import { budgetCategoryOf } from '@/lib/finance/categories';
+import { isBudgetAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
+import { dateKey } from '@/lib/today';
+import { useToday } from '@/hooks/useToday';
+import { newUuid, retryWithoutLinks, roundAmount, roundAmountOrNull } from '@/lib/finance/transactionWrite';
+import { addMoney, roundAccountMoney, roundMoney } from '@/lib/finance/money';
 import {
   AccountRowSchema,
   TransactionRowSchema,
@@ -48,10 +51,11 @@ const statementColumns = (a: Partial<Account>) => ({
   ...(a.excludeFromSpendable !== undefined && { exclude_from_spendable: a.excludeFromSpendable }),
 });
 
-// Same for the plan's remaining principal: a missing column must not break
-// "New Transaction" again.
+// Same for the plan's remaining principal and its plan id: a missing column
+// must not break "New Transaction" again.
 const planColumns = (tx: Partial<Transaction>) => ({
-  ...(tx.remainingPrincipal !== undefined && { remaining_principal: tx.remainingPrincipal }),
+  ...(tx.remainingPrincipal !== undefined && { remaining_principal: roundAmountOrNull(tx.remainingPrincipal) }),
+  ...(tx.planId !== undefined && { plan_id: tx.planId }),
 });
 
 const mapTransaction = (row: unknown): Transaction | null => {
@@ -77,6 +81,8 @@ const mapTransaction = (row: unknown): Transaction | null => {
     isPending: r.is_pending ?? false,
     remainingPrincipal: r.remaining_principal,
     dupeDismissed: r.dupe_dismissed,
+    planId: r.plan_id,
+    transferId: r.transfer_id,
   };
 };
 
@@ -123,22 +129,18 @@ const thisMonthKey = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
-function computeSpentByCategory(txs: Transaction[], budgetNames: ReadonlySet<string> = new Set()): Record<string, number> {
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`;
-  // Exclude future-dated transactions: they haven't been spent yet.
-  // Pending (isPending) transactions are NOT excluded here on purpose: a
-  // pending charge is still real spending the user committed to, and
-  // budgets/reports should reflect it immediately. isPending only gates
-  // whether it's posted to the settled account balance (see the DB trigger).
-  const monthExpenses = txs.filter(t => isCountableExpense(t) && t.date.startsWith(currentMonth) && t.date <= today);
-  const spent: Record<string, number> = {};
-  for (const t of monthExpenses) {
-    const category = budgetCategoryOf(t.category, budgetNames);
-    spent[category] = (spent[category] ?? 0) + t.amount;
-  }
-  return spent;
+/**
+ * This month's spending per budget category, up to `today` (YYYY-MM-DD).
+ * The sum itself lives in lib/finance/budgetSpend so it can be tested. `today`
+ * is passed in, not read here, so the memo below can depend on it: read
+ * inside, the figure stayed on yesterday's date in an app left open overnight.
+ */
+function computeSpentByCategory(
+  txs: Transaction[],
+  budgetNames: ReadonlySet<string> = new Set(),
+  today: string = dateKey(new Date()),
+): Record<string, number> {
+  return spentByBudgetCategory(txs, today.slice(0, 7), budgetNames, today);
 }
 
 // ─── Context type ─────────────────────────────────────────────────────────────
@@ -206,10 +208,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // not recalculated inside every mutation's nested state setter.
   // The budget names as a string, so adding spend to a budget (a new array)
   // doesn't re-run the sum that produced it.
-  const budgetNamesKey = [...budgetNamesFor(budgets, thisMonthKey())].sort().join('\n');
+  // `today` is a dependency: it changes at midnight and when the app comes
+  // back to the front, so budgets move to the new day (and the new month).
+  const today = useToday();
+  const budgetNamesKey = [...budgetNamesFor(budgets, today.slice(0, 7))].sort().join('\n');
   const spentByCategory = useMemo(
-    () => computeSpentByCategory(transactions, new Set(budgetNamesKey ? budgetNamesKey.split('\n') : [])),
-    [transactions, budgetNamesKey]
+    () => computeSpentByCategory(transactions, new Set(budgetNamesKey ? budgetNamesKey.split('\n') : []), today),
+    [transactions, budgetNamesKey, today]
   );
 
   // Apply the memoized spending map to budgets whenever either changes.
@@ -264,23 +269,26 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Once per sign-in: if a migration wasn't applied, say which columns are
-  // missing instead of letting the next save fail with a vague error.
+  // Once per sign-in: if a migration wasn't applied, log which columns are
+  // missing (supabase/pending_migrations.sql adds them). The user only hears
+  // that saves may fail for a while: they cannot fix the database.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     findMissingColumns(supabaseProbe(supabase)).then(({ missing }) => {
       if (cancelled || missing.length === 0) return;
-      logger.error('Database schema is behind the app', { missing });
-      toast.error(`Database is missing ${missing.join(', ')}. Run supabase/pending_migrations.sql in the Supabase SQL editor.`, { duration: Infinity });
+      logger.error('Database schema is behind the app; apply supabase/pending_migrations.sql', { missing });
+      toast.warning(SCHEMA_BEHIND_MESSAGE);
     }).catch(err => logger.warn('Schema check failed', err));
     return () => { cancelled = true; };
   }, [userId]);
 
   // ─── ACCOUNTS ─────────────────────────────────────────────────────────────
 
-  const addAccount = useCallback(async (account: Omit<Account, 'id'>) => {
+  const addAccount = useCallback(async (input: Omit<Account, 'id'>) => {
     if (!userId) return false;
+    // Money is stored to the cent; the columns have no fixed scale to do it.
+    const account = roundAccountMoney(input);
     const { data, error } = await supabase.from('accounts').insert({
       user_id: userId,
       name: account.name,
@@ -300,7 +308,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [userId]);
 
-  const updateAccount = useCallback(async (account: Account) => {
+  const updateAccount = useCallback(async (input: Account) => {
+    const account = roundAccountMoney(input);
     const { error } = await supabase.from('accounts').update({
       name: account.name,
       type: account.type,
@@ -329,11 +338,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addTransaction = useCallback(async (tx: Omit<Transaction, 'id'>): Promise<Transaction | null> => {
     if (!userId) return null;
-    const { data, error } = await supabase.from('transactions').insert({
+    const { data, error } = await retryWithoutLinks(prep => supabase.from('transactions').insert(prep({
       user_id: userId,
       account_id: tx.accountId,
       type: tx.type,
-      amount: tx.amount,
+      amount: roundAmount(tx.amount),
       currency: tx.currency,
       category: tx.category,
       category_icon: tx.categoryIcon,
@@ -343,12 +352,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
-      loan_total_amount: tx.loanTotalAmount ?? null,
+      loan_total_amount: roundAmountOrNull(tx.loanTotalAmount),
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
       is_pending: tx.isPending ?? false,
       ...planColumns(tx),
-    }).select().single();
+    })).select().single());
     if (error) { toast.error(`Failed to add transaction: ${error.message}`); return null; }
 
     const mapped = mapTransaction(data);
@@ -371,12 +380,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addTransfer = useCallback(async (transfer: TransferInput) => {
     if (!userId) return false;
+    const amount = roundAmount(transfer.amount);
+    // One id on both halves, so they are paired by it and not by date and
+    // amount, which two equal transfers on one day share.
+    const transferId = newUuid();
     const rows = [
       {
         user_id: userId,
         account_id: transfer.fromAccountId,
         type: 'expense' as const,
-        amount: transfer.amount,
+        amount,
         currency: transfer.currency,
         category: 'Transfer',
         category_icon: '🔁',
@@ -390,12 +403,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         is_tracking_only: false,
         is_internal: true,
         is_pending: false,
+        transfer_id: transferId,
       },
       {
         user_id: userId,
         account_id: transfer.toAccountId,
         type: 'income' as const,
-        amount: transfer.amount,
+        amount,
         currency: transfer.currency,
         category: 'Transfer',
         category_icon: '🔁',
@@ -409,9 +423,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         is_tracking_only: false,
         is_internal: true,
         is_pending: false,
+        transfer_id: transferId,
       },
     ];
-    const { data, error } = await supabase.from('transactions').insert(rows).select();
+    const { data, error } = await retryWithoutLinks(prep => supabase.from('transactions').insert(rows.map(prep)).select());
     if (error) { toast.error(`Failed to add transfer: ${error.message}`); return false; }
 
     const mapped = (data ?? []).map(mapTransaction).filter(Boolean) as Transaction[];
@@ -437,7 +452,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       user_id: userId,
       account_id: tx.accountId,
       type: tx.type,
-      amount: tx.amount,
+      amount: roundAmount(tx.amount),
       currency: tx.currency,
       category: tx.category,
       category_icon: tx.categoryIcon,
@@ -447,7 +462,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
-      loan_total_amount: tx.loanTotalAmount ?? null,
+      loan_total_amount: roundAmountOrNull(tx.loanTotalAmount),
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
       is_pending: tx.isPending ?? false,
@@ -474,10 +489,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Capture old accountId before update to refresh both accounts if it changed
     const oldTx = transactions.find(t => t.id === tx.id);
 
-    const { error } = await supabase.from('transactions').update({
+    const amount = roundAmount(tx.amount);
+    const { error } = await retryWithoutLinks(prep => supabase.from('transactions').update(prep({
       account_id: tx.accountId,
       type: tx.type,
-      amount: tx.amount,
+      amount,
       category: tx.category,
       category_icon: tx.categoryIcon,
       merchant: tx.merchant,
@@ -486,14 +502,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       is_recurring: tx.isRecurring ?? false,
       total_installments: tx.totalInstallments ?? null,
       current_installment: tx.currentInstallment ?? null,
-      loan_total_amount: tx.loanTotalAmount ?? null,
+      loan_total_amount: roundAmountOrNull(tx.loanTotalAmount),
       is_tracking_only: tx.isTrackingOnly ?? false,
       is_internal: tx.isInternal ?? false,
       is_pending: tx.isPending ?? false,
       ...planColumns(tx),
-    }).eq('id', tx.id);
+    })).eq('id', tx.id));
     if (error) { toast.error(`Failed to update transaction: ${error.message}`); return false; }
-    setTransactions(prev => prev.map(t => t.id === tx.id ? tx : t));
+    // Keep what the database now holds: the rounded amount, and the fields
+    // this update does not send (the transfer id, "not a duplicate").
+    setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, ...tx, amount } : t));
 
     // Refresh balances for the new account and the old one (if account changed)
     const accountIdsToRefresh = [...new Set([tx.accountId, oldTx?.accountId].filter(Boolean) as string[])];
@@ -580,11 +598,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addBudget = useCallback(async (budget: Omit<Budget, 'id' | 'spent'>) => {
     if (!userId) return false;
+    const amount = roundMoney(budget.amount);
+    // The database accepts 0, but a zero budget is dropped on load: it would
+    // be a row the user can never see or delete. AI envelopes and scanned
+    // screenshots reach this without going through the form's own check.
+    if (!isBudgetAmount(amount)) { toast.error(`${budget.category}: a budget must be above zero`); return false; }
     const { data, error } = await supabase.from('budgets').insert({
       user_id: userId,
       category: budget.category,
       category_icon: budget.categoryIcon,
-      amount: budget.amount,
+      amount,
       period: budget.period,
       month: budget.month,
       is_fixed: budget.isFixed ?? false,
@@ -596,7 +619,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [userId, spentByCategory]);
 
-  const updateBudget = useCallback(async (budget: Budget) => {
+  const updateBudget = useCallback(async (input: Budget) => {
+    const budget = { ...input, amount: roundMoney(input.amount) };
+    if (!isBudgetAmount(budget.amount)) { toast.error(`${budget.category}: a budget must be above zero`); return false; }
     const { error } = await supabase.from('budgets').update({
       category: budget.category,
       category_icon: budget.categoryIcon,
@@ -632,8 +657,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       name: goal.name,
       icon: goal.icon,
       type: goal.type,
-      target_amount: goal.targetAmount,
-      saved_amount: goal.savedAmount,
+      target_amount: roundMoney(goal.targetAmount),
+      saved_amount: roundMoney(goal.savedAmount),
       deadline: goal.deadline ?? null,
       status: goal.status,
     }).select().single();
@@ -643,7 +668,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [userId]);
 
-  const updateGoal = useCallback(async (goal: Goal) => {
+  const updateGoal = useCallback(async (input: Goal) => {
+    const goal = { ...input, targetAmount: roundMoney(input.targetAmount), savedAmount: roundMoney(input.savedAmount) };
     const { error } = await supabase.from('goals').update({
       name: goal.name,
       icon: goal.icon,
@@ -668,7 +694,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (amount <= 0) { toast.error('Progress amount must be greater than zero'); return false; }
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return false;
-    const newSaved = goal.savedAmount + amount;
+    // To the cent: a raw float sum left tails like 330.29999999999995 in the column.
+    const newSaved = addMoney(goal.savedAmount, amount);
     const isNowComplete = newSaved >= goal.targetAmount;
     const updates: Record<string, unknown> = { saved_amount: newSaved };
     if (isNowComplete) updates.status = 'completed';
@@ -685,7 +712,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (amount <= 0) { toast.error('Withdrawal amount must be greater than zero'); return false; }
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return false;
-    const newSaved = Math.max(0, goal.savedAmount - amount);
+    const newSaved = Math.max(0, addMoney(goal.savedAmount, -amount));
     const wasCompleted = goal.status === 'completed';
     const isNowIncomplete = wasCompleted && newSaved < goal.targetAmount;
     const updates: Record<string, unknown> = { saved_amount: newSaved };

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending, isCountableExpense } from '@/lib/finance/transactionFilters';
 import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -12,6 +12,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { detectDuplicates } from '@/utils/detectDuplicates';
+import { pairTransfers } from '@/lib/finance/transfers';
 import { Input } from '@/components/ui/input';
 import { m, AnimatePresence } from 'framer-motion';
 import ImportStatementSheet from '@/components/transactions/ImportStatementSheet';
@@ -91,28 +92,12 @@ const Transactions = () => {
     try { await dismissDuplicate(id); } finally { setDismissingId(null); }
   };
 
-  // Merge transfer pairs: match expense+income with same date, amount, category='Transfer'
+  // Merge transfer pairs: the two halves show as one row. Paired on the
+  // transfer id; older rows on date + amount + note (see transfers.ts).
   const { mergedTransactions, transferPairs } = useMemo(() => {
-    const pairs = new Map<string, { from: typeof transactions[0]; to: typeof transactions[0] }>();
-    const pairedIds = new Set<string>();
-
-    const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
-    const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
-
-    for (const exp of transferExpenses) {
-      const match = transferIncomes.find(inc =>
-        inc.date === exp.date &&
-        inc.amount === exp.amount &&
-        !pairedIds.has(inc.id)
-      );
-      if (match) {
-        pairs.set(exp.id, { from: exp, to: match });
-        pairedIds.add(exp.id);
-        pairedIds.add(match.id);
-      }
-    }
-
-    const merged = transactions.filter(tx => !pairedIds.has(tx.id) || pairs.has(tx.id));
+    const pairs = pairTransfers(transactions);
+    const incomeHalves = new Set([...pairs.values()].map(p => p.to.id));
+    const merged = transactions.filter(tx => !incomeHalves.has(tx.id));
     return { mergedTransactions: merged, transferPairs: pairs };
   }, [transactions]);
 
@@ -176,15 +161,11 @@ const Transactions = () => {
     return { txs: txs.slice(0, 20), total, count, icon: txs[0]?.categoryIcon || '🏪' };
   }, [merchantProfile, transactions]);
 
-  const filteredIncome = useMemo(() =>
-    filtered.filter(tx => isCountableIncome(tx, creditAccountIds)).reduce((s, tx) => s + tx.amount, 0),
+  // Spending after refunds, the same rule as Home.
+  const { income: filteredIncome, spending: filteredExpenses, net: filteredNet } = useMemo(
+    () => incomeAndSpending(filtered, creditAccountIds),
     [filtered, creditAccountIds]
   );
-  const filteredExpenses = useMemo(() =>
-    filtered.filter(isCountableExpense).reduce((s, tx) => s + tx.amount, 0),
-    [filtered]
-  );
-  const filteredNet = filteredIncome - filteredExpenses;
 
   const handleDeleteSingle = (txId: string) => {
     const pair = transferPairs.get(txId);
@@ -254,7 +235,8 @@ const Transactions = () => {
                    Card credit
                  </span>
                )}
-               {tx.totalInstallments && tx.currentInstallment && (
+               {/* != null, not truthy: 0 paid is a valid count and must not print a bare "0". */}
+               {tx.totalInstallments != null && tx.currentInstallment != null && (
                  <span className="text-[11px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full shrink-0">
                    {tx.currentInstallment}/{tx.totalInstallments}
                  </span>

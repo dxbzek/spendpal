@@ -1,10 +1,14 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
-import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { getCategoryChartColor } from '@/utils/categoryColors';
-import { activeBudgets } from '@/utils/budgets';
+import { budgetsForMonth } from '@/utils/budgets';
+import { budgetPercent } from '@/lib/finance/budgetSpend';
+import { isInPeriod } from '@/lib/today';
+import { useToday } from '@/hooks/useToday';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
 import { savingsSummary } from '@/lib/finance/pace';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { pairTransfers } from '@/lib/finance/transfers';
+import { grossSpending, incomeAndSpending, isCountableExpense, refundTotal } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -16,7 +20,7 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2, ArrowUpRight, ArrowDown } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, CheckCircle2, ArrowUpRight, ArrowDown, Coins } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
@@ -28,14 +32,37 @@ import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import CardPaymentsCard from '@/components/dashboard/CardPaymentsCard';
 import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
-import { isSpendable } from '@/lib/finance/cardPayments';
+import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
+import { useEditTransaction } from '@/components/layout/AppLayout';
+import CurrencyStep from '@/components/onboarding/CurrencyStep';
+import GettingStartedCard from '@/components/dashboard/GettingStartedCard';
+import {
+  OPEN_ADD_STATE, checklistSteps, needsCurrencyStep, showChecklist, type ChecklistStepId,
+} from '@/lib/onboarding';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { userSettings } from '@/lib/userSettings';
+import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
 const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
 import type { Account } from '@/types/finance';
+
+// Home's card sections. A flex row, not a 4-column grid: a half-width card
+// with no partner (Installment Plans, Spending Forecast) grows to the full
+// row instead of sitting beside an empty half, and a widget that renders
+// nothing leaves its slot empty, which empty:hidden removes. A section whose
+// cards are all empty hides its title too.
+const SECTION = 'flex flex-wrap gap-4 lg:gap-5 mt-6 [&:not(:has(>:not(:first-child):not(:empty)))]:hidden';
+const SECTION_HEADER = 'basis-full flex items-center gap-4';
+// Half a row from lg up (50% less half the 1.25rem gap), a full row below.
+const HALF = 'min-w-0 grow basis-full lg:basis-[calc(50%-0.625rem)]';
+const FULL = 'min-w-0 basis-full';
+// Slots for widgets that may render nothing; their card fills the slot height.
+const HALF_SLOT = `${HALF} empty:hidden [&>*]:h-full`;
+const FULL_SLOT = `${FULL} empty:hidden`;
 
 const ChartSkeleton = ({ height = 'h-[220px]' }: { height?: string }) => (
   <div className={`${height} w-full rounded-xl bg-muted animate-pulse`} />
@@ -64,43 +91,55 @@ const Dashboard = () => {
     ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
     : WORLD_CURRENCIES;
   const navigate = useNavigate();
+  const { openAddSheet } = useEditTransaction();
+  // First-use flags are user settings, so they follow the user to another device.
+  const { data: settings, ready: settingsReady } = useUserSettings();
+  const currencyConfirmed = settings.currency_confirmed === true;
+  // Until the settings row has loaded, a card the user hid on another device
+  // must not flash up and vanish, so the card waits for it.
+  const checklistDismissed = settings.checklist_dismissed === true || !settingsReady;
   // Shared hook keeps the balance mask in sync across the app.
-  const { hidden, mask } = useBalanceMask();
-  const toggleHidden = () => dispatchBalanceMaskToggle(!hidden);
+  const { hidden, mask, setBalancesHidden } = useBalanceMask();
+  const toggleHidden = () => setBalancesHidden(!hidden);
   const [period, setPeriod] = useState<'month' | 'year' | 'all'>('month');
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
-  const now = useMemo(() => new Date(), []);
-  // Budgets that apply to the current month (carried forward if none created
-  // yet) — used for the status line and budget alerts.
-  const activeBudgetsList = useMemo(
-    () => activeBudgets(budgets, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`),
-    [budgets, now]
-  );
+  // Today's date, kept current while Home stays open. Fixed on mount, it left
+  // out rows added after midnight and stayed on last month after a month change.
+  const today = useToday();
+  const monthKey = today.slice(0, 7);
+  // This month's own budgets, the same set the Budgets page shows. Last
+  // month's are not carried forward here: Home showed "% spent" against them
+  // while the Budgets page said the month had none.
+  const activeBudgetsList = useMemo(() => budgetsForMonth(budgets, monthKey), [budgets, monthKey]);
   useBudgetAlerts(activeBudgetsList);
 
   // Same figure "Left until payday" starts from: cash/debit, minus savings
-  // marked not-for-spending.
-  const totalBalance = useMemo(() => accounts.filter(isSpendable).reduce((s, a) => s + a.balance, 0), [accounts]);
+  // marked not-for-spending, minus pending holds (authorised, not yet out of
+  // the balance).
+  const spendable = useMemo(() => spendableCash(accounts, transactions), [accounts, transactions]);
+  const totalBalance = spendable.available;
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
 
-  const filtered = useMemo(() => {
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    return transactions.filter(tx => {
-      const d = parseISO(tx.date);
-      if (d > now) return false; // skip future-dated transactions — not spent/earned yet
-      if (period === 'all') return true;
-      if (period === 'month') return d.getMonth() === month && d.getFullYear() === year;
-      return d.getFullYear() === year;
-    });
-  }, [transactions, period, now]);
+  // Future-dated rows are left out: not spent or earned yet.
+  const filtered = useMemo(
+    () => transactions.filter(tx => isInPeriod(tx.date, period, today)),
+    [transactions, period, today],
+  );
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
-  const income = useMemo(() => filtered.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
-  const expenses = useMemo(() => filtered.filter(isCountableExpense).reduce((s, t) => s + t.amount, 0), [filtered]);
+  // Spending after refunds. A refund is an income row, but it is money back
+  // for a purchase: it lowers spending and is never counted as income.
+  const { income, spending: expenses } = useMemo(
+    () => incomeAndSpending(filtered, creditAccountIds),
+    [filtered, creditAccountIds],
+  );
+  const refunds = useMemo(() => refundTotal(filtered), [filtered]);
+  // Before refunds: the base for the category shares, which cannot take a
+  // refund off (a refund row does not say which category it undoes).
+  const grossExpenses = useMemo(() => grossSpending(filtered), [filtered]);
   const animatedIncome = useCountUp(income, 700);
   const animatedExpenses = useCountUp(expenses, 700);
 
@@ -114,24 +153,19 @@ const Dashboard = () => {
   }, [filtered]);
 
   const [thisMonthIncome, thisMonthExpenses] = useMemo(() => {
-    const month = now.getMonth(), year = now.getFullYear();
-    let inc = 0, exp = 0;
-    for (const tx of transactions) {
-      const d = parseISO(tx.date);
-      if (d.getMonth() !== month || d.getFullYear() !== year) continue;
-      if (d > now) continue; // skip future-dated transactions — not spent/earned yet
-      if (isCountableIncome(tx, creditAccountIds)) inc += tx.amount;
-      else if (isCountableExpense(tx)) exp += tx.amount;
-    }
-    return [inc, exp];
-  }, [transactions, now, creditAccountIds]);
+    // Future-dated rows are skipped by isInPeriod: not spent or earned yet.
+    const rows = transactions.filter(tx => isInPeriod(tx.date, 'month', today));
+    // After refunds, like the Expenses figure above.
+    const { income: inc, spending } = incomeAndSpending(rows, creditAccountIds);
+    return [inc, spending];
+  }, [transactions, today, creditAccountIds]);
   const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
   // Note: the financial-health score now lives solely on the AI Advisor page,
   // where it is actually computed — per the SpendPal design handoff.
 
   const totalBudgeted = activeBudgetsList.reduce((s, b) => s + b.amount, 0);
   const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
-  const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
+  const budgetPct = budgetPercent(totalSpent, totalBudgeted);
 
   // Installment plan summary — the same plans and "left" as the Installments page.
   const installmentSummary = useMemo(() => {
@@ -143,28 +177,35 @@ const Dashboard = () => {
     };
   }, [transactions]);
 
-  // Merge transfer pairs for recent transactions display (same logic as Transactions page)
+  // The two halves of a transfer show as one row, paired the same way as on
+  // the Transactions page: on the transfer id, older rows on date + amount +
+  // note (see transfers.ts). Date + amount alone crossed two equal transfers
+  // made on one day and showed the wrong destination account.
   const recentTx = useMemo(() => {
-    const pairedIds = new Set<string>();
-    const mergedList: (typeof transactions[0] & { toAccountId?: string })[] = [];
-    const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
-    const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
-    const transferToAccount = new Map<string, string>();
-    for (const exp of transferExpenses) {
-      const match = transferIncomes.find(inc => inc.date === exp.date && inc.amount === exp.amount && !pairedIds.has(inc.id));
-      if (match) {
-        pairedIds.add(exp.id);
-        pairedIds.add(match.id);
-        transferToAccount.set(exp.id, match.accountId);
-      }
-    }
-    for (const tx of transactions) {
-      if (pairedIds.has(tx.id) && !transferToAccount.has(tx.id)) continue; // skip income half
-      mergedList.push({ ...tx, toAccountId: transferToAccount.get(tx.id) });
-    }
-    return mergedList.slice(0, 5);
+    const pairs = pairTransfers(transactions);
+    const incomeHalves = new Set([...pairs.values()].map(p => p.to.id));
+    return transactions
+      .filter(tx => !incomeHalves.has(tx.id))
+      .slice(0, 5)
+      .map(tx => ({ ...tx, toAccountId: pairs.get(tx.id)?.to.accountId }));
   }, [transactions]);
 
+
+  const counts = { accounts: accounts.length, transactions: transactions.length, budgets: budgets.length, goals: goals.length };
+  const steps = checklistSteps(counts);
+  // The oldest row says how long the user has been here (see showChecklist).
+  const oldestTxDate = transactions.length ? transactions.reduce((min, t) => (t.date < min ? t.date : min), transactions[0].date) : null;
+  const checklistVisible = showChecklist(steps, checklistDismissed, oldestTxDate, today);
+
+  const runStep = (id: ChecklistStepId) => {
+    if (id === 'account') { setEditAccount(null); setShowAddAccount(true); }
+    else if (id === 'transaction') openAddSheet();
+    else if (id === 'budget') navigate('/budgets', { state: OPEN_ADD_STATE });
+    else navigate('/goals', { state: OPEN_ADD_STATE });
+  };
+  const dismissChecklist = () => {
+    userSettings.set('checklist_dismissed', true);
+  };
 
   // Skeleton keeps the layout stable while data loads.
   if (dataLoading) {
@@ -188,13 +229,16 @@ const Dashboard = () => {
     );
   }
 
-  // First-run onboarding when the user has no accounts yet.
+  // First run: no accounts yet. A brand-new user picks a currency first, so
+  // the first account is not saved in AED by default; anyone who already has
+  // records skips it (they change currency in Settings, with conversion).
   if (!dataLoading && accounts.length === 0) {
-    const steps = [
-      { icon: Wallet, label: 'Add your first account', hint: 'Cash, bank, or credit card', done: accounts.length > 0 },
-      { icon: Receipt, label: 'Record a transaction', hint: 'Income or expense', done: transactions.length > 0 },
-      { icon: PiggyBank, label: 'Create a budget', hint: 'Track spending by category', done: budgets.length > 0 },
-      { icon: Target, label: 'Set a savings goal', hint: 'Something to work toward', done: goals.length > 0 },
+    const askCurrency = needsCurrencyStep(counts, currencyConfirmed);
+    // The currency row shows only to someone who is or was asked: marking it
+    // Done for a user who skipped it would say they chose one.
+    const firstRun = [
+      ...(askCurrency || currencyConfirmed ? [{ icon: Coins, label: 'Choose your currency', hint: 'Used for every amount', done: !askCurrency }] : []),
+      { icon: Wallet, label: steps[0].label, hint: steps[0].hint, done: false },
     ];
     return (
       <div className="px-5 md:px-8 pt-12 pb-8 max-w-lg mx-auto">
@@ -203,11 +247,13 @@ const Dashboard = () => {
             <Wallet size={36} className="text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-heading mb-2">Welcome to SpendPal!</h1>
-          <p className="text-muted-foreground text-sm">Get started in a few simple steps to take control of your finances.</p>
+          <p className="text-muted-foreground text-sm">
+            {firstRun.length > 1 ? 'Two steps to start: your currency, then your first account.' : 'Add your first account to start.'}
+          </p>
         </div>
 
-        <div className="space-y-5 mb-8">
-          {steps.map((step, i) => {
+        <div className="space-y-3 mb-6">
+          {firstRun.map((step, i) => {
             const Icon = step.icon;
             return (
               <div key={i} className={`flex items-center gap-4 p-4 rounded-xl card-shadow transition-all ${step.done ? 'bg-income-soft border border-income-line' : 'bg-card'}`}>
@@ -228,13 +274,17 @@ const Dashboard = () => {
           })}
         </div>
 
-        <button
-          onClick={() => setShowAddAccount(true)}
-          className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-transform"
-        >
-          <Plus size={20} />
-          Add Your First Account
-        </button>
+        {askCurrency ? (
+          <CurrencyStep onSaved={() => setShowAddAccount(true)} />
+        ) : (
+          <button
+            onClick={() => setShowAddAccount(true)}
+            className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-transform"
+          >
+            <Plus size={20} />
+            Add your first account
+          </button>
+        )}
 
         <AddAccountDialog
           open={showAddAccount}
@@ -254,8 +304,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-4 min-w-0">
               <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
               <div className="min-w-0">
-                <p className="text-base font-heading font-bold text-primary-foreground leading-tight">Overview</p>
-                <p className="text-[11.5px] text-primary-subtle mt-0.5">Financial overview</p>
+                <h1 className="text-base font-heading font-bold text-primary-foreground leading-tight">{PAGE_NAMES['/']}</h1>
               </div>
             </div>
             <button onClick={toggleHidden} className="text-primary-subtle p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
@@ -268,6 +317,9 @@ const Dashboard = () => {
               <p className="text-primary-subtle text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
               <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
               {sec(totalBalance) && <p className="text-sm text-primary-subtle mt-0.5">≈ {sec(totalBalance)}</p>}
+              {spendable.holds > 0 && (
+                <p className="text-xs text-primary-subtle mt-0.5">After {mask(fmt(spendable.holds))} in pending holds</p>
+              )}
             </div>
 
             {/* Secondary currency — chosen in Settings; switchable here once set */}
@@ -296,6 +348,8 @@ const Dashboard = () => {
       </div>
 
       <div className="px-5 md:px-8 -mt-4 pb-8">
+        {checklistVisible && <GettingStartedCard steps={steps} onStep={runStep} onDismiss={dismissChecklist} />}
+
         {/* What each card's statement asks for, exactly as entered */}
         <CardPaymentsCard
           accounts={accounts}
@@ -316,7 +370,7 @@ const Dashboard = () => {
         {/* ── OVERVIEW ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4 pt-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Income and expenses</span>
             <div className="flex-1 h-px bg-border" />
             <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
               {(['all', 'month', 'year'] as const).map(p => (
@@ -330,17 +384,18 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <div className="w-[26px] h-[26px] rounded-lg bg-income/[0.12] text-income flex items-center justify-center mb-2"><ArrowUpRight size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-financial-medium text-income tabular-nums">{mask(fmt(animatedIncome))}</p>
             {sec(income) && <p className="text-xs text-muted-foreground truncate">≈ {sec(income)}</p>}
           </Card>
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <div className="w-[26px] h-[26px] rounded-lg bg-expense/[0.12] text-expense flex items-center justify-center mb-2"><ArrowDown size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
             {sec(expenses) && <p className="text-xs text-muted-foreground truncate">≈ {sec(expenses)}</p>}
+            {refunds > 0 && <p className="text-xs text-muted-foreground truncate">After {mask(fmt(refunds))} in refunds</p>}
           </Card>
 
           {savings.kind === 'saved' && (
@@ -403,10 +458,9 @@ const Dashboard = () => {
               {(['cash', 'debit', 'credit'] as const).map(accountType => {
                 const group = accounts.filter(a => a.type === accountType);
                 if (group.length === 0) return null;
-                const labels = { cash: 'Cash', debit: 'Debit Cards', credit: 'Credit Cards' };
                 return (
                   <div key={accountType}>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{ACCOUNT_TYPE_GROUP_NAMES[accountType]}</p>
                     <div className="space-y-5">
                       {group.map(a => {
                         // balance IS the amount owed for credit accounts.
@@ -472,14 +526,14 @@ const Dashboard = () => {
         </div>
 
         {/* ── SPENDING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           {categorySpending.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">Breakdown</h2>
               <Suspense fallback={<ChartSkeleton height="aspect-square max-w-[180px]" />}>
                 <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
@@ -488,7 +542,7 @@ const Dashboard = () => {
           )}
 
           {transactions.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
               <Suspense fallback={<ChartSkeleton />}>
                 <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
@@ -497,11 +551,11 @@ const Dashboard = () => {
           )}
 
           {categorySpending.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">By Category</h2>
               <div className="space-y-2.5">
                 {categorySpending.slice(0, 5).map(([cat, data], idx) => {
-                  const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
+                  const pct = grossExpenses ? Math.round((data.total / grossExpenses) * 100) : 0;
                   const barColor = getCategoryChartColor(cat, idx);
                   return (
                     <div key={cat}>
@@ -522,61 +576,75 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
           </div>
 
-          <div className="col-span-2 lg:col-span-4">
+          <div className={FULL_SLOT}>
             <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
           </div>
         </div>
 
         {/* ── PLANNING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <Card className="col-span-2 lg:col-span-2">
+          <Card className={HALF}>
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-heading text-sm">Budget Overview</h2>
               <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
-            </div>
-            <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
-              <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
-                className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
-            </div>
-            {activeBudgetsList.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
-              const pct = Math.min(Math.round((b.spent / b.amount) * 100), 100);
-              return (
-                <div key={b.id} className="mb-2 last:mb-0">
-                  <div className="flex items-center justify-between text-xs mb-0.5 gap-2">
-                    <span className="text-muted-foreground truncate min-w-0" title={b.category}>{b.category}</span>
-                    <span className={`font-medium shrink-0 ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
-                      className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
-                  </div>
+            {activeBudgetsList.length === 0 ? (
+              /* Same message as the Budgets page, where Copy and Rollover live. */
+              <div className="text-xs text-muted-foreground">
+                <p className="mb-2">No budgets for {format(parseISO(today), 'MMMM')} yet.</p>
+                <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium">
+                  Set up this month's budgets
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
                 </div>
-              );
-            })}
+                <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
+                  <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
+                    className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
+                </div>
+                {activeBudgetsList.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
+                  // The real percentage: 776.71 of 400 reads 194%, not 100%. Only the bar stops at full.
+                  const pct = budgetPercent(b.spent, b.amount);
+                  const barPct = Math.min(pct, 100);
+                  return (
+                    <div key={b.id} className="mb-2 last:mb-0">
+                      <div className="flex items-center justify-between text-xs mb-0.5 gap-2">
+                        <span className="text-muted-foreground truncate min-w-0" title={b.category}>{b.category}</span>
+                        <span className={`font-medium shrink-0 ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <m.div initial={{ width: 0 }} animate={{ width: `${barPct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                          className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </Card>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
           </div>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
           </div>
 
           {installmentSummary.count > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Installment Plans</h2>
                 <button onClick={() => navigate('/installments')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -598,24 +666,24 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <div className="col-span-2 lg:col-span-4">
+          <div className={FULL_SLOT}>
             <RecurringTracker />
           </div>
         </div>
 
         {/* ── INSIGHTS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <SpendingForecastWidget transactions={transactions} />
           </div>
 
           {recentTx.length > 0 && (
-            <Card className="col-span-2 lg:col-span-4">
+            <Card className={FULL}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Recent Transactions</h2>
                 <button onClick={() => navigate('/transactions')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>

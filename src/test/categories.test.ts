@@ -54,11 +54,9 @@ describe('pickerCategories', () => {
     const used = [{ name: 'Food', icon: '🍽️' }, { name: 'Church', icon: '🤲' }, { name: 'Bills', icon: '💡' }];
     const list = names(pickerCategories(used, [], EXPENSE_CATEGORIES));
     expect(list.slice(0, 3)).toEqual(['Food', 'Church', 'Bills']);
-    for (const alias of ['Dining', 'Coffee', 'Delivery', 'Telecom', 'DEWA', 'Utilities']) expect(list).not.toContain(alias);
+    for (const alias of ['Dining', 'Coffee', 'Delivery', 'Telecom', 'Utilities']) expect(list).not.toContain(alias);
     expect(list).toContain('Groceries');
-    // "Transport" is a built-in, so its alias never shows beside it.
     expect(list).toContain('Transport');
-    expect(list).not.toContain('Metro/Taxi');
   });
 
   it('keeps an alias the user actually uses', () => {
@@ -67,7 +65,25 @@ describe('pickerCategories', () => {
   });
 
   it('offers the full built-in list to a new user', () => {
-    expect(names(pickerCategories([], [], EXPENSE_CATEGORIES))).toEqual(names([...EXPENSE_CATEGORIES]).filter(n => n !== 'Metro/Taxi'));
+    expect(names(pickerCategories([], [], EXPENSE_CATEGORIES))).toEqual(names([...EXPENSE_CATEGORIES]));
+  });
+
+  it('offers a new user no names local to one country', () => {
+    const list = names(pickerCategories([], [], EXPENSE_CATEGORIES));
+    expect(list).not.toContain('DEWA');
+    expect(list).not.toContain('Metro/Taxi');
+  });
+
+  it('still offers DEWA and Metro/Taxi to a user whose rows use them', () => {
+    const used = [{ name: 'DEWA', icon: '💡' }, { name: 'Metro/Taxi', icon: '🚇' }];
+    const list = names(pickerCategories(used, [], EXPENSE_CATEGORIES));
+    expect(list.slice(0, 2)).toEqual(['DEWA', 'Metro/Taxi']);
+  });
+
+  it('still counts old DEWA and Metro/Taxi rows toward Bills and Transport budgets', () => {
+    expect(budgetCategoryOf('DEWA', new Set(['Bills']))).toBe('Bills');
+    expect(budgetCategoryOf('Metro/Taxi', new Set(['Transport']))).toBe('Transport');
+    expect(budgetCategoryOf('DEWA', new Set(['DEWA', 'Bills']))).toBe('DEWA');
   });
 
   it('uses a custom category\'s icon, lists unused custom ones, and hides a renamed default', () => {

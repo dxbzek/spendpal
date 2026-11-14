@@ -14,11 +14,21 @@ import { logger } from '@/lib/logger';
 import { format } from 'date-fns';
 import { exportBackup, restoreBackup, RestoreError } from '@/lib/backup';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
+import { UserX, ShieldCheck, FileText, Mail } from 'lucide-react';
+import { OPERATOR, contactEmail } from '@/lib/operator';
+import { deleteEverything, deleteAccount, clearLocalData } from '@/lib/accountDeletion';
+import { userSettings } from '@/lib/userSettings';
+import { leaveNotice } from '@/lib/notice';
+import { useUserSetting } from '@/hooks/useUserSettings';
 import CategoryManager from '@/components/settings/CategoryManager';
 import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
+import ChangePasswordCard from '@/components/settings/ChangePasswordCard';
+import { EMAIL_ALERTS_ENABLED } from '@/lib/notifications';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
+import { PAGE_NAMES } from '@/lib/pageNames';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -122,32 +132,36 @@ const DataBackupCard = () => {
     try {
       data = JSON.parse(await pendingFile.text());
     } catch {
-      toast.error('Invalid backup file: could not parse JSON.');
+      toast.error('This file is not a backup: it could not be read as JSON. Nothing was changed.');
       setRestoring(false);
       setPendingFile(null);
       return;
     }
 
     try {
-      // Checks the file, saves a copy of what's there now, then replaces it.
-      // A restore that fails part-way puts the copy back.
+      // Checks the file, downloads a copy of what's there now, then replaces
+      // everything in one database transaction: all of it, or nothing.
       const result = await restoreBackup(supabase, user.id, data,
         snapshot => download(snapshot, 'spendpal-before-restore'));
       await refresh();
       const skipped = result.skippedTransactions
         ? ` ${result.skippedTransactions} transactions had no account in the file and were left out.` : '';
-      toast.success(`Restored ${result.accounts} accounts and ${result.transactions} transactions.${skipped}`);
+      // Weekly budgets are retired, so the amounts of any in the file changed.
+      const weekly = result.weeklyBudgets
+        ? ` ${result.weeklyBudgets} weekly budgets were changed to monthly (weekly amount x 52 / 12).` : '';
+      toast.success(`Restored ${result.accounts} accounts and ${result.transactions} transactions.${skipped}${weekly}`);
     } catch (err: unknown) {
       logger.error('Restore failed', err);
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      if (err instanceof RestoreError) {
-        await refresh();
-        toast.error(err.rolledBack
-          ? `Restore failed (${msg}). Your previous data was put back.`
-          : `Restore failed (${msg}) and your previous data could not be put back. Import the "spendpal-before-restore" file that was just downloaded.`,
-          { duration: Infinity });
+      if (err instanceof RestoreError && err.unchanged) {
+        // The message names the reason and ends with "Nothing was changed."
+        toast.error(err.message, { duration: 10000 });
       } else {
-        toast.error(msg);
+        // The answer from the database never arrived, so show what is there now.
+        await refresh();
+        // restoreBackup only throws RestoreError; anything else is a fault in this page.
+        const msg = err instanceof Error ? err.message : 'Restore failed.';
+        toast.error(`${msg} If your old data is gone and you want it back, import the "spendpal-before-restore" file that was just downloaded.`,
+          { duration: Infinity });
       }
     } finally {
       setRestoring(false);
@@ -197,12 +211,15 @@ const DataBackupCard = () => {
   );
 };
 
+// Shown after the reload when storage would not let the photo go (the
+// storage policy is not applied yet). The link stays, so the photo still shows.
+const PHOTO_KEPT = 'Your data was deleted. Your profile photo could not be removed. Delete my account removes it.';
+
 const DangerZoneCard = () => {
   const { accounts, transactions, budgets, goals, refresh } = useFinance();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  // Which delete the confirm dialog is for: every transaction, or everything.
-  const [confirming, setConfirming] = useState<'transactions' | 'everything' | null>(null);
+  // Which delete the confirm dialog is for: every transaction, all data, or the account itself.
+  const [confirming, setConfirming] = useState<'transactions' | 'everything' | 'account' | null>(null);
   const showConfirm = confirming !== null;
   const setShowConfirm = (open: boolean) => { if (!open) setConfirming(null); };
   const [deleting, setDeleting] = useState(false);
@@ -231,33 +248,75 @@ const DangerZoneCard = () => {
     if (!user || confirmText !== 'DELETE') return;
     setDeleting(true);
     try {
-      // Delete in FK-safe order (transactions before accounts): deleting an
-      // account cascades to its transactions and fires the balance trigger,
-      // which deadlocks against a concurrent transactions delete. Check each
-      // result since supabase-js returns { error } rather than throwing.
-      const tables = ['transactions', 'budgets', 'goals', 'accounts'] as const;
-      for (const table of tables) {
-        const { error } = await supabase.from(table).delete().eq('user_id', user.id);
-        if (error) throw error;
-      }
-      // Clear localStorage snapshots
-      localStorage.removeItem('spendpal_networth_history');
-      localStorage.removeItem('spendpal_rollover_cats');
-      localStorage.removeItem('spendpal_monthly_income');
-      toast.success('All data deleted');
-      await refresh();
-      navigate('/');
+      // Stop saving settings first: a change still waiting to be sent would
+      // put back the settings row this is about to delete.
+      await userSettings.discard();
+      const { photo } = await deleteEverything(supabase, user.id);
+      clearLocalData(localStorage, { userId: user.id });
+      if (photo === 'kept') leaveNotice(PHOTO_KEPT);
+      // Load the app again from nothing. Pages keep their own copies (the
+      // category list, saved settings) and would show, or save back, what was
+      // just deleted. The spinner stays on until the new page takes over.
+      window.location.assign('/');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error('Delete failed: ' + msg);
-    } finally {
+      // The settings row may still be there: load it again.
+      void userSettings.start(user.id);
+      // Some tables may already be empty: show what is left.
+      await refresh();
       setDeleting(false);
       setShowConfirm(false);
       setConfirmText('');
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user || confirmText !== 'DELETE') return;
+    setDeleting(true);
+    const outcome = await deleteAccount(supabase);
+    if (outcome === 'deleted') {
+      await userSettings.discard();
+      clearLocalData(localStorage, { userId: user.id, account: true });
+      // The server session went with the user. Drop the copy in this browser;
+      // the app then shows the sign-in page.
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      toast.success('Your account was deleted.');
+      // Sign-out could not finish (no connection): a reload finds the session
+      // dead and ends it.
+      if (error) window.location.assign('/auth');
+      return;
+    }
+    if (outcome === 'unavailable') toast.error('Account deletion is not available yet. Nothing was deleted.');
+    else if (outcome === 'failed') toast.error('Account deletion failed. Your account still exists. Try again.');
+    else toast.error('Could not reach the server. Check your connection and try again.');
+    setDeleting(false);
+    setShowConfirm(false);
+    setConfirmText('');
+  };
+
   const total = accounts.length + transactions.length + budgets.length + goals.length;
+
+  const dialog = {
+    transactions: {
+      title: 'Delete All Transactions?',
+      body: <>This will permanently delete every transaction, including ones older than the app shows. Account balances are adjusted back. This action <span className="font-semibold text-foreground">cannot be undone</span>.</>,
+      action: 'Yes, Delete All Transactions',
+      run: handleDeleteTransactions,
+    },
+    everything: {
+      title: 'Delete All Data?',
+      body: <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets and {goals.length} goals, and your custom categories, saved settings, advisor history, name, phone number and profile photo. Your sign-in stays. If the photo cannot be removed, you are told. This action <span className="font-semibold text-foreground">cannot be undone</span>. There is no Undo for Delete All.</>,
+      action: 'Yes, Delete Everything',
+      run: handleDeleteAll,
+    },
+    account: {
+      title: 'Delete my account?',
+      body: <>This will permanently delete your sign-in for <span className="font-medium text-foreground break-all">{user?.email}</span> and everything stored with it: accounts, transactions, budgets, goals, categories, advisor history, profile and photo. This action <span className="font-semibold text-foreground">cannot be undone</span>. Export a backup first if you want a copy.</>,
+      action: 'Yes, delete my account',
+      run: handleDeleteAccount,
+    },
+  }[confirming ?? 'transactions'];
 
   return (
     <>
@@ -290,7 +349,7 @@ const DangerZoneCard = () => {
             <div className="flex-1">
               <p className="text-sm font-medium">Delete All Data</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Permanently removes all {total} records — accounts, transactions, budgets, and goals.
+                Permanently removes all {total} records: accounts, transactions, budgets and goals. Also removes your custom categories, saved settings, advisor history, name, phone number and profile photo. Your sign-in stays; Delete my account removes it too.
               </p>
               <Button
                 variant="outline"
@@ -302,21 +361,37 @@ const DangerZoneCard = () => {
               </Button>
             </div>
           </div>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
+              <UserX size={16} className="text-destructive" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Delete my account</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Permanently removes your sign-in and everything stored with it. You cannot sign in again with this account.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => setConfirming('account')}
+              >
+                <UserX size={14} className="mr-1.5" /> Delete my account
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <AlertDialog open={showConfirm} onOpenChange={o => { setShowConfirm(o); if (!o) setConfirmText(''); }}>
+      {/* Stays open while a delete runs: closing it would hide a delete that is still going. */}
+      <AlertDialog open={showConfirm} onOpenChange={o => { if (deleting) return; setShowConfirm(o); if (!o) setConfirmText(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-2">
               <AlertTriangle size={20} className="text-destructive" />
-              <AlertDialogTitle>{confirming === 'transactions' ? 'Delete All Transactions?' : 'Delete All Data?'}</AlertDialogTitle>
+              <AlertDialogTitle>{dialog.title}</AlertDialogTitle>
             </div>
-            <AlertDialogDescription>
-              {confirming === 'transactions'
-                ? <>This will permanently delete every transaction, including ones older than the app shows. Account balances are adjusted back. This action <span className="font-semibold text-foreground">cannot be undone</span>.</>
-                : <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals. This action <span className="font-semibold text-foreground">cannot be undone</span> — there is no Undo for Delete All.</>}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{dialog.body}</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-1">
             <label className="text-xs text-muted-foreground">
@@ -335,11 +410,12 @@ const DangerZoneCard = () => {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting || confirmText !== 'DELETE'}
-              onClick={confirming === 'transactions' ? handleDeleteTransactions : handleDeleteAll}
+              // Radix closes the dialog on this click by default. Keep it open so the spinner shows.
+              onClick={e => { e.preventDefault(); dialog.run(); }}
               className="bg-destructive text-destructive-foreground hover:brightness-95"
             >
               {deleting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-              {confirming === 'transactions' ? 'Yes, Delete All Transactions' : 'Yes, Delete Everything'}
+              {dialog.action}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -350,30 +426,24 @@ const DangerZoneCard = () => {
 
 const NotificationsCard = ({ userId }: { userId: string }) => {
   const [notifyEmail, setNotifyEmail] = useState(false);
-  const [notifySms, setNotifySms] = useState(false);
-  const [phone, setPhone] = useState('');
+  // A phone number saved while text alerts were offered. Text alerts are gone
+  // (a number could not be verified), so all that is left is to remove it.
+  const [savedPhone, setSavedPhone] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from('profiles').select('notify_email, notify_sms, phone_number').eq('user_id', userId).single().then(({ data }) => {
+    supabase.from('profiles').select('notify_email, phone_number').eq('user_id', userId).single().then(({ data }) => {
       if (data) {
         setNotifyEmail(data.notify_email ?? false);
-        setNotifySms(data.notify_sms ?? false);
-        setPhone(data.phone_number ?? '');
+        setSavedPhone(data.phone_number ?? null);
       }
     });
   }, [userId]);
 
   const handleSave = async () => {
-    if (notifySms && !/^\+[1-9]\d{6,14}$/.test(phone.trim())) {
-      toast.error('Enter a valid phone number in international format, e.g. +971501234567');
-      return;
-    }
     setSaving(true);
     const { error } = await supabase.from('profiles').update({
       notify_email: notifyEmail,
-      notify_sms: notifySms,
-      phone_number: phone.trim() || null,
     }).eq('user_id', userId);
     if (error) {
       toast.error('Failed to save notification settings');
@@ -383,41 +453,54 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
     setSaving(false);
   };
 
+  const handleRemovePhone = async () => {
+    setSaving(true);
+    // The text-alert flag goes off with it: the database refuses the flag without a number.
+    const { error } = await supabase.from('profiles').update({
+      notify_sms: false,
+      phone_number: null,
+    }).eq('user_id', userId);
+    if (error) {
+      toast.error('Failed to remove the phone number');
+    } else {
+      setSavedPhone(null);
+      toast.success('Phone number removed');
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">Email Alerts</p>
-          <p className="text-xs text-muted-foreground">Get budget alerts sent to your email</p>
-        </div>
-        <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
-      </div>
+      {EMAIL_ALERTS_ENABLED ? (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Email alerts</p>
+              <p className="text-xs text-muted-foreground">Send budget alerts to your sign-in email</p>
+            </div>
+            <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
+          </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">SMS / Text Alerts</p>
-          <p className="text-xs text-muted-foreground">Receive budget alerts as text messages</p>
-        </div>
-        <Switch checked={notifySms} onCheckedChange={setNotifySms} />
-      </div>
-
-      {notifySms && (
-        <div>
-          <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
-          <Input
-            type="tel"
-            placeholder="+971501234567"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            className="h-11"
-          />
-          <p className="text-xs text-muted-foreground mt-1">International format required (e.g. +971…)</p>
-        </div>
+          <Button onClick={handleSave} disabled={saving} className="w-full h-11 bg-primary text-primary-foreground">
+            {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save notifications'}
+          </Button>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Email alerts are not available yet. SpendPal has no verified sender address, so it cannot send email.
+        </p>
       )}
 
-      <Button onClick={handleSave} disabled={saving} className="w-full h-11 bg-primary text-primary-foreground">
-        {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save Notifications'}
-      </Button>
+      {savedPhone && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Text alerts are no longer offered. Your saved number {savedPhone} is not used.
+          </p>
+          <Button variant="outline" size="sm" onClick={handleRemovePhone} disabled={saving}>
+            Remove number
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
@@ -486,8 +569,12 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
-  const [monthlyIncome, setMonthlyIncome] = useState(() => localStorage.getItem('spendpal_monthly_income') || '');
+  // What is typed, until saved; otherwise the saved figure from the user's settings.
+  const savedIncome = useUserSetting('monthly_income');
+  const [incomeDraft, setIncomeDraft] = useState<string | null>(null);
+  const monthlyIncome = incomeDraft ?? (savedIncome ? String(savedIncome) : '');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const supportEmail = contactEmail(OPERATOR);
 
   useEffect(() => {
     if (!user) return;
@@ -604,7 +691,7 @@ const Settings = () => {
   }
 
   return (
-    <div className="px-5 md:px-8 pt-12 pb-8 max-w-2xl mx-auto">
+    <div className={`${NARROW_PAGE} pt-12 pb-8`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <button onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
@@ -723,6 +810,12 @@ const Settings = () => {
           </div>
         </section>
 
+        {/* Password */}
+        <section>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Password</p>
+          <ChangePasswordCard />
+        </section>
+
         {/* Financial */}
         <section>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Financial</p>
@@ -738,7 +831,7 @@ const Settings = () => {
                   type="number"
                   placeholder="e.g. 15000"
                   value={monthlyIncome}
-                  onChange={e => setMonthlyIncome(e.target.value)}
+                  onChange={e => setIncomeDraft(e.target.value)}
                   className="h-11"
                   min="0"
                 />
@@ -748,8 +841,10 @@ const Settings = () => {
                   onClick={() => {
                     const val = parseFloat(monthlyIncome);
                     if (monthlyIncome === '' || (!isNaN(val) && val >= 0)) {
-                      localStorage.setItem('spendpal_monthly_income', monthlyIncome);
-                      toast.success('Monthly income saved');
+                      // Empty or 0 clears it: the forecast then shows no income line.
+                      userSettings.set('monthly_income', val > 0 ? val : null);
+                      setIncomeDraft(null);
+                      toast.success(val > 0 ? 'Monthly income saved' : 'Monthly income cleared');
                     } else {
                       toast.error('Please enter a valid income amount');
                     }
@@ -772,7 +867,7 @@ const Settings = () => {
               </div>
               <div>
                 <p className="text-sm font-medium">Budget Alerts</p>
-                <p className="text-xs text-muted-foreground">Get notified by email or text when you approach or exceed a budget — even when the app is closed.</p>
+                <p className="text-xs text-muted-foreground">An email when a budget reaches 75%, 90% or 100% of its limit. SpendPal checks this when you open the app.</p>
               </div>
             </div>
             <NotificationsCard userId={user!.id} />
@@ -809,8 +904,35 @@ const Settings = () => {
               <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
                 <BookOpen size={15} className="text-primary" />
               </div>
-              Glossary & FAQ
+              {PAGE_NAMES['/glossary']}
             </button>
+
+            <button onClick={() => navigate('/privacy')}
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                <ShieldCheck size={15} className="text-primary" />
+              </div>
+              Privacy policy
+            </button>
+
+            <button onClick={() => navigate('/terms')}
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                <FileText size={15} className="text-primary" />
+              </div>
+              Terms of use
+            </button>
+
+            {/* Only once the owner has filled in an inbox (src/lib/operator.ts). */}
+            {supportEmail && (
+              <a href={`mailto:${supportEmail}`}
+                className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                  <Mail size={15} className="text-primary" />
+                </div>
+                Contact support
+              </a>
+            )}
 
             <button onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive-soft transition-colors">
@@ -834,7 +956,12 @@ const Settings = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={signOut} className="bg-destructive text-destructive-foreground hover:brightness-95">Sign Out</AlertDialogAction>
+            <AlertDialogAction
+              onClick={async () => {
+                const { error } = await signOut();
+                if (error) toast.error('Could not sign out. Check your connection and try again.');
+              }}
+              className="bg-destructive text-destructive-foreground hover:brightness-95">Sign Out</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

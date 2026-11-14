@@ -1,7 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/auth", "destination": "/auth.html" },
+    { "source": "/:route(reset|transactions|budgets|goals|accounts|reports|debt|installments|calendar|advisor|settings|glossary)", "destination": "/index.html" }
   ],
   "headers": [
     {

@@ -2,9 +2,10 @@ import { memo, useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Transaction } from '@/types/finance';
-import { ONE_OFF_OVER, spendingForecast } from '@/lib/finance/spendingForecast';
-
-const INCOME_KEY = 'spendpal_monthly_income';
+import { oneOffLimit, spendingForecast } from '@/lib/finance/spendingForecast';
+import { parseISO } from 'date-fns';
+import { useToday } from '@/hooks/useToday';
+import { useUserSetting } from '@/hooks/useUserSettings';
 
 interface Props {
   transactions: Transaction[];
@@ -13,15 +14,18 @@ interface Props {
 const SpendingForecastWidget = ({ transactions }: Props) => {
   const { fmt } = useCurrency();
 
-  const monthlyIncome = useMemo(() => {
-    const v = parseFloat(localStorage.getItem(INCOME_KEY) || '0');
-    return isNaN(v) ? 0 : v;
-  }, []);
+  // The signed-in user's own income, from their settings row.
+  const monthlyIncome = useUserSetting('monthly_income') ?? 0;
 
   // Hidden before day 10; see lib/finance/spendingForecast for how it's worked out.
-  const forecast = useMemo(() => spendingForecast(transactions, new Date()), [transactions]);
+  // The one-off limit comes from the user's own purchases, not a fixed 500.
+  const today = useToday();
+  const forecast = useMemo(
+    () => spendingForecast(transactions, parseISO(today), oneOffLimit(transactions, today)),
+    [transactions, today],
+  );
   if (!forecast) return null;
-  const { spentSoFar, projected, low, high, daysElapsed, daysInMonth, everydayPerDay, oneOffs, lastMonthSpent } = forecast;
+  const { spentSoFar, projected, low, high, daysElapsed, daysInMonth, everydayPerDay, oneOffs, oneOffOver, lastMonthSpent } = forecast;
   const isOnTrack = lastMonthSpent === 0 || projected <= lastMonthSpent;
 
   const pct = Math.min(Math.round((daysElapsed / daysInMonth) * 100), 100);
@@ -72,7 +76,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
       </div>
       {oneOffs.count > 0 && (
         <p className="text-[11px] text-muted-foreground mt-1.5">
-          {oneOffs.count} one-off{oneOffs.count > 1 ? 's' : ''} over {fmt(ONE_OFF_OVER)} ({fmt(Math.round(oneOffs.total))}) counted once, not projected.
+          {oneOffs.count} one-off{oneOffs.count > 1 ? 's' : ''} over {fmt(oneOffOver)} ({fmt(Math.round(oneOffs.total))}) counted once, not projected.
         </p>
       )}
     </div>

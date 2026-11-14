@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { activeBudgetMonth, activeBudgets } from '@/utils/budgets';
+import { activeBudgetMonth, activeBudgets, budgetsForMonth } from '@/utils/budgets';
 import type { Budget } from '@/types/finance';
 
 const b = (id: string, category: string, month: string, amount = 100): Budget => ({
@@ -20,6 +20,14 @@ describe('activeBudgetMonth', () => {
     const budgets = [b('1', 'Food', '2026-04'), b('2', 'Food', '2026-05')];
     expect(activeBudgetMonth(budgets, '2026-06')).toBe('2026-05');
   });
+
+  it('never uses a later month: November budgets say nothing about September', () => {
+    const budgets = [b('1', 'Food', '2026-11')];
+    expect(activeBudgetMonth(budgets, '2026-09')).toBeNull();
+    expect(activeBudgets(budgets, '2026-09')).toEqual([]);
+    // With an earlier month to fall back on, that one is used, not the later one.
+    expect(activeBudgetMonth([...budgets, b('2', 'Food', '2026-07')], '2026-09')).toBe('2026-07');
+  });
 });
 
 describe('activeBudgets', () => {
@@ -35,5 +43,14 @@ describe('activeBudgets', () => {
 
   it('returns an empty array when there are no budgets', () => {
     expect(activeBudgets([], '2026-06')).toEqual([]);
+  });
+});
+
+describe('budgetsForMonth', () => {
+  it('is the month\'s own budgets only: Home and the Budgets page show the same set', () => {
+    const budgets = [b('1', 'Food', '2026-05'), b('2', 'Transport', '2026-05')];
+    // Nothing copied to June yet: both screens say June has no budgets.
+    expect(budgetsForMonth(budgets, '2026-06')).toEqual([]);
+    expect(budgetsForMonth(budgets, '2026-05').map(x => x.id)).toEqual(['1', '2']);
   });
 });

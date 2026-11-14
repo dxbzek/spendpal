@@ -1,16 +1,18 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# The public pages are /, /privacy, /terms and /auth. Everything below is the
+# signed-in app or a one-time email link: nothing there for a search engine.
 User-agent: *
 Allow: /
+Disallow: /reset
+Disallow: /transactions
+Disallow: /budgets
+Disallow: /goals
+Disallow: /accounts
+Disallow: /reports
+Disallow: /debt
+Disallow: /installments
+Disallow: /calendar
+Disallow: /advisor
+Disallow: /settings
+Disallow: /glossary
 
 Sitemap: https://spendpal.vercel.app/sitemap.xml

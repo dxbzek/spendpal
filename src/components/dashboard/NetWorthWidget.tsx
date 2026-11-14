@@ -4,6 +4,8 @@ import GlossaryLink from '@/components/GlossaryLink';
 import type { Account } from '@/types/finance';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { userSettings } from '@/lib/userSettings';
 
 interface Props {
   accounts: Account[];
@@ -11,28 +13,19 @@ interface Props {
   mask: (val: string) => string;
 }
 
-const STORAGE_KEY = 'spendpal_networth_history';
-const NW_GOAL_KEY = 'spendpal_nw_goal';
-
-function loadGoal(): number | null {
-  const v = localStorage.getItem(NW_GOAL_KEY);
-  return v ? parseFloat(v) : null;
-}
+// Months drawn. The settings keep more (NET_WORTH_MONTHS in userSettings.ts).
 const MAX_MONTHS = 7;
-
-function loadHistory(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  } catch { return {}; }
-}
-
-function saveHistory(history: Record<string, number>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-}
+const NO_HISTORY: Record<string, number> = {};
 
 const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const { fmt } = useCurrency();
-  const [goal, setGoal] = useState<number | null>(() => loadGoal());
+  // Goal and history are saved with the user's settings, not in this browser.
+  const { data: settings, mode } = useUserSettings();
+  // The row has been read (or there is no table to read). 'local' means the
+  // read failed: what is shown may be missing months the row has.
+  const synced = mode === 'server' || mode === 'missing';
+  const goal = settings.net_worth_goal ?? null;
+  const saved = settings.net_worth_history ?? NO_HISTORY;
   const [editingGoal, setEditingGoal] = useState(false);
 
   const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
@@ -40,26 +33,21 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0);
   const netWorth = assets - liabilities;
 
-  // Persist current month's net worth snapshot
+  // Record this month's net worth, once the saved history has been read.
+  // Only this month is sent: the settings merge history by month, so another
+  // device's months are never replaced from here.
   useEffect(() => {
-    if (accounts.length === 0) return;
+    if (!synced || accounts.length === 0) return;
     const key = format(new Date(), 'yyyy-MM');
-    const history = loadHistory();
-    history[key] = netWorth;
-    // Keep only last MAX_MONTHS entries
-    const sorted = Object.keys(history).sort();
-    if (sorted.length > MAX_MONTHS) {
-      sorted.slice(0, sorted.length - MAX_MONTHS).forEach(k => delete history[k]);
-    }
-    saveHistory(history);
-  }, [netWorth, accounts.length]);
+    const history = userSettings.get('net_worth_history') ?? {};
+    if (history[key] === netWorth) return;
+    userSettings.set('net_worth_history', { [key]: netWorth });
+  }, [synced, netWorth, accounts.length]);
 
-  const history = useMemo(() => {
-    const raw = loadHistory();
-    return Object.entries(raw)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-MAX_MONTHS);
-  }, [netWorth]); // recompute when netWorth changes
+  const history = useMemo(
+    () => Object.entries(saved).sort(([a], [b]) => a.localeCompare(b)).slice(-MAX_MONTHS),
+    [saved],
+  );
 
   const sparkPoints = useMemo(() => {
     if (history.length < 2) return null;
@@ -84,13 +72,8 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
 
   const saveGoal = (val: string) => {
     const n = parseFloat(val);
-    if (!isNaN(n) && n > 0) {
-      setGoal(n);
-      localStorage.setItem(NW_GOAL_KEY, String(n));
-    } else if (val === '') {
-      setGoal(null);
-      localStorage.removeItem(NW_GOAL_KEY);
-    }
+    if (!isNaN(n) && n > 0) userSettings.set('net_worth_goal', n);
+    else if (val === '') userSettings.set('net_worth_goal', null);
     setEditingGoal(false);
   };
 
@@ -99,7 +82,7 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
       <div className="flex items-center gap-2 mb-2">
         <Wallet size={16} className="text-primary shrink-0" />
         <h2 className="font-heading text-sm">Net Worth</h2>
-        <GlossaryLink term="Net Worth" />
+        <GlossaryLink term="Total Net Worth" />
         {trend !== 0 && !hidden && (
           <span className={`ml-auto flex items-center gap-0.5 text-xs font-medium ${trend >= 0 ? 'text-income' : 'text-expense'}`}>
             {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
