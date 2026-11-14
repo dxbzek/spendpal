@@ -2,7 +2,9 @@ import { memo, useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Transaction } from '@/types/finance';
-import { ONE_OFF_OVER, spendingForecast } from '@/lib/finance/spendingForecast';
+import { oneOffLimit, spendingForecast } from '@/lib/finance/spendingForecast';
+import { parseISO } from 'date-fns';
+import { useToday } from '@/hooks/useToday';
 
 const INCOME_KEY = 'spendpal_monthly_income';
 
@@ -19,9 +21,14 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
   }, []);
 
   // Hidden before day 10; see lib/finance/spendingForecast for how it's worked out.
-  const forecast = useMemo(() => spendingForecast(transactions, new Date()), [transactions]);
+  // The one-off limit comes from the user's own purchases, not a fixed 500.
+  const today = useToday();
+  const forecast = useMemo(
+    () => spendingForecast(transactions, parseISO(today), oneOffLimit(transactions, today)),
+    [transactions, today],
+  );
   if (!forecast) return null;
-  const { spentSoFar, projected, low, high, daysElapsed, daysInMonth, everydayPerDay, oneOffs, lastMonthSpent } = forecast;
+  const { spentSoFar, projected, low, high, daysElapsed, daysInMonth, everydayPerDay, oneOffs, oneOffOver, lastMonthSpent } = forecast;
   const isOnTrack = lastMonthSpent === 0 || projected <= lastMonthSpent;
 
   const pct = Math.min(Math.round((daysElapsed / daysInMonth) * 100), 100);
@@ -72,7 +79,7 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
       </div>
       {oneOffs.count > 0 && (
         <p className="text-[11px] text-muted-foreground mt-1.5">
-          {oneOffs.count} one-off{oneOffs.count > 1 ? 's' : ''} over {fmt(ONE_OFF_OVER)} ({fmt(Math.round(oneOffs.total))}) counted once, not projected.
+          {oneOffs.count} one-off{oneOffs.count > 1 ? 's' : ''} over {fmt(oneOffOver)} ({fmt(Math.round(oneOffs.total))}) counted once, not projected.
         </p>
       )}
     </div>
