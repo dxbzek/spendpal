@@ -19,7 +19,7 @@ import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
 import { budgetPace } from '@/lib/finance/pace';
 import { budgetCategoryOf } from '@/lib/finance/categories';
-import { asMonthly, budgetPercent, isBudgetAmount, rolloverAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
+import { asMonthly, budgetPercent, includedCategories, isBudgetAmount, rolloverAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
 import { oneOffLimit } from '@/lib/finance/spendingForecast';
 import { budgetsForMonth } from '@/utils/budgets';
 import { useToday } from '@/hooks/useToday';
@@ -124,6 +124,19 @@ const Budgets = () => {
   const lastMonthData = useMemo(
     () => spentByBudgetCategory(transactions, lastMonthKey, new Set(thisMonthBudgets.map(b => b.category))),
     [transactions, lastMonthKey, thisMonthBudgets],
+  );
+
+  // Other category names whose rows a card's figure counts (a Dining row in
+  // a Food budget). Same rows as the spent figures: this month up to today,
+  // last month whole. The names are every budget of the month, as the spent
+  // figures use, including one waiting out its Undo window.
+  const thisMonthIncludes = useMemo(
+    () => includedCategories(transactions, currentMonthKey, new Set(budgetsForMonth(budgets, currentMonthKey).map(b => b.category)), today),
+    [transactions, currentMonthKey, budgets, today],
+  );
+  const lastMonthIncludes = useMemo(
+    () => includedCategories(transactions, lastMonthKey, new Set(lastMonthBudgets.map(b => b.category))),
+    [transactions, lastMonthKey, lastMonthBudgets],
   );
 
   const hasCopiedLastMonth = useMemo(
@@ -442,11 +455,14 @@ const Budgets = () => {
               return (
                 <div key={b.id} className="bg-card rounded-xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <IconTile value={b.categoryIcon} />
-                      <div>
-                        <p className="text-sm font-semibold">{b.category}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold break-words">{b.category}</p>
                         <p className="text-xs text-muted-foreground">Monthly · {daysLeft}d left</p>
+                        {thisMonthIncludes[b.category] && (
+                          <p className="text-xs text-muted-foreground break-words">Includes {thisMonthIncludes[b.category].join(', ')}</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -500,6 +516,9 @@ const Budgets = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{b.category}</p>
                       <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {mask(fmt(b.amount))}</p>
+                      {lastMonthIncludes[b.category] && (
+                        <p className="text-xs text-muted-foreground break-words">Includes {lastMonthIncludes[b.category].join(', ')}</p>
+                      )}
                     </div>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 100 ? 'bg-destructive-soft text-expense' : pct > 75 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                   </div>

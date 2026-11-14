@@ -32,6 +32,33 @@ export function spentByBudgetCategory(
   return spent;
 }
 
+/**
+ * For each budget, the other category names whose rows were counted toward
+ * it in that month (a "Dining" row in a "Food" budget), most spent first.
+ * Same rows and rules as spentByBudgetCategory, so a card can say what its
+ * figure includes: the alias rules are built in and were not shown anywhere.
+ */
+export function includedCategories(
+  txs: Pick<Transaction, 'type' | 'isInternal' | 'isTrackingOnly' | 'category' | 'amount' | 'date'>[],
+  month: string,
+  budgetNames: ReadonlySet<string> = new Set(),
+  upTo?: string,
+): Record<string, string[]> {
+  const byBudget: Record<string, Record<string, number>> = {};
+  for (const t of txs) {
+    if (!isCountableExpense(t) || !t.date.startsWith(month)) continue;
+    if (upTo !== undefined && t.date > upTo) continue;
+    const budget = budgetCategoryOf(t.category, budgetNames);
+    if (budget === t.category || !budgetNames.has(budget)) continue;
+    const names = (byBudget[budget] ??= {});
+    names[t.category] = (names[t.category] ?? 0) + t.amount;
+  }
+  return Object.fromEntries(Object.entries(byBudget).map(([budget, names]) => [
+    budget,
+    Object.entries(names).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name]) => name),
+  ]));
+}
+
 /** What was left of last month's budget. Nothing when it was overspent. */
 export function unspentOf(budgetAmount: number, spentThatMonth: number): number {
   return round2(Math.max(0, budgetAmount - spentThatMonth));
