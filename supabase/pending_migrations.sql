@@ -853,8 +853,13 @@ GRANT ALL ON public.ai_usage TO service_role;
 --    src/lib/backup.ts prepareRestore() builds them. Only the columns named
 --    below are read, and user_id is always the caller, never the payload's.
 --    SECURITY INVOKER: row level security still applies to every statement.
+--    statement_timeout: a signed-in user's requests are stopped after 8 s by
+--    default, and this call deletes and re-inserts every transaction with the
+--    balance trigger firing per row. The API applies a function's own
+--    statement_timeout to the request, so a large backup gets 60 s. A restore
+--    that still runs out is stopped with nothing changed (error 57014).
 CREATE OR REPLACE FUNCTION public.restore_backup(payload JSONB)
-RETURNS JSONB LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY INVOKER SET search_path = public SET statement_timeout TO '60s' AS $$
 DECLARE
   uid UUID := auth.uid();
   k TEXT;

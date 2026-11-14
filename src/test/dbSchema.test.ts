@@ -258,6 +258,13 @@ describe('what pending_migrations.sql leaves in place', () => {
       }
     });
 
+    it('has its own 60 s limit, above the 8 s a signed-in request gets', () => {
+      // src/lib/backup.ts sends the whole backup in one call and reports
+      // error 57014 as "took too long". Without this a few thousand rows
+      // could not be restored.
+      expect(body()).toContain("SET statement_timeout TO '60s' AS $$");
+    });
+
     it('never takes user_id from the file', () => {
       // No column list read from the payload names user_id: every insert uses the caller's id.
       const read = [...body().matchAll(/AS [rb]\(([^)]*)\)/g)].map(m => m[1]);
