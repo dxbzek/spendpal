@@ -133,30 +133,6 @@ const Dashboard = () => {
   const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
   const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
 
-  // Same figure as the Budgets page: spending in budgeted categories against
-  // the budget total. Spending in categories without a budget is shown apart,
-  // not counted as going over.
-  const unbudgetedSpent = Math.max(0, thisMonthExpenses - totalSpent);
-  const leftOfBudget = totalBudgeted - totalSpent;
-
-  // Plain-language status sentence shown in the header band.
-  const budgetPart = totalBudgeted > 0
-    ? (leftOfBudget < 0 ? `${fmt(-leftOfBudget)} over budget` : `${fmt(leftOfBudget)} left of budget`)
-    : null;
-  const savingsPart = savings.kind === 'saved'
-    ? `Saving ${savings.rate}%`
-    : savings.kind === 'overspent'
-      ? `${fmt(savings.amount)} more out than in`
-      : null;
-  const statusLine = savingsPart && budgetPart
-    ? `${savingsPart} · ${budgetPart}`
-    : savingsPart
-      ? `${savingsPart} this month`
-      : budgetPart;
-  const outsideBudgetsLine = totalBudgeted > 0 && unbudgetedSpent >= 0.005
-    ? `+${fmt(unbudgetedSpent)} spent outside your budgets`
-    : null;
-
   // Installment plan summary — the same plans and "left" as the Installments page.
   const installmentSummary = useMemo(() => {
     const active = buildPlans(transactions).filter(p => p.paidInstallments < p.totalInstallments);
@@ -316,13 +292,6 @@ const Dashboard = () => {
             </Select>
             )}
           </div>
-
-          {statusLine && (
-            <div className="mt-3.5 inline-flex flex-col bg-primary-raised rounded-xl px-3 py-2 text-[12.5px] leading-snug text-primary-foreground">
-              <span>{statusLine}</span>
-              {outsideBudgetsLine && <span className="opacity-80">{outsideBudgetsLine}</span>}
-            </div>
-          )}
         </div>
       </div>
 
