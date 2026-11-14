@@ -122,15 +122,15 @@ const DataBackupCard = () => {
     try {
       data = JSON.parse(await pendingFile.text());
     } catch {
-      toast.error('Invalid backup file: could not parse JSON.');
+      toast.error('This file is not a backup: it could not be read as JSON. Nothing was changed.');
       setRestoring(false);
       setPendingFile(null);
       return;
     }
 
     try {
-      // Checks the file, saves a copy of what's there now, then replaces it.
-      // A restore that fails part-way puts the copy back.
+      // Checks the file, downloads a copy of what's there now, then replaces
+      // everything in one database transaction: all of it, or nothing.
       const result = await restoreBackup(supabase, user.id, data,
         snapshot => download(snapshot, 'spendpal-before-restore'));
       await refresh();
@@ -139,15 +139,16 @@ const DataBackupCard = () => {
       toast.success(`Restored ${result.accounts} accounts and ${result.transactions} transactions.${skipped}`);
     } catch (err: unknown) {
       logger.error('Restore failed', err);
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      if (err instanceof RestoreError) {
-        await refresh();
-        toast.error(err.rolledBack
-          ? `Restore failed (${msg}). Your previous data was put back.`
-          : `Restore failed (${msg}) and your previous data could not be put back. Import the "spendpal-before-restore" file that was just downloaded.`,
-          { duration: Infinity });
+      if (err instanceof RestoreError && err.unchanged) {
+        // The message names the reason and ends with "Nothing was changed."
+        toast.error(err.message, { duration: 10000 });
       } else {
-        toast.error(msg);
+        // The answer from the database never arrived, so show what is there now.
+        await refresh();
+        // restoreBackup only throws RestoreError; anything else is a fault in this page.
+        const msg = err instanceof Error ? err.message : 'Restore failed.';
+        toast.error(`${msg} If your old data is gone and you want it back, import the "spendpal-before-restore" file that was just downloaded.`,
+          { duration: Infinity });
       }
     } finally {
       setRestoring(false);

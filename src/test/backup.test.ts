@@ -1,34 +1,49 @@
-// Restore must never leave the account empty, and a load must not stop at 1,000 rows.
+// Restore must change everything or nothing, and a load must not stop at 1,000 rows.
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fetchAllRows, fetchAllById, prepareRestore, instalmentsOk, weeklyToMonthly, restoreBackup, exportBackup, RestoreError } from '@/lib/backup';
+import {
+  fetchAllRows, fetchAllById, prepareRestore, instalmentsOk, weeklyToMonthly, restoreBackup, exportBackup,
+  restorePayloadBytes, RestoreError, MAX_RESTORE_BYTES,
+} from '@/lib/backup';
+import type { BackupV2, RestorePayload } from '@/lib/backup';
 
 type Row = Record<string, unknown>;
 
-/** In-memory stand-in for the Supabase client: just the calls backup.ts makes. */
+const USER = 'user-1';
+const OWNED = ['goal_contributions', 'transactions', 'budgets', 'goals', 'accounts'];
+
 interface FakeOpts {
-  failInsert?: (table: string, call: number) => boolean;
   pageCap?: number;
   /** Runs before each select is answered: a write from another device between two pages. */
   beforeSelect?: (table: string, call: number, tables: Record<string, Row[]>) => void;
+  /** Every read fails with this message, as when offline. */
+  failSelect?: string;
+  /** A transaction row the database refuses part-way through the restore. */
+  refuses?: (transaction: Row) => boolean;
+  /** Answer the restore call with this instead of running it (an API refusal, or no answer). */
+  rpcAnswer?: { error: { message: string; code?: string }; status: number };
 }
+
+/**
+ * In-memory stand-in for the Supabase client: just the calls backup.ts makes.
+ * Tables can only be read. The one way to write is the restore_backup call,
+ * so a test that passes proves the restore made no other write.
+ */
 function fakeDb(seed: Record<string, Row[]>, opts: FakeOpts = {}) {
   const tables: Record<string, Row[]> = JSON.parse(JSON.stringify(seed));
-  const inserts: Record<string, number> = {};
   const selects: Record<string, number> = {};
+  const rpcCalls: Array<{ fn: string; payload: RestorePayload }> = [];
+  let made = 0;
   const from = (name: string) => {
     tables[name] ??= [];
     const filters: Array<[string, unknown]> = [];
-    let op: 'select' | 'delete' | 'update' = 'select';
-    let patch: Row = {};
     let range: [number, number] | null = null;
     let after: string | null = null;
     let limit = Infinity;
     const match = (r: Row) => filters.every(([k, v]) => r[k] === v) && (after === null || String(r.id) > after);
     const run = () => {
-      if (op === 'delete') { tables[name] = tables[name].filter(r => !match(r)); return { data: null, error: null }; }
-      if (op === 'update') { tables[name].filter(match).forEach(r => Object.assign(r, patch)); return { data: null, error: null }; }
       selects[name] = (selects[name] ?? 0) + 1;
+      if (opts.failSelect) return { data: null, error: { message: opts.failSelect }, count: null };
       opts.beforeSelect?.(name, selects[name], tables);
       const all = tables[name].filter(match).sort((a, b) => (String(a.id) < String(b.id) ? -1 : 1));
       const [f, t] = range ?? [0, all.length - 1];
@@ -42,22 +57,43 @@ function fakeDb(seed: Record<string, Row[]>, opts: FakeOpts = {}) {
       range: (f: number, t: number) => { range = [f, t]; return q; },
       gt: (_k: string, v: string) => { after = v; return q; },
       limit: (n: number) => { limit = n; return q; },
-      delete: () => { op = 'delete'; return q; },
-      update: (p: Row) => { op = 'update'; patch = p; return q; },
-      insert: (rows: Row[]) => {
-        inserts[name] = (inserts[name] ?? 0) + 1;
-        if (opts.failInsert?.(name, inserts[name])) return Promise.resolve({ error: { message: `insert into ${name} failed` } });
-        tables[name].push(...rows.map(r => ({ created_at: '2026-01-01T00:00:00Z', ...r })));
-        return Promise.resolve({ error: null });
-      },
       then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => Promise.resolve(run()).then(res, rej),
     };
     return q;
   };
-  return { client: { from } as unknown as SupabaseClient, tables };
+
+  // restore_backup as the shared contract describes it. One transaction: the
+  // work is done on a copy, which replaces the tables only if every step passed.
+  const rpc = async (fn: string, args: { payload: RestorePayload }) => {
+    rpcCalls.push({ fn, payload: args.payload });
+    if (opts.rpcAnswer) return { data: null, ...opts.rpcAnswer };
+    const next: Record<string, Row[]> = JSON.parse(JSON.stringify(tables));
+    for (const name of OWNED) next[name] = (next[name] ?? []).filter(r => r.user_id !== USER);
+    const p = args.payload;
+    const stamp = '2026-11-14T00:00:00Z';
+    // user_id is forced to the caller, whatever the payload says.
+    const own = (r: Row) => ({ ...r, user_id: USER });
+    next.accounts.push(...p.accounts.map(a => ({ created_at: stamp, ...own(a), balance: 0 })));
+    for (const t of p.transactions) {
+      if (opts.refuses?.(t)) {
+        return { data: null, error: { message: 'new row for relation "transactions" violates check constraint', code: '23514' }, status: 400 };
+      }
+      next.transactions.push({ id: `tx-${++made}`, created_at: stamp, ...own(t) });
+      // The balance trigger replays each row onto its account.
+      const acct = next.accounts.find(a => a.id === t.account_id)!;
+      acct.balance = (acct.balance as number) + (t.type === 'income' ? 1 : -1) * (t.amount as number);
+    }
+    for (const { id, balance } of p.balances) next.accounts.find(a => a.id === id)!.balance = balance;
+    next.budgets.push(...p.budgets.map(b => ({ id: `b-${++made}`, created_at: stamp, ...own(b) })));
+    next.goals.push(...p.goals.map(g => ({ created_at: stamp, ...own(g) })));
+    next.goal_contributions.push(...p.goal_contributions.map(c => ({ id: `c-${++made}`, created_at: stamp, ...own(c) })));
+    Object.assign(tables, next);
+    return { data: { accounts: p.accounts.length, transactions: p.transactions.length }, error: null, status: 200 };
+  };
+
+  return { client: { from, rpc } as unknown as SupabaseClient, tables, rpcCalls, selects };
 }
 
-const USER = 'user-1';
 const account = (id: string, name: string, balance: number): Row =>
   ({ id, user_id: USER, name, type: 'debit', balance, currency: 'AED', icon: 'bank', created_at: `2026-01-0${id.slice(-1)}T00:00:00Z` });
 const tx = (id: string, accountId: string, amount: number, date = '2026-11-01'): Row =>
@@ -204,7 +240,7 @@ describe('prepareRestore', () => {
   it('rejects a bad file before anything is written', () => {
     expect(() => prepareRestore({ accounts: [] }, USER)).toThrow(/Invalid backup file/);
     const bad = { version: 2, ...live(), transactions: [tx('t1', 'a1', 10, '11/01/2026')] };
-    expect(() => prepareRestore(bad, USER)).toThrow(/transaction 1: date must be a real date, YYYY-MM-DD.*Nothing was changed/);
+    expect(() => prepareRestore(bad, USER)).toThrow(/transaction 1: date must be a real date, YYYY-MM-DD\.$/);
   });
 
   // The database allows an amount of 0 (CHECK amount >= 0). Refusing it here
@@ -373,7 +409,7 @@ describe('prepareRestore', () => {
 });
 
 describe('restoreBackup', () => {
-  it('round-trips an export, keeping balances, budget flags and goal contributions', async () => {
+  it('round-trips an export in one database call, keeping balances, budget flags and goal contributions', async () => {
     const source = fakeDb(live());
     const backup = await exportBackup(source.client, USER);
     const target = fakeDb({ accounts: [account('z9', 'Old', 1)], transactions: [], budgets: [], goals: [], goal_contributions: [] });
@@ -381,6 +417,13 @@ describe('restoreBackup', () => {
     expect(result).toEqual({ accounts: 2, transactions: 3, skippedTransactions: 0 });
     expect(summary(target.tables)).toEqual(summary(source.tables));
     expect(target.tables.goal_contributions[0].created_at).toBe('2026-10-01T00:00:00Z');
+    // One request, so the database can make it one transaction.
+    expect(target.rpcCalls.map(c => c.fn)).toEqual(['restore_backup']);
+    expect(Object.keys(target.rpcCalls[0].payload).sort())
+      .toEqual(['accounts', 'balances', 'budgets', 'goal_contributions', 'goals', 'transactions']);
+    // Accounts are listed by creation time, and one transaction has one clock time.
+    expect(target.tables.accounts.map(a => [a.name, a.created_at]))
+      .toEqual([['Debit', '2026-01-01T00:00:00Z'], ['Cash', '2026-01-02T00:00:00Z']]);
   });
 
   it('exports every row, not one page', async () => {
@@ -408,33 +451,156 @@ describe('restoreBackup', () => {
     expect(got).toHaveLength(2100);
   });
 
-  it('puts the previous data back when the restore fails part-way', async () => {
-    // The first transactions insert fails (the new file); the roll-back insert succeeds.
-    const db = fakeDb(live(), { failInsert: (table, call) => table === 'transactions' && call === 1 });
-    const before = summary(db.tables);
-    let snapshot: unknown = null;
-    const file = { version: 2, ...live(), accounts: [account('n1', 'New', 1)], transactions: [tx('q', 'n1', 99)] };
-    const err = await restoreBackup(db.client, USER, file, s => { snapshot = s; }).catch(e => e);
+  const otherFile = () => ({ version: 2, ...live(), accounts: [account('n1', 'New', 1)], transactions: [tx('q', 'n1', 99)] });
+
+  it('changes nothing when the database refuses a row part-way, and says so', async () => {
+    const db = fakeDb(live(), { refuses: t => t.amount === 99 });
+    const before = JSON.stringify(db.tables);
+    let snapshot: BackupV2 | null = null;
+    const err = await restoreBackup(db.client, USER, otherFile(), s => { snapshot = s; }).catch(e => e);
     expect(err).toBeInstanceOf(RestoreError);
-    expect(err.rolledBack).toBe(true);
-    expect(snapshot).toMatchObject({ version: 2 });
+    expect(err.unchanged).toBe(true);
+    expect(err.message).toBe('Restore failed (new row for relation "transactions" violates check constraint). Nothing was changed.');
+    expect(JSON.stringify(db.tables)).toBe(before);
+    // The safety copy was still handed over before the call.
+    expect(snapshot!.transactions).toHaveLength(3);
+    expect(db.rpcCalls).toHaveLength(1);
+  });
+
+  it('restores over, and back from, live data that holds a zero-amount row', async () => {
+    // The row the old checker refused. It stopped the roll-back and made the safety file useless.
+    const db = fakeDb({ ...live(), transactions: [...live().transactions, tx('t4', 'a1', 0)], budgets: [{ ...live().budgets[0], amount: 0 }] });
+    const before = summary(db.tables);
+    let snapshot: BackupV2 | null = null;
+    await restoreBackup(db.client, USER, otherFile(), s => { snapshot = s; });
+    expect(db.tables.accounts.map(a => a.name)).toEqual(['New']);
+    // Going back: the safety copy is a file the restore accepts.
+    const back = await restoreBackup(db.client, USER, JSON.parse(JSON.stringify(snapshot)));
+    expect(back).toEqual({ accounts: 2, transactions: 4, skippedTransactions: 0 });
     expect(summary(db.tables)).toEqual(before);
   });
 
-  it('says so when the roll-back fails too, after handing over the safety copy', async () => {
-    const db = fakeDb(live(), { failInsert: table => table === 'transactions' });
-    let snapshot: { transactions: Row[] } | null = null;
-    const err = await restoreBackup(db.client, USER, { version: 2, ...live() }, s => { snapshot = s; }).catch(e => e);
+  it('gives the real reason when the safety copy cannot be read, and changes nothing', async () => {
+    const db = fakeDb(live(), { failSelect: 'TypeError: Failed to fetch' });
+    let handed = false;
+    const err = await restoreBackup(db.client, USER, otherFile(), () => { handed = true; }).catch(e => e);
     expect(err).toBeInstanceOf(RestoreError);
-    expect(err.rolledBack).toBe(false);
-    expect(snapshot!.transactions).toHaveLength(3);
+    expect(err.message).toBe('Could not read your current data to make the safety copy (TypeError: Failed to fetch). Nothing was changed.');
+    expect(err.unchanged).toBe(true);
+    expect(handed).toBe(false);
+    expect(db.rpcCalls).toHaveLength(0);
+  });
+
+  it('stops before the database call when the safety copy could not be imported again', async () => {
+    // The database takes any text as a budget month. A backup file does not.
+    const db = fakeDb({ ...live(), budgets: [{ ...live().budgets[0], month: 'November' }] });
+    let handed = false;
+    const err = await restoreBackup(db.client, USER, otherFile(), () => { handed = true; }).catch(e => e);
+    expect(err).toBeInstanceOf(RestoreError);
+    expect(err.unchanged).toBe(true);
+    expect(err.message).toMatch(/safety copy.*budget 1: month must be YYYY-MM\. Nothing was changed\.$/);
+    expect(handed).toBe(false);
+    expect(db.rpcCalls).toHaveLength(0);
+  });
+
+  it('says nothing was changed when saving the safety copy fails', async () => {
+    const db = fakeDb(live());
+    const err = await restoreBackup(db.client, USER, otherFile(), () => { throw new Error('disk full'); }).catch(e => e);
+    expect(err.message).toBe('Could not save the safety copy of your current data (disk full). Nothing was changed.');
+    expect(db.rpcCalls).toHaveLength(0);
   });
 
   it('touches nothing when the file is invalid', async () => {
     const db = fakeDb(live());
     const before = JSON.stringify(db.tables);
     const file = { version: 2, accounts: [{ id: 'a', type: 'debit', balance: 1 }], transactions: [] };
-    await expect(restoreBackup(db.client, USER, file)).rejects.toThrow(/Nothing was changed/);
+    const err = await restoreBackup(db.client, USER, file).catch(e => e);
+    expect(err).toBeInstanceOf(RestoreError);
+    expect(err.unchanged).toBe(true);
+    expect(err.message).toMatch(/account 1: needs a name\. Nothing was changed\.$/);
+    await expect(restoreBackup(db.client, USER, { accounts: [] })).rejects.toThrow(/Invalid backup file.*Nothing was changed\.$/);
     expect(JSON.stringify(db.tables)).toBe(before);
+    // Refused before the current data is even read.
+    expect(db.selects).toEqual({});
+    expect(db.rpcCalls).toHaveLength(0);
+  });
+
+  it('refuses a backup too large for one request before reading or writing anything', async () => {
+    const db = fakeDb(live());
+    const big = { version: 2, ...live(), transactions: [{ ...tx('t1', 'a1', 10), note: 'x'.repeat(MAX_RESTORE_BYTES + 1024 * 1024) }] };
+    const err = await restoreBackup(db.client, USER, big).catch(e => e);
+    expect(err).toBeInstanceOf(RestoreError);
+    expect(err.message).toBe('This backup is too large to restore (21.0 MB, the limit is 20.0 MB). Nothing was changed.');
+    expect(db.selects).toEqual({});
+    expect(db.rpcCalls).toHaveLength(0);
+  });
+
+  it('says nothing was changed for every refusal the database or the API reports', async () => {
+    const cases: Array<[FakeOpts['rpcAnswer'], RegExp]> = [
+      [{ error: { message: 'Could not find the function public.restore_backup(payload) in the schema cache', code: 'PGRST202' }, status: 404 },
+        /^The database does not have the restore function yet\. Run supabase\/pending_migrations\.sql/],
+      [{ error: { message: '<html>413 Request Entity Too Large</html>' }, status: 413 }, /^The backup is too large for one request\./],
+      [{ error: { message: 'canceling statement due to statement timeout', code: '57014' }, status: 500 }, /^The restore took too long/],
+      [{ error: { message: 'not signed in', code: 'P0001' }, status: 400 }, /^Restore failed \(not signed in\)\./],
+      [{ error: { message: 'JWT expired', code: 'PGRST301' }, status: 401 }, /^Restore failed \(JWT expired\)\./],
+    ];
+    for (const [rpcAnswer, start] of cases) {
+      const err = await restoreBackup(fakeDb(live(), { rpcAnswer }).client, USER, otherFile()).catch(e => e);
+      expect(err).toBeInstanceOf(RestoreError);
+      expect(err.unchanged, rpcAnswer!.error.message).toBe(true);
+      expect(err.message).toMatch(start);
+      expect(err.message).toMatch(/ Nothing was changed\.$/);
+    }
+  });
+
+  it('does not claim nothing was changed when the answer from the database never arrives', async () => {
+    const lost: Array<FakeOpts['rpcAnswer']> = [
+      // What the client returns when the request fails in the browser.
+      { error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 },
+      // A gateway error says nothing about what the database did.
+      { error: { message: 'Bad Gateway' }, status: 502 },
+    ];
+    for (const rpcAnswer of lost) {
+      const err = await restoreBackup(fakeDb(live(), { rpcAnswer }).client, USER, otherFile()).catch(e => e);
+      expect(err).toBeInstanceOf(RestoreError);
+      expect(err.unchanged).toBe(false);
+      expect(err.message).not.toMatch(/Nothing was changed/);
+      expect(err.message).toMatch(/either fully replaced or not changed at all\.$/);
+    }
+    // A client that throws instead of returning an error is the same case.
+    const db = fakeDb(live());
+    (db.client as unknown as { rpc: unknown }).rpc = () => Promise.reject(new Error('socket closed'));
+    const err = await restoreBackup(db.client, USER, otherFile()).catch(e => e);
+    expect(err.unchanged).toBe(false);
+    expect(err.message).toMatch(/socket closed/);
+  });
+});
+
+describe('restorePayloadBytes', () => {
+  const empty: RestorePayload = { accounts: [], balances: [], transactions: [], budgets: [], goals: [], goal_contributions: [] };
+
+  it('counts bytes, not characters', () => {
+    const ascii = restorePayloadBytes({ ...empty, accounts: [{ name: 'abcd' }] });
+    const arabic = restorePayloadBytes({ ...empty, accounts: [{ name: '\u0645\u0637\u0639\u0645' }] });
+    // Four Arabic letters are two bytes each.
+    expect(arabic - ascii).toBe(4);
+  });
+
+  it('fits tens of thousands of ordinary transactions in one request', () => {
+    const id = () => '11111111-2222-4333-8444-555555555555';
+    const file = {
+      version: 2,
+      accounts: [{ ...account('a1', 'Debit', 0), id: id() }],
+      transactions: Array.from({ length: 1000 }, (_, i) => ({
+        ...tx(`t${i}`, id(), 125.5), category: 'Groceries', category_icon: 'shopping-cart', merchant: 'Carrefour City Centre',
+        note: null, is_recurring: false, is_tracking_only: false, is_internal: false, dupe_dismissed: false,
+        total_installments: null, current_installment: null, loan_total_amount: null, remaining_principal: null,
+      })),
+    };
+    const { skippedTransactions: _skipped, ...payload } = prepareRestore(file, '99999999-2222-4333-8444-555555555555', id);
+    const perRow = (restorePayloadBytes(payload) - restorePayloadBytes({ ...payload, transactions: [] })) / 1000;
+    expect(perRow).toBeGreaterThan(250);
+    expect(perRow).toBeLessThan(400);
+    expect(Math.floor(MAX_RESTORE_BYTES / perRow)).toBeGreaterThan(50000);
   });
 });

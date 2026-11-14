@@ -1,9 +1,11 @@
 // Backup and restore, kept out of the Settings page so it can be tested.
 //
 // Restore used to delete every row and then insert from the file, so one bad
-// row left the account empty. Now: the file is checked before anything is
-// touched, the current data is read from the server and handed back as a
-// safety copy, and a failed restore puts that copy back.
+// row left the account empty. Now: the file is checked against the database's
+// own rules before anything is touched, the current data is read from the
+// server and handed back as a safety copy, and the replace itself is one
+// database transaction (the restore_backup function), so it either all
+// happens or nothing changes.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_WRITE_COLUMNS } from '@/lib/dbSchema';
 
@@ -404,57 +406,72 @@ export function prepareRestore(
 
   if (problems.length) {
     const more = problems.length > 3 ? ` (and ${problems.length - 3} more)` : '';
-    throw new Error(`Backup file has rows that can't be restored: ${problems.slice(0, 3).join('; ')}${more}. Nothing was changed.`);
+    throw new Error(`Backup file has rows that can't be restored: ${problems.slice(0, 3).join('; ')}${more}.`);
   }
   return { accounts, balances, transactions, budgets, goals, goal_contributions, skippedTransactions };
 }
 
 // ─── Writing ──────────────────────────────────────────────────────────────────
 
-const INSERT_CHUNK = 500;
+/** What the restore_backup database function takes: the prepared rows, keyed by table. */
+export type RestorePayload = Omit<PreparedRestore, 'skippedTransactions'>;
 
-async function insertAll(client: SupabaseClient, name: string, rows: Row[], chunk = INSERT_CHUNK) {
-  for (let i = 0; i < rows.length; i += chunk) {
-    const { error } = await table(client, name).insert(rows.slice(i, i + chunk) as never);
-    if (error) throw error;
-  }
-}
+/**
+ * The largest restore request the app sends. The whole restore has to be one
+ * request, because splitting it would split the transaction. A transaction
+ * row is about 370 bytes of JSON (545 with an instalment plan and a note), so
+ * this is roughly 50,000 transactions. Supabase documents no body limit for
+ * this API, so the number is this app's own ceiling, not the server's: past
+ * it the file is refused here with a plain message, before anything is read
+ * or written. A smaller limit on the server shows as "too large for one
+ * request", also with nothing changed.
+ */
+export const MAX_RESTORE_BYTES = 20 * 1024 * 1024;
 
-/** Replace everything the user owns with the prepared rows. */
-export async function applyRestore(client: SupabaseClient, userId: string, prep: PreparedRestore) {
-  // One table at a time: deleting accounts while transactions are going can
-  // deadlock on the balance trigger.
-  for (const name of ['goal_contributions', 'transactions', 'budgets', 'goals', 'accounts']) {
-    const { error } = await table(client, name).delete().eq('user_id', userId);
-    if (error) throw error;
-  }
-  // Accounts and goals go in one by one: rows from a single insert share a
-  // creation time, and both lists are ordered by it.
-  await insertAll(client, 'accounts', prep.accounts, 1);
-  await insertAll(client, 'transactions', prep.transactions);
-  for (const { id, balance } of prep.balances) {
-    const { error } = await table(client, 'accounts').update({ balance } as never).eq('id', id);
-    if (error) throw error;
-  }
-  await insertAll(client, 'budgets', prep.budgets);
-  await insertAll(client, 'goals', prep.goals, 1);
-  try {
-    await insertAll(client, 'goal_contributions', prep.goal_contributions);
-  } catch {
-    // Keeping the original dates is a nicety; the log itself matters more.
-    await table(client, 'goal_contributions').delete().eq('user_id', userId);
-    await insertAll(client, 'goal_contributions', prep.goal_contributions.map(({ created_at: _drop, ...c }) => c));
-  }
-}
+/** Size of the request body for a payload, in bytes (not characters: an icon or an Arabic merchant name is several bytes). */
+export const restorePayloadBytes = (payload: RestorePayload): number =>
+  new TextEncoder().encode(JSON.stringify({ payload })).length;
+
+const megabytes = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
+
+const NOTHING_CHANGED = 'Nothing was changed.';
 
 export class RestoreError extends Error {
-  /** True when the data from before the restore was put back. */
-  readonly rolledBack: boolean;
-  constructor(cause: unknown, rolledBack: boolean) {
-    super(cause instanceof Error ? cause.message : (cause as QueryError | null)?.message ?? 'Unknown error');
+  /**
+   * True when it is certain that no row was changed: the failure came before
+   * the database call, or the database refused the call and rolled it back.
+   * False only when the answer to the database call never arrived.
+   */
+  readonly unchanged: boolean;
+  constructor(message: string, unchanged: boolean) {
+    super(unchanged ? `${message} ${NOTHING_CHANGED}` : message);
     this.name = 'RestoreError';
-    this.rolledBack = rolledBack;
+    this.unchanged = unchanged;
   }
+}
+
+type RpcError = { message?: string; code?: string };
+
+/** Turn a failed restore_backup call into the error to show. */
+function rpcFailure(error: RpcError, status: number): RestoreError {
+  const reason = errorMessage(error);
+  // The database (or the API in front of it) answered with a refusal. The
+  // function is one transaction, so a refusal means every row is as it was.
+  const refused = (status >= 400 && status < 500) || (typeof error.code === 'string' && error.code !== '');
+  if (!refused) {
+    // No answer (offline, tab asleep) or a bare gateway error: the request may
+    // have reached the database and finished there.
+    return new RestoreError(
+      `The connection dropped during the restore (${reason}), so the result is not known. Your data is either fully replaced or not changed at all.`,
+      false,
+    );
+  }
+  if (error.code === 'PGRST202' || error.code === '42883') {
+    return new RestoreError('The database does not have the restore function yet. Run supabase/pending_migrations.sql in the Supabase SQL editor.', true);
+  }
+  if (status === 413) return new RestoreError('The backup is too large for one request.', true);
+  if (error.code === '57014') return new RestoreError('The restore took too long and the database stopped it.', true);
+  return new RestoreError(`Restore failed (${reason}).`, true);
 }
 
 export interface RestoreResult {
@@ -465,8 +482,15 @@ export interface RestoreResult {
 
 /**
  * Restore a parsed backup file. `onSnapshot` receives the user's current data
- * before anything is deleted; save it. If the restore fails part-way, that
- * snapshot is written back and a RestoreError says whether that worked.
+ * before the database is touched; save it. Always throws a RestoreError, whose
+ * message is a full sentence to show and whose `unchanged` says whether it is
+ * certain that nothing was changed.
+ *
+ * The write is one call to the restore_backup database function, which
+ * deletes and inserts inside one transaction. It used to be dozens of
+ * requests from the browser, so a closed tab or a refused row part-way left
+ * the account half-written, and putting the old data back depended on the
+ * same browser staying alive.
  */
 export async function restoreBackup(
   client: SupabaseClient,
@@ -474,19 +498,53 @@ export async function restoreBackup(
   data: unknown,
   onSnapshot: (snapshot: BackupV2) => void = () => {},
 ): Promise<RestoreResult> {
-  const prep = prepareRestore(data, userId);
-  const snapshot = await exportBackup(client, userId);
-  onSnapshot(snapshot);
+  // Everything down to the database call only reads, so a failure in it
+  // leaves the account exactly as it was, and the message says so.
+  let payload: RestorePayload;
+  let skippedTransactions: number;
+  let bytes: number;
   try {
-    await applyRestore(client, userId, prep);
+    ({ skippedTransactions, ...payload } = prepareRestore(data, userId));
+    bytes = restorePayloadBytes(payload);
   } catch (err) {
-    let rolledBack = true;
-    try {
-      await applyRestore(client, userId, prepareRestore(snapshot, userId));
-    } catch {
-      rolledBack = false;
-    }
-    throw new RestoreError(err, rolledBack);
+    throw new RestoreError(errorMessage(err), true);
   }
-  return { accounts: prep.accounts.length, transactions: prep.transactions.length, skippedTransactions: prep.skippedTransactions };
+  if (bytes > MAX_RESTORE_BYTES) {
+    throw new RestoreError(`This backup is too large to restore (${megabytes(bytes)} MB, the limit is ${megabytes(MAX_RESTORE_BYTES)} MB).`, true);
+  }
+
+  let snapshot: BackupV2;
+  try {
+    snapshot = await exportBackup(client, userId);
+  } catch (err) {
+    throw new RestoreError(`Could not read your current data to make the safety copy (${errorMessage(err)}).`, true);
+  }
+  // The safety copy is the only way back after a restore, so it has to be a
+  // file this same check accepts. Better to stop now than to find that out later.
+  try {
+    prepareRestore(snapshot, userId);
+  } catch (err) {
+    throw new RestoreError(`Your current data could not be saved as a safety copy that works. ${errorMessage(err)}`, true);
+  }
+  try {
+    onSnapshot(snapshot);
+  } catch (err) {
+    throw new RestoreError(`Could not save the safety copy of your current data (${errorMessage(err)}).`, true);
+  }
+
+  let answer: { data: unknown; error: RpcError | null; status: number };
+  try {
+    answer = await client.rpc('restore_backup', { payload });
+  } catch (err) {
+    answer = { data: null, error: { message: errorMessage(err) }, status: 0 };
+  }
+  if (answer.error) throw rpcFailure(answer.error, answer.status);
+
+  // The function reports what it inserted; fall back to what was sent.
+  const done = (answer.data ?? {}) as { accounts?: unknown; transactions?: unknown };
+  return {
+    accounts: typeof done.accounts === 'number' ? done.accounts : payload.accounts.length,
+    transactions: typeof done.transactions === 'number' ? done.transactions : payload.transactions.length,
+    skippedTransactions,
+  };
 }
