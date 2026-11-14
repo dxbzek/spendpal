@@ -9,7 +9,9 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { FIXED_EXPENSE_CATEGORIES, type Budget } from '@/types/finance';
 import { useCategories } from '@/hooks/useCategories';
-import { format, subMonths, getMonth, getYear, parseISO } from 'date-fns';
+import { useToday } from '@/hooks/useToday';
+import { format, subMonths, parseISO } from 'date-fns';
+import { asMonthly, spentByBudgetCategory, unspentOf } from '@/lib/finance/budgetSpend';
 import AppIcon from '@/components/AppIcon';
 
 interface Props {
@@ -28,8 +30,13 @@ function setRolloverCats(cats: Set<string>) {
   localStorage.setItem(ROLLOVER_KEY, JSON.stringify([...cats]));
 }
 
-const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
+const AddBudgetDialog = ({ open, onOpenChange, editBudget: rawEditBudget }: Props) => {
   const { addBudget, updateBudget, budgets, transactions } = useFinance();
+  const today = useToday();
+  const monthKey = today.slice(0, 7);
+  // An old weekly budget opens as the monthly amount it is shown as, and is
+  // saved as monthly. Weekly is no longer offered (see asMonthly).
+  const editBudget = useMemo(() => (rawEditBudget ? asMonthly(rawEditBudget) : rawEditBudget), [rawEditBudget]);
   const { currency, fmt } = useCurrency();
   const { getCategoriesForType } = useCategories();
   const isEdit = !!editBudget;
@@ -38,7 +45,6 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   // Unspent amount currently folded into `amount` by the rollover switch, so
   // toggling it off takes it back out instead of stacking on every toggle.
   const appliedRollover = useRef(0);
-  const [period, setPeriod] = useState<'monthly' | 'weekly'>('monthly');
   const [rollover, setRollover] = useState(false);
   const [isFixed, setIsFixed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -49,7 +55,6 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
       setCategory(editBudget?.category || '');
       setAmount(editBudget?.amount?.toString() || '');
       appliedRollover.current = 0;
-      setPeriod(editBudget?.period || 'monthly');
       setIsFixed(editBudget?.isFixed ?? false);
       setRollover(false);
     }
@@ -63,7 +68,6 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
   // only produce a confusing unique-constraint error on submit. When editing, the
   // budget's own category stays selectable.
   const availableCategories = useMemo(() => {
-    const monthKey = format(new Date(), 'yyyy-MM');
     const taken = new Set(
       budgets
         .filter(b => b.month === monthKey && b.category !== editBudget?.category)
@@ -72,32 +76,21 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
     return expenseCategories.filter(c => !taken.has(c.name));
     // expenseCategories is rebuilt each render from the same rows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budgets, editBudget, expenseCategories.length]);
+  }, [budgets, editBudget, expenseCategories.length, monthKey]);
 
-  // Last month's unspent for this category
+  // What was left of last month's budget for this category. Only offered when
+  // last month had one. Measured against last month's spending: the budget
+  // row's own `spent` is this month's, which offered nearly the whole budget.
   const lastMonthUnspent = useMemo(() => {
     if (!category || isEdit) return null;
-    const prev = subMonths(new Date(), 1);
-    const pm = getMonth(prev), py = getYear(prev);
-    const prevMonth = format(prev, 'yyyy-MM');
-
-    // Find last month's budget for this category
-    const prevBudget = budgets.find(b => b.category === category && b.month === prevMonth);
-    if (prevBudget) {
-      const unspent = prevBudget.amount - prevBudget.spent;
-      return unspent > 0 ? unspent : null;
-    }
-
-    // Fall back to spending-based calculation
-    const spent = transactions
-      .filter(t => {
-        const d = parseISO(t.date);
-        return t.type === 'expense' && t.category === category && getMonth(d) === pm && getYear(d) === py;
-      })
-      .reduce((s, t) => s + t.amount, 0);
-
-    return spent > 0 ? null : null; // Only show rollover if there was a budget
-  }, [category, budgets, transactions, isEdit]);
+    const prevMonth = format(subMonths(parseISO(today), 1), 'yyyy-MM');
+    const prevBudgets = budgets.filter(b => b.month === prevMonth).map(asMonthly);
+    const prevBudget = prevBudgets.find(b => b.category === category);
+    if (!prevBudget) return null;
+    const spent = spentByBudgetCategory(transactions, prevMonth, new Set(prevBudgets.map(b => b.category)));
+    const unspent = unspentOf(prevBudget.amount, spent[category] ?? 0);
+    return unspent > 0 ? unspent : null;
+  }, [category, budgets, transactions, isEdit, today]);
 
   // When category changes, load rollover preference and auto-detect fixed
   useEffect(() => {
@@ -133,10 +126,10 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
         category,
         categoryIcon: selectedCat?.icon || '📌',
         amount: parsedAmount,
-        period,
+        period: 'monthly' as const,
         // Editing keeps the budget's own month: a carried-forward budget from
         // last month must not suddenly claim to be this month's.
-        month: isEdit ? editBudget.month : format(new Date(), 'yyyy-MM'),
+        month: isEdit ? editBudget.month : monthKey,
         isFixed,
       };
       const ok = isEdit
@@ -172,20 +165,9 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget }: Props) => {
             )}
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Budget Amount ({currency})</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Monthly budget ({currency})</label>
             <AmountInput placeholder="0.00" value={amount} onChange={setAmount} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} />
           </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Period</label>
-            <Select value={period} onValueChange={v => setPeriod(v as 'monthly' | 'weekly')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Fixed expense option */}
           <div className="flex items-center justify-between p-3 bg-accent rounded-xl">
             <div>

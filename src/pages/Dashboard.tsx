@@ -1,7 +1,10 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
 import { getCategoryChartColor } from '@/utils/categoryColors';
-import { activeBudgets } from '@/utils/budgets';
+import { budgetsForMonth } from '@/utils/budgets';
+import { budgetPercent } from '@/lib/finance/budgetSpend';
+import { isInPeriod } from '@/lib/today';
+import { useToday } from '@/hooks/useToday';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
 import { savingsSummary } from '@/lib/finance/pace';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
@@ -71,13 +74,14 @@ const Dashboard = () => {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
-  const now = useMemo(() => new Date(), []);
-  // Budgets that apply to the current month (carried forward if none created
-  // yet) — used for the status line and budget alerts.
-  const activeBudgetsList = useMemo(
-    () => activeBudgets(budgets, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`),
-    [budgets, now]
-  );
+  // Today's date, kept current while Home stays open. Fixed on mount, it left
+  // out rows added after midnight and stayed on last month after a month change.
+  const today = useToday();
+  const monthKey = today.slice(0, 7);
+  // This month's own budgets, the same set the Budgets page shows. Last
+  // month's are not carried forward here: Home showed "% spent" against them
+  // while the Budgets page said the month had none.
+  const activeBudgetsList = useMemo(() => budgetsForMonth(budgets, monthKey), [budgets, monthKey]);
   useBudgetAlerts(activeBudgetsList);
 
   // Same figure "Left until payday" starts from: cash/debit, minus savings
@@ -86,17 +90,11 @@ const Dashboard = () => {
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
 
-  const filtered = useMemo(() => {
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    return transactions.filter(tx => {
-      const d = parseISO(tx.date);
-      if (d > now) return false; // skip future-dated transactions — not spent/earned yet
-      if (period === 'all') return true;
-      if (period === 'month') return d.getMonth() === month && d.getFullYear() === year;
-      return d.getFullYear() === year;
-    });
-  }, [transactions, period, now]);
+  // Future-dated rows are left out: not spent or earned yet.
+  const filtered = useMemo(
+    () => transactions.filter(tx => isInPeriod(tx.date, period, today)),
+    [transactions, period, today],
+  );
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
   const income = useMemo(() => filtered.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
@@ -114,24 +112,21 @@ const Dashboard = () => {
   }, [filtered]);
 
   const [thisMonthIncome, thisMonthExpenses] = useMemo(() => {
-    const month = now.getMonth(), year = now.getFullYear();
     let inc = 0, exp = 0;
     for (const tx of transactions) {
-      const d = parseISO(tx.date);
-      if (d.getMonth() !== month || d.getFullYear() !== year) continue;
-      if (d > now) continue; // skip future-dated transactions — not spent/earned yet
+      if (!isInPeriod(tx.date, 'month', today)) continue;
       if (isCountableIncome(tx, creditAccountIds)) inc += tx.amount;
       else if (isCountableExpense(tx)) exp += tx.amount;
     }
     return [inc, exp];
-  }, [transactions, now, creditAccountIds]);
+  }, [transactions, today, creditAccountIds]);
   const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
   // Note: the financial-health score now lives solely on the AI Advisor page,
   // where it is actually computed — per the SpendPal design handoff.
 
   const totalBudgeted = activeBudgetsList.reduce((s, b) => s + b.amount, 0);
   const totalSpent = activeBudgetsList.reduce((s, b) => s + b.spent, 0);
-  const budgetPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
+  const budgetPct = budgetPercent(totalSpent, totalBudgeted);
 
   // Installment plan summary — the same plans and "left" as the Installments page.
   const installmentSummary = useMemo(() => {
@@ -543,28 +538,42 @@ const Dashboard = () => {
               <h2 className="font-heading text-sm">Budget Overview</h2>
               <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
-            </div>
-            <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
-              <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
-                className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
-            </div>
-            {activeBudgetsList.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
-              const pct = Math.min(Math.round((b.spent / b.amount) * 100), 100);
-              return (
-                <div key={b.id} className="mb-2 last:mb-0">
-                  <div className="flex items-center justify-between text-xs mb-0.5 gap-2">
-                    <span className="text-muted-foreground truncate min-w-0" title={b.category}>{b.category}</span>
-                    <span className={`font-medium shrink-0 ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
-                      className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
-                  </div>
+            {activeBudgetsList.length === 0 ? (
+              /* Same message as the Budgets page, where Copy and Rollover live. */
+              <div className="text-xs text-muted-foreground">
+                <p className="mb-2">No budgets for {format(parseISO(today), 'MMMM')} yet.</p>
+                <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium">
+                  Set up this month's budgets
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>{budgetPct}% spent</span><span>{fmt(totalSpent)} / {fmt(totalBudgeted)}</span>
                 </div>
-              );
-            })}
+                <div className="h-4 bg-muted rounded-full overflow-hidden mb-3">
+                  <m.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetPct, 100)}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
+                    className={`h-full rounded-full ${budgetPct > 90 ? 'bg-expense' : 'bg-primary'}`} />
+                </div>
+                {activeBudgetsList.filter(b => b.amount > 0).sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 3).map(b => {
+                  // The real percentage: 776.71 of 400 reads 194%, not 100%. Only the bar stops at full.
+                  const pct = budgetPercent(b.spent, b.amount);
+                  const barPct = Math.min(pct, 100);
+                  return (
+                    <div key={b.id} className="mb-2 last:mb-0">
+                      <div className="flex items-center justify-between text-xs mb-0.5 gap-2">
+                        <span className="text-muted-foreground truncate min-w-0" title={b.category}>{b.category}</span>
+                        <span className={`font-medium shrink-0 ${pct >= 100 ? 'text-expense' : pct > 75 ? 'text-warning' : 'text-muted-foreground'}`}>{pct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <m.div initial={{ width: 0 }} animate={{ width: `${barPct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                          className={`h-full rounded-full ${pct >= 100 ? 'bg-expense' : pct > 75 ? 'bg-warning' : 'bg-primary'}`} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </Card>
 
           <div className="col-span-2 lg:col-span-2">

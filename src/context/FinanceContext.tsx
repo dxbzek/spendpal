@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
 import { fetchAllRows } from '@/lib/backup';
-import { budgetCategoryOf } from '@/lib/finance/categories';
+import { spentByBudgetCategory } from '@/lib/finance/budgetSpend';
+import { dateKey } from '@/lib/today';
+import { useToday } from '@/hooks/useToday';
 import {
   AccountRowSchema,
   TransactionRowSchema,
@@ -123,22 +124,18 @@ const thisMonthKey = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
-function computeSpentByCategory(txs: Transaction[], budgetNames: ReadonlySet<string> = new Set()): Record<string, number> {
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`;
-  // Exclude future-dated transactions: they haven't been spent yet.
-  // Pending (isPending) transactions are NOT excluded here on purpose: a
-  // pending charge is still real spending the user committed to, and
-  // budgets/reports should reflect it immediately. isPending only gates
-  // whether it's posted to the settled account balance (see the DB trigger).
-  const monthExpenses = txs.filter(t => isCountableExpense(t) && t.date.startsWith(currentMonth) && t.date <= today);
-  const spent: Record<string, number> = {};
-  for (const t of monthExpenses) {
-    const category = budgetCategoryOf(t.category, budgetNames);
-    spent[category] = (spent[category] ?? 0) + t.amount;
-  }
-  return spent;
+/**
+ * This month's spending per budget category, up to `today` (YYYY-MM-DD).
+ * The sum itself lives in lib/finance/budgetSpend so it can be tested. `today`
+ * is passed in, not read here, so the memo below can depend on it: read
+ * inside, the figure stayed on yesterday's date in an app left open overnight.
+ */
+function computeSpentByCategory(
+  txs: Transaction[],
+  budgetNames: ReadonlySet<string> = new Set(),
+  today: string = dateKey(new Date()),
+): Record<string, number> {
+  return spentByBudgetCategory(txs, today.slice(0, 7), budgetNames, today);
 }
 
 // ─── Context type ─────────────────────────────────────────────────────────────
@@ -206,10 +203,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // not recalculated inside every mutation's nested state setter.
   // The budget names as a string, so adding spend to a budget (a new array)
   // doesn't re-run the sum that produced it.
-  const budgetNamesKey = [...budgetNamesFor(budgets, thisMonthKey())].sort().join('\n');
+  // `today` is a dependency: it changes at midnight and when the app comes
+  // back to the front, so budgets move to the new day (and the new month).
+  const today = useToday();
+  const budgetNamesKey = [...budgetNamesFor(budgets, today.slice(0, 7))].sort().join('\n');
   const spentByCategory = useMemo(
-    () => computeSpentByCategory(transactions, new Set(budgetNamesKey ? budgetNamesKey.split('\n') : [])),
-    [transactions, budgetNamesKey]
+    () => computeSpentByCategory(transactions, new Set(budgetNamesKey ? budgetNamesKey.split('\n') : []), today),
+    [transactions, budgetNamesKey, today]
   );
 
   // Apply the memoized spending map to budgets whenever either changes.

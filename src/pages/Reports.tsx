@@ -8,6 +8,8 @@ import { format, parseISO, subMonths, getDay } from 'date-fns';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
+import { useToday } from '@/hooks/useToday';
+import { lastMonthSameDays } from '@/lib/today';
 const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
 import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank, Printer } from 'lucide-react';
@@ -20,7 +22,10 @@ const Reports = () => {
   const { fmt } = useCurrency();
   const { hidden, mask } = useBalanceMask();
 
-  const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
+  // Kept current while the page stays open, so "today" in the cut-offs below
+  // moves on after midnight.
+  const today = useToday();
+  const [selectedMonth, setSelectedMonth] = useState(() => today.slice(0, 7));
   const [drillCategory, setDrillCategory] = useState<string | null>(null);
 
   const creditAccountIds = useMemo(
@@ -30,18 +35,15 @@ const Reports = () => {
 
   const months = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
-      const d = subMonths(new Date(), i);
+      const d = subMonths(parseISO(`${today.slice(0, 7)}-01`), i);
       return { value: format(d, 'yyyy-MM'), label: format(d, 'MMMM yyyy') };
     });
-  }, []);
+  }, [today]);
 
   const monthTxs = useMemo(
-    () => {
-      // Exclude future-dated transactions (only relevant when viewing the current month).
-      const today = format(new Date(), 'yyyy-MM-dd');
-      return transactions.filter(tx => tx.date.startsWith(selectedMonth) && tx.date <= today);
-    },
-    [transactions, selectedMonth]
+    // Exclude future-dated transactions (only relevant when viewing the current month).
+    () => transactions.filter(tx => tx.date.startsWith(selectedMonth) && tx.date <= today),
+    [transactions, selectedMonth, today]
   );
 
   const prevMonthStr = useMemo(() => {
@@ -49,9 +51,18 @@ const Reports = () => {
     return format(subMonths(new Date(y, m - 1), 1), 'yyyy-MM');
   }, [selectedMonth]);
 
+  // The current month is only part of a month, so it's compared with the same
+  // days of the month before, not all of it (that always read as a big drop).
+  // A finished month is compared with the whole month before.
+  const partialCompare = useMemo(() => {
+    if (selectedMonth !== today.slice(0, 7)) return null;
+    const range = lastMonthSameDays(today);
+    return range.monthComplete ? null : range;
+  }, [selectedMonth, today]);
+
   const prevMonthTxs = useMemo(
-    () => transactions.filter(tx => tx.date.startsWith(prevMonthStr)),
-    [transactions, prevMonthStr]
+    () => transactions.filter(tx => tx.date.startsWith(prevMonthStr) && (!partialCompare || tx.date <= partialCompare.end)),
+    [transactions, prevMonthStr, partialCompare]
   );
 
   const income = useMemo(
@@ -116,14 +127,11 @@ const Reports = () => {
       .map(([merchant, amount]) => ({ merchant, amount }));
   }, [monthTxs]);
 
-  // Budgets active for the selected month — carried forward from the most
-  // recent prior month when this month has none of its own (matches the
-  // Dashboard), instead of a strict month-equality filter that shows nothing
-  // for carry-forward months.
-  const monthBudgets = useMemo(
-    () => activeBudgets(budgets, selectedMonth).filter(b => b.period === 'monthly'),
-    [budgets, selectedMonth]
-  );
+  // Budgets in effect for the selected month: its own, or the most recent
+  // earlier month's when it has none, so a month without budgets still has
+  // something to measure against. Never a later month's. (Home and the
+  // Budgets page show only the month's own budgets; this is the report's rule.)
+  const monthBudgets = useMemo(() => activeBudgets(budgets, selectedMonth), [budgets, selectedMonth]);
 
   // Budget.spent (from FinanceContext) is always the real current month's spend,
   // regardless of which budget it's attached to — fine for "this month" views,
@@ -163,8 +171,9 @@ const Reports = () => {
 
   const hasData = categoryData.length > 0 || topMerchants.length > 0;
 
+  // The same rows the category total is made of, so the list adds up to it.
   const drillTxs = useMemo(
-    () => drillCategory ? monthTxs.filter(tx => tx.type === 'expense' && tx.category === drillCategory) : [],
+    () => drillCategory ? monthTxs.filter(tx => isCountableExpense(tx) && tx.category === drillCategory) : [],
     [drillCategory, monthTxs]
   );
 
@@ -222,7 +231,7 @@ const Reports = () => {
           <p className="font-bold text-sm">{mask(fmt(expenses))}</p>
           {expenseChange !== null && (
             <p className={`text-[11px] font-medium ${expenseChange > 0 ? 'text-destructive' : 'text-primary'}`}>
-              {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs prev
+              {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs {partialCompare ? `${format(parseISO(partialCompare.start), 'MMM')} 1-${partialCompare.endDay}` : 'prev'}
             </p>
           )}
         </div>

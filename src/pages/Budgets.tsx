@@ -12,13 +12,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { m } from 'framer-motion';
-import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO, getMonth, getYear } from 'date-fns';
+import { differenceInDays, endOfMonth, getDaysInMonth, subMonths, format, parseISO } from 'date-fns';
 import { useAI } from '@/hooks/useAI';
 import { toast } from 'sonner';
 import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
 import { budgetPace } from '@/lib/finance/pace';
 import { budgetCategoryOf } from '@/lib/finance/categories';
+import { asMonthly, budgetPercent, rolloverAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
+import { oneOffLimit } from '@/lib/finance/spendingForecast';
+import { budgetsForMonth } from '@/utils/budgets';
+import { useToday } from '@/hooks/useToday';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -62,7 +66,10 @@ const Budgets = () => {
   const [showScan, setShowScan] = useState(false);
   const [showAI, setShowAI] = useState(false);
 
-  const now = useMemo(() => new Date(), []);
+  // Follows the date while the page stays open, so the month and the days
+  // left are right after midnight.
+  const today = useToday();
+  const now = useMemo(() => parseISO(today), [today]);
   const daysLeft = differenceInDays(endOfMonth(now), now);
   const totalDays = getDaysInMonth(now);
   const daysElapsed = totalDays - daysLeft;
@@ -73,18 +80,20 @@ const Budgets = () => {
   // button removed last month's history). Copy/Rollover bring them over.
   // Budgets waiting out their Undo window disappear straight away.
   const thisMonthBudgets = useMemo(
-    () => budgets.filter(b => b.month === currentMonthKey && !isBudgetPending(b.id)),
+    () => budgetsForMonth(budgets, currentMonthKey).filter(b => !isBudgetPending(b.id)),
     [budgets, currentMonthKey, isBudgetPending],
   );
 
   const totalBudgeted = thisMonthBudgets.reduce((s, b) => s + b.amount, 0);
   const totalSpent = thisMonthBudgets.reduce((s, b) => s + b.spent, 0);
-  const overallPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
+  const overallPct = budgetPercent(totalSpent, totalBudgeted);
+
+  // What counts as a one-off for this user, from their own purchases.
+  const oneOffOver = useMemo(() => oneOffLimit(transactions, today), [transactions, today]);
 
   // Where each budget ends the month: everyday spending projected forward,
   // bills and one-offs counted once. Not capped at the budget.
   const paces = useMemo(() => {
-    const today = format(now, 'yyyy-MM-dd');
     const names = new Set(thisMonthBudgets.map(b => b.category));
     const byCategory: Record<string, typeof transactions> = {};
     for (const t of transactions) {
@@ -92,33 +101,29 @@ const Budgets = () => {
       (byCategory[budgetCategoryOf(t.category, names)] ??= []).push(t);
     }
     return Object.fromEntries(thisMonthBudgets.map(b =>
-      [b.id, budgetPace(b, byCategory[b.category] ?? [], daysElapsed, totalDays)]));
-  }, [transactions, thisMonthBudgets, currentMonthKey, daysElapsed, totalDays, now]);
+      [b.id, budgetPace(b, byCategory[b.category] ?? [], daysElapsed, totalDays, oneOffOver)]));
+  }, [transactions, thisMonthBudgets, currentMonthKey, daysElapsed, totalDays, today, oneOffOver]);
   const projectedSpend = thisMonthBudgets.reduce((s, b) => s + (paces[b.id]?.projected ?? b.spent), 0);
-  const projectedPct = totalBudgeted ? Math.round((projectedSpend / totalBudgeted) * 100) : 0;
-
-  // Last month's spending per category
-  const lastMonthData = useMemo(() => {
-    const prev = subMonths(now, 1);
-    const pm = getMonth(prev);
-    const py = getYear(prev);
-    const names = new Set(budgets.map(b => b.category));
-    const map: Record<string, number> = {};
-    transactions
-      .filter(t => {
-        const d = parseISO(t.date);
-        return isCountableExpense(t) && getMonth(d) === pm && getYear(d) === py;
-      })
-      .forEach(t => { const c = budgetCategoryOf(t.category, names); map[c] = (map[c] || 0) + t.amount; });
-    return map;
-  }, [transactions, budgets, now]);
+  const projectedPct = budgetPercent(projectedSpend, totalBudgeted);
 
   const lastMonthLabel = format(subMonths(now, 1), 'MMMM');
   const lastMonthKey = format(subMonths(now, 1), 'yyyy-MM');
 
   const lastMonthBudgets = useMemo(
-    () => budgets.filter(b => b.month === lastMonthKey && !isBudgetPending(b.id)),
+    () => budgetsForMonth(budgets, lastMonthKey).filter(b => !isBudgetPending(b.id)),
     [budgets, lastMonthKey, isBudgetPending]
+  );
+
+  // Last month's spending, grouped the way last month's budgets were named.
+  // This is what the Last Month tab shows and what Rollover measures against.
+  const lastMonthSpent = useMemo(
+    () => spentByBudgetCategory(transactions, lastMonthKey, new Set(lastMonthBudgets.map(b => b.category))),
+    [transactions, lastMonthKey, lastMonthBudgets],
+  );
+  // The same month grouped by this month's budget names, for "Last mo" on each card.
+  const lastMonthData = useMemo(
+    () => spentByBudgetCategory(transactions, lastMonthKey, new Set(thisMonthBudgets.map(b => b.category))),
+    [transactions, lastMonthKey, thisMonthBudgets],
   );
 
   const hasCopiedLastMonth = useMemo(
@@ -137,7 +142,7 @@ const Budgets = () => {
       for (const b of lastMonthBudgets) {
         const exists = budgets.some(cb => cb.month === currentMonthKey && cb.category === b.category);
         if (!exists) {
-          if (await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period, month: currentMonthKey })) copied++;
+          if (await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period, month: currentMonthKey, isFixed: b.isFixed })) copied++;
         }
       }
       if (copied > 0) toast.success(`Copied ${copied} budget${copied > 1 ? 's' : ''} from ${lastMonthLabel}`);
@@ -157,9 +162,9 @@ const Budgets = () => {
       for (const b of lastMonthBudgets) {
         const exists = budgets.some(cb => cb.month === currentMonthKey && cb.category === b.category);
         if (!exists) {
-          const unspent = Math.max(0, b.amount - b.spent);
-          const newAmount = Math.round((b.amount + unspent) * 100) / 100;
-          if (await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: newAmount, period: b.period, month: currentMonthKey })) rolled++;
+          // Unspent against last month's spending. b.spent is this month's.
+          const newAmount = rolloverAmount(b.amount, lastMonthSpent[b.category] ?? 0);
+          if (await addBudget({ category: b.category, categoryIcon: b.categoryIcon, amount: newAmount, period: b.period, month: currentMonthKey, isFixed: b.isFixed })) rolled++;
         }
       }
       if (rolled > 0) toast.success(`Rolled over ${rolled} budget${rolled > 1 ? 's' : ''} with unspent amounts added`);
@@ -227,7 +232,9 @@ const Budgets = () => {
       for (const item of template.items) {
         if (taken.has(item.category)) { skippedCount++; continue; }
         taken.add(item.category);
-        if (await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount: item.amount, period: item.period as 'monthly' | 'weekly', month: monthKey })) addedCount++;
+        // A template saved while weekly budgets existed is applied as monthly.
+        const { amount, period } = asMonthly(item);
+        if (await addBudget({ category: item.category, categoryIcon: item.categoryIcon, amount, period, month: monthKey })) addedCount++;
       }
       if (addedCount === 0 && skippedCount > 0) {
         toast.info('All budgets from this template already exist for this month');
@@ -416,14 +423,13 @@ const Budgets = () => {
         ) : tab === 'this' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {thisMonthBudgets.map(b => {
-              const pct = b.amount ? Math.round((b.spent / b.amount) * 100) : 0;
+              const pct = budgetPercent(b.spent, b.amount);
               const remaining = b.amount - b.spent;
-              const periodDays = b.period === 'weekly' ? 7 : daysLeft;
-              const dailyLeft = periodDays > 0 ? remaining / periodDays : 0;
+              const dailyLeft = daysLeft > 0 ? remaining / daysLeft : 0;
               // Velocity for this budget
               const pace = paces[b.id] ?? { projected: b.spent, hasPace: false };
               const projected = pace.projected;
-              const projPct = b.amount ? Math.round((projected / b.amount) * 100) : 0;
+              const projPct = budgetPercent(projected, b.amount);
               const lastMonthAmt = lastMonthData[b.category];
               return (
                 <div key={b.id} className="bg-card rounded-xl p-4 card-shadow transition-shadow hover:card-shadow-hover group">
@@ -432,7 +438,7 @@ const Budgets = () => {
                       <IconTile value={b.categoryIcon} />
                       <div>
                         <p className="text-sm font-semibold">{b.category}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{b.period} · {b.period === 'weekly' ? '7' : daysLeft}d left</p>
+                        <p className="text-xs text-muted-foreground">Monthly · {daysLeft}d left</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -476,8 +482,8 @@ const Budgets = () => {
           /* Last Month view */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {lastMonthBudgets.map(b => {
-              const lastSpent = lastMonthData[b.category] ?? 0;
-              const pct = b.amount ? Math.round((lastSpent / b.amount) * 100) : 0;
+              const lastSpent = lastMonthSpent[b.category] ?? 0;
+              const pct = budgetPercent(lastSpent, b.amount);
               const diff = lastSpent - b.spent;
               return (
                 <div key={b.id} className="bg-card rounded-xl p-4 card-shadow">
