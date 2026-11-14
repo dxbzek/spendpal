@@ -172,19 +172,19 @@ const Debt = () => {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt</h1>
           {creditDebts.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Total Owed</p>
-                <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalOwed))}</p>
+                <p className="text-base sm:text-lg font-heading text-primary-foreground tabular-nums break-words">{mask(fmt(totalOwed))}</p>
               </div>
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Credit Limit</p>
-                <p className="text-sm sm:text-lg font-heading text-primary-foreground truncate">{mask(fmt(totalLimit))}</p>
+                <p className="text-base sm:text-lg font-heading text-primary-foreground tabular-nums break-words">{mask(fmt(totalLimit))}</p>
               </div>
-              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
+              <div className="col-span-2 sm:col-span-1 min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
-                  <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil}%</p>
+                  <p className="text-base sm:text-lg font-heading text-primary-foreground">{overallUtil}%</p>
                   {worstUtil >= 30 && (
                     <span className="text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-raised text-primary-foreground shrink-0">
                       {worstUtil >= 75 ? 'High' : 'Watch'}
@@ -324,10 +324,15 @@ const Debt = () => {
                           const left = remainingInstallments(plan);
                           const endsOn = planSchedule(plan, debt, new Date())?.endsOn;
                           return (
-                            <li key={plan.key} className="flex items-center justify-between gap-2 text-muted-foreground">
-                              <span className="truncate">
-                                {planDisplayName(plan.merchant)} · {left} × {mask(fmt(plan.amountPerInstallment))}
-                                {endsOn ? ` · ends ${format(endsOn, 'MMM yyyy')}` : ''}
+                            <li key={plan.key} className="flex items-start justify-between gap-2 text-muted-foreground">
+                              {/* Two lines, not one truncated line: on a phone the
+                                  instalment count and end date were cut off. */}
+                              <span className="min-w-0">
+                                <span className="block text-foreground break-words">{planDisplayName(plan.merchant)}</span>
+                                <span className="block text-xs">
+                                  {left} × {mask(fmt(plan.amountPerInstallment))}
+                                  {endsOn ? ` · ends ${format(endsOn, 'MMM yyyy')}` : ''}
+                                </span>
                               </span>
                               <span className="tabular-nums shrink-0">{mask(fmt(planPrincipalLeft(plan)))}</span>
                             </li>
