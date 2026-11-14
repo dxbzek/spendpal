@@ -73,5 +73,14 @@ export function isBudgetAmount(n: unknown): n is number {
  */
 export function asMonthly<T extends { amount: number; period: string }>(budget: T): T & { period: 'monthly' } {
   if (budget.period !== 'weekly') return budget as T & { period: 'monthly' };
-  return { ...budget, amount: round2(budget.amount * 52 / 12), period: 'monthly' };
+  return { ...budget, amount: weeklyToMonthly(budget.amount), period: 'monthly' };
+}
+
+/**
+ * A weekly amount as a monthly one: 52 weeks over 12 months, to the cent.
+ * The one sum for it in the app. The database migration and restore_backup()
+ * use the same (round(amount * 52 / 12, 2)).
+ */
+export function weeklyToMonthly(amount: number): number {
+  return round2(amount * 52 / 12);
 }

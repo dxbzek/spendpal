@@ -236,7 +236,7 @@ WHAT TO LOOK FOR:
 AMOUNT HANDLING:
 - Strip currency symbols (AED, د.إ, $, €, £, ₹) and "/mo", "monthly", "per month" suffixes
 - Always output a positive number
-- If the row is annotated as weekly or yearly, convert to monthly: weekly × 4.33, yearly ÷ 12
+- If the row is annotated as weekly or yearly, convert to monthly: weekly × 52 ÷ 12, yearly ÷ 12
 
 CATEGORY MAPPING — prefer these standard names when the label clearly maps:
   Coffee, Groceries, Transport, Dining, Telecom, Metro/Taxi, Travel, Entertainment, Charity, Delivery, DEWA, Rent, Shopping, Health, Education, Subscriptions, Salary, Freelance, Transfer, Utilities, Insurance, Fitness, Personal Care, Gift, Other.

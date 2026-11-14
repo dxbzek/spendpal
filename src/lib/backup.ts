@@ -8,6 +8,7 @@
 // happens or nothing changes.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_WRITE_COLUMNS } from '@/lib/dbSchema';
+import { weeklyToMonthly } from '@/lib/finance/budgetSpend';
 
 export const PAGE_SIZE = 1000;
 
@@ -285,9 +286,10 @@ export function instalmentsOk(total: unknown, current: unknown): boolean {
 /**
  * Weekly budgets are retired. The database turned the ones it held into
  * monthly budgets with this sum (52 weeks over 12 months, to the cent), so a
- * weekly budget in an older file gets the same.
+ * weekly budget in an older file gets the same. The sum lives in budgetSpend,
+ * where the app reads an old weekly row with it too.
  */
-export const weeklyToMonthly = (amount: number) => Math.round((amount * 52 / 12) * 100) / 100;
+export { weeklyToMonthly };
 
 // Columns the restore carries on top of the app's write list. plan_id ties the
 // rows of one instalment plan together and transfer_id the two halves of a
