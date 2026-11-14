@@ -9,7 +9,9 @@ import { CurrencyProvider } from "@/context/CurrencyContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Loader2 } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { toast } from "sonner";
+import { takeNotice } from "@/lib/notice";
 
 // Route-level code splitting - heavy pages (AIAdvisor, Reports, CalendarView)
 // are now loaded on demand, shrinking the initial JS bundle.
@@ -52,6 +54,15 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// A message left by the page before a reload (see lib/notice.ts).
+const NoticeAfterReload = () => {
+  useEffect(() => {
+    const text = takeNotice();
+    if (text) toast(text, { duration: 10_000 });
+  }, []);
+  return null;
+};
+
 const App = () => (
     <LazyMotion features={domAnimation} strict>
     <ThemeProvider>
@@ -59,6 +70,7 @@ const App = () => (
         <AuthProvider>
           <Toaster />
           <Sonner />
+          <NoticeAfterReload />
           <BrowserRouter>
             <Suspense fallback={<PageFallback />}>
               <Routes>

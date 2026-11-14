@@ -3,41 +3,79 @@
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { deleteEverything, deleteAccount, clearLocalData } from '@/lib/accountDeletion';
+import { userKey } from '@/lib/userStorage';
 
 type Row = Record<string, unknown>;
 type DbError = { message: string; code?: string };
 
+/**
+ * The avatar storage policies as they may stand on the live project:
+ * 'applied': the review-fixes migration is in, a user sees and deletes their own folder.
+ * 'missing': no SELECT and no DELETE policy: the list is empty and a remove deletes nothing, without an error.
+ * 'no-delete': the file can be seen, but a remove still answers ok and deletes nothing.
+ */
+type AvatarPolicy = 'applied' | 'missing' | 'no-delete';
+
 /** In-memory stand-in for the Supabase client: just the calls accountDeletion.ts makes. */
-function fakeDb(seed: Record<string, Row[]>, errors: Record<string, DbError> = {}) {
+function fakeDb(seed: Record<string, Row[]>, errors: Record<string, DbError> = {}, policy: AvatarPolicy = 'applied') {
   const tables: Record<string, Row[]> = JSON.parse(JSON.stringify(seed));
   const calls: string[] = [];
+  const files = new Set([`${ME}/avatar.png`, `${OTHER}/avatar.png`]);
   const from = (name: string) => {
     const filters: Array<[string, unknown]> = [];
-    let op: 'delete' | 'update' = 'delete';
+    let op: 'delete' | 'update' | 'select' = 'delete';
     let patch: Row = {};
+    let single = false;
     const match = (r: Row) => filters.every(([k, v]) => r[k] === v);
     const run = () => {
       calls.push(`${op} ${name}`);
       if (errors[name]) return { data: null, error: errors[name] };
       // A table the database does not have answers like PostgREST does.
       if (!(name in tables)) return { data: null, error: { message: `Could not find the table 'public.${name}'`, code: 'PGRST205' } };
+      if (op === 'select') {
+        const rows = tables[name].filter(match);
+        return { data: single ? rows[0] ?? null : rows, error: null };
+      }
       if (op === 'delete') tables[name] = tables[name].filter(r => !match(r));
       else tables[name].filter(match).forEach(r => Object.assign(r, patch));
       return { data: null, error: null };
     };
     const q = {
+      select: () => { op = 'select'; return q; },
       delete: () => { op = 'delete'; return q; },
       update: (p: Row) => { op = 'update'; patch = p; return q; },
       eq: (k: string, v: unknown) => { filters.push([k, v]); return q; },
+      maybeSingle: () => { single = true; return q; },
       then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => Promise.resolve(run()).then(res, rej),
     };
     return q;
   };
-  return { client: { from } as unknown as SupabaseClient, tables, calls };
+  // The signed-in user is ME; policies only ever cover their own folder.
+  const own = (path: string) => path.startsWith(`${ME}/`);
+  const storage = {
+    from: (bucket: string) => {
+      expect(bucket).toBe('avatars');
+      return {
+        list: async (folder: string) => ({
+          data: policy === 'missing' ? [] : [...files]
+            .filter(p => p.startsWith(`${folder}/`) && own(p))
+            .map(p => ({ name: p.slice(folder.length + 1), id: `id-${p}` })),
+          error: null,
+        }),
+        remove: async (paths: string[]) => {
+          calls.push(`remove ${paths.join(',')}`);
+          if (policy === 'applied') for (const p of paths) if (own(p)) files.delete(p);
+          return { data: [], error: null };
+        },
+      };
+    },
+  };
+  return { client: { from, storage } as unknown as SupabaseClient, tables, calls, files };
 }
 
 const ME = 'user-1';
 const OTHER = 'user-2';
+const photoUrl = (uid: string) => `https://x.supabase.co/storage/v1/object/public/avatars/${uid}/avatar.png?t=1`;
 const both = (row: Row): Row[] => [{ ...row, id: `${row.id}-me`, user_id: ME }, { ...row, id: `${row.id}-other`, user_id: OTHER }];
 
 const seed = () => ({
@@ -49,9 +87,9 @@ const seed = () => ({
   custom_categories: both({ id: 'c', name: 'Therapy', icon: 'heart' }),
   user_settings: both({ id: 'u', data: { monthly_income: 10000 } }),
   profiles: both({
-    id: 'p', display_name: 'Sam', phone_number: '+971501234567', avatar_url: 'https://x/avatars/u/avatar.png',
+    id: 'p', display_name: 'Sam', phone_number: '+971501234567',
     currency: 'USD', notify_email: true, notify_sms: true,
-  }),
+  }).map(p => ({ ...p, avatar_url: photoUrl(p.user_id as string) })),
 });
 
 const mine = (rows: Row[]) => rows.filter(r => r.user_id === ME);
@@ -78,10 +116,38 @@ describe('deleteEverything', () => {
     expect(mine(tables.profiles)[0]).toMatchObject({ currency: 'USD', notify_email: true });
   });
 
-  it('leaves the photo link, because the photo file itself cannot be removed from the browser', async () => {
-    const { client, tables } = fakeDb(seed());
-    await deleteEverything(client, ME);
-    expect(mine(tables.profiles)[0].avatar_url).toBe('https://x/avatars/u/avatar.png');
+  // The photo used to stay on every Delete Everything.
+  it('removes the photo file and its link once the storage policy is applied', async () => {
+    const { client, tables, files } = fakeDb(seed());
+    await expect(deleteEverything(client, ME)).resolves.toEqual({ photo: 'removed' });
+    expect(files.has(`${ME}/avatar.png`)).toBe(false);
+    expect(mine(tables.profiles)[0].avatar_url).toBeNull();
+    // Another user's photo is not touched.
+    expect(files.has(`${OTHER}/avatar.png`)).toBe(true);
+    expect(theirs(tables.profiles)[0].avatar_url).toBe(photoUrl(OTHER));
+  });
+
+  it('says the photo was kept, and keeps its link, when storage hides the folder (policy not applied)', async () => {
+    const { client, tables, files } = fakeDb(seed(), {}, 'missing');
+    await expect(deleteEverything(client, ME)).resolves.toEqual({ photo: 'kept' });
+    expect(files.has(`${ME}/avatar.png`)).toBe(true);
+    expect(mine(tables.profiles)[0].avatar_url).toBe(photoUrl(ME));
+  });
+
+  it('does not trust a remove that answers ok: the folder is listed again', async () => {
+    const { client, tables, calls } = fakeDb(seed(), {}, 'no-delete');
+    await expect(deleteEverything(client, ME)).resolves.toEqual({ photo: 'kept' });
+    expect(calls).toContain(`remove ${ME}/avatar.png`);
+    expect(mine(tables.profiles)[0].avatar_url).toBe(photoUrl(ME));
+  });
+
+  it('clears a photo link that points to another site, with nothing to remove', async () => {
+    const data = seed();
+    mine(data.profiles)[0].avatar_url = 'https://lh3.example.com/me.png';
+    const { client, tables, calls } = fakeDb(data, {}, 'missing');
+    await expect(deleteEverything(client, ME)).resolves.toEqual({ photo: 'none' });
+    expect(calls.some(c => c.startsWith('remove'))).toBe(false);
+    expect(mine(tables.profiles)[0].avatar_url).toBeNull();
   });
 
   it('does not touch another user', async () => {
@@ -102,7 +168,7 @@ describe('deleteEverything', () => {
     delete data.user_settings;
     delete data.advisor_sessions;
     const { client, tables } = fakeDb(data);
-    await expect(deleteEverything(client, ME)).resolves.toBeUndefined();
+    await expect(deleteEverything(client, ME)).resolves.toEqual({ photo: 'removed' });
     expect(mine(tables.custom_categories)).toEqual([]);
     expect(mine(tables.profiles)[0].display_name).toBeNull();
   });
@@ -128,21 +194,24 @@ describe('clearLocalData', () => {
       'spendpal_networth_history', 'spendpal_rollover_cats', 'spendpal_monthly_income', 'spendpal_nw_goal',
       'spendpal_payday', 'spendpal_budget_templates', 'spendpal-budget-alerted', 'spendpal_rate_AED_USD',
       'balanceHidden', 'secondaryCurrency', 'theme', 'sb-project-auth-token',
+      userKey(ME, 'settings'), userKey(ME, 'budget_alerted'), userKey(ME, 'balance_hidden'),
+      userKey(OTHER, 'settings'), userKey(OTHER, 'balance_hidden'),
     ];
     for (const k of keys) localStorage.setItem(k, 'x');
   };
   const left = () => Object.keys(localStorage).sort();
+  const otherUser = [userKey(OTHER, 'balance_hidden'), userKey(OTHER, 'settings')];
 
-  it('removes every list the app keeps in the browser, not just three of them', () => {
+  it('removes every list the app keeps in the browser for this user, not just three of them', () => {
     fill();
-    clearLocalData(localStorage);
-    expect(left()).toEqual(['balanceHidden', 'sb-project-auth-token', 'secondaryCurrency', 'theme']);
+    clearLocalData(localStorage, { userId: ME });
+    expect(left()).toEqual(['balanceHidden', 'sb-project-auth-token', 'secondaryCurrency', userKey(ME, 'balance_hidden'), ...otherUser, 'theme'].sort());
   });
 
   it('also removes the per-device choices when the account goes, and leaves the session to sign-out', () => {
     fill();
-    clearLocalData(localStorage, { account: true });
-    expect(left()).toEqual(['sb-project-auth-token', 'theme']);
+    clearLocalData(localStorage, { userId: ME, account: true });
+    expect(left()).toEqual(['sb-project-auth-token', ...otherUser, 'theme'].sort());
   });
 });
 
