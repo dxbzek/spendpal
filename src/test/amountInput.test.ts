@@ -123,3 +123,26 @@ describe("parseBalance", () => {
     expect(parseBalance("3000.49")).toBe(3000.49);
   });
 });
+
+// Review: lakh grouping fell through to "first separator is the decimal", so
+// "1,50,000" was saved as 1.50 with no warning.
+describe("normalizeAmount reads Indian grouping", () => {
+  const value = (raw: string) => parseFloat(normalizeAmount(raw));
+
+  it("reads lakh and crore grouping as thousands separators", () => {
+    expect(value("1,50,000")).toBe(150000);
+    expect(value("2,00,000")).toBe(200000);
+    expect(value("12,34,567")).toBe(1234567);
+    expect(value("1,00,00,000")).toBe(10000000);
+    expect(value("12,34,567.89")).toBe(1234567.89);
+  });
+
+  it("reads one or two digits after repeated grouping commas as the decimals", () => {
+    expect(value("1,234,56")).toBe(1234.56);
+  });
+
+  it("still drops repeated separators that are not grouping", () => {
+    expect(normalizeAmount("1,2,3")).toBe("1.23");
+    expect(normalizeAmount("1.2.3.4")).toBe("1.234");
+  });
+});

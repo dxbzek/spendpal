@@ -10,6 +10,11 @@
 //     thousands separators
 //   - dots only, repeated, in whole groups of three ("1.234.567"): thousands
 //     separators. One dot alone is always a decimal ("1.234" stays 1.234).
+//   - one kind repeated, with groups of two or three between them (Indian
+//     lakh grouping, "1,50,000" and "12,34,567"): thousands separators when
+//     the last group has three digits; with one or two digits after the last
+//     one ("1,234,56") that last one is the decimal. Two commas cannot both
+//     be decimals, and reading the first as one saved 150,000 as 1.50.
 //   - anything else: the first separator is the decimal ("1,50" is 1.50) and
 //     extra ones are dropped ("1.2.3" is 1.23)
 
@@ -22,6 +27,10 @@ const firstDotOnly = (s: string): string => {
 /** "1" + "234" + "567": a leading group of 1 to 3 digits, then groups of exactly 3. */
 const isGrouped = (groups: string[]): boolean =>
   groups.length > 1 && /^[1-9][0-9]{0,2}$/.test(groups[0]) && groups.slice(1).every(g => /^[0-9]{3}$/.test(g));
+
+/** Indian or western grouping: a leading group of 1 to 3 digits, then groups of 2 or 3 between the separators. */
+const isLooselyGrouped = (groups: string[]): boolean =>
+  groups.length > 2 && /^[1-9][0-9]{0,2}$/.test(groups[0]) && groups.slice(1, -1).every(g => /^[0-9]{2,3}$/.test(g));
 
 export interface NormalizeAmountOptions {
   /** Keep a leading minus (an overdrawn account, a card in credit). */
@@ -50,6 +59,12 @@ export function normalizeAmount(raw: string, options: NormalizeAmountOptions = {
   const groups = s.split(hasComma ? ',' : '.');
   // One dot alone is a decimal even when three digits follow it.
   if (isGrouped(groups) && (hasComma || groups.length > 2)) return sign + groups.join('');
+  if (isLooselyGrouped(groups)) {
+    const last = groups[groups.length - 1];
+    const whole = groups.slice(0, -1).join('');
+    if (/^[0-9]{3}$/.test(last)) return sign + whole + last;
+    if (/^[0-9]{1,2}$/.test(last)) return sign + whole + '.' + last;
+  }
   return sign + firstDotOnly(s.replace(/,/g, '.'));
 }
 
