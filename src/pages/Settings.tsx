@@ -136,7 +136,10 @@ const DataBackupCard = () => {
       await refresh();
       const skipped = result.skippedTransactions
         ? ` ${result.skippedTransactions} transactions had no account in the file and were left out.` : '';
-      toast.success(`Restored ${result.accounts} accounts and ${result.transactions} transactions.${skipped}`);
+      // Weekly budgets are retired, so the amounts of any in the file changed.
+      const weekly = result.weeklyBudgets
+        ? ` ${result.weeklyBudgets} weekly budgets were changed to monthly (weekly amount x 52 / 12).` : '';
+      toast.success(`Restored ${result.accounts} accounts and ${result.transactions} transactions.${skipped}${weekly}`);
     } catch (err: unknown) {
       logger.error('Restore failed', err);
       if (err instanceof RestoreError && err.unchanged) {

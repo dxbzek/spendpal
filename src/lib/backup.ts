@@ -162,6 +162,8 @@ export interface PreparedRestore {
   goal_contributions: Row[];
   /** Transactions left out because their account isn't in the file. */
   skippedTransactions: number;
+  /** Weekly budgets in the file that were turned into monthly ones. */
+  weeklyBudgets: number;
 }
 
 // ─── The database's rules ─────────────────────────────────────────────────────
@@ -367,6 +369,7 @@ export function prepareRestore(
   }
 
   const budgets: Row[] = [];
+  let weeklyBudgets = 0;
   // One budget per category and month (uniq_budgets_user_category_month).
   const budgetAt = new Map<string, number>();
   for (const { row: b, n } of rows('budgets')) {
@@ -376,7 +379,9 @@ export function prepareRestore(
     const first = budgetAt.get(key);
     if (first !== undefined) { bad('budget', n, `same category and month as budget ${first}`); continue; }
     budgetAt.set(key, n);
-    const amount = b.period === 'weekly' ? weeklyToMonthly(b.amount as number) : b.amount;
+    const weekly = b.period === 'weekly';
+    if (weekly) weeklyBudgets++;
+    const amount = weekly ? weeklyToMonthly(b.amount as number) : b.amount;
     budgets.push({ ...pick('budgets', b), amount, period: 'monthly', user_id: userId });
   }
 
@@ -408,13 +413,13 @@ export function prepareRestore(
     const more = problems.length > 3 ? ` (and ${problems.length - 3} more)` : '';
     throw new Error(`Backup file has rows that can't be restored: ${problems.slice(0, 3).join('; ')}${more}.`);
   }
-  return { accounts, balances, transactions, budgets, goals, goal_contributions, skippedTransactions };
+  return { accounts, balances, transactions, budgets, goals, goal_contributions, skippedTransactions, weeklyBudgets };
 }
 
 // ─── Writing ──────────────────────────────────────────────────────────────────
 
 /** What the restore_backup database function takes: the prepared rows, keyed by table. */
-export type RestorePayload = Omit<PreparedRestore, 'skippedTransactions'>;
+export type RestorePayload = Omit<PreparedRestore, 'skippedTransactions' | 'weeklyBudgets'>;
 
 /**
  * The largest restore request the app sends. The whole restore has to be one
@@ -478,6 +483,8 @@ export interface RestoreResult {
   accounts: number;
   transactions: number;
   skippedTransactions: number;
+  /** Weekly budgets whose amount was changed to the monthly sum. The user is told: a stored figure changed. */
+  weeklyBudgets: number;
 }
 
 /**
@@ -502,9 +509,10 @@ export async function restoreBackup(
   // leaves the account exactly as it was, and the message says so.
   let payload: RestorePayload;
   let skippedTransactions: number;
+  let weeklyBudgets: number;
   let bytes: number;
   try {
-    ({ skippedTransactions, ...payload } = prepareRestore(data, userId));
+    ({ skippedTransactions, weeklyBudgets, ...payload } = prepareRestore(data, userId));
     bytes = restorePayloadBytes(payload);
   } catch (err) {
     throw new RestoreError(errorMessage(err), true);
@@ -546,5 +554,6 @@ export async function restoreBackup(
     accounts: typeof done.accounts === 'number' ? done.accounts : payload.accounts.length,
     transactions: typeof done.transactions === 'number' ? done.transactions : payload.transactions.length,
     skippedTransactions,
+    weeklyBudgets,
   };
 }

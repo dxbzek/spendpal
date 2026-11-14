@@ -343,8 +343,11 @@ describe('prepareRestore', () => {
         { ...live().budgets[0], id: 'b2', category: 'Fuel', amount: 300 },
       ],
     };
-    expect(prepareRestore(file, USER).budgets.map(b => [b.category, b.period, b.amount]))
+    const prep = prepareRestore(file, USER);
+    expect(prep.budgets.map(b => [b.category, b.period, b.amount]))
       .toEqual([['Food', 'monthly', 433.33], ['Fuel', 'monthly', 300]]);
+    // Counted, so the user can be told a stored amount changed.
+    expect(prep.weeklyBudgets).toBe(1);
     // A weekly and a monthly budget for one category and month would become two monthly ones.
     const clash = { ...file, budgets: [file.budgets[0], { ...live().budgets[0], id: 'b3' }] };
     expect(() => prepareRestore(clash, USER)).toThrow(/budget 2: same category and month as budget 1/);
@@ -414,13 +417,14 @@ describe('restoreBackup', () => {
     const backup = await exportBackup(source.client, USER);
     const target = fakeDb({ accounts: [account('z9', 'Old', 1)], transactions: [], budgets: [], goals: [], goal_contributions: [] });
     const result = await restoreBackup(target.client, USER, backup);
-    expect(result).toEqual({ accounts: 2, transactions: 3, skippedTransactions: 0 });
+    expect(result).toEqual({ accounts: 2, transactions: 3, skippedTransactions: 0, weeklyBudgets: 0 });
     expect(summary(target.tables)).toEqual(summary(source.tables));
     expect(target.tables.goal_contributions[0].created_at).toBe('2026-10-01T00:00:00Z');
     // One request, so the database can make it one transaction.
     expect(target.rpcCalls.map(c => c.fn)).toEqual(['restore_backup']);
     expect(Object.keys(target.rpcCalls[0].payload).sort())
       .toEqual(['accounts', 'balances', 'budgets', 'goal_contributions', 'goals', 'transactions']);
+    expect(target.tables.budgets[0].period).toBe('monthly');
     // Accounts are listed by creation time, and one transaction has one clock time.
     expect(target.tables.accounts.map(a => [a.name, a.created_at]))
       .toEqual([['Debit', '2026-01-01T00:00:00Z'], ['Cash', '2026-01-02T00:00:00Z']]);
@@ -476,7 +480,7 @@ describe('restoreBackup', () => {
     expect(db.tables.accounts.map(a => a.name)).toEqual(['New']);
     // Going back: the safety copy is a file the restore accepts.
     const back = await restoreBackup(db.client, USER, JSON.parse(JSON.stringify(snapshot)));
-    expect(back).toEqual({ accounts: 2, transactions: 4, skippedTransactions: 0 });
+    expect(back).toEqual({ accounts: 2, transactions: 4, skippedTransactions: 0, weeklyBudgets: 0 });
     expect(summary(db.tables)).toEqual(before);
   });
 
@@ -597,7 +601,7 @@ describe('restorePayloadBytes', () => {
         total_installments: null, current_installment: null, loan_total_amount: null, remaining_principal: null,
       })),
     };
-    const { skippedTransactions: _skipped, ...payload } = prepareRestore(file, '99999999-2222-4333-8444-555555555555', id);
+    const { skippedTransactions: _skipped, weeklyBudgets: _weekly, ...payload } = prepareRestore(file, '99999999-2222-4333-8444-555555555555', id);
     const perRow = (restorePayloadBytes(payload) - restorePayloadBytes({ ...payload, transactions: [] })) / 1000;
     expect(perRow).toBeGreaterThan(250);
     expect(perRow).toBeLessThan(400);
