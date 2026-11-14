@@ -3,7 +3,7 @@ import { memo, useMemo } from 'react';
 import { parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Transaction } from '@/types/finance';
-import { isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending } from '@/lib/finance/transactionFilters';
 
 interface Props {
   transactions: Transaction[];
@@ -15,22 +15,19 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
 
   const data = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
-    const map: Record<string, { income: number; expenses: number }> = {};
+    // The same rule as Home's cards (incomeAndSpending): transfers and
+    // tracking-only rows left out, spending after refunds. Future-dated rows
+    // have not happened yet.
+    const byMonth: Record<string, Transaction[]> = {};
     transactions.forEach(tx => {
-      // Mirror the canonical income/expense convention used by the Dashboard
-      // summary cards: exclude transfers (stored as paired income+expense rows)
-      // so they aren't double-counted, skip tracking-only expenses, and skip
-      // future-dated transactions that haven't happened yet.
-      if (tx.isInternal) return;
       if (tx.date > today) return;
-      const isIncome = isCountableIncome(tx, creditAccountIds); // a refund is not income
-      const isExpense = tx.type === 'expense' && !tx.isTrackingOnly;
-      if (!isIncome && !isExpense) return;
-      const month = format(parseISO(tx.date), 'yyyy-MM');
-      if (!map[month]) map[month] = { income: 0, expenses: 0 };
-      if (isIncome) map[month].income += tx.amount;
-      else map[month].expenses += tx.amount;
+      (byMonth[tx.date.slice(0, 7)] ??= []).push(tx);
     });
+    const map: Record<string, { income: number; expenses: number }> = {};
+    for (const [month, rows] of Object.entries(byMonth)) {
+      const { income, spending } = incomeAndSpending(rows, creditAccountIds);
+      if (income || spending) map[month] = { income, expenses: spending };
+    }
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-6)

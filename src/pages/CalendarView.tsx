@@ -1,6 +1,6 @@
 import { PageSpinner } from '@/components/ui/spinner';
 import { NARROW_PAGE } from '@/lib/pageLayout';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending, isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -74,11 +74,11 @@ const CalendarView = () => {
   // earned or spent yet. Those rows still show on their day in the grid.
   const toDateTxs = useMemo(() => monthTxs.filter(tx => tx.date <= today), [monthTxs, today]);
   const scheduledCount = monthTxs.length - toDateTxs.length;
-  const totalIncome = useMemo(
-    () => toDateTxs.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0),
+  // Spending after refunds, the same rule as Home.
+  const { income: totalIncome, spending: totalExpenses } = useMemo(
+    () => incomeAndSpending(toDateTxs, creditAccountIds),
     [toDateTxs, creditAccountIds]
   );
-  const totalExpenses = useMemo(() => toDateTxs.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0), [toDateTxs]);
 
   const dayColor = (total: number) => {
     if (!total) return '';

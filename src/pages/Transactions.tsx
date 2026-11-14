@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending, isCountableExpense } from '@/lib/finance/transactionFilters';
 import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -161,15 +161,11 @@ const Transactions = () => {
     return { txs: txs.slice(0, 20), total, count, icon: txs[0]?.categoryIcon || '🏪' };
   }, [merchantProfile, transactions]);
 
-  const filteredIncome = useMemo(() =>
-    filtered.filter(tx => isCountableIncome(tx, creditAccountIds)).reduce((s, tx) => s + tx.amount, 0),
+  // Spending after refunds, the same rule as Home.
+  const { income: filteredIncome, spending: filteredExpenses, net: filteredNet } = useMemo(
+    () => incomeAndSpending(filtered, creditAccountIds),
     [filtered, creditAccountIds]
   );
-  const filteredExpenses = useMemo(() =>
-    filtered.filter(isCountableExpense).reduce((s, tx) => s + tx.amount, 0),
-    [filtered]
-  );
-  const filteredNet = filteredIncome - filteredExpenses;
 
   const handleDeleteSingle = (txId: string) => {
     const pair = transferPairs.get(txId);

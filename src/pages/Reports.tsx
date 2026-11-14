@@ -2,7 +2,7 @@ import { savingsSummary } from '@/lib/finance/pace';
 import { NARROW_PAGE } from '@/lib/pageLayout';
 import { budgetCategoryOf } from '@/lib/finance/categories';
 import { PageSpinner } from '@/components/ui/spinner';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending, isCountableExpense, isCountableIncome, netSpending } from '@/lib/finance/transactionFilters';
 import { activeBudgets } from '@/utils/budgets';
 import { useMemo, useState, lazy, Suspense } from 'react';
 import { format, parseISO, subMonths, getDay } from 'date-fns';
@@ -66,22 +66,13 @@ const Reports = () => {
     [transactions, prevMonthStr, partialCompare]
   );
 
-  const income = useMemo(
-    () => monthTxs
-      .filter(tx => isCountableIncome(tx, creditAccountIds))
-      .reduce((s, tx) => s + tx.amount, 0),
+  // Spending after refunds, the same rule as Home (incomeAndSpending).
+  const { income, spending: expenses } = useMemo(
+    () => incomeAndSpending(monthTxs, creditAccountIds),
     [monthTxs, creditAccountIds]
   );
 
-  const expenses = useMemo(
-    () => monthTxs.filter(tx => isCountableExpense(tx)).reduce((s, tx) => s + tx.amount, 0),
-    [monthTxs]
-  );
-
-  const prevExpenses = useMemo(
-    () => prevMonthTxs.filter(tx => isCountableExpense(tx)).reduce((s, tx) => s + tx.amount, 0),
-    [prevMonthTxs]
-  );
+  const prevExpenses = useMemo(() => netSpending(prevMonthTxs), [prevMonthTxs]);
 
   const expenseChange = prevExpenses > 0 ? ((expenses - prevExpenses) / prevExpenses) * 100 : null;
   const net = income - expenses;

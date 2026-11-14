@@ -1,5 +1,5 @@
 import { useCurrency } from '@/context/CurrencyContext';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending } from '@/lib/finance/transactionFilters';
 import { PiggyBank, TrendingUp, TrendingDown } from 'lucide-react';
 import type { Transaction } from '@/types/finance';
 import { memo, useMemo } from 'react';
@@ -20,9 +20,8 @@ const MoneySavedWidget = ({ transactions, creditAccountIds, hidden: _hidden, mas
     const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`;
     // Exclude future-dated transactions — not yet earned/spent.
     const monthTx = transactions.filter(t => t.date.startsWith(currentMonth) && t.date <= today);
-    const inc = monthTx.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0);
-    const exp = monthTx.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0);
-    const sav = inc - exp;
+    // Spending after refunds, the same rule as Home.
+    const { income: inc, spending: exp, net: sav } = incomeAndSpending(monthTx, creditAccountIds);
     return { income: inc, expenses: exp, saved: sav, pct: inc > 0 ? Math.round((sav / inc) * 100) : 0 };
   }, [transactions, creditAccountIds]);
 

@@ -1,6 +1,6 @@
 import { budgetCategoryOf } from '@/lib/finance/categories';
 import { useState, useMemo } from 'react';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { incomeAndSpending, isCountableExpense } from '@/lib/finance/transactionFilters';
 import { activeBudgets } from '@/utils/budgets';
 import { FileText, Printer } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
@@ -31,15 +31,8 @@ const MonthlyReportPrint = () => {
     });
 
     const creditAccountIds = new Set(accounts.filter(a => a.type === 'credit').map(a => a.id));
-    const totalIncome = monthTxs
-      .filter(tx => isCountableIncome(tx, creditAccountIds))
-      .reduce((s, tx) => s + tx.amount, 0);
-
-    const totalExpenses = monthTxs
-      .filter(tx => isCountableExpense(tx))
-      .reduce((s, tx) => s + tx.amount, 0);
-
-    const netSavings = totalIncome - totalExpenses;
+    // Spending after refunds, the same rule as Home.
+    const { income: totalIncome, spending: totalExpenses, net: netSavings } = incomeAndSpending(monthTxs, creditAccountIds);
 
     // Expenses by category
     const byCategory: Record<string, { icon: string; total: number }> = {};

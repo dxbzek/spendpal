@@ -53,3 +53,18 @@ export const grossSpending = (transactions: SpendingFields[]): number =>
  */
 export const netSpending = (transactions: SpendingFields[]): number =>
   Math.max(0, roundMoney(grossSpending(transactions) - refundTotal(transactions)));
+
+/**
+ * Income, spending and what is left, by the one rule every screen uses:
+ * spending is after refunds (netSpending) and a refund is never income. A
+ * screen that adds expenses before refunds while leaving the refund out of
+ * income counts the refund nowhere, and its net disagrees with Home's.
+ */
+export const incomeAndSpending = (
+  transactions: (SpendingFields & Pick<Transaction, 'accountId'>)[],
+  creditAccountIds: Set<string>,
+) => {
+  const income = roundMoney(transactions.reduce((s, t) => (isCountableIncome(t, creditAccountIds) ? s + t.amount : s), 0));
+  const spending = netSpending(transactions);
+  return { income, spending, net: roundMoney(income - spending) };
+};

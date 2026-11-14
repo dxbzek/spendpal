@@ -8,7 +8,7 @@ import { useToday } from '@/hooks/useToday';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
 import { savingsSummary } from '@/lib/finance/pace';
 import { pairTransfers } from '@/lib/finance/transfers';
-import { grossSpending, isCountableExpense, isCountableIncome, netSpending, refundTotal } from '@/lib/finance/transactionFilters';
+import { grossSpending, incomeAndSpending, isCountableExpense, refundTotal } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -130,10 +130,12 @@ const Dashboard = () => {
   );
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
-  const income = useMemo(() => filtered.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
   // Spending after refunds. A refund is an income row, but it is money back
   // for a purchase: it lowers spending and is never counted as income.
-  const expenses = useMemo(() => netSpending(filtered), [filtered]);
+  const { income, spending: expenses } = useMemo(
+    () => incomeAndSpending(filtered, creditAccountIds),
+    [filtered, creditAccountIds],
+  );
   const refunds = useMemo(() => refundTotal(filtered), [filtered]);
   // Before refunds: the base for the category shares, which cannot take a
   // refund off (a refund row does not say which category it undoes).
@@ -153,9 +155,9 @@ const Dashboard = () => {
   const [thisMonthIncome, thisMonthExpenses] = useMemo(() => {
     // Future-dated rows are skipped by isInPeriod: not spent or earned yet.
     const rows = transactions.filter(tx => isInPeriod(tx.date, 'month', today));
-    const inc = rows.reduce((s, tx) => (isCountableIncome(tx, creditAccountIds) ? s + tx.amount : s), 0);
     // After refunds, like the Expenses figure above.
-    return [inc, netSpending(rows)];
+    const { income: inc, spending } = incomeAndSpending(rows, creditAccountIds);
+    return [inc, spending];
   }, [transactions, today, creditAccountIds]);
   const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
   // Note: the financial-health score now lives solely on the AI Advisor page,
