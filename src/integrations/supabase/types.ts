@@ -65,6 +65,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage: {
+        Row: {
+          calls: number
+          day: string
+          user_id: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          user_id: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          data?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       accounts: {
         Row: {
           balance: number
@@ -280,7 +316,9 @@ export type Database = {
           loan_total_amount: number | null
           merchant: string
           note: string | null
+          plan_id: string | null
           total_installments: number | null
+          transfer_id: string | null
           type: string
           updated_at: string
           user_id: string
@@ -301,7 +339,9 @@ export type Database = {
           loan_total_amount?: number | null
           merchant: string
           note?: string | null
+          plan_id?: string | null
           total_installments?: number | null
+          transfer_id?: string | null
           type: string
           updated_at?: string
           user_id: string
@@ -322,7 +362,9 @@ export type Database = {
           loan_total_amount?: number | null
           merchant?: string
           note?: string | null
+          plan_id?: string | null
           total_installments?: number | null
+          transfer_id?: string | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -345,6 +387,10 @@ export type Database = {
       convert_currency: {
         Args: { p_from: string; p_to: string; p_rate: number }
         Returns: undefined
+      }
+      restore_backup: {
+        Args: { payload: Json }
+        Returns: Json
       }
     }
     Enums: {

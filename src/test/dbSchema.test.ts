@@ -144,6 +144,154 @@ describe('pending_migrations.sql', () => {
   });
 });
 
+// The file is run top to bottom, so the last definition of a thing is the one
+// the database ends up with. These read that last definition.
+describe('what pending_migrations.sql leaves in place', () => {
+  const sql = stripSqlComments(pending).replace(/\r\n/g, '\n');
+  const squash = (s: string) => s.replace(/\s+/g, ' ').trim();
+  /** The last statement that starts with `head`, up to `end`. */
+  const last = (head: string, end = ';') => {
+    const at = sql.lastIndexOf(head);
+    expect(at, `no "${head}" in pending_migrations.sql`).toBeGreaterThanOrEqual(0);
+    return squash(sql.slice(at, sql.indexOf(end, at) + end.length));
+  };
+  const ownsAccount = 'EXISTS (SELECT 1 FROM public.accounts a WHERE a.id = transactions.account_id AND a.user_id = (select auth.uid()))';
+
+  it('holds every statement of the review-fixes migration', () => {
+    const migration = stripSqlComments(read('supabase/migrations/20261114120000_review_fixes.sql'));
+    expect(squash(sql)).toContain(squash(migration));
+  });
+
+  it('lets a transaction be inserted or updated only on the user\'s own account', () => {
+    // user_id alone let a signed-in user post a row on another user's account,
+    // and the balance trigger then moved that account's balance.
+    for (const policy of ['Users can insert own transactions', 'Users can update own transactions']) {
+      const def = last(`CREATE POLICY "${policy}"`);
+      expect(def).toMatch(/WITH CHECK \( \(select auth\.uid\(\)\) = user_id AND EXISTS/);
+      expect(def).toContain(ownsAccount);
+    }
+  });
+
+  it('has a balance trigger that only moves an account of the row\'s user, and still skips pending rows', () => {
+    const body = last('CREATE OR REPLACE FUNCTION public.sync_account_balance()', '$$;');
+    const updates = body.match(/UPDATE accounts SET balance = balance \+ delta WHERE [^;]+;/g) ?? [];
+    expect(updates).toHaveLength(4);
+    for (const u of updates) expect(u).toMatch(/WHERE id = (NEW|OLD)\.account_id AND user_id = \1\.user_id;/);
+    // One guard for each of: insert, delete, the old half and the new half of an update.
+    expect(body.match(/is_tracking_only OR (NEW|OLD)\.is_pending/g)).toHaveLength(4);
+  });
+
+  it('allows a plan with 0 instalments paid, and never rewrites 0 to 1', () => {
+    const checks = [...sql.matchAll(/ADD CONSTRAINT transactions_installments_valid\s+CHECK[\s\S]*?;/g)].map(m => squash(m[0]));
+    expect(checks.length).toBeGreaterThan(0);
+    // Every copy, not just the last: an earlier, stricter one would fail on
+    // a 0-paid row before the last one is reached.
+    for (const c of checks) expect(c).toContain('current_installment >= 0 AND current_installment <= total_installments');
+    expect(sql).not.toMatch(/SET current_installment = [1-9]/);
+  });
+
+  it('grants profile updates for exactly the columns the app writes, so phone_verified_at stays closed', () => {
+    expect(squash(sql)).toContain('REVOKE INSERT, UPDATE ON public.profiles FROM PUBLIC, anon, authenticated;');
+    const granted = last('GRANT UPDATE (').match(/^GRANT UPDATE \(([^)]*)\) ON public\.profiles TO authenticated;$/)?.[1].split(',').map(c => c.trim());
+    expect(granted?.sort()).toEqual([...APP_WRITE_COLUMNS.profiles].sort());
+  });
+
+  it('has an UPDATE policy on goal_contributions, which convert_currency() needs', () => {
+    expect(last('CREATE POLICY "Users can update own goal contributions"')).toContain('FOR UPDATE USING ((select auth.uid()) = user_id)');
+  });
+
+  it('limits the avatar bucket and lets a user read and delete only their own folder', () => {
+    expect(last('UPDATE storage.buckets')).toMatch(/file_size_limit = 2097152, allowed_mime_types = ARRAY\[('image\/[a-z]+',? ?)+\] WHERE id = 'avatars';/);
+    const ownFolder = "USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text)";
+    expect(last('CREATE POLICY "Users can view own avatar"')).toContain(`FOR SELECT TO authenticated ${ownFolder}`);
+    expect(last('CREATE POLICY "Users can delete own avatar"')).toContain(`FOR DELETE TO authenticated ${ownFolder}`);
+  });
+
+  it('turns weekly budgets into monthly ones at amount * 52 / 12', () => {
+    // From the first statement of the one-time conversion to the end of its block.
+    const block = last('UPDATE public.budgets m', 'END $$;');
+    expect(block).toContain("SET amount = round(amount * 52 / 12, 2), period = 'monthly' WHERE period = 'weekly';");
+    // A weekly row next to a monthly row for the same category and month is added in, then deleted.
+    expect(block).toContain('SET amount = m.amount + w.converted');
+    expect(block).toContain("DELETE FROM public.budgets w WHERE w.period = 'weekly' AND EXISTS");
+  });
+
+  it('keeps ai_usage read-only for users and user_settings private to its owner', () => {
+    const s = squash(sql);
+    expect(s).toContain('ALTER TABLE public.ai_usage ENABLE ROW LEVEL SECURITY;');
+    expect(s).toContain('REVOKE ALL ON public.ai_usage FROM PUBLIC, anon, authenticated; GRANT SELECT ON public.ai_usage TO anon, authenticated;');
+    expect([...s.matchAll(/CREATE POLICY "[^"]+" ON public\.ai_usage FOR (\w+)/g)].map(m => m[1])).toEqual(['SELECT']);
+    expect(s).toContain('ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;');
+    const settings = [...s.matchAll(/CREATE POLICY "[^"]+" ON public\.user_settings FOR (\w+) TO authenticated ([^;]+);/g)];
+    expect(settings.map(m => m[1]).sort()).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE']);
+    for (const [, , rule] of settings) expect(rule).toContain('(select auth.uid()) = user_id');
+  });
+
+  describe('restore_backup()', () => {
+    const body = () => last('CREATE OR REPLACE FUNCTION public.restore_backup(payload JSONB)', '$$;');
+
+    it('runs as the caller, for signed-in users only', () => {
+      expect(body()).toContain('SECURITY INVOKER');
+      expect(body()).toContain("IF uid IS NULL THEN RAISE EXCEPTION 'not signed in'; END IF;");
+      const s = squash(sql);
+      expect(s).toContain('REVOKE ALL ON FUNCTION public.restore_backup(JSONB) FROM PUBLIC, anon, service_role;');
+      expect(s).toContain('GRANT EXECUTE ON FUNCTION public.restore_backup(JSONB) TO authenticated;');
+    });
+
+    it('writes every column the app writes, so a restore drops nothing', () => {
+      // A column added to dbWriteColumns.json later must be added to the
+      // function too, or a restore would silently lose it.
+      const inserts = new Map([...body().matchAll(/INSERT INTO (\w+) \(([^)]*)\)/g)].map(m => [m[1], m[2].split(',').map(c => c.trim())]));
+      for (const table of ['accounts', 'transactions', 'budgets', 'goals', 'goal_contributions']) {
+        expect(inserts.get(table), `no INSERT INTO ${table}`).toBeDefined();
+        expect(APP_WRITE_COLUMNS[table].filter(c => !inserts.get(table)!.includes(c)), table).toEqual([]);
+      }
+    });
+
+    it('never takes user_id from the file', () => {
+      // No column list read from the payload names user_id: every insert uses the caller's id.
+      const read = [...body().matchAll(/AS [rb]\(([^)]*)\)/g)].map(m => m[1]);
+      expect(read.length).toBeGreaterThanOrEqual(6);
+      for (const cols of read) expect(cols).not.toMatch(/\buser_id\b/);
+      expect(body().match(/SELECT (r\.id, )?uid,/g)).toHaveLength(5);
+    });
+
+    it('checks the payload before it deletes anything', () => {
+      const b = body();
+      expect(b.indexOf("RAISE EXCEPTION 'invalid backup")).toBeGreaterThan(0);
+      expect(b.lastIndexOf("RAISE EXCEPTION 'invalid backup")).toBeLessThan(b.indexOf('DELETE FROM'));
+    });
+  });
+});
+
+describe('tables and functions the app needs but does not write (dbServerObjects.json)', () => {
+  const objects: { tables: Record<string, string[]>; functions: Record<string, Record<string, unknown>> } =
+    JSON.parse(read('src/lib/dbServerObjects.json'));
+  const migrations = migrationFiles.map(f => read(`supabase/migrations/${f}`)).join('\n');
+
+  it('are created by a migration and by pending_migrations.sql, with the listed columns', () => {
+    for (const source of [migrations, pending]) {
+      const created = createdColumns(source);
+      const missing = Object.entries(objects.tables).flatMap(([t, cols]) => cols.filter(c => !has(created, t, c)).map(c => `${t}.${c}`));
+      expect(missing).toEqual([]);
+    }
+  });
+
+  it('have their functions defined with the listed arguments', () => {
+    for (const source of [migrations, pending]) {
+      for (const [fn, args] of Object.entries(objects.functions)) {
+        const signature = stripSqlComments(source).match(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${fn}\\(([^)]*)\\)`))?.[1];
+        expect(signature, `${fn} is not defined`).toBeDefined();
+        expect(signature!.split(',').map(a => a.trim().split(/\s+/)[0])).toEqual(Object.keys(args));
+      }
+    }
+  });
+
+  it('do not repeat a table the app writes', () => {
+    expect(Object.keys(objects.tables).filter(t => t in APP_WRITE_COLUMNS)).toEqual([]);
+  });
+});
+
 describe('startup schema check', () => {
   const tables = { accounts: ['name', 'apr', 'exclude_from_spendable'], budgets: ['amount'] };
   const undefinedColumn = { code: '42703' };
