@@ -50,6 +50,20 @@ const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart
 const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
 import type { Account } from '@/types/finance';
 
+// Home's card sections. A flex row, not a 4-column grid: a half-width card
+// with no partner (Installment Plans, Spending Forecast) grows to the full
+// row instead of sitting beside an empty half, and a widget that renders
+// nothing leaves its slot empty, which empty:hidden removes. A section whose
+// cards are all empty hides its title too.
+const SECTION = 'flex flex-wrap gap-4 lg:gap-5 mt-6 [&:not(:has(>:not(:first-child):not(:empty)))]:hidden';
+const SECTION_HEADER = 'basis-full flex items-center gap-4';
+// Half a row from lg up (50% less half the 1.25rem gap), a full row below.
+const HALF = 'min-w-0 grow basis-full lg:basis-[calc(50%-0.625rem)]';
+const FULL = 'min-w-0 basis-full';
+// Slots for widgets that may render nothing; their card fills the slot height.
+const HALF_SLOT = `${HALF} empty:hidden [&>*]:h-full`;
+const FULL_SLOT = `${FULL} empty:hidden`;
+
 const ChartSkeleton = ({ height = 'h-[220px]' }: { height?: string }) => (
   <div className={`${height} w-full rounded-xl bg-muted animate-pulse`} />
 );
@@ -367,13 +381,13 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <div className="w-[26px] h-[26px] rounded-lg bg-income/[0.12] text-income flex items-center justify-center mb-2"><ArrowUpRight size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-financial-medium text-income tabular-nums">{mask(fmt(animatedIncome))}</p>
             {sec(income) && <p className="text-xs text-muted-foreground truncate">≈ {sec(income)}</p>}
           </Card>
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <div className="w-[26px] h-[26px] rounded-lg bg-expense/[0.12] text-expense flex items-center justify-center mb-2"><ArrowDown size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
@@ -509,14 +523,14 @@ const Dashboard = () => {
         </div>
 
         {/* ── SPENDING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           {categorySpending.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">Breakdown</h2>
               <Suspense fallback={<ChartSkeleton height="aspect-square max-w-[180px]" />}>
                 <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
@@ -525,7 +539,7 @@ const Dashboard = () => {
           )}
 
           {transactions.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
               <Suspense fallback={<ChartSkeleton />}>
                 <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
@@ -534,7 +548,7 @@ const Dashboard = () => {
           )}
 
           {categorySpending.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">By Category</h2>
               <div className="space-y-2.5">
                 {categorySpending.slice(0, 5).map(([cat, data], idx) => {
@@ -559,23 +573,23 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
           </div>
 
-          <div className="col-span-2 lg:col-span-4">
+          <div className={FULL_SLOT}>
             <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
           </div>
         </div>
 
         {/* ── PLANNING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <Card className="col-span-2 lg:col-span-2">
+          <Card className={HALF}>
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-heading text-sm">Budget Overview</h2>
               <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -618,16 +632,16 @@ const Dashboard = () => {
             )}
           </Card>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
           </div>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
           </div>
 
           {installmentSummary.count > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Installment Plans</h2>
                 <button onClick={() => navigate('/installments')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -649,24 +663,24 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <div className="col-span-2 lg:col-span-4">
+          <div className={FULL_SLOT}>
             <RecurringTracker />
           </div>
         </div>
 
         {/* ── INSIGHTS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <SpendingForecastWidget transactions={transactions} />
           </div>
 
           {recentTx.length > 0 && (
-            <Card className="col-span-2 lg:col-span-4">
+            <Card className={FULL}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Recent Transactions</h2>
                 <button onClick={() => navigate('/transactions')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
