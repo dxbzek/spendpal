@@ -1,1 +1,3 @@
-UPDATE accounts SET balance = 146.65 WHERE id = '54bafc3f-2a0e-4cb5-91de-50885de07c40';
+-- One-off balance correction for a single account, applied in March 2026.
+-- The statement is removed: it named a real account id, and this repository
+-- is public. Nothing replaces it. A new database has no such account.
