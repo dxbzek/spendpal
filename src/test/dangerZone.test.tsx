@@ -7,7 +7,7 @@ const toast = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 
 const del = vi.hoisted(() => ({
-  deleteEverything: vi.fn(async () => {}),
+  deleteEverything: vi.fn(async (): Promise<{ photo: string }> => ({ photo: 'removed' })),
   deleteAccount: vi.fn(async (): Promise<string> => 'deleted'),
   clearLocalData: vi.fn(),
 }));
@@ -58,7 +58,8 @@ const confirmDelete = (openButton: RegExp, confirmButton: RegExp, typed = 'DELET
 beforeEach(() => {
   for (const fn of [toast.error, toast.success, del.deleteEverything, del.deleteAccount, del.clearLocalData,
     db.signOut, db.from, refresh]) fn.mockClear();
-  del.deleteEverything.mockResolvedValue(undefined);
+  del.deleteEverything.mockResolvedValue({ photo: 'removed' });
+  sessionStorage.clear();
   db.signOut.mockResolvedValue({ error: null });
 });
 
@@ -80,7 +81,7 @@ describe('Delete my account', () => {
     confirmDelete(/delete my account/i, /yes, delete my account/i);
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Your account was deleted.'));
     expect(del.deleteAccount).toHaveBeenCalledWith(db.supabase);
-    expect(del.clearLocalData).toHaveBeenCalledWith(localStorage, { account: true });
+    expect(del.clearLocalData).toHaveBeenCalledWith(localStorage, { userId: 'u1', account: true });
     expect(db.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 
@@ -124,17 +125,27 @@ describe('Delete Everything', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete everything/i }));
     const dialog = screen.getByRole('alertdialog');
     expect(dialog).toHaveTextContent('1 accounts, 2 transactions, 0 budgets and 0 goals');
-    expect(dialog).toHaveTextContent(/custom categories, advisor history, name and phone number/);
-    expect(dialog).toHaveTextContent('Your sign-in and profile photo stay.');
+    expect(dialog).toHaveTextContent(/custom categories, saved settings, advisor history, name, phone number and profile photo/);
+    expect(dialog).toHaveTextContent('Your sign-in stays. If the photo cannot be removed, you are told.');
   });
 
   it('removes the server data and the lists kept in this browser', async () => {
     await open();
     confirmDelete(/delete everything/i, /yes, delete everything/i);
     await waitFor(() => expect(del.deleteEverything).toHaveBeenCalledWith(db.supabase, 'u1'));
-    await waitFor(() => expect(del.clearLocalData).toHaveBeenCalledWith(localStorage));
+    await waitFor(() => expect(del.clearLocalData).toHaveBeenCalledWith(localStorage, { userId: 'u1' }));
     expect(del.deleteAccount).not.toHaveBeenCalled();
     expect(db.signOut).not.toHaveBeenCalled();
+    // The photo went: nothing to tell after the reload.
+    expect(sessionStorage.getItem('spendpal_notice')).toBeNull();
+  });
+
+  it('says after the reload that the photo stayed, when storage would not remove it', async () => {
+    del.deleteEverything.mockResolvedValue({ photo: 'kept' });
+    await open();
+    confirmDelete(/delete everything/i, /yes, delete everything/i);
+    await waitFor(() => expect(del.clearLocalData).toHaveBeenCalled());
+    expect(sessionStorage.getItem('spendpal_notice')).toMatch(/profile photo could not be removed/);
   });
 
   it('reports a failure and shows what is left', async () => {

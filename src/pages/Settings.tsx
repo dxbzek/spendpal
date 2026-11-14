@@ -16,6 +16,9 @@ import { exportBackup, restoreBackup, RestoreError } from '@/lib/backup';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
 import { UserX } from 'lucide-react';
 import { deleteEverything, deleteAccount, clearLocalData } from '@/lib/accountDeletion';
+import { userSettings } from '@/lib/userSettings';
+import { leaveNotice } from '@/lib/notice';
+import { useUserSetting } from '@/hooks/useUserSettings';
 import CategoryManager from '@/components/settings/CategoryManager';
 import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
@@ -205,6 +208,10 @@ const DataBackupCard = () => {
   );
 };
 
+// Shown after the reload when storage would not let the photo go (the
+// storage policy is not applied yet). The link stays, so the photo still shows.
+const PHOTO_KEPT = 'Your data was deleted. Your profile photo could not be removed. Delete my account removes it.';
+
 const DangerZoneCard = () => {
   const { accounts, transactions, budgets, goals, refresh } = useFinance();
   const { user } = useAuth();
@@ -238,8 +245,12 @@ const DangerZoneCard = () => {
     if (!user || confirmText !== 'DELETE') return;
     setDeleting(true);
     try {
-      await deleteEverything(supabase, user.id);
-      clearLocalData(localStorage);
+      // Stop saving settings first: a change still waiting to be sent would
+      // put back the settings row this is about to delete.
+      await userSettings.discard();
+      const { photo } = await deleteEverything(supabase, user.id);
+      clearLocalData(localStorage, { userId: user.id });
+      if (photo === 'kept') leaveNotice(PHOTO_KEPT);
       // Load the app again from nothing. Pages keep their own copies (the
       // category list, saved settings) and would show, or save back, what was
       // just deleted. The spinner stays on until the new page takes over.
@@ -247,6 +258,8 @@ const DangerZoneCard = () => {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error('Delete failed: ' + msg);
+      // The settings row may still be there: load it again.
+      void userSettings.start(user.id);
       // Some tables may already be empty: show what is left.
       await refresh();
       setDeleting(false);
@@ -260,7 +273,8 @@ const DangerZoneCard = () => {
     setDeleting(true);
     const outcome = await deleteAccount(supabase);
     if (outcome === 'deleted') {
-      clearLocalData(localStorage, { account: true });
+      await userSettings.discard();
+      clearLocalData(localStorage, { userId: user.id, account: true });
       // The server session went with the user. Drop the copy in this browser;
       // the app then shows the sign-in page.
       const { error } = await supabase.auth.signOut({ scope: 'local' });
@@ -289,7 +303,7 @@ const DangerZoneCard = () => {
     },
     everything: {
       title: 'Delete All Data?',
-      body: <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets and {goals.length} goals, and your custom categories, advisor history, name and phone number. Your sign-in and profile photo stay. This action <span className="font-semibold text-foreground">cannot be undone</span>. There is no Undo for Delete All.</>,
+      body: <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets and {goals.length} goals, and your custom categories, saved settings, advisor history, name, phone number and profile photo. Your sign-in stays. If the photo cannot be removed, you are told. This action <span className="font-semibold text-foreground">cannot be undone</span>. There is no Undo for Delete All.</>,
       action: 'Yes, Delete Everything',
       run: handleDeleteAll,
     },
@@ -332,7 +346,7 @@ const DangerZoneCard = () => {
             <div className="flex-1">
               <p className="text-sm font-medium">Delete All Data</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Permanently removes all {total} records: accounts, transactions, budgets and goals. Also removes your custom categories, advisor history, name and phone number. Your sign-in and profile photo stay; Delete my account removes those too.
+                Permanently removes all {total} records: accounts, transactions, budgets and goals. Also removes your custom categories, saved settings, advisor history, name, phone number and profile photo. Your sign-in stays; Delete my account removes it too.
               </p>
               <Button
                 variant="outline"
@@ -552,7 +566,10 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
-  const [monthlyIncome, setMonthlyIncome] = useState(() => localStorage.getItem('spendpal_monthly_income') || '');
+  // What is typed, until saved; otherwise the saved figure from the user's settings.
+  const savedIncome = useUserSetting('monthly_income');
+  const [incomeDraft, setIncomeDraft] = useState<string | null>(null);
+  const monthlyIncome = incomeDraft ?? (savedIncome ? String(savedIncome) : '');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
@@ -810,7 +827,7 @@ const Settings = () => {
                   type="number"
                   placeholder="e.g. 15000"
                   value={monthlyIncome}
-                  onChange={e => setMonthlyIncome(e.target.value)}
+                  onChange={e => setIncomeDraft(e.target.value)}
                   className="h-11"
                   min="0"
                 />
@@ -820,8 +837,10 @@ const Settings = () => {
                   onClick={() => {
                     const val = parseFloat(monthlyIncome);
                     if (monthlyIncome === '' || (!isNaN(val) && val >= 0)) {
-                      localStorage.setItem('spendpal_monthly_income', monthlyIncome);
-                      toast.success('Monthly income saved');
+                      // Empty or 0 clears it: the forecast then shows no income line.
+                      userSettings.set('monthly_income', val > 0 ? val : null);
+                      setIncomeDraft(null);
+                      toast.success(val > 0 ? 'Monthly income saved' : 'Monthly income cleared');
                     } else {
                       toast.error('Please enter a valid income amount');
                     }

@@ -1,5 +1,5 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
-import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMask';
+import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { getCategoryChartColor } from '@/utils/categoryColors';
 import { budgetsForMonth } from '@/utils/budgets';
 import { budgetPercent } from '@/lib/finance/budgetSpend';
@@ -69,8 +69,8 @@ const Dashboard = () => {
     : WORLD_CURRENCIES;
   const navigate = useNavigate();
   // Shared hook keeps the balance mask in sync across the app.
-  const { hidden, mask } = useBalanceMask();
-  const toggleHidden = () => dispatchBalanceMaskToggle(!hidden);
+  const { hidden, mask, setBalancesHidden } = useBalanceMask();
+  const toggleHidden = () => setBalancesHidden(!hidden);
   const [period, setPeriod] = useState<'month' | 'year' | 'all'>('month');
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);

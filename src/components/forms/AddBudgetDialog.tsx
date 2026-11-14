@@ -13,6 +13,7 @@ import { useToday } from '@/hooks/useToday';
 import { format, subMonths, parseISO } from 'date-fns';
 import { asMonthly, spentByBudgetCategory, unspentOf } from '@/lib/finance/budgetSpend';
 import AppIcon from '@/components/AppIcon';
+import { userSettings } from '@/lib/userSettings';
 
 interface Props {
   open: boolean;
@@ -20,15 +21,9 @@ interface Props {
   editBudget?: Budget | null;
 }
 
-const ROLLOVER_KEY = 'spendpal_rollover_cats';
-
-function getRolloverCats(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(ROLLOVER_KEY) || '[]')); }
-  catch { return new Set(); }
-}
-function setRolloverCats(cats: Set<string>) {
-  localStorage.setItem(ROLLOVER_KEY, JSON.stringify([...cats]));
-}
+// The categories the user last chose rollover for, kept with their settings.
+const getRolloverCats = () => new Set(userSettings.get('rollover_categories') ?? []);
+const setRolloverCats = (cats: Set<string>) => userSettings.set('rollover_categories', [...cats]);
 
 const AddBudgetDialog = ({ open, onOpenChange, editBudget: rawEditBudget }: Props) => {
   const { addBudget, updateBudget, budgets, transactions } = useFinance();
@@ -115,11 +110,13 @@ const AddBudgetDialog = ({ open, onOpenChange, editBudget: rawEditBudget }: Prop
     if (isNaN(parsedAmount) || parsedAmount <= 0) return;
     setSubmitting(true);
 
-    // Save rollover preference
+    // Save the rollover choice, only when it changed: each change is a write.
     const cats = getRolloverCats();
-    if (rollover) cats.add(category);
-    else cats.delete(category);
-    setRolloverCats(cats);
+    if (cats.has(category) !== rollover) {
+      if (rollover) cats.add(category);
+      else cats.delete(category);
+      setRolloverCats(cats);
+    }
 
     try {
       const data = {

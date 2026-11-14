@@ -5,6 +5,8 @@
 // file only remembers the last number it was told, so the AI Advisor page can
 // show it and a statement import can check it before it starts.
 
+import { onSignOut } from '@/lib/signOutReset';
+
 /** The number in a server answer, or null when the answer does not carry one. */
 export function readRemaining(payload: unknown): number | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -75,3 +77,4 @@ export const aiUsage = {
     known = null;
   },
 };
+onSignOut(() => aiUsage.reset());
