@@ -3,16 +3,19 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { getCategoryChartColor } from '@/utils/categoryColors';
 import { CalendarClock } from 'lucide-react';
-import { parseISO, addMonths, format } from 'date-fns';
-import { m } from 'framer-motion';
+import { format } from 'date-fns';
 import { IconTile } from '@/components/AppIcon';
+import { activeRecurring, monthlyRecurringTotal, nextDueDate } from '@/lib/finance/recurringBills';
 
 const RecurringTracker = () => {
   const { transactions } = useFinance();
   const { fmt } = useCurrency();
 
-  const recurring = useMemo(() => transactions.filter(t => t.isRecurring && t.type === 'expense' && !t.isInternal), [transactions]);
-  const monthlyTotal = recurring.reduce((s, t) => s + t.amount, 0);
+  // One entry per running bill, at its latest amount. Summing every logged
+  // row made "Monthly Commitment" grow each month the same bill was logged.
+  // Instalment plans are on the Installments page, not here.
+  const recurring = useMemo(() => activeRecurring(transactions, new Date()), [transactions]);
+  const monthlyTotal = monthlyRecurringTotal(recurring);
   const yearlyTotal = monthlyTotal * 12;
 
   // Group by category for breakdown
@@ -26,10 +29,10 @@ const RecurringTracker = () => {
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [recurring]);
 
-  // Compute next expected date (assume monthly from last occurrence)
+  // The next date the bill falls on, today or later (not just last date + 1 month).
   const getNextDate = (lastDate: string) => {
-    const next = addMonths(parseISO(lastDate), 1);
-    return format(next, 'MMM d');
+    const next = nextDueDate(lastDate, new Date());
+    return next ? format(next, 'MMM d') : '';
   };
 
   if (recurring.length === 0) return null;
@@ -65,60 +68,20 @@ const RecurringTracker = () => {
           const catKey = `${cat}-${data.items[0]?.id ?? catIdx}`;
           return (
             <div key={catKey}>
-              {data.items.map(item => {
-                const hasInstallments = item.totalInstallments && item.currentInstallment;
-                const paidPct = hasInstallments
-                  ? Math.round((item.currentInstallment! / item.totalInstallments!) * 100)
-                  : null;
-                const remainingInstallments = hasInstallments
-                  ? Math.max(0, item.totalInstallments! - item.currentInstallment!)
-                  : null;
-                const remaining = remainingInstallments !== null
-                  ? Math.round(remainingInstallments * item.amount * 100) / 100
-                  : null;
-
-                return (
-                  <div key={item.id} className="py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <IconTile value={item.categoryIcon} />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{item.merchant}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-muted-foreground">Next: {getNextDate(item.date)}</p>
-                            {hasInstallments && (
-                              <span className="text-xs font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full">
-                                {item.currentInstallment}/{item.totalInstallments}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-sm font-heading">{fmt(item.amount)}</span>
-                        {hasInstallments && (
-                          <p className="text-[11px] text-muted-foreground">{fmt(remaining!)} left ({remainingInstallments} mo)</p>
-                        )}
+              {data.items.map(item => (
+                <div key={item.id} className="py-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <IconTile value={item.categoryIcon} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.merchant || item.category}</p>
+                        <p className="text-xs text-muted-foreground">Next: {getNextDate(item.date)}</p>
                       </div>
                     </div>
-
-                    {/* Installment progress bar */}
-                    {hasInstallments && (
-                      <div className="mt-1.5 ml-11">
-                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <m.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${paidPct}%` }}
-                            transition={{ duration: 0.6 }}
-                            className="h-full rounded-full bg-primary"
-                          />
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{paidPct}% paid</p>
-                      </div>
-                    )}
+                    <span className="text-sm font-heading shrink-0">{fmt(item.amount)}</span>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           );
         })}
