@@ -122,6 +122,14 @@ describe('privacy and terms', () => {
     }
   });
 
+  it('the privacy page says settings are stored with the account, not only on the device', () => {
+    setUser(null);
+    const { container } = renderAt('/privacy', <Privacy />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('Your saved settings.');
+    expect(text).not.toMatch(/settings for this device:[^.]*monthly income/);
+  });
+
   it('the terms say the figures are not financial advice and the law is still to come', () => {
     setUser(null);
     renderAt('/terms', <Terms />);

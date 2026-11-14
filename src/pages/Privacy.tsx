@@ -19,6 +19,8 @@ const Privacy = () => (
         <><strong>Your sign-in.</strong> Your email address and your password. The password is kept by the sign-in service in a form that cannot be read back.</>,
         <><strong>Your financial records.</strong> Everything you type in or import: accounts and cards (names, balances, limits, statement and due days, statement amounts), transactions (amount, date, merchant, category, note), budgets, savings goals, instalment plans and your own categories.</>,
         <><strong>Your profile.</strong> Your display name, your currency, and a profile photo if you add one.</>,
+        <><strong>Your saved settings.</strong> Monthly income, payday, net worth goal and month-end net worth, budget templates,
+          which budgets roll over, a second currency, and whether you finished or hid the first-use steps.</>,
         <><strong>AI advisor results.</strong> Each budget analysis you run is saved so you can open it again. You can delete them on the AI Advisor page.</>,
         <><strong>A count of your AI uses</strong> per day, to apply the daily limit.</>,
       ]} />
@@ -70,7 +72,8 @@ const Privacy = () => (
       <p>SpendPal sets no cookies. It uses your browser's local storage for:</p>
       <LegalList items={[
         'your sign-in session, so you stay signed in',
-        'settings for this device: light or dark mode, a second currency, hidden balances, your payday and monthly income, budget templates and which budgets roll over',
+        'choices for this device: light or dark mode, and whether balances are hidden',
+        'a copy of your saved settings, so they still work when the server cannot be reached',
         'exchange rates, so they are not fetched on every visit',
         'which budget alerts were already shown',
       ]} />
@@ -79,15 +82,18 @@ const Privacy = () => (
 
     <LegalSection title="Export and delete">
       <LegalList items={[
-        <><strong>Export.</strong> In Settings, under Data, <strong>Export</strong> downloads all your records as a JSON file.</>,
+        <><strong>Export.</strong> In Settings, under Data, <strong>Export</strong> downloads your accounts, transactions, budgets and goals
+          as a JSON file. Your own categories and saved settings are not in it.</>,
         <><strong>Delete your records.</strong> In Settings, under Danger Zone, <strong>Delete All Transactions</strong> removes your transactions
-          and <strong>Delete Everything</strong> removes all your records but keeps your sign-in.</>,
+          and <strong>Delete Everything</strong> removes all your records, your saved settings and your profile photo but keeps your sign-in.
+          If the photo cannot be removed, you are told.</>,
         <><strong>Delete your account.</strong> In Settings, under Danger Zone, <strong>Delete my account</strong> removes your sign-in and
           everything stored with it, including your photo.</>,
       ]} />
       <p>
         Deleting removes the data from the live database straight away. If the database host keeps backups, a copy can stay in them
-        until those backups expire. Settings saved on your device stay there until you clear your browser's data for this site.
+        until those backups expire. Delete Everything also clears this account's copy on this device, except the hidden-balances choice;
+        light or dark mode stays until you clear your browser's data for this site.
       </p>
     </LegalSection>
 

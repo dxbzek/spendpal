@@ -162,7 +162,7 @@ export const FAQ: FaqEntry[] = [
   {
     question: 'How do I delete my data or my account?',
     answer:
-      'Settings, Danger Zone. Delete All Data removes your records and keeps your sign-in. Delete my account removes your sign-in and everything stored with it. Neither can be undone.',
+      'Settings, Danger Zone. Delete All Data (the Delete Everything button) removes your records, saved settings and profile photo, and keeps your sign-in. Delete my account removes your sign-in and everything stored with it. Neither can be undone.',
   },
   {
     question: 'Why does my credit card show a balance as "Owed"?',
