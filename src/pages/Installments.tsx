@@ -1,4 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 import { useMemo, useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -129,7 +130,7 @@ const Installments = () => {
     const livePlan = plan;
 
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-28">
+      <div className={`${NARROW_PAGE} py-6 pb-28`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -269,7 +270,7 @@ const Installments = () => {
   // ── List view ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-6 space-y-6">
+    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

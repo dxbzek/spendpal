@@ -4,6 +4,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { ChevronDown, BookOpen, Search } from 'lucide-react';
 import { FAQ, GLOSSARY, findTerm } from '@/lib/glossary';
 import { PAGE_NAMES } from '@/lib/pageNames';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 
 // Hoisted: defined inside the page it would remount on every keystroke.
 const Row = ({ title, body, open, onToggle }: { title: string; body: string; open: boolean; onToggle: () => void }) => (
@@ -82,7 +83,7 @@ const Glossary = () => {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-5 md:px-8 space-y-6">
+      <div className={`${NARROW_PAGE} space-y-6`}>
         {terms.length === 0 && questions.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">Nothing matches "{search}"</p>
         )}

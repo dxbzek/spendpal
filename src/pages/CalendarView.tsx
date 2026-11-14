@@ -1,4 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
@@ -91,7 +92,7 @@ const CalendarView = () => {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-6 space-y-5">
+    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-5`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
