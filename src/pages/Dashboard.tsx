@@ -35,7 +35,6 @@ import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
 import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
-import { useAuth } from '@/context/AuthContext';
 import { useEditTransaction } from '@/components/layout/AppLayout';
 import CurrencyStep from '@/components/onboarding/CurrencyStep';
 import GettingStartedCard from '@/components/dashboard/GettingStartedCard';
@@ -92,7 +91,6 @@ const Dashboard = () => {
     ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
     : WORLD_CURRENCIES;
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { openAddSheet } = useEditTransaction();
   // First-use flags are user settings, so they follow the user to another device.
   const { data: settings, ready: settingsReady } = useUserSettings();
