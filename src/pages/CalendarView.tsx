@@ -10,11 +10,13 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { IconTile } from '@/components/AppIcon';
+import { useToday } from '@/hooks/useToday';
 
 const CalendarView = () => {
   const { transactions, accounts, loading } = useFinance();
   const { fmt } = useCurrency();
   const { hidden, mask } = useBalanceMask();
+  const today = useToday();
   const [current, setCurrent] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
@@ -67,11 +69,15 @@ const CalendarView = () => {
     return monthTxs.filter(tx => tx.date === key);
   }, [selectedDay, monthTxs]);
 
+  // The totals stop at today, like Home and Reports: a row dated later is not
+  // earned or spent yet. Those rows still show on their day in the grid.
+  const toDateTxs = useMemo(() => monthTxs.filter(tx => tx.date <= today), [monthTxs, today]);
+  const scheduledCount = monthTxs.length - toDateTxs.length;
   const totalIncome = useMemo(
-    () => monthTxs.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0),
-    [monthTxs, creditAccountIds]
+    () => toDateTxs.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0),
+    [toDateTxs, creditAccountIds]
   );
-  const totalExpenses = useMemo(() => monthTxs.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0), [monthTxs]);
+  const totalExpenses = useMemo(() => toDateTxs.filter(t => isCountableExpense(t)).reduce((s, t) => s + t.amount, 0), [toDateTxs]);
 
   const dayColor = (total: number) => {
     if (!total) return '';
@@ -121,6 +127,12 @@ const CalendarView = () => {
         </div>
       </div>
 
+      {scheduledCount > 0 && (
+        <p className="text-[11px] text-muted-foreground -mt-2">
+          {scheduledCount} row{scheduledCount === 1 ? '' : 's'} dated after today {scheduledCount === 1 ? 'is' : 'are'} not in these totals.
+        </p>
+      )}
+
       {/* Legend */}
       <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
         <span>Spending:</span>
@@ -159,7 +171,7 @@ const CalendarView = () => {
             const total = dayTotals[key] || 0;
             const income = dayIncome[key] || 0;
             const isSelected = selectedDay && isSameDay(day, selectedDay);
-            const isToday = isSameDay(day, new Date());
+            const isToday = key === today;
             const colPos = (days.startDow + i) % 7;
             return (
               <button
