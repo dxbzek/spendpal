@@ -67,8 +67,9 @@ describe('Debt page instalment plans', () => {
     expect(within(plans).getByText('4700.50')).toBeInTheDocument();
     const rest = screen.getByText('Rest of the balance, at the card rate').parentElement!;
     expect(within(rest).getByText('7699.50')).toBeInTheDocument();
-    expect(screen.getByText(/Laptop · 42 × 150\.00/)).toBeInTheDocument();
-    expect(screen.getByText(/Phone · 2 × 250\.00/)).toBeInTheDocument();
+    // Plan name on one line, payments left and amount on the next.
+    expect(screen.getByText('Laptop').nextElementSibling?.textContent).toMatch(/^42 × 150\.00/);
+    expect(screen.getByText('Phone').nextElementSibling?.textContent).toMatch(/^2 × 250\.00/);
     // The total still counts everything that is owed.
     expect(within(tile('Total Owed')).getByText('14400.00')).toBeInTheDocument();
   });

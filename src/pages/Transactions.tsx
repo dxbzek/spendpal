@@ -517,17 +517,17 @@ const Transactions = () => {
       {/* Totals bar */}
       {filtered.length > 0 && (
         <div className="px-5 md:px-8 mb-3 -mt-1">
-          <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3 px-3 sm:px-4 py-2.5 bg-card rounded-xl card-shadow text-xs">
+          <div className="grid grid-cols-3 gap-1 sm:flex sm:items-center sm:gap-3 px-2 sm:px-4 py-2.5 bg-card rounded-xl card-shadow text-[11px] sm:text-xs tabular-nums">
             <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0">
               <ArrowUp size={11} className="text-income shrink-0" aria-hidden="true" />
               <span className="text-muted-foreground hidden sm:inline">Income</span>
-              <span className="font-semibold text-income truncate">{mask(fmt(filteredIncome))}</span>
+              <span className="font-semibold text-income whitespace-nowrap">{mask(fmt(filteredIncome))}</span>
             </div>
             <div className="w-px h-3 bg-border hidden sm:block" />
             <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0 border-x sm:border-x-0 border-border">
               <ArrowDown size={11} className="text-expense shrink-0" aria-hidden="true" />
               <span className="text-muted-foreground hidden sm:inline">Expenses</span>
-              <span className="font-semibold text-expense truncate">{mask(fmt(filteredExpenses))}</span>
+              <span className="font-semibold text-expense whitespace-nowrap">{mask(fmt(filteredExpenses))}</span>
             </div>
             <div className="w-px h-3 bg-border hidden sm:block" />
             <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0">
@@ -535,7 +535,7 @@ const Transactions = () => {
                 ? <ArrowUp size={11} className="text-income shrink-0" aria-hidden="true" />
                 : <ArrowDown size={11} className="text-expense shrink-0" aria-hidden="true" />}
               <span className="text-muted-foreground hidden sm:inline">Net</span>
-              <span className={`font-semibold truncate ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{hidden ? '••••••' : `${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`}</span>
+              <span className={`font-semibold whitespace-nowrap ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{hidden ? '••••••' : `${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`}</span>
             </div>
           </div>
         </div>

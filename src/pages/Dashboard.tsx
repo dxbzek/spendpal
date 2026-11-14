@@ -470,40 +470,42 @@ const Dashboard = () => {
                         const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-warning' : 'bg-primary';
                         return (
                           <div key={a.id} className="group">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-4 min-w-0">
+                            <div className="flex items-center justify-between gap-3">
+                              {/* On a phone the whole row opens the account: two icon
+                                  buttons per row left the name a few letters wide. */}
+                              <button
+                                type="button"
+                                onClick={() => { if (isMobile) { setEditAccount(a); setShowAddAccount(true); } }}
+                                className="flex items-center gap-3 min-w-0 flex-1 text-left md:cursor-default"
+                                aria-label={isMobile ? `Edit ${a.name}` : undefined}
+                                tabIndex={isMobile ? 0 : -1}
+                              >
                                 <IconTile value={a.icon} />
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium line-clamp-2 break-words">{a.name}</p>
-                                  {a.type === 'credit' && (
-                                    <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                                      {a.statementDate && a.statementDate > 0 && <span>Stmt: {ordinal(a.statementDate)}</span>}
-                                      {a.dueDate && <span>Due: {ordinal(a.dueDate)}</span>}
-                                      {a.creditLimit != null && <span>Limit: {fmt(a.creditLimit)}</span>}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                                <p className="text-sm font-medium line-clamp-2 break-words min-w-0">{a.name}</p>
+                              </button>
                               <div className="flex items-center gap-1 shrink-0">
                                 <div className="text-right">
-                                  <p className="font-heading text-sm">{mask(fmt(a.balance))}</p>
-                                  {sec(a.balance) && <p className="text-[11px] text-muted-foreground">≈ {sec(a.balance)}</p>}
-                                  {a.type === 'credit' && (
-                                    <p className="text-xs font-medium text-primary">
-                                      Owed{available != null ? ` · ${fmt(available)} available` : ''}
-                                    </p>
-                                  )}
+                                  <p className="font-heading text-sm tabular-nums">{mask(fmt(a.balance))}</p>
+                                  {sec(a.balance) && <p className="text-xs text-muted-foreground">≈ {sec(a.balance)}</p>}
+                                  {a.type === 'credit' && <p className="text-xs font-medium text-primary">Owed</p>}
                                 </div>
-                                <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-1">
+                                <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} aria-label={`Edit ${a.name}`} className="hidden md:inline-flex md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2">
                                   <Edit2 size={14} />
                                 </button>
-                                <button onClick={() => setDeleteAccountId(a.id)} className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
+                                <button onClick={() => setDeleteAccountId(a.id)} aria-label={`Delete ${a.name}`} className="hidden md:inline-flex md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2">
                                   <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>
+                            {a.type === 'credit' && (
+                              <div className="ml-[3.25rem] mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                                {a.statementDate && a.statementDate > 0 && <span>Statement {ordinal(a.statementDate)}</span>}
+                                {a.dueDate && <span>Due {ordinal(a.dueDate)}</span>}
+                                {available != null && <span className="text-primary font-medium">{mask(fmt(available))} available</span>}
+                              </div>
+                            )}
                             {a.type === 'credit' && a.creditLimit != null && (
-                              <div className="mt-1.5 ml-11">
+                              <div className="mt-1.5 ml-[3.25rem]">
                                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                   <span>{utilization}% used</span>
                                   <span>{fmt(spent)} / {fmt(a.creditLimit)}</span>

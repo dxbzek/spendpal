@@ -187,23 +187,25 @@ const Goals = () => {
                       <span className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="text-sm font-semibold truncate">{goal.name}</p>
+                          <p className="text-sm font-semibold line-clamp-2 break-words">{goal.name}</p>
                           {goal.status === 'paused' && (
                             <span className="shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Paused</span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">{goal.type}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      {daysLeft !== null && (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                          <p className="text-xs text-muted-foreground">{goal.type}</p>
+                          {daysLeft !== null && (
                         <span className={`flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
                           daysLeft <= 7 ? 'bg-destructive-soft text-expense' : daysLeft <= 30 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'
                         }`}>
                           <CalendarClock size={10} />
                           {goalDeadlineLabel(daysLeft)}
                         </span>
-                      )}
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center shrink-0 -mr-2">
                       <button
                         onClick={() => updateGoal({ ...goal, status: 'active' === goal.status ? 'paused' : 'active' })}
                         aria-label={goal.status === 'paused' ? 'Resume goal' : 'Pause goal'}

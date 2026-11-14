@@ -327,7 +327,7 @@ const Installments = () => {
                     >
                       <IconTile value={plan.categoryIcon} />
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{planDisplayName(plan.merchant)}</p>
+                        <p className="font-semibold line-clamp-2 break-words">{planDisplayName(plan.merchant)}</p>
                         <p className="text-xs text-muted-foreground truncate">{accountOf(plan)?.name ?? plan.category}</p>
                       </div>
                       <div className="text-right shrink-0">
@@ -379,7 +379,7 @@ const Installments = () => {
                   <div className="flex items-center gap-3">
                     <IconTile value={plan.categoryIcon} />
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{planDisplayName(plan.merchant)}</p>
+                      <p className="font-semibold line-clamp-2 break-words">{planDisplayName(plan.merchant)}</p>
                       <p className="text-xs text-muted-foreground">{plan.totalInstallments} payments · {fmt(plan.totalAmount)} total</p>
                     </div>
                     <CheckCircle2 size={16} className="text-income shrink-0" />
