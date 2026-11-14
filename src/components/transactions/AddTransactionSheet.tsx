@@ -9,7 +9,7 @@ import { AmountInput } from '@/components/ui/AmountInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFinance } from '@/context/FinanceContext';
-import { Target, ChevronDown } from 'lucide-react';
+import { Target, ChevronDown, Wallet } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useCategories } from '@/hooks/useCategories';
 import { type TransactionType } from '@/types/finance';
@@ -17,8 +17,9 @@ import type { Transaction } from '@/types/finance';
 import { findNearDuplicate } from '@/utils/detectDuplicates';
 import { transferPartner } from '@/lib/finance/transfers';
 import {
-  defaultPaidInstallments, isPlanForm, paidInstallmentsFrom, planFields, setRecurring,
+  defaultAccountId, defaultPaidInstallments, isPlanForm, paidInstallmentsFrom, planFields, setRecurring,
 } from '@/lib/finance/transactionForm';
+import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import { planIdForNewRow } from '@/lib/finance/installments';
 import { format } from 'date-fns';
 import {
@@ -53,7 +54,7 @@ const TYPES: { value: TransactionType; label: string }[] = [
 const INSTALLMENT_OPTIONS = [3, 4, 6, 9, 12, 18, 24, 36, 48, 60];
 
 const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, recurringMode }: Props) => {
-  const { accounts, transactions, goals, addTransaction, addTransfer, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
+  const { accounts, transactions, goals, loading, loadError, addTransaction, addTransfer, updateTransaction, removeTransaction, addGoalProgress } = useFinance();
   const [submitting, setSubmitting] = useState(false);
   const { currency, fmt } = useCurrency();
   const { getCategoriesForType, refresh: refreshCategories } = useCategories();
@@ -82,6 +83,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const [goalAllocationAmount, setGoalAllocationAmount] = useState('');
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAddAccount, setShowAddAccount] = useState(false);
 
   // Duplicate detection state
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
@@ -141,6 +143,14 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       resetForm();
     }
   }, [editTransaction, prefill, open]);
+
+  // With one account there is nothing to choose, so it is selected. With
+  // several the user picks: a guessed account would save to the wrong one.
+  useEffect(() => {
+    if (!open || editTransaction || accountId) return;
+    const only = defaultAccountId(accounts);
+    if (only) setAccountId(only);
+  }, [open, editTransaction, accounts, accountId]);
 
   const resetForm = () => {
     setType('expense');
@@ -328,6 +338,24 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
   const isMobile = useIsMobile();
   const title = isEditing ? 'Edit Transaction' : 'Add Transaction';
+  // A transaction needs an account. With none, the form ended at "Please
+  // select an account" over an empty list. A failed or unfinished load is
+  // not "no accounts".
+  const noAccounts = !isEditing && !loading && !loadError && accounts.length === 0;
+  const noAccountsBody = (
+    <div className="py-8 text-center space-y-4">
+      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+        <Wallet size={24} className="text-muted-foreground" aria-hidden="true" />
+      </div>
+      <div className="space-y-1">
+        <p className="font-medium">Add an account first</p>
+        <p className="text-sm text-muted-foreground">A transaction is saved to an account. You have none yet.</p>
+      </div>
+      <Button onClick={() => setShowAddAccount(true)} className="h-11 px-6 bg-primary text-primary-foreground">
+        Add account
+      </Button>
+    </div>
+  );
   // Shared form body — rendered inside a bottom Sheet on mobile (keyboard-safe,
   // thumb-reachable) and a centered Dialog on desktop.
   const formBody = (
@@ -609,7 +637,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
             <SheetHeader className="text-left mb-1">
               <SheetTitle className="text-lg">{title}</SheetTitle>
             </SheetHeader>
-            {formBody}
+            {noAccounts ? noAccountsBody : formBody}
           </SheetContent>
         </Sheet>
       ) : (
@@ -618,10 +646,13 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
             <DialogHeader>
               <DialogTitle className="text-lg">{title}</DialogTitle>
             </DialogHeader>
-            {formBody}
+            {noAccounts ? noAccountsBody : formBody}
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Opened from "Add an account first". Once saved, the form shows with that account selected. */}
+      <AddAccountDialog open={showAddAccount} onOpenChange={setShowAddAccount} />
 
       {/* Duplicate transaction warning */}
       <AlertDialog open={showDuplicateWarning} onOpenChange={(o) => { if (!o) { setShowDuplicateWarning(false); setPendingSubmit(null); setDuplicateMatch(null); } }}>
