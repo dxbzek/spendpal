@@ -54,6 +54,10 @@ export const TransactionRowSchema = z.object({
     v === undefined ? undefined : v === null || v === '' ? null : Number(v)
   ),
   dupe_dismissed: z.boolean().optional().default(false),
+  // Links between rows. Optional so rows from a database without the
+  // columns still load; plain strings so a malformed id never drops a row.
+  plan_id: z.string().nullable().optional(),
+  transfer_id: z.string().nullable().optional(),
 });
 
 export const BudgetRowSchema = z.object({
