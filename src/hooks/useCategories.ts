@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, type TransactionType } from '@/types/finance';
 import { useFinance } from '@/context/FinanceContext';
-import { pickerCategories, usedCategories } from '@/lib/finance/categories';
+import { pickerCategories, usedCategories, RECENT_DAYS } from '@/lib/finance/categories';
+import { format, subDays } from 'date-fns';
 
 export interface Category {
   name: string;
@@ -57,7 +58,7 @@ export const resetCategoryCache = () => { cache = null; inflight = null; };
 export const useCategories = () => {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const { transactions } = useFinance();
+  const { transactions, budgets } = useFinance();
   const [customCategories, setCustomCategories] = useState<Category[]>(() => (cache && cache.userId === userId ? cache.rows : []));
   const [loading, setLoading] = useState(!(cache && cache.userId === userId));
 
@@ -159,7 +160,16 @@ export const useCategories = () => {
     const kind = type === 'income' ? 'income' : 'expense';
     const typeDefaults = kind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     const custom = customCategories.filter(c => !c.type || c.type === 'both' || c.type === kind);
-    return pickerCategories(usedCategories(transactions, kind), custom, typeDefaults);
+    const used = usedCategories(transactions, kind, format(subDays(new Date(), RECENT_DAYS), 'yyyy-MM-dd'));
+    if (kind === 'expense') {
+      // A category with a budget this month is always offered, used yet or not.
+      const month = format(new Date(), 'yyyy-MM');
+      const have = new Set(used.map(c => c.name));
+      for (const b of budgets) {
+        if (b.month === month && !have.has(b.category)) { have.add(b.category); used.push({ name: b.category, icon: b.categoryIcon }); }
+      }
+    }
+    return pickerCategories(used, custom, typeDefaults);
   };
 
   return {

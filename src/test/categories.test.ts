@@ -27,8 +27,18 @@ describe('usedCategories', () => {
       row('Transfer', '2026-11-02', '🔁', { isInternal: true }),
       row('Salary', '2026-10-30', '💰', { type: 'income' }),
     ];
+    rows.push(row('Church', '2026-11-08', '🤲'), row('Salary', '2026-09-30', '💰', { type: 'income' }));
     expect(usedCategories(rows, 'expense')).toEqual([{ name: 'Food', icon: '🍕' }, { name: 'Church', icon: '🤲' }]);
     expect(usedCategories(rows, 'income')).toEqual([{ name: 'Salary', icon: '💰' }]);
+  });
+
+  it('leaves out one-offs and names only old rows use', () => {
+    const rows = [
+      row('Food', '2026-11-01'), row('Food', '2026-11-02'),
+      row('Car Rental', '2026-10-12'),
+      row('Restaurants', '2026-06-01'), row('Restaurants', '2026-06-02'), row('Restaurants', '2026-06-03'),
+    ];
+    expect(usedCategories(rows, 'expense', '2026-08-16').map(c => c.name)).toEqual(['Food']);
   });
 });
 
