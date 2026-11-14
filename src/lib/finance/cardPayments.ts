@@ -67,16 +67,53 @@ export function nextPayday(day: number, now: Date): Date {
 export const isSpendable = (a: Account) => a.type !== 'credit' && !a.excludeFromSpendable;
 
 /**
- * Spendable cash/debit money minus every statement total and every recurring
- * cash bill due before the next payday (anything due on payday itself is
- * covered by that day's salary). Negative means the cash doesn't cover what's
- * due; callers must not turn a negative into a per-day allowance.
+ * Pending expense holds per account id. A pending row is authorised but not
+ * posted: the balance trigger skips it, so the balance still holds money that
+ * is already spoken for.
+ */
+export function pendingHolds(
+  transactions: Pick<Transaction, 'type' | 'isPending' | 'isTrackingOnly' | 'accountId' | 'amount'>[],
+): Record<string, number> {
+  const cents: Record<string, number> = {};
+  for (const t of transactions) {
+    if (t.type !== 'expense' || !t.isPending || t.isTrackingOnly) continue;
+    cents[t.accountId] = (cents[t.accountId] ?? 0) + toCents(t.amount);
+  }
+  return Object.fromEntries(Object.entries(cents).map(([id, c]) => [id, fromCents(c)]));
+}
+
+/**
+ * Cash you can spend today: spendable balances less the pending holds on
+ * them. Home's "Spendable Cash" and "Left until payday" both start here.
+ * They used to add up raw balances, so a pending expense counted as spending
+ * at once while the cash figures stayed too high by the same amount.
+ */
+export function spendableCash(accounts: Account[], transactions: Transaction[] = []) {
+  const spendable = accounts.filter(isSpendable);
+  const holdsByAccount = pendingHolds(transactions);
+  const balanceCents = spendable.reduce((s, a) => s + toCents(a.balance), 0);
+  const holdCents = spendable.reduce((s, a) => s + toCents(holdsByAccount[a.id] ?? 0), 0);
+  return {
+    /** Sum of the balances as stored. */
+    balance: fromCents(balanceCents),
+    /** Pending holds on those accounts. */
+    holds: fromCents(holdCents),
+    /** balance minus holds. */
+    available: fromCents(balanceCents - holdCents),
+  };
+}
+
+/**
+ * Spendable cash/debit money (after pending holds) minus every statement
+ * total and every recurring cash bill due before the next payday (anything
+ * due on payday itself is covered by that day's salary). Negative means the
+ * cash doesn't cover what's due; callers must not turn a negative into a
+ * per-day allowance.
  */
 export function leftUntilPayday(accounts: Account[], payday: Date, now: Date, transactions: Transaction[] = []) {
   const today = startOfDay(now);
-  const cashCents = accounts
-    .filter(isSpendable)
-    .reduce((s, a) => s + toCents(a.balance), 0);
+  const spendable = spendableCash(accounts, transactions);
+  const cashCents = toCents(spendable.available);
   const dues = cardStatuses(accounts, now).filter(
     (s): s is Extract<CardStatus, { kind: 'due' }> => s.kind === 'due' && s.dueOn >= today && s.dueOn < payday,
   );
@@ -87,6 +124,8 @@ export function leftUntilPayday(accounts: Account[], payday: Date, now: Date, tr
   const days = Math.max(1, Math.round((startOfDay(payday).getTime() - today.getTime()) / 86_400_000));
   return {
     cash: fromCents(cashCents),
+    // Already taken out of `cash`; returned so the screen can say so.
+    holds: spendable.holds,
     due: fromCents(cardCents + billCents),
     cardsDue: fromCents(cardCents),
     billsDue: fromCents(billCents),

@@ -28,7 +28,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import CardPaymentsCard from '@/components/dashboard/CardPaymentsCard';
 import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
-import { isSpendable } from '@/lib/finance/cardPayments';
+import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
@@ -81,8 +81,10 @@ const Dashboard = () => {
   useBudgetAlerts(activeBudgetsList);
 
   // Same figure "Left until payday" starts from: cash/debit, minus savings
-  // marked not-for-spending.
-  const totalBalance = useMemo(() => accounts.filter(isSpendable).reduce((s, a) => s + a.balance, 0), [accounts]);
+  // marked not-for-spending, minus pending holds (authorised, not yet out of
+  // the balance).
+  const spendable = useMemo(() => spendableCash(accounts, transactions), [accounts, transactions]);
+  const totalBalance = spendable.available;
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
 
@@ -268,6 +270,9 @@ const Dashboard = () => {
               <p className="text-primary-subtle text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
               <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
               {sec(totalBalance) && <p className="text-sm text-primary-subtle mt-0.5">≈ {sec(totalBalance)}</p>}
+              {spendable.holds > 0 && (
+                <p className="text-xs text-primary-subtle mt-0.5">After {mask(fmt(spendable.holds))} in pending holds</p>
+              )}
             </div>
 
             {/* Secondary currency — chosen in Settings; switchable here once set */}

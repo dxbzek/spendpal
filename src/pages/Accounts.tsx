@@ -6,6 +6,7 @@ import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { type Account } from '@/types/finance';
 import { creditUtilization } from '@/lib/finance/credit';
 import { isCountableExpense } from '@/lib/finance/transactionFilters';
+import { pendingHolds as holdsByAccount } from '@/lib/finance/cardPayments';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import ReconcileDialog from '@/components/forms/ReconcileDialog';
 import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt, Scale } from 'lucide-react';
@@ -68,15 +69,9 @@ const Accounts = () => {
 
   // Pending expense holds per account — not yet posted, but they reduce what's
   // actually available to spend even though the settled balance doesn't reflect them yet.
-  const pendingHolds = useMemo(() => {
-    const holds: Record<string, number> = {};
-    transactions.forEach(tx => {
-      if (tx.type === 'expense' && tx.isPending && !tx.isTrackingOnly) {
-        holds[tx.accountId] = (holds[tx.accountId] ?? 0) + tx.amount;
-      }
-    });
-    return holds;
-  }, [transactions]);
+  // The same helper Home's cash figures use, so "Available" here and
+  // "Spendable Cash" there subtract the same holds.
+  const pendingHolds = useMemo(() => holdsByAccount(transactions), [transactions]);
 
   // Balance projection: project total assets 30 days forward using recurring transactions
   const balanceProjection = useMemo(() => {
