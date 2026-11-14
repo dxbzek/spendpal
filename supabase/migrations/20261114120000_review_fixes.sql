@@ -139,3 +139,23 @@ CREATE POLICY "Users can update own goal contributions"
     (select auth.uid()) = user_id
     AND EXISTS (SELECT 1 FROM public.goals g WHERE g.id = goal_contributions.goal_id AND g.user_id = (select auth.uid()))
   );
+
+-- 22g. Avatar bucket: 2 MB and images only, enforced by storage and not just
+--    by the browser. No SVG: it can carry script. Reading and deleting are
+--    limited to the user's own folder. The upload uses upsert, and storage
+--    needs SELECT as well as INSERT and UPDATE for that; with no SELECT policy
+--    every avatar upload failed. Pictures are still shown through the public
+--    URL, which does not go through these policies.
+UPDATE storage.buckets
+  SET file_size_limit = 2097152,
+      allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']
+  WHERE id = 'avatars';
+
+DROP POLICY IF EXISTS "Users can view own avatar" ON storage.objects;
+CREATE POLICY "Users can view own avatar" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+DROP POLICY IF EXISTS "Users can delete own avatar" ON storage.objects;
+CREATE POLICY "Users can delete own avatar" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text);
