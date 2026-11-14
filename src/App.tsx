@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LazyMotion, domAnimation } from "framer-motion";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { FinanceProvider } from "@/context/FinanceContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
@@ -28,6 +28,9 @@ const Installments  = lazy(() => import("@/pages/Installments"));
 const CalendarView  = lazy(() => import("@/pages/CalendarView"));
 const NotFound      = lazy(() => import("@/pages/NotFound"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const Landing       = lazy(() => import("@/pages/Landing"));
+const Privacy       = lazy(() => import("@/pages/Privacy"));
+const Terms         = lazy(() => import("@/pages/Terms"));
 
 export const PageFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -35,10 +38,13 @@ export const PageFallback = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, recovering } = useAuth();
+  const { pathname } = useLocation();
   if (loading) return <PageFallback />;
-  if (!user) return <Navigate to="/auth" replace />;
+  // "/" is the home page for a visitor and Home for a signed-in user. Every
+  // other app address still sends a visitor to the sign-in form.
+  if (!user) return pathname === "/" ? <Landing /> : <Navigate to="/auth" replace />;
   // A reset link signs the user in. If Supabase sent them to "/" and not to
   // /reset (the address is missing from its redirect list), still show the form.
   if (recovering) return <Navigate to="/reset" replace />;
@@ -65,6 +71,9 @@ const App = () => (
                 <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
                 {/* Open to both: a reset link arrives signed in, a stale one signed out. */}
                 <Route path="/reset" element={<ResetPassword />} />
+                {/* Public to everyone, signed in or not. */}
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
                 <Route element={
                   <ProtectedRoute>
                     <CurrencyProvider>

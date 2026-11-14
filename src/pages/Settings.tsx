@@ -14,7 +14,8 @@ import { logger } from '@/lib/logger';
 import { format } from 'date-fns';
 import { exportBackup, restoreBackup, RestoreError } from '@/lib/backup';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
-import { UserX } from 'lucide-react';
+import { UserX, ShieldCheck, FileText, Mail } from 'lucide-react';
+import { OPERATOR, contactEmail } from '@/lib/operator';
 import { deleteEverything, deleteAccount, clearLocalData } from '@/lib/accountDeletion';
 import CategoryManager from '@/components/settings/CategoryManager';
 import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
@@ -554,6 +555,7 @@ const Settings = () => {
   const [currencySearch, setCurrencySearch] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState(() => localStorage.getItem('spendpal_monthly_income') || '');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const supportEmail = contactEmail(OPERATOR);
 
   useEffect(() => {
     if (!user) return;
@@ -883,6 +885,33 @@ const Settings = () => {
               </div>
               Glossary & FAQ
             </button>
+
+            <button onClick={() => navigate('/privacy')}
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                <ShieldCheck size={15} className="text-primary" />
+              </div>
+              Privacy policy
+            </button>
+
+            <button onClick={() => navigate('/terms')}
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                <FileText size={15} className="text-primary" />
+              </div>
+              Terms of use
+            </button>
+
+            {/* Only once the owner has filled in an inbox (src/lib/operator.ts). */}
+            {supportEmail && (
+              <a href={`mailto:${supportEmail}`}
+                className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                  <Mail size={15} className="text-primary" />
+                </div>
+                Contact support
+              </a>
+            )}
 
             <button onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive-soft transition-colors">

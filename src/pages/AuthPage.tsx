@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { authErrorMessage, authProblem, passwordProblem, MIN_PASSWORD_LENGTH, PASSWORD_RULE } from '@/lib/auth';
+import { usePageHead } from '@/hooks/usePageHead';
 
 type Mode = 'login' | 'signup' | 'forgot';
 /** An email went out: which one, and to whom. Replaces the form with "Check your inbox". */
@@ -15,8 +16,13 @@ type Sent = { kind: 'confirm' | 'reset'; email: string };
 const AuthPage = () => {
   const { signIn, signUp, resendConfirmation, requestPasswordReset, linkFailed } = useAuth();
   const location = useLocation();
-  // The reset page sends people here to ask for a new link.
-  const [mode, setMode] = useState<Mode>(() => ((location.state as { forgot?: boolean } | null)?.forgot ? 'forgot' : 'login'));
+  usePageHead('/auth');
+  // The reset page sends people here to ask for a new link; the home page's
+  // Create account button opens the sign-up form.
+  const [mode, setMode] = useState<Mode>(() => {
+    const state = location.state as { forgot?: boolean; signup?: boolean } | null;
+    return state?.forgot ? 'forgot' : state?.signup ? 'signup' : 'login';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -81,8 +87,9 @@ const AuthPage = () => {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-background flex flex-col items-center justify-center px-5 py-10">
-      <div className="relative w-full max-w-[min(22rem,calc(100vw-2.5rem))]">
+    // The app locks page scrolling, so the form scrolls itself on a short screen.
+    <main className="h-full overflow-y-auto bg-background flex flex-col items-center px-5 py-10">
+      <div className="relative w-full max-w-[min(22rem,calc(100vw-2.5rem))] my-auto">
         {/* Logo / Brand */}
         <div className="flex flex-col items-center mb-7">
           <img src={logo} alt="SpendPal" className="w-16 h-16 sm:w-[4.75rem] sm:h-[4.75rem] object-contain mb-4" />
@@ -254,6 +261,13 @@ const AuthPage = () => {
                     'Send reset link'
                   )}
                 </Button>
+                {mode === 'signup' && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    By creating an account you agree to the{' '}
+                    <Link to="/terms" className="text-primary font-medium">Terms</Link> and{' '}
+                    <Link to="/privacy" className="text-primary font-medium">Privacy Policy</Link>.
+                  </p>
+                )}
               </form>
             </>
           )}
@@ -272,6 +286,12 @@ const AuthPage = () => {
             </button>
           </p>
         )}
+
+        <nav aria-label="Legal" className="flex justify-center gap-5 mt-6 text-xs text-muted-foreground">
+          <Link to="/" className="hover:text-foreground">About SpendPal</Link>
+          <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link to="/terms" className="hover:text-foreground">Terms</Link>
+        </nav>
       </div>
     </main>
   );
