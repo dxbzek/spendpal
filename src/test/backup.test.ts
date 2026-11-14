@@ -542,7 +542,7 @@ describe('restoreBackup', () => {
   it('says nothing was changed for every refusal the database or the API reports', async () => {
     const cases: Array<[FakeOpts['rpcAnswer'], RegExp]> = [
       [{ error: { message: 'Could not find the function public.restore_backup(payload) in the schema cache', code: 'PGRST202' }, status: 404 },
-        /^The database does not have the restore function yet\. Run supabase\/pending_migrations\.sql/],
+        /^Restore is not available right now\. SpendPal is being updated, try again later\./],
       [{ error: { message: '<html>413 Request Entity Too Large</html>' }, status: 413 }, /^The backup is too large for one request\./],
       [{ error: { message: 'canceling statement due to statement timeout', code: '57014' }, status: 500 }, /^The restore took too long/],
       [{ error: { message: 'not signed in', code: 'P0001' }, status: 400 }, /^Restore failed \(not signed in\)\./],

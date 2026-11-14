@@ -1,4 +1,5 @@
 import { PageSpinner } from '@/components/ui/spinner';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -26,12 +27,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import AppIcon from '@/components/AppIcon';
+import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
 
-const TYPE_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  debit: 'Debit Card',
-  credit: 'Credit Card',
-};
 
 const Accounts = () => {
   const { accounts, transactions, removeAccount, loading } = useFinance();
@@ -116,7 +113,7 @@ const Accounts = () => {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-6 space-y-6">
+    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -170,7 +167,7 @@ const Accounts = () => {
                     <div>
                       <p className="font-semibold line-clamp-2 break-words">{account.name}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground`}>
-                        {TYPE_LABELS[account.type]}
+                        {ACCOUNT_TYPE_NAMES[account.type]}
                       </span>
                       {account.excludeFromSpendable && (
                         <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Savings</span>

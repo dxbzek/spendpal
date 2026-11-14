@@ -8,6 +8,7 @@
 // happens or nothing changes.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_WRITE_COLUMNS } from '@/lib/dbSchema';
+import { logger } from '@/lib/logger';
 import { weeklyToMonthly } from '@/lib/finance/budgetSpend';
 
 export const PAGE_SIZE = 1000;
@@ -474,7 +475,10 @@ function rpcFailure(error: RpcError, status: number): RestoreError {
     );
   }
   if (error.code === 'PGRST202' || error.code === '42883') {
-    return new RestoreError('The database does not have the restore function yet. Run supabase/pending_migrations.sql in the Supabase SQL editor.', true);
+    // The database is behind the app (restore_backup comes with
+    // supabase/pending_migrations.sql). Users cannot fix that; the log says how.
+    logger.error('restore_backup is missing on the database; apply supabase/pending_migrations.sql', error);
+    return new RestoreError('Restore is not available right now. SpendPal is being updated, try again later.', true);
   }
   if (status === 413) return new RestoreError('The backup is too large for one request.', true);
   if (error.code === '57014') return new RestoreError('The restore took too long and the database stopped it.', true);

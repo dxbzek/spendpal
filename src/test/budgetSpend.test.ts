@@ -1,10 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { asMonthly, budgetPercent, isBudgetAmount, rolloverAmount, spentByBudgetCategory, unspentOf } from '@/lib/finance/budgetSpend';
+import { asMonthly, budgetPercent, includedCategories, isBudgetAmount, rolloverAmount, spentByBudgetCategory, unspentOf } from '@/lib/finance/budgetSpend';
 import { activeBudgets, budgetsForMonth } from '@/utils/budgets';
 import type { Budget } from '@/types/finance';
 
 const tx = (category: string, amount: number, date: string, o: { type?: 'expense' | 'income'; isInternal?: boolean; isTrackingOnly?: boolean } = {}) =>
   ({ type: 'expense' as const, category, amount, date, ...o });
+
+describe('includedCategories', () => {
+  const rows = [
+    tx('Food', 600, '2026-10-05'),
+    tx('Coffee', 20, '2026-10-06'),
+    tx('Dining', 350, '2026-10-20'),
+    tx('Delivery', 80, '2026-10-28'), // after upTo
+    tx('Delivery', 50, '2026-10-09', { isTrackingOnly: true }), // not counted
+    tx('Utilities', 300, '2026-10-03'), // Bills has no budget: not included anywhere
+    tx('Dining', 70, '2026-09-30'), // another month
+  ];
+
+  it('names the other categories counted in each budget, most spent first', () => {
+    expect(includedCategories(rows, '2026-10', new Set(['Food']), '2026-10-25')).toEqual({ Food: ['Dining', 'Coffee'] });
+  });
+
+  it('names nothing when a category has its own budget', () => {
+    expect(includedCategories(rows, '2026-10', new Set(['Food', 'Dining', 'Coffee']), '2026-10-25')).toEqual({});
+  });
+
+  it('includes exactly the rows the spent figure counts', () => {
+    const names = new Set(['Food']);
+    const spent = spentByBudgetCategory(rows, '2026-10', names, '2026-10-25');
+    expect(spent.Food).toBe(600 + 20 + 350);
+    expect(includedCategories(rows, '2026-10', names, '2026-10-25').Food).toEqual(['Dining', 'Coffee']);
+  });
+});
 
 describe('spentByBudgetCategory', () => {
   const rows = [

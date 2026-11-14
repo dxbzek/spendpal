@@ -61,7 +61,14 @@ export default defineConfig(() => ({
         theme_color: "#17663a",
         background_color: "#ffffff",
         display: "standalone",
-        orientation: "portrait",
+        // "any": the app has a desktop sidebar layout; "portrait" locked an
+        // installed tablet or desktop window to a phone shape.
+        orientation: "any",
+        // A fixed id keeps an installed copy the same app if start_url changes.
+        id: "/",
+        categories: ["finance", "productivity"],
+        // No "screenshots" yet: Chrome's richer install sheet needs real
+        // captures of the app in public/, and none exist.
         scope: "/",
         start_url: "/",
         icons: [

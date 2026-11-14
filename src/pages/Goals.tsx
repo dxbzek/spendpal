@@ -1,6 +1,7 @@
 import { PageSpinner } from '@/components/ui/spinner';
 import { goalPace, goalDeadlineLabel, goalPaceLabel } from '@/lib/finance/pace';
 import { useToday } from '@/hooks/useToday';
+import { useOpenAddFromRoute } from '@/hooks/useOpenAddFromRoute';
 import { useState, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -41,7 +42,9 @@ const Goals = () => {
   const [progressNote, setProgressNote] = useState('');
   const [showLog, setShowLog] = useState<string | null>(null);
   const [showAllLog, setShowAllLog] = useState<string | null>(null);
-  const [showAddGoal, setShowAddGoal] = useState(false);
+  // Opened from the Home checklist: start with the Add dialog open.
+  const openAdd = useOpenAddFromRoute();
+  const [showAddGoal, setShowAddGoal] = useState(openAdd);
   const [showScan, setShowScan] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
@@ -133,7 +136,7 @@ const Goals = () => {
       <div className="bg-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-2xl">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-heading text-primary-foreground">Your Goals</h1>
+            <h1 className="text-2xl font-heading text-primary-foreground">Goals</h1>
             <div className="flex items-center gap-2">
               <button onClick={() => setShowScan(true)}
                 className="bg-primary-raised rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1"

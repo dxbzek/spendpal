@@ -12,6 +12,7 @@ import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
 import { DEFAULT_APR } from '@/lib/finance/debtPayoff';
 import { parseBalance } from '@/lib/finance/normalizeAmount';
 import { toast } from 'sonner';
+import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
 
 interface Props {
   open: boolean;
@@ -139,11 +140,11 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             <div>
               <label className="text-sm font-medium text-foreground mb-1 block">Type</label>
               <Select value={type} onValueChange={v => setType(v as AccountType)}>
-                <SelectTrigger className="h-11 text-base w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 text-base w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="debit">Debit</SelectItem>
-                  <SelectItem value="credit">Credit</SelectItem>
+                  {(['cash', 'debit', 'credit'] as const).map(t => (
+                    <SelectItem key={t} value={t}>{ACCOUNT_TYPE_NAMES[t]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -167,8 +168,8 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
           {type !== 'credit' && (
             <div className="flex items-center justify-between gap-3 rounded-lg bg-muted p-2.5">
               <div>
-                <p className="text-sm font-medium text-foreground">Savings — not for spending</p>
-                <p className="text-xs text-muted-foreground">Left out of "Left until payday". Still counts in net position.</p>
+                <p className="text-sm font-medium text-foreground">Savings, not for spending</p>
+                <p className="text-xs text-muted-foreground">Left out of Spendable Cash on Home. Still counts in Total Net Worth.</p>
               </div>
               <Switch checked={notSpendable} onCheckedChange={setNotSpendable} aria-label="Savings, not for spending" />
             </div>
@@ -192,7 +193,7 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
                   className="h-11 text-base"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Leave blank to use the {DEFAULT_APR}% default in the Debt payoff calculator. Set to 0 for interest-free BNPL (Tabby, Tamara, etc).
+                  Leave blank to use the {DEFAULT_APR}% default in the Debt payoff calculator. Set to 0 for an interest-free pay-later plan.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">

@@ -37,6 +37,10 @@
 
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    /* Warning as text. The fill amber is 2.1:1 on white, too faint for small
+       text; this shade is 5.5:1 on white, 5.1:1 on --warning-soft and 5.0:1
+       on --muted. Bars and badges keep --warning. */
+    --warning-text: 32 92% 32%;
 
     --income: 146 63% 25%;
     --expense: 0 72% 51%;
@@ -123,6 +127,9 @@
 
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    /* The fill amber already reads on dark: 7.6:1 on --card, 6.1:1 on
+       --warning-soft. */
+    --warning-text: 38 92% 50%;
 
     --income: 146 52% 48%;
     --expense: 0 62% 55%;

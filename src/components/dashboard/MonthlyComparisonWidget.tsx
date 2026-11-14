@@ -3,6 +3,7 @@ import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { useCurrency } from '@/context/CurrencyContext';
 import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
+import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
 import { format, parseISO } from 'date-fns';
 import type { Account, Transaction } from '@/types/finance';
 import AppIcon from '@/components/AppIcon';
@@ -17,9 +18,9 @@ interface Props {
 }
 
 const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
-  cash: { label: 'Cash', icon: '💵' },
-  debit: { label: 'Debit', icon: '💳' },
-  credit: { label: 'Credit', icon: '🏦' },
+  cash: { label: ACCOUNT_TYPE_NAMES.cash, icon: '💵' },
+  debit: { label: ACCOUNT_TYPE_NAMES.debit, icon: '💳' },
+  credit: { label: ACCOUNT_TYPE_NAMES.credit, icon: '🏦' },
 };
 
 const MonthlyComparisonWidget = ({ accounts, transactions, hidden: _hidden, mask }: Props) => {

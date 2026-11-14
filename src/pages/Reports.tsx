@@ -1,4 +1,5 @@
 import { savingsSummary } from '@/lib/finance/pace';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 import { budgetCategoryOf } from '@/lib/finance/categories';
 import { PageSpinner } from '@/components/ui/spinner';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
@@ -180,7 +181,7 @@ const Reports = () => {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-6 space-y-6">
+    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>

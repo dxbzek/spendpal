@@ -274,7 +274,7 @@ const AIAdvisor = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-2">
             <Brain size={28} className="text-primary-foreground" />
-            <h1 className="text-2xl font-heading text-primary-foreground">AI Budget Advisor</h1>
+            <h1 className="text-2xl font-heading text-primary-foreground">AI Advisor</h1>
           </div>
           <p className="text-primary-subtle text-sm">
             Smart analysis of your spending habits with personalized budgeting recommendations

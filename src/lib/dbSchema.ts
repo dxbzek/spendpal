@@ -11,6 +11,12 @@ import columns from './dbWriteColumns.json';
 
 export const APP_WRITE_COLUMNS: Record<string, string[]> = columns;
 
+/**
+ * What a user sees when the database is behind the app. Users cannot run a
+ * migration, so the column names and the fix go to the logger only.
+ */
+export const SCHEMA_BEHIND_MESSAGE = 'SpendPal is being updated, some saves may fail for a few minutes.';
+
 export interface ProbeResult {
   /** "table.column" entries the database doesn't have. */
   missing: string[];

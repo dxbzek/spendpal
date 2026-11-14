@@ -4,36 +4,37 @@ import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wal
 import { m } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { LucideIcon } from 'lucide-react';
+import { PAGE_NAMES } from '@/lib/pageNames';
 
 const NAV_SECTIONS = [
   {
     label: 'Main',
     items: [
-      { path: '/', label: 'Home', icon: LayoutDashboard },
-      { path: '/transactions', label: 'Transactions', icon: Receipt },
-      { path: '/accounts', label: 'Accounts', icon: Wallet },
+      { path: '/', label: PAGE_NAMES['/'], icon: LayoutDashboard },
+      { path: '/transactions', label: PAGE_NAMES['/transactions'], icon: Receipt },
+      { path: '/accounts', label: PAGE_NAMES['/accounts'], icon: Wallet },
     ],
   },
   {
     label: 'Planning',
     items: [
-      { path: '/budgets', label: 'Budgets', icon: PiggyBank },
-      { path: '/goals', label: 'Goals', icon: Target },
-      { path: '/debt', label: 'Debt', icon: CreditCard },
-      { path: '/installments', label: 'Installments', icon: Layers },
+      { path: '/budgets', label: PAGE_NAMES['/budgets'], icon: PiggyBank },
+      { path: '/goals', label: PAGE_NAMES['/goals'], icon: Target },
+      { path: '/debt', label: PAGE_NAMES['/debt'], icon: CreditCard },
+      { path: '/installments', label: PAGE_NAMES['/installments'], icon: Layers },
     ],
   },
   {
     label: 'Analytics',
     items: [
-      { path: '/reports', label: 'Reports', icon: BarChart3 },
-      { path: '/calendar', label: 'Calendar', icon: CalendarDays },
-      { path: '/advisor', label: 'AI Advisor', icon: Brain },
+      { path: '/reports', label: PAGE_NAMES['/reports'], icon: BarChart3 },
+      { path: '/calendar', label: PAGE_NAMES['/calendar'], icon: CalendarDays },
+      { path: '/advisor', label: PAGE_NAMES['/advisor'], icon: Brain },
     ],
   },
 ];
 
-const NAV_ITEM_SETTINGS = { path: '/settings', label: 'Settings', icon: Settings };
+const NAV_ITEM_SETTINGS = { path: '/settings', label: PAGE_NAMES['/settings'], icon: Settings };
 
 interface DesktopSidebarProps {
   onAddClick: () => void;

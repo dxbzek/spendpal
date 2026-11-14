@@ -6,14 +6,16 @@ import {
   AI_REQUEST_TYPES, type AiRequestType, DAILY_USER_LIMIT, MAX_TOKENS,
   countCall, parseCeiling, refusalMessage, remainingAfter, usageDay,
 } from "../_shared/aiLimits.ts";
-import { type AiFailure, mapAiError } from "../_shared/aiErrors.ts";
+import { type AiFailure, AI_UNAVAILABLE_MESSAGE, mapAiError } from "../_shared/aiErrors.ts";
 import { usageStore } from "./usageStore.ts";
 
 const MODEL = "claude-opus-5-5";
 
 // Shown when the call counter cannot be read or written. The request is
 // refused: an uncounted call would spend the API key with no limit.
-const METER_DOWN = "AI is unavailable: usage metering is not set up on this server.";
+// What a user sees when the server is missing a setting. The setting goes to
+// the function log; a user cannot fix it, so it is not in the message.
+const METER_DOWN = AI_UNAVAILABLE_MESSAGE;
 
 /** The status and message for a failed model call, or null when it is not an API failure. */
 function aiFailure(err: unknown): AiFailure | null {
@@ -86,7 +88,10 @@ serve(async (req) => {
 
     // "usage" asks how many uses are left today. It calls no model and is not counted.
     if (type === "usage") {
-      if (!meter) return reply(503, { error: METER_DOWN });
+      if (!meter) {
+        console.error("SUPABASE_SERVICE_ROLE_KEY is not set: AI usage cannot be counted");
+        return reply(503, { error: METER_DOWN });
+      }
       try {
         const calls = await meter.read(user.id, usageDay(new Date()));
         return reply(200, { remaining: remainingAfter(calls ?? 0), limit: DAILY_USER_LIMIT });
@@ -121,7 +126,8 @@ serve(async (req) => {
 
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI is not available on this server. Please contact support." }), {
+      console.error("ANTHROPIC_API_KEY is not set");
+      return new Response(JSON.stringify({ error: AI_UNAVAILABLE_MESSAGE }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

@@ -26,6 +26,8 @@ import ChangePasswordCard from '@/components/settings/ChangePasswordCard';
 import { EMAIL_ALERTS_ENABLED } from '@/lib/notifications';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
+import { PAGE_NAMES } from '@/lib/pageNames';
+import { NARROW_PAGE } from '@/lib/pageLayout';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -687,7 +689,7 @@ const Settings = () => {
   }
 
   return (
-    <div className="px-5 md:px-8 pt-12 pb-8 max-w-2xl mx-auto">
+    <div className={`${NARROW_PAGE} pt-12 pb-8`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <button onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
@@ -900,7 +902,7 @@ const Settings = () => {
               <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
                 <BookOpen size={15} className="text-primary" />
               </div>
-              Glossary & FAQ
+              {PAGE_NAMES['/glossary']}
             </button>
 
             <button onClick={() => setShowLogoutConfirm(true)}

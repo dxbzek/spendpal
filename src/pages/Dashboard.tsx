@@ -20,7 +20,7 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2, ArrowUpRight, ArrowDown } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, CheckCircle2, ArrowUpRight, ArrowDown, Coins } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
@@ -35,11 +35,34 @@ import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
 import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
+import { useAuth } from '@/context/AuthContext';
+import { useEditTransaction } from '@/components/layout/AppLayout';
+import CurrencyStep from '@/components/onboarding/CurrencyStep';
+import GettingStartedCard from '@/components/dashboard/GettingStartedCard';
+import {
+  OPEN_ADD_STATE, checklistDismissedKey, checklistSteps, currencyConfirmedKey, needsCurrencyStep, readFlag,
+  showChecklist, writeFlag, type ChecklistStepId,
+} from '@/lib/onboarding';
+import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
 const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
 import type { Account } from '@/types/finance';
+
+// Home's card sections. A flex row, not a 4-column grid: a half-width card
+// with no partner (Installment Plans, Spending Forecast) grows to the full
+// row instead of sitting beside an empty half, and a widget that renders
+// nothing leaves its slot empty, which empty:hidden removes. A section whose
+// cards are all empty hides its title too.
+const SECTION = 'flex flex-wrap gap-4 lg:gap-5 mt-6 [&:not(:has(>:not(:first-child):not(:empty)))]:hidden';
+const SECTION_HEADER = 'basis-full flex items-center gap-4';
+// Half a row from lg up (50% less half the 1.25rem gap), a full row below.
+const HALF = 'min-w-0 grow basis-full lg:basis-[calc(50%-0.625rem)]';
+const FULL = 'min-w-0 basis-full';
+// Slots for widgets that may render nothing; their card fills the slot height.
+const HALF_SLOT = `${HALF} empty:hidden [&>*]:h-full`;
+const FULL_SLOT = `${FULL} empty:hidden`;
 
 const ChartSkeleton = ({ height = 'h-[220px]' }: { height?: string }) => (
   <div className={`${height} w-full rounded-xl bg-muted animate-pulse`} />
@@ -68,6 +91,11 @@ const Dashboard = () => {
     ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
     : WORLD_CURRENCIES;
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { openAddSheet } = useEditTransaction();
+  // First-use flags, per user, in this browser (see lib/onboarding).
+  const [currencyConfirmed, setCurrencyConfirmed] = useState(() => !!user && readFlag(currencyConfirmedKey(user.id)));
+  const [checklistDismissed, setChecklistDismissed] = useState(() => !!user && readFlag(checklistDismissedKey(user.id)));
   // Shared hook keeps the balance mask in sync across the app.
   const { hidden, mask, setBalancesHidden } = useBalanceMask();
   const toggleHidden = () => setBalancesHidden(!hidden);
@@ -159,6 +187,23 @@ const Dashboard = () => {
   }, [transactions]);
 
 
+  const counts = { accounts: accounts.length, transactions: transactions.length, budgets: budgets.length, goals: goals.length };
+  const steps = checklistSteps(counts);
+  // The oldest row says how long the user has been here (see showChecklist).
+  const oldestTxDate = transactions.length ? transactions.reduce((min, t) => (t.date < min ? t.date : min), transactions[0].date) : null;
+  const checklistVisible = showChecklist(steps, checklistDismissed, oldestTxDate, today);
+
+  const runStep = (id: ChecklistStepId) => {
+    if (id === 'account') { setEditAccount(null); setShowAddAccount(true); }
+    else if (id === 'transaction') openAddSheet();
+    else if (id === 'budget') navigate('/budgets', { state: OPEN_ADD_STATE });
+    else navigate('/goals', { state: OPEN_ADD_STATE });
+  };
+  const dismissChecklist = () => {
+    setChecklistDismissed(true);
+    if (user) writeFlag(checklistDismissedKey(user.id));
+  };
+
   // Skeleton keeps the layout stable while data loads.
   if (dataLoading) {
     return (
@@ -181,13 +226,16 @@ const Dashboard = () => {
     );
   }
 
-  // First-run onboarding when the user has no accounts yet.
+  // First run: no accounts yet. A brand-new user picks a currency first, so
+  // the first account is not saved in AED by default; anyone who already has
+  // records skips it (they change currency in Settings, with conversion).
   if (!dataLoading && accounts.length === 0) {
-    const steps = [
-      { icon: Wallet, label: 'Add your first account', hint: 'Cash, bank, or credit card', done: accounts.length > 0 },
-      { icon: Receipt, label: 'Record a transaction', hint: 'Income or expense', done: transactions.length > 0 },
-      { icon: PiggyBank, label: 'Create a budget', hint: 'Track spending by category', done: budgets.length > 0 },
-      { icon: Target, label: 'Set a savings goal', hint: 'Something to work toward', done: goals.length > 0 },
+    const askCurrency = needsCurrencyStep(counts, currencyConfirmed);
+    // The currency row shows only to someone who is or was asked: marking it
+    // Done for a user who skipped it would say they chose one.
+    const firstRun = [
+      ...(askCurrency || currencyConfirmed ? [{ icon: Coins, label: 'Choose your currency', hint: 'Used for every amount', done: !askCurrency }] : []),
+      { icon: Wallet, label: steps[0].label, hint: steps[0].hint, done: false },
     ];
     return (
       <div className="px-5 md:px-8 pt-12 pb-8 max-w-lg mx-auto">
@@ -196,11 +244,13 @@ const Dashboard = () => {
             <Wallet size={36} className="text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-heading mb-2">Welcome to SpendPal!</h1>
-          <p className="text-muted-foreground text-sm">Get started in a few simple steps to take control of your finances.</p>
+          <p className="text-muted-foreground text-sm">
+            {firstRun.length > 1 ? 'Two steps to start: your currency, then your first account.' : 'Add your first account to start.'}
+          </p>
         </div>
 
-        <div className="space-y-5 mb-8">
-          {steps.map((step, i) => {
+        <div className="space-y-3 mb-6">
+          {firstRun.map((step, i) => {
             const Icon = step.icon;
             return (
               <div key={i} className={`flex items-center gap-4 p-4 rounded-xl card-shadow transition-all ${step.done ? 'bg-income-soft border border-income-line' : 'bg-card'}`}>
@@ -221,13 +271,17 @@ const Dashboard = () => {
           })}
         </div>
 
-        <button
-          onClick={() => setShowAddAccount(true)}
-          className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-transform"
-        >
-          <Plus size={20} />
-          Add Your First Account
-        </button>
+        {askCurrency ? (
+          <CurrencyStep onSaved={() => { setCurrencyConfirmed(true); setShowAddAccount(true); }} />
+        ) : (
+          <button
+            onClick={() => setShowAddAccount(true)}
+            className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-transform"
+          >
+            <Plus size={20} />
+            Add your first account
+          </button>
+        )}
 
         <AddAccountDialog
           open={showAddAccount}
@@ -247,8 +301,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-4 min-w-0">
               <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
               <div className="min-w-0">
-                <p className="text-base font-heading font-bold text-primary-foreground leading-tight">Overview</p>
-                <p className="text-[11.5px] text-primary-subtle mt-0.5">Financial overview</p>
+                <h1 className="text-base font-heading font-bold text-primary-foreground leading-tight">{PAGE_NAMES['/']}</h1>
               </div>
             </div>
             <button onClick={toggleHidden} className="text-primary-subtle p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
@@ -292,6 +345,8 @@ const Dashboard = () => {
       </div>
 
       <div className="px-5 md:px-8 -mt-4 pb-8">
+        {checklistVisible && <GettingStartedCard steps={steps} onStep={runStep} onDismiss={dismissChecklist} />}
+
         {/* What each card's statement asks for, exactly as entered */}
         <CardPaymentsCard
           accounts={accounts}
@@ -312,7 +367,7 @@ const Dashboard = () => {
         {/* ── OVERVIEW ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4 pt-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Income and expenses</span>
             <div className="flex-1 h-px bg-border" />
             <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
               {(['all', 'month', 'year'] as const).map(p => (
@@ -326,13 +381,13 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <div className="w-[26px] h-[26px] rounded-lg bg-income/[0.12] text-income flex items-center justify-center mb-2"><ArrowUpRight size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Income</p>
             <p className="text-financial-medium text-income tabular-nums">{mask(fmt(animatedIncome))}</p>
             {sec(income) && <p className="text-xs text-muted-foreground truncate">≈ {sec(income)}</p>}
           </Card>
-          <Card className="col-span-1 overflow-hidden">
+          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
             <div className="w-[26px] h-[26px] rounded-lg bg-expense/[0.12] text-expense flex items-center justify-center mb-2"><ArrowDown size={15} /></div>
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
@@ -400,10 +455,9 @@ const Dashboard = () => {
               {(['cash', 'debit', 'credit'] as const).map(accountType => {
                 const group = accounts.filter(a => a.type === accountType);
                 if (group.length === 0) return null;
-                const labels = { cash: 'Cash', debit: 'Debit Cards', credit: 'Credit Cards' };
                 return (
                   <div key={accountType}>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{ACCOUNT_TYPE_GROUP_NAMES[accountType]}</p>
                     <div className="space-y-5">
                       {group.map(a => {
                         // balance IS the amount owed for credit accounts.
@@ -469,14 +523,14 @@ const Dashboard = () => {
         </div>
 
         {/* ── SPENDING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           {categorySpending.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">Breakdown</h2>
               <Suspense fallback={<ChartSkeleton height="aspect-square max-w-[180px]" />}>
                 <SpendingPieChart data={categorySpending.map(([cat, data]) => ({ name: cat, value: data.total, icon: data.icon }))} />
@@ -485,7 +539,7 @@ const Dashboard = () => {
           )}
 
           {transactions.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
               <Suspense fallback={<ChartSkeleton />}>
                 <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
@@ -494,7 +548,7 @@ const Dashboard = () => {
           )}
 
           {categorySpending.length > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">By Category</h2>
               <div className="space-y-2.5">
                 {categorySpending.slice(0, 5).map(([cat, data], idx) => {
@@ -519,23 +573,23 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <ExpenseByAccountTypeWidget accounts={accounts} transactions={filtered} hidden={hidden} mask={mask} />
           </div>
 
-          <div className="col-span-2 lg:col-span-4">
+          <div className={FULL_SLOT}>
             <MonthlyComparisonWidget accounts={accounts} transactions={transactions} hidden={hidden} mask={mask} />
           </div>
         </div>
 
         {/* ── PLANNING ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <Card className="col-span-2 lg:col-span-2">
+          <Card className={HALF}>
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-heading text-sm">Budget Overview</h2>
               <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -578,16 +632,16 @@ const Dashboard = () => {
             )}
           </Card>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <CreditUtilizationWidget accounts={accounts} hidden={hidden} mask={mask} />
           </div>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <UpcomingBillsWidget accounts={accounts} transactions={transactions} />
           </div>
 
           {installmentSummary.count > 0 && (
-            <Card className="col-span-2 lg:col-span-2">
+            <Card className={HALF}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Installment Plans</h2>
                 <button onClick={() => navigate('/installments')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
@@ -609,24 +663,24 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <div className="col-span-2 lg:col-span-4">
+          <div className={FULL_SLOT}>
             <RecurringTracker />
           </div>
         </div>
 
         {/* ── INSIGHTS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
+        <div className={SECTION}>
+          <div className={SECTION_HEADER}>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="col-span-2 lg:col-span-2">
+          <div className={HALF_SLOT}>
             <SpendingForecastWidget transactions={transactions} />
           </div>
 
           {recentTx.length > 0 && (
-            <Card className="col-span-2 lg:col-span-4">
+            <Card className={FULL}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-heading text-sm">Recent Transactions</h2>
                 <button onClick={() => navigate('/transactions')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>

@@ -30,6 +30,8 @@ describe('404 page', () => {
   it('keeps the shortcuts for a signed-in user', () => {
     show({ user: { id: 'u1' } });
     expect(screen.getAllByRole('link').map(l => l.getAttribute('href'))).toEqual(['/', '/transactions', '/budgets', '/settings']);
+    // The same names as the navs: the start page is Home, not Dashboard.
+    expect(screen.getAllByRole('link').map(l => l.textContent)).toEqual(['Home', 'Transactions', 'Budgets', 'Settings']);
     expect(screen.getByText(/your data is safe/i)).toBeInTheDocument();
   });
 
