@@ -725,3 +725,32 @@ DROP POLICY IF EXISTS "Users can delete own avatar" ON storage.objects;
 CREATE POLICY "Users can delete own avatar" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- 22h. profiles.phone_verified_at gates SMS sending, and a user could set it
+--    on their own row. A column can only be closed by taking away the
+--    table-wide grant and giving back the columns the app writes.
+REVOKE INSERT, UPDATE ON public.profiles FROM PUBLIC, anon, authenticated;
+GRANT INSERT (user_id, display_name, avatar_url, currency, notify_email, notify_sms, phone_number)
+  ON public.profiles TO authenticated;
+GRANT UPDATE (display_name, avatar_url, currency, notify_email, notify_sms, phone_number)
+  ON public.profiles TO authenticated;
+
+--    A new number is not a verified number. A write that sets the number and
+--    the flag together (the service role, after a real check) keeps its flag.
+CREATE OR REPLACE FUNCTION public.clear_phone_verification()
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF NEW.phone_number IS DISTINCT FROM OLD.phone_number
+     AND NEW.phone_verified_at IS NOT DISTINCT FROM OLD.phone_verified_at THEN
+    NEW.phone_verified_at := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.clear_phone_verification() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_clear_phone_verification ON public.profiles;
+CREATE TRIGGER trg_clear_phone_verification
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.clear_phone_verification();
