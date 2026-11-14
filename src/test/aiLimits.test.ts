@@ -175,6 +175,6 @@ describe('mapAiError', () => {
     expect(mapAiError({ timeout: true }).status).toBe(504);
     expect(mapAiError({ status: 429, type: 'rate_limit_error' }).status).toBe(429);
     expect(mapAiError({ status: 401, type: 'authentication_error' }))
-      .toEqual({ status: 503, error: 'AI is not available on this server. Please contact support.' });
+      .toEqual({ status: 503, error: 'AI is unavailable right now. Try again later.' });
   });
 });

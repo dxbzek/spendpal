@@ -16,6 +16,13 @@ export interface AiErrorFacts {
   message?: string;
 }
 
+/**
+ * A setting or key on the server is wrong. Users cannot fix that, and there is
+ * no support desk to contact, so the message says only that AI is down; the
+ * cause is in the function log.
+ */
+export const AI_UNAVAILABLE_MESSAGE = "AI is unavailable right now. Try again later.";
+
 export const OUT_OF_CREDIT_MESSAGE = "AI is unavailable: the AI account is out of credit.";
 
 /**
@@ -35,7 +42,7 @@ export function mapAiError(e: AiErrorFacts): AiFailure {
   if (isOutOfCredit(e)) return { status: 503, error: OUT_OF_CREDIT_MESSAGE };
   if (e.status === 429) return { status: 429, error: "Rate limit exceeded. Please try again in a moment." };
   if (e.status === 401 || e.status === 403) {
-    return { status: 503, error: "AI is not available on this server. Please contact support." };
+    return { status: 503, error: AI_UNAVAILABLE_MESSAGE };
   }
   return { status: 500, error: "AI service error" };
 }

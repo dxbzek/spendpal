@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
+import { findMissingColumns, SCHEMA_BEHIND_MESSAGE, supabaseProbe } from '@/lib/dbSchema';
 import { fetchAllRows } from '@/lib/backup';
 import { isBudgetAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
 import { dateKey } from '@/lib/today';
@@ -269,15 +269,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Once per sign-in: if a migration wasn't applied, say which columns are
-  // missing instead of letting the next save fail with a vague error.
+  // Once per sign-in: if a migration wasn't applied, log which columns are
+  // missing (supabase/pending_migrations.sql adds them). The user only hears
+  // that saves may fail for a while: they cannot fix the database.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     findMissingColumns(supabaseProbe(supabase)).then(({ missing }) => {
       if (cancelled || missing.length === 0) return;
-      logger.error('Database schema is behind the app', { missing });
-      toast.error(`Database is missing ${missing.join(', ')}. Run supabase/pending_migrations.sql in the Supabase SQL editor.`, { duration: Infinity });
+      logger.error('Database schema is behind the app; apply supabase/pending_migrations.sql', { missing });
+      toast.warning(SCHEMA_BEHIND_MESSAGE);
     }).catch(err => logger.warn('Schema check failed', err));
     return () => { cancelled = true; };
   }, [userId]);
