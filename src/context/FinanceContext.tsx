@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { findMissingColumns, supabaseProbe } from '@/lib/dbSchema';
 import { fetchAllRows } from '@/lib/backup';
-import { spentByBudgetCategory } from '@/lib/finance/budgetSpend';
+import { isBudgetAmount, spentByBudgetCategory } from '@/lib/finance/budgetSpend';
 import { dateKey } from '@/lib/today';
 import { useToday } from '@/hooks/useToday';
 import { newUuid, retryWithoutLinks, roundAmount, roundAmountOrNull } from '@/lib/finance/transactionWrite';
@@ -597,11 +597,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addBudget = useCallback(async (budget: Omit<Budget, 'id' | 'spent'>) => {
     if (!userId) return false;
+    const amount = roundMoney(budget.amount);
+    // The database accepts 0, but a zero budget is dropped on load: it would
+    // be a row the user can never see or delete. AI envelopes and scanned
+    // screenshots reach this without going through the form's own check.
+    if (!isBudgetAmount(amount)) { toast.error(`${budget.category}: a budget must be above zero`); return false; }
     const { data, error } = await supabase.from('budgets').insert({
       user_id: userId,
       category: budget.category,
       category_icon: budget.categoryIcon,
-      amount: roundMoney(budget.amount),
+      amount,
       period: budget.period,
       month: budget.month,
       is_fixed: budget.isFixed ?? false,
@@ -615,6 +620,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateBudget = useCallback(async (input: Budget) => {
     const budget = { ...input, amount: roundMoney(input.amount) };
+    if (!isBudgetAmount(budget.amount)) { toast.error(`${budget.category}: a budget must be above zero`); return false; }
     const { error } = await supabase.from('budgets').update({
       category: budget.category,
       category_icon: budget.categoryIcon,
