@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -7,15 +7,8 @@ import { cardStatuses, leftUntilPayday, nextPayday, inferPayday } from '@/lib/fi
 import { ordinal } from '@/lib/ordinal';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const PAYDAY_KEY = 'spendpal_payday';
-
-const readPayday = (): number | null => {
-  try {
-    const v = Number(localStorage.getItem(PAYDAY_KEY));
-    return v >= 1 && v <= 31 ? v : null;
-  } catch { return null; }
-};
+import { useUserSetting } from '@/hooks/useUserSettings';
+import { userSettings } from '@/lib/userSettings';
 
 interface Props {
   accounts: Account[];
@@ -34,7 +27,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
   const { fmt } = useCurrency();
   const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
-  const [paydayOverride, setPaydayOverride] = useState<number | null>(readPayday);
+  const paydayOverride = useUserSetting('payday_day') ?? null;
   const inferred = useMemo(() => inferPayday(transactions), [transactions]);
   const paydayDay = paydayOverride ?? inferred;
 
@@ -49,10 +42,7 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
 
   if (cards.length === 0) return null;
 
-  const setPayday = (day: number) => {
-    setPaydayOverride(day);
-    try { localStorage.setItem(PAYDAY_KEY, String(day)); } catch { /* per-device convenience */ }
-  };
+  const setPayday = (day: number) => userSettings.set('payday_day', day);
   const daysTo = (d: Date) => Math.round((d.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86_400_000);
 
   return (

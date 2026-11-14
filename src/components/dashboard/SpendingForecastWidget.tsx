@@ -5,8 +5,7 @@ import type { Transaction } from '@/types/finance';
 import { oneOffLimit, spendingForecast } from '@/lib/finance/spendingForecast';
 import { parseISO } from 'date-fns';
 import { useToday } from '@/hooks/useToday';
-
-const INCOME_KEY = 'spendpal_monthly_income';
+import { useUserSetting } from '@/hooks/useUserSettings';
 
 interface Props {
   transactions: Transaction[];
@@ -15,10 +14,8 @@ interface Props {
 const SpendingForecastWidget = ({ transactions }: Props) => {
   const { fmt } = useCurrency();
 
-  const monthlyIncome = useMemo(() => {
-    const v = parseFloat(localStorage.getItem(INCOME_KEY) || '0');
-    return isNaN(v) ? 0 : v;
-  }, []);
+  // The signed-in user's own income, from their settings row.
+  const monthlyIncome = useUserSetting('monthly_income') ?? 0;
 
   // Hidden before day 10; see lib/finance/spendingForecast for how it's worked out.
   // The one-off limit comes from the user's own purchases, not a fixed 500.

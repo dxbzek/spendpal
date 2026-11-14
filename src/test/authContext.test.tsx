@@ -22,6 +22,8 @@ const fake = vi.hoisted(() => {
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: fake.auth } }));
 
 import { AuthProvider, useAuth, rereadAuthRedirect } from '@/context/AuthContext';
+import { userSettings } from '@/lib/userSettings';
+import { onSignOut } from '@/lib/signOutReset';
 
 type Ctx = ReturnType<typeof useAuth>;
 let ctx: Ctx;
@@ -176,5 +178,42 @@ describe('sign up', () => {
     await mount();
     await run(() => ctx.resendConfirmation('sam@example.com'));
     expect(fake.auth.resend).toHaveBeenCalledWith({ type: 'signup', email: 'sam@example.com', options: { emailRedirectTo: window.location.origin } });
+  });
+});
+
+describe('sign-out and the next user', () => {
+  it("loads the user's settings on sign-in and forgets them on sign-out", async () => {
+    await mount();
+    emit('SIGNED_IN', session);
+    await waitFor(() => expect(userSettings.getSnapshot().userId).toBe('u1'));
+    act(() => userSettings.set('monthly_income', 10000));
+
+    emit('SIGNED_OUT', null);
+    expect(userSettings.getSnapshot()).toMatchObject({ userId: null, data: {} });
+  });
+
+  it('sends a waiting settings change before signing out', async () => {
+    await mount();
+    emit('SIGNED_IN', session);
+    await waitFor(() => expect(userSettings.getSnapshot().userId).toBe('u1'));
+    const order: string[] = [];
+    const flush = vi.spyOn(userSettings, 'flush').mockImplementation(async () => { order.push('flush'); return true; });
+    fake.auth.signOut.mockImplementationOnce(async () => { order.push('signOut'); return { error: null }; });
+    await run(() => ctx.signOut());
+    expect(order).toEqual(['flush', 'signOut']);
+    expect(userSettings.getSnapshot().userId).toBeNull();
+    flush.mockRestore();
+  });
+
+  it('runs the sign-out resets when another user signs in', async () => {
+    const reset = vi.fn();
+    const off = onSignOut(reset);
+    await mount();
+    emit('SIGNED_IN', session);
+    await waitFor(() => expect(userSettings.getSnapshot().userId).toBe('u1'));
+    emit('SIGNED_IN', { user: { id: 'u2', email: 'kim@example.com', updated_at: '2026-11-14T00:00:00Z' } });
+    await waitFor(() => expect(userSettings.getSnapshot().userId).toBe('u2'));
+    expect(reset).toHaveBeenCalled();
+    off();
   });
 });

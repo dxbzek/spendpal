@@ -7,8 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const INCOME_KEY = 'spendpal_monthly_income';
+import { convertSettingsAmounts, userSettings } from '@/lib/userSettings';
 
 interface Props {
   open: boolean;
@@ -58,8 +57,9 @@ const ConvertCurrencyDialog = ({ open, from, to, allowRelabel, onDone, onCancel 
       toast.error('Conversion failed: ' + error.message);
       return;
     }
-    const income = Number(localStorage.getItem(INCOME_KEY));
-    if (income > 0) localStorage.setItem(INCOME_KEY, String(Math.round(income * byRate * 100) / 100));
+    // The income, net worth goal and history, and budget templates are
+    // amounts too. Left alone they would read as the new currency unconverted.
+    userSettings.update(convertSettingsAmounts(userSettings.getSnapshot().data, byRate));
     toast.success(doneMessage);
     onDone(true);
   };

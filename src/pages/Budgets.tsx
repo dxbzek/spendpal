@@ -28,23 +28,15 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { IconTile } from '@/components/AppIcon';
+import { useUserSetting } from '@/hooks/useUserSettings';
+import { userSettings, MAX_TEMPLATES, type BudgetTemplate } from '@/lib/userSettings';
+
+const NO_TEMPLATES: BudgetTemplate[] = [];
 
 interface BudgetSuggestion {
   category: string;
   suggestedAmount: number;
   reasoning: string;
-}
-
-const TEMPLATE_KEY = 'spendpal_budget_templates';
-
-interface BudgetTemplate {
-  name: string;
-  savedAt: string;
-  items: Array<{ category: string; categoryIcon: string; amount: number; period: string }>;
-}
-
-function loadTemplates(): BudgetTemplate[] {
-  try { return JSON.parse(localStorage.getItem(TEMPLATE_KEY) || '[]'); } catch { return []; }
 }
 
 const Budgets = () => {
@@ -60,7 +52,8 @@ const Budgets = () => {
   const [deletingAll, setDeletingAll] = useState(false);
   const [suggestions, setSuggestions] = useState<BudgetSuggestion[]>([]);
   const [tab, setTab] = useState<'this' | 'last'>('this');
-  const [templates, setTemplates] = useState<BudgetTemplate[]>(() => loadTemplates());
+  // Saved with the user's settings, so they follow the user and no one else.
+  const templates = useUserSetting('budget_templates') ?? NO_TEMPLATES;
   const [showTemplates, setShowTemplates] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
   const [showScan, setShowScan] = useState(false);
@@ -222,9 +215,8 @@ const Budgets = () => {
       // Only the month in view: saving every month's budgets repeated each category.
       items: thisMonthBudgets.map(b => ({ category: b.category, categoryIcon: b.categoryIcon, amount: b.amount, period: b.period })),
     };
-    const updated = [template, ...templates.filter(t => t.name !== monthKey)].slice(0, 12);
-    setTemplates(updated);
-    localStorage.setItem(TEMPLATE_KEY, JSON.stringify(updated));
+    const updated = [template, ...templates.filter(t => t.name !== monthKey)].slice(0, MAX_TEMPLATES);
+    userSettings.set('budget_templates', updated);
     toast.success(`Template saved: ${monthKey}`);
   };
 

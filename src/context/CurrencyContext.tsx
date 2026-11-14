@@ -5,6 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { CURRENCY_MAP } from '@/utils/currencies';
 import { formatAmount, displaySymbol } from '@/lib/finance/formatAmount';
 import { toast } from 'sonner';
+import { useUserSetting } from '@/hooks/useUserSettings';
+import { userSettings } from '@/lib/userSettings';
 
 interface CurrencyContextType {
   currency: string;
@@ -58,9 +60,8 @@ function setCachedRate(base: string, target: string, rate: number) {
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [currency, setCurrencyState] = useState('AED');
-  const [secondaryCurrency, setSecondaryCurrencyState] = useState<string | null>(() => {
-    return localStorage.getItem('secondaryCurrency') || null;
-  });
+  // Saved with the user's settings: the next account on this browser does not inherit it.
+  const secondaryCurrency = useUserSetting('secondary_currency') ?? null;
   const [secondaryRate, setSecondaryRate] = useState<number | null>(null);
 
   const userId = user?.id;
@@ -134,13 +135,8 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [currency, secondaryCurrency]);
 
   const setSecondaryCurrency = useCallback((code: string | null) => {
-    setSecondaryCurrencyState(code);
-    if (code) {
-      localStorage.setItem('secondaryCurrency', code);
-    } else {
-      localStorage.removeItem('secondaryCurrency');
-      setSecondaryRate(null);
-    }
+    userSettings.set('secondary_currency', code);
+    if (!code) setSecondaryRate(null);
   }, []);
 
   const info = CURRENCY_MAP[currency] || CURRENCY_MAP.AED;

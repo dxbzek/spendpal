@@ -1,7 +1,19 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session, AuthError } from '@supabase/supabase-js';
 import { readAuthRedirect, signUpOutcome, type SignUpOutcome } from '@/lib/auth';
+import { userSettings, connectUserSettings } from '@/lib/userSettings';
+import { runSignOutResets } from '@/lib/signOutReset';
+
+connectUserSettings(supabase);
+
+/** Forget everything the last user left in memory: settings, categories, AI count. */
+const forgetUser = () => {
+  userSettings.stop();
+  runSignOutResets();
+};
+// Sign-out waits this long at most for a waiting settings change to be sent.
+const SETTINGS_FLUSH_MS = 3000;
 
 type AuthResult = { error: AuthError | null };
 
@@ -64,7 +76,19 @@ const asError = (e: unknown) => e as AuthError;
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUserState] = useState<User | null>(null);
-  const setUser = useCallback((next: User | null) => setUserState(prev => (sameUser(prev, next) ? prev : next)), []);
+  const lastUserId = useRef<string | null>(null);
+  const setUser = useCallback((next: User | null) => {
+    // Load this user's settings before React renders their pages, so the
+    // first render already reads this user's values (a hidden balance must
+    // not show for a frame). Another user signing in (in another tab) first
+    // drops what the last one left in memory; start() replaces the settings.
+    if (next) {
+      if (lastUserId.current && lastUserId.current !== next.id) runSignOutResets();
+      lastUserId.current = next.id;
+      void userSettings.start(next.id);
+    }
+    setUserState(prev => (sameUser(prev, next) ? prev : next));
+  }, []);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [recovering, setRecoveringState] = useState(() => openedFrom.recovery || storedRecovery());
@@ -87,7 +111,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // The client repeats this event in every open tab. Only the tab the link
       // opened shows the reset form; the others stay where they are.
       if (event === 'PASSWORD_RECOVERY' && openedFrom.callback) setRecovering(true);
-      if (event === 'SIGNED_OUT') setRecovering(false);
+      if (event === 'SIGNED_OUT') {
+        setRecovering(false);
+        forgetUser();
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -135,7 +162,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [setRecovering]);
 
   const signOut = useCallback(async () => {
+    // A change made in the last second (income, payday) is still waiting to
+    // be sent. Send it, but never hold the sign-out up for long: what does
+    // not get through stays in this browser under the user's own key.
+    await Promise.race([
+      userSettings.flush().catch(() => false),
+      new Promise(resolve => setTimeout(resolve, SETTINGS_FLUSH_MS)),
+    ]);
     await supabase.auth.signOut();
+    forgetUser();
   }, []);
 
   const resendConfirmation = useCallback(async (email: string) => {

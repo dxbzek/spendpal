@@ -4,6 +4,8 @@ import GlossaryLink from '@/components/GlossaryLink';
 import type { Account } from '@/types/finance';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { userSettings } from '@/lib/userSettings';
 
 interface Props {
   accounts: Account[];
@@ -11,28 +13,16 @@ interface Props {
   mask: (val: string) => string;
 }
 
-const STORAGE_KEY = 'spendpal_networth_history';
-const NW_GOAL_KEY = 'spendpal_nw_goal';
-
-function loadGoal(): number | null {
-  const v = localStorage.getItem(NW_GOAL_KEY);
-  return v ? parseFloat(v) : null;
-}
+// Months drawn. The settings keep more (NET_WORTH_MONTHS in userSettings.ts).
 const MAX_MONTHS = 7;
-
-function loadHistory(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  } catch { return {}; }
-}
-
-function saveHistory(history: Record<string, number>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-}
+const NO_HISTORY: Record<string, number> = {};
 
 const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const { fmt } = useCurrency();
-  const [goal, setGoal] = useState<number | null>(() => loadGoal());
+  // Goal and history are saved with the user's settings, not in this browser.
+  const { data: settings, ready } = useUserSettings();
+  const goal = settings.net_worth_goal ?? null;
+  const saved = settings.net_worth_history ?? NO_HISTORY;
   const [editingGoal, setEditingGoal] = useState(false);
 
   const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
@@ -40,26 +30,20 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
   const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0);
   const netWorth = assets - liabilities;
 
-  // Persist current month's net worth snapshot
+  // Record this month's net worth. Only once the saved history has loaded:
+  // a write before that would replace the history with this one month.
   useEffect(() => {
-    if (accounts.length === 0) return;
+    if (!ready || accounts.length === 0) return;
     const key = format(new Date(), 'yyyy-MM');
-    const history = loadHistory();
-    history[key] = netWorth;
-    // Keep only last MAX_MONTHS entries
-    const sorted = Object.keys(history).sort();
-    if (sorted.length > MAX_MONTHS) {
-      sorted.slice(0, sorted.length - MAX_MONTHS).forEach(k => delete history[k]);
-    }
-    saveHistory(history);
-  }, [netWorth, accounts.length]);
+    const history = userSettings.get('net_worth_history') ?? {};
+    if (history[key] === netWorth) return;
+    userSettings.set('net_worth_history', { ...history, [key]: netWorth });
+  }, [ready, netWorth, accounts.length]);
 
-  const history = useMemo(() => {
-    const raw = loadHistory();
-    return Object.entries(raw)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-MAX_MONTHS);
-  }, [netWorth]); // recompute when netWorth changes
+  const history = useMemo(
+    () => Object.entries(saved).sort(([a], [b]) => a.localeCompare(b)).slice(-MAX_MONTHS),
+    [saved],
+  );
 
   const sparkPoints = useMemo(() => {
     if (history.length < 2) return null;
@@ -84,13 +68,8 @@ const NetWorthWidget = ({ accounts, hidden, mask }: Props) => {
 
   const saveGoal = (val: string) => {
     const n = parseFloat(val);
-    if (!isNaN(n) && n > 0) {
-      setGoal(n);
-      localStorage.setItem(NW_GOAL_KEY, String(n));
-    } else if (val === '') {
-      setGoal(null);
-      localStorage.removeItem(NW_GOAL_KEY);
-    }
+    if (!isNaN(n) && n > 0) userSettings.set('net_worth_goal', n);
+    else if (val === '') userSettings.set('net_worth_goal', null);
     setEditingGoal(false);
   };
 
