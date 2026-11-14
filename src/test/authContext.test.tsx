@@ -211,7 +211,7 @@ describe('sign-out and the next user', () => {
     await waitFor(() => expect(userSettings.getSnapshot().userId).toBe('u1'));
     act(() => userSettings.set('monthly_income', 10000));
     // auth-js keeps the session on a network error and fires no SIGNED_OUT.
-    fake.auth.signOut.mockResolvedValueOnce({ error: { message: 'Failed to fetch', name: 'AuthRetryableFetchError' } });
+    fake.auth.signOut.mockResolvedValueOnce({ error: { message: 'Failed to fetch', name: 'AuthRetryableFetchError' } as never });
     let result: { error: unknown } | undefined;
     await run(async () => { result = await ctx.signOut(); });
     expect(result?.error).toBeTruthy();
