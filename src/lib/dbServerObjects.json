@@ -1,0 +1,8 @@
+{
+  "tables": {
+    "ai_usage": ["user_id", "day", "calls"]
+  },
+  "functions": {
+    "restore_backup": { "payload": {} }
+  }
+}
