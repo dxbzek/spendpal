@@ -8,6 +8,7 @@ import type { Account } from '@/types/finance';
 import { toast } from 'sonner';
 import { Scale } from 'lucide-react';
 import { format } from 'date-fns';
+import { reconcileAdjustment } from '@/lib/finance/reconcile';
 
 interface Props {
   open: boolean;
@@ -43,30 +44,22 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
   const isCredit = account.type === 'credit';
   const label = isCredit ? 'Amount Owed' : 'Balance';
   const parsedActual = actual.trim() === '' ? null : parseFloat(actual);
-  const drift = parsedActual !== null && !isNaN(parsedActual) ? parsedActual - account.balance : null;
+  const hasActual = parsedActual !== null && !isNaN(parsedActual);
+  // To the cent: a gap under half a cent is floating point noise, not drift.
+  const adjustment = hasActual ? reconcileAdjustment(account.type, account.balance, parsedActual) : null;
+  const drift = hasActual ? adjustment?.drift ?? 0 : null;
 
   const handleApply = async () => {
-    if (parsedActual === null || isNaN(parsedActual) || drift === null || drift === 0) return;
-    // Same constraint as AddAccountDialog: balance/owed can't be negative,
-    // for credit accounts or otherwise.
-    if (parsedActual < 0) {
-      toast.error(isCredit ? 'Amount owed cannot be negative' : 'Balance cannot be negative');
-      return;
-    }
+    if (parsedActual === null || isNaN(parsedActual) || !adjustment) return;
     setSubmitting(true);
     try {
       // Post an internal adjustment that nudges the trigger-maintained balance
-      // to `actual`. For a normal account, balance rises on income / falls on
-      // expense; for a credit account, OWED rises on expense / falls on income —
-      // so the sign mapping flips for credit.
-      const needsIncrease = drift > 0;
-      const type: 'income' | 'expense' = isCredit
-        ? (needsIncrease ? 'expense' : 'income')
-        : (needsIncrease ? 'income' : 'expense');
+      // to `actual`. reconcileAdjustment picks the direction and rounds the
+      // amount to the cent, so the balance does not pick up a float tail.
       const result = await addTransaction({
         accountId: account.id,
-        type,
-        amount: Math.abs(drift),
+        type: adjustment.type,
+        amount: adjustment.amount,
         currency: account.currency,
         category: 'Adjustment',
         categoryIcon: '⚖️',
@@ -104,7 +97,13 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
             <label className="text-sm font-medium text-foreground mb-1 block">
               Actual {label} from your bank/card ({currency})
             </label>
-            <AmountInput value={actual} onChange={setActual} className="h-11" />
+            {/* Negative is a real figure: an overdrawn account, or a card in credit. */}
+            <AmountInput value={actual} onChange={setActual} allowNegative className="h-11" />
+            {hasActual && parsedActual < 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {isCredit ? 'A negative amount means the card is in credit.' : 'A negative balance means the account is overdrawn.'}
+              </p>
+            )}
           </div>
           {drift !== null && (
             drift === 0 ? (
@@ -122,7 +121,7 @@ const ReconcileDialog = ({ open, onOpenChange, account }: Props) => {
           )}
           <Button
             onClick={handleApply}
-            disabled={parsedActual === null || isNaN(parsedActual) || parsedActual < 0 || drift === 0 || submitting}
+            disabled={!adjustment || submitting}
             className="w-full h-11 text-base bg-primary text-primary-foreground"
           >
             {drift !== null && drift !== 0 ? `Fix it — correct to ${fmt(parsedActual!)}` : 'Apply correction'}

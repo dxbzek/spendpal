@@ -1,7 +1,60 @@
 // Pure debt-payoff math. Single source of truth shared by the Debt page and
-// its tests — no React, no imports.
+// its tests. No React; the only import is the cent rounding helper.
+import { roundMoney } from '@/lib/finance/money';
 
 export const DEFAULT_APR = 20; // %
+
+/** One open instalment plan billed to a card. */
+export interface CardPlan {
+  /** What is still owed on the plan. */
+  left: number;
+  /** Its instalment per month. */
+  perMonth: number;
+}
+
+export interface OwedSplit {
+  /** The part of the card's balance that is instalment plan principal. */
+  inPlans: number;
+  /** The rest: ordinary card debt at the card's APR. */
+  revolving: number;
+  /** What the plans take per month, on their own fixed schedule. */
+  planMonthly: number;
+}
+
+/**
+ * Splits what a card owes into instalment plan principal and revolving debt.
+ *
+ * A card's balance includes the principal of every plan billed to it, but
+ * that part is not paid down like the rest: each plan has a fixed instalment
+ * and its own rate (often 0%). Amortising the whole balance at the card APR
+ * overstated the interest and pushed the debt-free date out. Only the
+ * revolving part belongs in a payoff plan.
+ *
+ * The plan part can never be more than what is owed: plans that add up to
+ * more (a stale plan, or a balance that was never set from the statement)
+ * leave a revolving amount of 0, not a negative one.
+ */
+export function splitOwed(owed: number, plans: CardPlan[]): OwedSplit {
+  const total = Math.max(0, owed);
+  const open = plans.filter(p => p.left > 0);
+  const principal = open.reduce((s, p) => s + p.left, 0);
+  const inPlans = roundMoney(Math.min(total, principal));
+  return {
+    inPlans,
+    revolving: roundMoney(total - inPlans),
+    planMonthly: roundMoney(open.reduce((s, p) => s + p.perMonth, 0)),
+  };
+}
+
+/**
+ * The statement minimum that goes to the revolving part. A statement bills
+ * each plan's instalment in full inside its minimum due, so that share is
+ * already spoken for. Null when no statement minimum was entered.
+ */
+export function revolvingMinimum(statementMin: number | null | undefined, planMonthly: number): number | null {
+  if (statementMin == null) return null;
+  return Math.max(0, roundMoney(statementMin - planMonthly));
+}
 
 export interface StrategyDebt {
   id: string;

@@ -9,6 +9,7 @@ import { spentByBudgetCategory } from '@/lib/finance/budgetSpend';
 import { dateKey } from '@/lib/today';
 import { useToday } from '@/hooks/useToday';
 import { newUuid, retryWithoutLinks, roundAmount, roundAmountOrNull } from '@/lib/finance/transactionWrite';
+import { addMoney, roundAccountMoney, roundMoney } from '@/lib/finance/money';
 import {
   AccountRowSchema,
   TransactionRowSchema,
@@ -283,8 +284,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ─── ACCOUNTS ─────────────────────────────────────────────────────────────
 
-  const addAccount = useCallback(async (account: Omit<Account, 'id'>) => {
+  const addAccount = useCallback(async (input: Omit<Account, 'id'>) => {
     if (!userId) return false;
+    // Money is stored to the cent; the columns have no fixed scale to do it.
+    const account = roundAccountMoney(input);
     const { data, error } = await supabase.from('accounts').insert({
       user_id: userId,
       name: account.name,
@@ -304,7 +307,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [userId]);
 
-  const updateAccount = useCallback(async (account: Account) => {
+  const updateAccount = useCallback(async (input: Account) => {
+    const account = roundAccountMoney(input);
     const { error } = await supabase.from('accounts').update({
       name: account.name,
       type: account.type,
@@ -597,7 +601,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       user_id: userId,
       category: budget.category,
       category_icon: budget.categoryIcon,
-      amount: budget.amount,
+      amount: roundMoney(budget.amount),
       period: budget.period,
       month: budget.month,
       is_fixed: budget.isFixed ?? false,
@@ -609,7 +613,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [userId, spentByCategory]);
 
-  const updateBudget = useCallback(async (budget: Budget) => {
+  const updateBudget = useCallback(async (input: Budget) => {
+    const budget = { ...input, amount: roundMoney(input.amount) };
     const { error } = await supabase.from('budgets').update({
       category: budget.category,
       category_icon: budget.categoryIcon,
@@ -645,8 +650,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       name: goal.name,
       icon: goal.icon,
       type: goal.type,
-      target_amount: goal.targetAmount,
-      saved_amount: goal.savedAmount,
+      target_amount: roundMoney(goal.targetAmount),
+      saved_amount: roundMoney(goal.savedAmount),
       deadline: goal.deadline ?? null,
       status: goal.status,
     }).select().single();
@@ -656,7 +661,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [userId]);
 
-  const updateGoal = useCallback(async (goal: Goal) => {
+  const updateGoal = useCallback(async (input: Goal) => {
+    const goal = { ...input, targetAmount: roundMoney(input.targetAmount), savedAmount: roundMoney(input.savedAmount) };
     const { error } = await supabase.from('goals').update({
       name: goal.name,
       icon: goal.icon,
@@ -681,7 +687,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (amount <= 0) { toast.error('Progress amount must be greater than zero'); return false; }
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return false;
-    const newSaved = goal.savedAmount + amount;
+    // To the cent: a raw float sum left tails like 330.29999999999995 in the column.
+    const newSaved = addMoney(goal.savedAmount, amount);
     const isNowComplete = newSaved >= goal.targetAmount;
     const updates: Record<string, unknown> = { saved_amount: newSaved };
     if (isNowComplete) updates.status = 'completed';
@@ -698,7 +705,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (amount <= 0) { toast.error('Withdrawal amount must be greater than zero'); return false; }
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return false;
-    const newSaved = Math.max(0, goal.savedAmount - amount);
+    const newSaved = Math.max(0, addMoney(goal.savedAmount, -amount));
     const wasCompleted = goal.status === 'completed';
     const isNowIncomplete = wasCompleted && newSaved < goal.targetAmount;
     const updates: Record<string, unknown> = { saved_amount: newSaved };

@@ -7,7 +7,7 @@ import { isInPeriod } from '@/lib/today';
 import { useToday } from '@/hooks/useToday';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
 import { savingsSummary } from '@/lib/finance/pace';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { grossSpending, isCountableExpense, isCountableIncome, netSpending, refundTotal } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -31,7 +31,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import CardPaymentsCard from '@/components/dashboard/CardPaymentsCard';
 import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
-import { isSpendable } from '@/lib/finance/cardPayments';
+import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
@@ -85,8 +85,10 @@ const Dashboard = () => {
   useBudgetAlerts(activeBudgetsList);
 
   // Same figure "Left until payday" starts from: cash/debit, minus savings
-  // marked not-for-spending.
-  const totalBalance = useMemo(() => accounts.filter(isSpendable).reduce((s, a) => s + a.balance, 0), [accounts]);
+  // marked not-for-spending, minus pending holds (authorised, not yet out of
+  // the balance).
+  const spendable = useMemo(() => spendableCash(accounts, transactions), [accounts, transactions]);
+  const totalBalance = spendable.available;
   const animatedBalance = useCountUp(totalBalance, 700);
   const sec = (n: number) => { const s = fmtSecondary(n); return s && !hidden ? s : null; };
 
@@ -98,7 +100,13 @@ const Dashboard = () => {
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
   const income = useMemo(() => filtered.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
-  const expenses = useMemo(() => filtered.filter(isCountableExpense).reduce((s, t) => s + t.amount, 0), [filtered]);
+  // Spending after refunds. A refund is an income row, but it is money back
+  // for a purchase: it lowers spending and is never counted as income.
+  const expenses = useMemo(() => netSpending(filtered), [filtered]);
+  const refunds = useMemo(() => refundTotal(filtered), [filtered]);
+  // Before refunds: the base for the category shares, which cannot take a
+  // refund off (a refund row does not say which category it undoes).
+  const grossExpenses = useMemo(() => grossSpending(filtered), [filtered]);
   const animatedIncome = useCountUp(income, 700);
   const animatedExpenses = useCountUp(expenses, 700);
 
@@ -112,13 +120,11 @@ const Dashboard = () => {
   }, [filtered]);
 
   const [thisMonthIncome, thisMonthExpenses] = useMemo(() => {
-    let inc = 0, exp = 0;
-    for (const tx of transactions) {
-      if (!isInPeriod(tx.date, 'month', today)) continue;
-      if (isCountableIncome(tx, creditAccountIds)) inc += tx.amount;
-      else if (isCountableExpense(tx)) exp += tx.amount;
-    }
-    return [inc, exp];
+    // Future-dated rows are skipped by isInPeriod: not spent or earned yet.
+    const rows = transactions.filter(tx => isInPeriod(tx.date, 'month', today));
+    const inc = rows.reduce((s, tx) => (isCountableIncome(tx, creditAccountIds) ? s + tx.amount : s), 0);
+    // After refunds, like the Expenses figure above.
+    return [inc, netSpending(rows)];
   }, [transactions, today, creditAccountIds]);
   const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
   // Note: the financial-health score now lives solely on the AI Advisor page,
@@ -263,6 +269,9 @@ const Dashboard = () => {
               <p className="text-primary-subtle text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
               <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
               {sec(totalBalance) && <p className="text-sm text-primary-subtle mt-0.5">≈ {sec(totalBalance)}</p>}
+              {spendable.holds > 0 && (
+                <p className="text-xs text-primary-subtle mt-0.5">After {mask(fmt(spendable.holds))} in pending holds</p>
+              )}
             </div>
 
             {/* Secondary currency — chosen in Settings; switchable here once set */}
@@ -336,6 +345,7 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
             {sec(expenses) && <p className="text-xs text-muted-foreground truncate">≈ {sec(expenses)}</p>}
+            {refunds > 0 && <p className="text-xs text-muted-foreground truncate">After {mask(fmt(refunds))} in refunds</p>}
           </Card>
 
           {savings.kind === 'saved' && (
@@ -496,7 +506,7 @@ const Dashboard = () => {
               <h2 className="font-heading text-sm mb-3">By Category</h2>
               <div className="space-y-2.5">
                 {categorySpending.slice(0, 5).map(([cat, data], idx) => {
-                  const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
+                  const pct = grossExpenses ? Math.round((data.total / grossExpenses) * 100) : 0;
                   const barColor = getCategoryChartColor(cat, idx);
                   return (
                     <div key={cat}>

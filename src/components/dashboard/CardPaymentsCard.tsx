@@ -118,6 +118,9 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
               {runway.billsDue > 0 && <> − {mask(fmt(runway.billsDue))} bills</>}
               {runway.perDay != null && <> · {mask(fmt(runway.perDay))}/day for {runway.days} days</>}
             </p>
+            {runway.holds > 0 && (
+              <p className="text-xs text-muted-foreground">Spendable is after {mask(fmt(runway.holds))} in pending holds.</p>
+            )}
             {runway.bills.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {runway.bills.map(b => (

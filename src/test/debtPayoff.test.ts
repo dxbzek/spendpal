@@ -6,6 +6,8 @@ import {
   simulateStrategy,
   allocateMonth,
   minimumMonthlyBudget,
+  splitOwed,
+  revolvingMinimum,
   type StrategyDebt,
 } from "@/lib/finance/debtPayoff";
 
@@ -127,5 +129,66 @@ describe("allocateMonth", () => {
     const pay = allocateMonth(debts, [{ id: "a" }, { id: "b" }], 1000);
     expect(pay.b).toBe(25);
     expect(pay.a).toBe(975);
+  });
+});
+
+// Regression: the Debt page amortised a card's whole balance at the card APR,
+// instalment plan principal included.
+describe("splitOwed", () => {
+  // A card that owes 12,400.00, of which 7,650.75 is plan principal.
+  const plans = [
+    { left: 3000, perMonth: 100 },
+    { left: 4200.5, perMonth: 150 },
+    { left: 450.25, perMonth: 150.25 },
+  ];
+
+  it("takes instalment plan principal out of the revolving amount", () => {
+    const split = splitOwed(12400, plans);
+    expect(split.inPlans).toBe(7650.75);
+    expect(split.revolving).toBe(4749.25);
+    expect(split.planMonthly).toBe(400.25);
+  });
+
+  it("leaves the whole balance revolving when the card has no plans", () => {
+    expect(splitOwed(4000, [])).toEqual({ inPlans: 0, revolving: 4000, planMonthly: 0 });
+  });
+
+  it("never makes the revolving amount negative when plans add up to more than is owed", () => {
+    expect(splitOwed(1000, [{ left: 1200, perMonth: 300 }])).toEqual({
+      inPlans: 1000, revolving: 0, planMonthly: 300,
+    });
+  });
+
+  it("ignores a finished plan and a card in credit", () => {
+    expect(splitOwed(500, [{ left: 0, perMonth: 100 }])).toEqual({ inPlans: 0, revolving: 500, planMonthly: 0 });
+    expect(splitOwed(-50, plans).revolving).toBe(0);
+  });
+
+  it("charges interest on the revolving part only", () => {
+    // 1,200 a month at 36%: the whole balance against the part that really is
+    // card debt. Plan interest is already inside the instalments.
+    const { revolving } = splitOwed(12400, plans);
+    expect(monthsToPayoff(12400, 36, 1200)).toBe(13);
+    expect(monthsToPayoff(revolving, 36, 1200)).toBe(5);
+    expect(totalInterest(revolving, 36, 1200)).toBeLessThan(totalInterest(12400, 36, 1200) / 2);
+  });
+});
+
+describe("revolvingMinimum", () => {
+  it("takes the plan instalments out of the statement minimum", () => {
+    expect(revolvingMinimum(900, 400.25)).toBe(499.75);
+  });
+
+  it("is the statement minimum when the card has no plans", () => {
+    expect(revolvingMinimum(900, 0)).toBe(900);
+  });
+
+  it("stops at zero when the instalments are more than the minimum", () => {
+    expect(revolvingMinimum(200, 300)).toBe(0);
+  });
+
+  it("is null when no statement minimum was entered", () => {
+    expect(revolvingMinimum(null, 300)).toBeNull();
+    expect(revolvingMinimum(undefined, 0)).toBeNull();
   });
 });

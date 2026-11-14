@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { Account } from '@/types/finance';
-import { cardStatus, cardStatuses, leftUntilPayday, nextPayday, inferPayday } from '@/lib/finance/cardPayments';
+import type { Account, Transaction } from '@/types/finance';
+import {
+  cardStatus, cardStatuses, leftUntilPayday, nextPayday, inferPayday, pendingHolds, spendableCash,
+} from '@/lib/finance/cardPayments';
 
 // Today's real figures (17 Oct 2026).
 const now = new Date(2026, 9, 17);
@@ -112,6 +114,53 @@ describe('left until payday', () => {
       { type: 'income', category: 'Gift', date: '2026-10-15' },
     ])).toBe(12);
     expect(inferPayday([])).toBeNull();
+  });
+});
+
+// Regression: a pending expense counted as spending at once, but "Spendable
+// Cash" and "Left until payday" added up raw balances and stayed too high.
+describe('pending holds come out of the cash figures', () => {
+  const tx = (o: Partial<Transaction>): Transaction => ({
+    id: 'p', type: 'expense', amount: 0, currency: 'AED', category: 'Shopping', categoryIcon: '🛍️',
+    merchant: 'x', accountId: 'Bank', date: '2026-10-16', ...o,
+  });
+  const hotel = tx({ id: 'hotel', amount: 600.25, isPending: true }); // a hold on the debit card
+  const fuel = tx({ id: 'fuel', amount: 99.75, isPending: true });
+  const settled = tx({ id: 'settled', amount: 50 }); // posted: already out of the balance
+  const onCard = tx({ id: 'card', amount: 300, isPending: true, accountId: 'ENBD' });
+  const tracking = tx({ id: 'track', amount: 120, isPending: true, isTrackingOnly: true });
+  const refund = tx({ id: 'in', amount: 75, isPending: true, type: 'income' });
+  const all = [hotel, fuel, settled, onCard, tracking, refund];
+
+  it('adds up pending expenses per account', () => {
+    expect(pendingHolds(all)).toEqual({ Bank: 700, ENBD: 300 });
+  });
+
+  it('takes holds on cash and debit accounts off spendable cash', () => {
+    // 5,347.49 in the accounts, 700.00 of it held. The hold on the credit
+    // card is not cash and does not count here.
+    expect(spendableCash(accounts, all)).toEqual({ balance: 5_347.49, holds: 700, available: 4_647.49 });
+  });
+
+  it('is the plain balance when nothing is pending', () => {
+    expect(spendableCash(accounts, [settled])).toEqual({ balance: 5_347.49, holds: 0, available: 5_347.49 });
+    expect(spendableCash(accounts)).toEqual({ balance: 5_347.49, holds: 0, available: 5_347.49 });
+  });
+
+  it('ignores a hold on savings that are not spendable', () => {
+    const savings = acct({ name: 'Savings', type: 'debit', balance: 5_000, excludeFromSpendable: true });
+    const held = tx({ id: 's', amount: 400, isPending: true, accountId: 'Savings' });
+    expect(spendableCash([...accounts, savings], [held]).available).toBe(5_347.49);
+  });
+
+  it('starts "left until payday" from cash after holds', () => {
+    const r = leftUntilPayday(accounts, new Date(2026, 9, 28), now, all);
+    expect(r.cash).toBe(4_647.49);
+    expect(r.holds).toBe(700);
+    expect(r.left).toBe(4_647.49);
+    expect(r.perDay).toBe(422.49); // 4,647.49 over 11 days, rounded down
+    // The statement due before a later payday comes off the same figure.
+    expect(leftUntilPayday(accounts, new Date(2026, 10, 12), now, all).left).toBe(-1_034.49);
   });
 });
 

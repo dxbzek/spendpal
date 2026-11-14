@@ -3,6 +3,7 @@ import { memo, useMemo } from 'react';
 import { parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
 import type { Transaction } from '@/types/finance';
+import { isCountableIncome } from '@/lib/finance/transactionFilters';
 
 interface Props {
   transactions: Transaction[];
@@ -22,7 +23,7 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
       // future-dated transactions that haven't happened yet.
       if (tx.isInternal) return;
       if (tx.date > today) return;
-      const isIncome = tx.type === 'income' && !creditAccountIds.has(tx.accountId);
+      const isIncome = isCountableIncome(tx, creditAccountIds); // a refund is not income
       const isExpense = tx.type === 'expense' && !tx.isTrackingOnly;
       if (!isIncome && !isExpense) return;
       const month = format(parseISO(tx.date), 'yyyy-MM');
