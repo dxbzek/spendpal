@@ -14,6 +14,8 @@ import { logger } from '@/lib/logger';
 import { format } from 'date-fns';
 import { exportBackup, restoreBackup, RestoreError } from '@/lib/backup';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
+import { UserX } from 'lucide-react';
+import { deleteEverything, deleteAccount, clearLocalData } from '@/lib/accountDeletion';
 import CategoryManager from '@/components/settings/CategoryManager';
 import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
@@ -201,9 +203,8 @@ const DataBackupCard = () => {
 const DangerZoneCard = () => {
   const { accounts, transactions, budgets, goals, refresh } = useFinance();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  // Which delete the confirm dialog is for: every transaction, or everything.
-  const [confirming, setConfirming] = useState<'transactions' | 'everything' | null>(null);
+  // Which delete the confirm dialog is for: every transaction, all data, or the account itself.
+  const [confirming, setConfirming] = useState<'transactions' | 'everything' | 'account' | null>(null);
   const showConfirm = confirming !== null;
   const setShowConfirm = (open: boolean) => { if (!open) setConfirming(null); };
   const [deleting, setDeleting] = useState(false);
@@ -232,33 +233,68 @@ const DangerZoneCard = () => {
     if (!user || confirmText !== 'DELETE') return;
     setDeleting(true);
     try {
-      // Delete in FK-safe order (transactions before accounts): deleting an
-      // account cascades to its transactions and fires the balance trigger,
-      // which deadlocks against a concurrent transactions delete. Check each
-      // result since supabase-js returns { error } rather than throwing.
-      const tables = ['transactions', 'budgets', 'goals', 'accounts'] as const;
-      for (const table of tables) {
-        const { error } = await supabase.from(table).delete().eq('user_id', user.id);
-        if (error) throw error;
-      }
-      // Clear localStorage snapshots
-      localStorage.removeItem('spendpal_networth_history');
-      localStorage.removeItem('spendpal_rollover_cats');
-      localStorage.removeItem('spendpal_monthly_income');
-      toast.success('All data deleted');
-      await refresh();
-      navigate('/');
+      await deleteEverything(supabase, user.id);
+      clearLocalData(localStorage);
+      // Load the app again from nothing. Pages keep their own copies (the
+      // category list, saved settings) and would show, or save back, what was
+      // just deleted. The spinner stays on until the new page takes over.
+      window.location.assign('/');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error('Delete failed: ' + msg);
-    } finally {
+      // Some tables may already be empty: show what is left.
+      await refresh();
       setDeleting(false);
       setShowConfirm(false);
       setConfirmText('');
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user || confirmText !== 'DELETE') return;
+    setDeleting(true);
+    const outcome = await deleteAccount(supabase);
+    if (outcome === 'deleted') {
+      clearLocalData(localStorage, { account: true });
+      // The server session went with the user. Drop the copy in this browser;
+      // the app then shows the sign-in page.
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      toast.success('Your account was deleted.');
+      // Sign-out could not finish (no connection): a reload finds the session
+      // dead and ends it.
+      if (error) window.location.assign('/auth');
+      return;
+    }
+    if (outcome === 'unavailable') toast.error('Account deletion is not available yet. Nothing was deleted.');
+    else if (outcome === 'failed') toast.error('Account deletion failed. Your account still exists. Try again.');
+    else toast.error('Could not reach the server. Check your connection and try again.');
+    setDeleting(false);
+    setShowConfirm(false);
+    setConfirmText('');
+  };
+
   const total = accounts.length + transactions.length + budgets.length + goals.length;
+
+  const dialog = {
+    transactions: {
+      title: 'Delete All Transactions?',
+      body: <>This will permanently delete every transaction, including ones older than the app shows. Account balances are adjusted back. This action <span className="font-semibold text-foreground">cannot be undone</span>.</>,
+      action: 'Yes, Delete All Transactions',
+      run: handleDeleteTransactions,
+    },
+    everything: {
+      title: 'Delete All Data?',
+      body: <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets and {goals.length} goals, and your custom categories, advisor history, name and phone number. Your sign-in and profile photo stay. This action <span className="font-semibold text-foreground">cannot be undone</span>. There is no Undo for Delete All.</>,
+      action: 'Yes, Delete Everything',
+      run: handleDeleteAll,
+    },
+    account: {
+      title: 'Delete my account?',
+      body: <>This will permanently delete your sign-in for <span className="font-medium text-foreground break-all">{user?.email}</span> and everything stored with it: accounts, transactions, budgets, goals, categories, advisor history, profile and photo. This action <span className="font-semibold text-foreground">cannot be undone</span>. Export a backup first if you want a copy.</>,
+      action: 'Yes, delete my account',
+      run: handleDeleteAccount,
+    },
+  }[confirming ?? 'transactions'];
 
   return (
     <>
@@ -291,7 +327,7 @@ const DangerZoneCard = () => {
             <div className="flex-1">
               <p className="text-sm font-medium">Delete All Data</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Permanently removes all {total} records — accounts, transactions, budgets, and goals.
+                Permanently removes all {total} records: accounts, transactions, budgets and goals. Also removes your custom categories, advisor history, name and phone number. Your sign-in and profile photo stay; Delete my account removes those too.
               </p>
               <Button
                 variant="outline"
@@ -303,21 +339,37 @@ const DangerZoneCard = () => {
               </Button>
             </div>
           </div>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
+              <UserX size={16} className="text-destructive" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Delete my account</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Permanently removes your sign-in and everything stored with it. You cannot sign in again with this account.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => setConfirming('account')}
+              >
+                <UserX size={14} className="mr-1.5" /> Delete my account
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <AlertDialog open={showConfirm} onOpenChange={o => { setShowConfirm(o); if (!o) setConfirmText(''); }}>
+      {/* Stays open while a delete runs: closing it would hide a delete that is still going. */}
+      <AlertDialog open={showConfirm} onOpenChange={o => { if (deleting) return; setShowConfirm(o); if (!o) setConfirmText(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-2">
               <AlertTriangle size={20} className="text-destructive" />
-              <AlertDialogTitle>{confirming === 'transactions' ? 'Delete All Transactions?' : 'Delete All Data?'}</AlertDialogTitle>
+              <AlertDialogTitle>{dialog.title}</AlertDialogTitle>
             </div>
-            <AlertDialogDescription>
-              {confirming === 'transactions'
-                ? <>This will permanently delete every transaction, including ones older than the app shows. Account balances are adjusted back. This action <span className="font-semibold text-foreground">cannot be undone</span>.</>
-                : <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals. This action <span className="font-semibold text-foreground">cannot be undone</span> — there is no Undo for Delete All.</>}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{dialog.body}</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-1">
             <label className="text-xs text-muted-foreground">
@@ -336,11 +388,12 @@ const DangerZoneCard = () => {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting || confirmText !== 'DELETE'}
-              onClick={confirming === 'transactions' ? handleDeleteTransactions : handleDeleteAll}
+              // Radix closes the dialog on this click by default. Keep it open so the spinner shows.
+              onClick={e => { e.preventDefault(); dialog.run(); }}
               className="bg-destructive text-destructive-foreground hover:brightness-95"
             >
               {deleting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-              {confirming === 'transactions' ? 'Yes, Delete All Transactions' : 'Yes, Delete Everything'}
+              {dialog.action}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
