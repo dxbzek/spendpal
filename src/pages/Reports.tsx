@@ -1,4 +1,5 @@
 import { savingsSummary } from '@/lib/finance/pace';
+import { budgetCategoryOf } from '@/lib/finance/categories';
 import { PageSpinner } from '@/components/ui/spinner';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { activeBudgets } from '@/utils/budgets';
@@ -129,13 +130,15 @@ const Reports = () => {
   // but wrong here once the user picks a different month from the dropdown.
   // Recompute spend-by-category scoped to the selected month from monthTxs instead.
   const monthSpentByCategory = useMemo(() => {
+    const names = new Set(monthBudgets.map(b => b.category));
     const spent: Record<string, number> = {};
     for (const tx of monthTxs) {
       if (tx.type !== 'expense' || tx.isTrackingOnly || tx.isInternal) continue;
-      spent[tx.category] = (spent[tx.category] ?? 0) + tx.amount;
+      const category = budgetCategoryOf(tx.category, names);
+      spent[category] = (spent[category] ?? 0) + tx.amount;
     }
     return spent;
-  }, [monthTxs]);
+  }, [monthTxs, monthBudgets]);
 
   const incomeBySource = useMemo(() => {
     const map: Record<string, { value: number; icon: string }> = {};

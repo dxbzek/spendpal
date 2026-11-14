@@ -1,3 +1,4 @@
+import { budgetCategoryOf } from '@/lib/finance/categories';
 import { useState, useMemo } from 'react';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import { activeBudgets } from '@/utils/budgets';
@@ -57,9 +58,14 @@ const MonthlyReportPrint = () => {
     // month-equality filter that would show nothing for carry-forward months.
     // Spend is recomputed from monthTxs rather than Budget.spent, which is
     // always the real current month's spend regardless of which budget it's on.
-    const monthBudgets = activeBudgets(budgets, selectedMonth)
-      .filter(b => b.period === 'monthly')
-      .map(b => ({ ...b, spent: byCategory[b.category]?.total ?? 0 }));
+    const active = activeBudgets(budgets, selectedMonth).filter(b => b.period === 'monthly');
+    const names = new Set(active.map(b => b.category));
+    const spentByBudget: Record<string, number> = {};
+    for (const [cat, v] of Object.entries(byCategory)) {
+      const target = budgetCategoryOf(cat, names);
+      spentByBudget[target] = (spentByBudget[target] ?? 0) + v.total;
+    }
+    const monthBudgets = active.map(b => ({ ...b, spent: spentByBudget[b.category] ?? 0 }));
 
     return { totalIncome, totalExpenses, netSavings, categories, monthBudgets, txCount: monthTxs.length };
   }, [transactions, budgets, accounts, selectedMonth]);

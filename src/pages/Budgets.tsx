@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
 import { budgetPace } from '@/lib/finance/pace';
+import { budgetCategoryOf } from '@/lib/finance/categories';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -84,10 +85,11 @@ const Budgets = () => {
   // bills and one-offs counted once. Not capped at the budget.
   const paces = useMemo(() => {
     const today = format(now, 'yyyy-MM-dd');
+    const names = new Set(thisMonthBudgets.map(b => b.category));
     const byCategory: Record<string, typeof transactions> = {};
     for (const t of transactions) {
       if (!isCountableExpense(t) || !t.date.startsWith(currentMonthKey) || t.date > today) continue;
-      (byCategory[t.category] ??= []).push(t);
+      (byCategory[budgetCategoryOf(t.category, names)] ??= []).push(t);
     }
     return Object.fromEntries(thisMonthBudgets.map(b =>
       [b.id, budgetPace(b, byCategory[b.category] ?? [], daysElapsed, totalDays)]));
@@ -100,15 +102,16 @@ const Budgets = () => {
     const prev = subMonths(now, 1);
     const pm = getMonth(prev);
     const py = getYear(prev);
+    const names = new Set(budgets.map(b => b.category));
     const map: Record<string, number> = {};
     transactions
       .filter(t => {
         const d = parseISO(t.date);
         return isCountableExpense(t) && getMonth(d) === pm && getYear(d) === py;
       })
-      .forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
+      .forEach(t => { const c = budgetCategoryOf(t.category, names); map[c] = (map[c] || 0) + t.amount; });
     return map;
-  }, [transactions, now]);
+  }, [transactions, budgets, now]);
 
   const lastMonthLabel = format(subMonths(now, 1), 'MMMM');
   const lastMonthKey = format(subMonths(now, 1), 'yyyy-MM');
