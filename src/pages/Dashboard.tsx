@@ -20,7 +20,7 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, Receipt, Target, PiggyBank, CheckCircle2, ArrowUpRight, ArrowDown } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, CheckCircle2, ArrowUpRight, ArrowDown, Coins } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +35,14 @@ import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
 import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
+import { useAuth } from '@/context/AuthContext';
+import { useEditTransaction } from '@/components/layout/AppLayout';
+import CurrencyStep from '@/components/onboarding/CurrencyStep';
+import GettingStartedCard from '@/components/dashboard/GettingStartedCard';
+import {
+  OPEN_ADD_STATE, checklistDismissedKey, checklistSteps, currencyConfirmedKey, needsCurrencyStep, readFlag,
+  showChecklist, writeFlag, type ChecklistStepId,
+} from '@/lib/onboarding';
 import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
@@ -69,6 +77,11 @@ const Dashboard = () => {
     ? WORLD_CURRENCIES.filter(c => c.code.toLowerCase().includes(secSearch.toLowerCase()) || c.label.toLowerCase().includes(secSearch.toLowerCase()))
     : WORLD_CURRENCIES;
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { openAddSheet } = useEditTransaction();
+  // First-use flags, per user, in this browser (see lib/onboarding).
+  const [currencyConfirmed, setCurrencyConfirmed] = useState(() => !!user && readFlag(currencyConfirmedKey(user.id)));
+  const [checklistDismissed, setChecklistDismissed] = useState(() => !!user && readFlag(checklistDismissedKey(user.id)));
   // Shared hook keeps the balance mask in sync across the app.
   const { hidden, mask } = useBalanceMask();
   const toggleHidden = () => dispatchBalanceMaskToggle(!hidden);
@@ -160,6 +173,23 @@ const Dashboard = () => {
   }, [transactions]);
 
 
+  const counts = { accounts: accounts.length, transactions: transactions.length, budgets: budgets.length, goals: goals.length };
+  const steps = checklistSteps(counts);
+  // The oldest row says how long the user has been here (see showChecklist).
+  const oldestTxDate = transactions.length ? transactions.reduce((min, t) => (t.date < min ? t.date : min), transactions[0].date) : null;
+  const checklistVisible = showChecklist(steps, checklistDismissed, oldestTxDate, today);
+
+  const runStep = (id: ChecklistStepId) => {
+    if (id === 'account') { setEditAccount(null); setShowAddAccount(true); }
+    else if (id === 'transaction') openAddSheet();
+    else if (id === 'budget') navigate('/budgets', { state: OPEN_ADD_STATE });
+    else navigate('/goals', { state: OPEN_ADD_STATE });
+  };
+  const dismissChecklist = () => {
+    setChecklistDismissed(true);
+    if (user) writeFlag(checklistDismissedKey(user.id));
+  };
+
   // Skeleton keeps the layout stable while data loads.
   if (dataLoading) {
     return (
@@ -182,13 +212,16 @@ const Dashboard = () => {
     );
   }
 
-  // First-run onboarding when the user has no accounts yet.
+  // First run: no accounts yet. A brand-new user picks a currency first, so
+  // the first account is not saved in AED by default; anyone who already has
+  // records skips it (they change currency in Settings, with conversion).
   if (!dataLoading && accounts.length === 0) {
-    const steps = [
-      { icon: Wallet, label: 'Add your first account', hint: 'Cash, bank account or credit card', done: accounts.length > 0 },
-      { icon: Receipt, label: 'Record a transaction', hint: 'Income or expense', done: transactions.length > 0 },
-      { icon: PiggyBank, label: 'Create a budget', hint: 'Track spending by category', done: budgets.length > 0 },
-      { icon: Target, label: 'Set a savings goal', hint: 'Something to work toward', done: goals.length > 0 },
+    const askCurrency = needsCurrencyStep(counts, currencyConfirmed);
+    // The currency row shows only to someone who is or was asked: marking it
+    // Done for a user who skipped it would say they chose one.
+    const firstRun = [
+      ...(askCurrency || currencyConfirmed ? [{ icon: Coins, label: 'Choose your currency', hint: 'Used for every amount', done: !askCurrency }] : []),
+      { icon: Wallet, label: steps[0].label, hint: steps[0].hint, done: false },
     ];
     return (
       <div className="px-5 md:px-8 pt-12 pb-8 max-w-lg mx-auto">
@@ -197,11 +230,13 @@ const Dashboard = () => {
             <Wallet size={36} className="text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-heading mb-2">Welcome to SpendPal!</h1>
-          <p className="text-muted-foreground text-sm">Get started in a few simple steps to take control of your finances.</p>
+          <p className="text-muted-foreground text-sm">
+            {firstRun.length > 1 ? 'Two steps to start: your currency, then your first account.' : 'Add your first account to start.'}
+          </p>
         </div>
 
-        <div className="space-y-5 mb-8">
-          {steps.map((step, i) => {
+        <div className="space-y-3 mb-6">
+          {firstRun.map((step, i) => {
             const Icon = step.icon;
             return (
               <div key={i} className={`flex items-center gap-4 p-4 rounded-xl card-shadow transition-all ${step.done ? 'bg-income-soft border border-income-line' : 'bg-card'}`}>
@@ -222,13 +257,17 @@ const Dashboard = () => {
           })}
         </div>
 
-        <button
-          onClick={() => setShowAddAccount(true)}
-          className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-transform"
-        >
-          <Plus size={20} />
-          Add Your First Account
-        </button>
+        {askCurrency ? (
+          <CurrencyStep onSaved={() => { setCurrencyConfirmed(true); setShowAddAccount(true); }} />
+        ) : (
+          <button
+            onClick={() => setShowAddAccount(true)}
+            className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-transform"
+          >
+            <Plus size={20} />
+            Add your first account
+          </button>
+        )}
 
         <AddAccountDialog
           open={showAddAccount}
@@ -292,6 +331,8 @@ const Dashboard = () => {
       </div>
 
       <div className="px-5 md:px-8 -mt-4 pb-8">
+        {checklistVisible && <GettingStartedCard steps={steps} onStep={runStep} onDismiss={dismissChecklist} />}
+
         {/* What each card's statement asks for, exactly as entered */}
         <CardPaymentsCard
           accounts={accounts}

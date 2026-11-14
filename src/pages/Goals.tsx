@@ -1,6 +1,7 @@
 import { PageSpinner } from '@/components/ui/spinner';
 import { goalPace, goalDeadlineLabel, goalPaceLabel } from '@/lib/finance/pace';
 import { useToday } from '@/hooks/useToday';
+import { useOpenAddFromRoute } from '@/hooks/useOpenAddFromRoute';
 import { useState, useCallback } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -41,7 +42,9 @@ const Goals = () => {
   const [progressNote, setProgressNote] = useState('');
   const [showLog, setShowLog] = useState<string | null>(null);
   const [showAllLog, setShowAllLog] = useState<string | null>(null);
-  const [showAddGoal, setShowAddGoal] = useState(false);
+  // Opened from the Home checklist: start with the Add dialog open.
+  const openAdd = useOpenAddFromRoute();
+  const [showAddGoal, setShowAddGoal] = useState(openAdd);
   const [showScan, setShowScan] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);

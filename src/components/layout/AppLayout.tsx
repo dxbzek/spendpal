@@ -13,9 +13,11 @@ import { WifiOff } from 'lucide-react';
 
 interface EditTxContextType {
   openEditSheet: (tx: Transaction) => void;
+  /** The same blank New Transaction sheet as the + button. */
+  openAddSheet: () => void;
 }
 
-const EditTxContext = createContext<EditTxContextType>({ openEditSheet: () => {} });
+const EditTxContext = createContext<EditTxContextType>({ openEditSheet: () => {}, openAddSheet: () => {} });
 export const useEditTransaction = () => useContext(EditTxContext);
 
 const AppLayout = () => {
@@ -38,13 +40,18 @@ const AppLayout = () => {
     setShowAdd(true);
   };
 
+  const openAddSheet = () => {
+    setEditTx(null);
+    setShowAdd(true);
+  };
+
   const handleOpenChange = (open: boolean) => {
     setShowAdd(open);
     if (!open) setEditTx(null);
   };
 
   return (
-    <EditTxContext.Provider value={{ openEditSheet }}>
+    <EditTxContext.Provider value={{ openEditSheet, openAddSheet }}>
       <div className="h-full bg-background flex overflow-hidden">
         <a
           href="#main-content"

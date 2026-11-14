@@ -23,6 +23,7 @@ import { asMonthly, budgetPercent, includedCategories, isBudgetAmount, rolloverA
 import { oneOffLimit } from '@/lib/finance/spendingForecast';
 import { budgetsForMonth } from '@/utils/budgets';
 import { useToday } from '@/hooks/useToday';
+import { useOpenAddFromRoute } from '@/hooks/useOpenAddFromRoute';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -52,7 +53,9 @@ const Budgets = () => {
   const { fmt } = useCurrency();
   const { loading: aiLoading, generateBudgetSuggestions } = useAI();
   const { hidden, mask } = useBalanceMask();
-  const [showAddBudget, setShowAddBudget] = useState(false);
+  // Opened from the Home checklist: start with the Add dialog open.
+  const openAdd = useOpenAddFromRoute();
+  const [showAddBudget, setShowAddBudget] = useState(openAdd);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
   const { scheduleDelete: scheduleBudgetDelete, isPending: isBudgetPending } = useUndoableDelete({ deleteOne: removeBudget });
