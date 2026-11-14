@@ -7,6 +7,7 @@ import { isInPeriod } from '@/lib/today';
 import { useToday } from '@/hooks/useToday';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
 import { savingsSummary } from '@/lib/finance/pace';
+import { pairTransfers } from '@/lib/finance/transfers';
 import { grossSpending, isCountableExpense, isCountableIncome, netSpending, refundTotal } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
@@ -144,26 +145,17 @@ const Dashboard = () => {
     };
   }, [transactions]);
 
-  // Merge transfer pairs for recent transactions display (same logic as Transactions page)
+  // The two halves of a transfer show as one row, paired the same way as on
+  // the Transactions page: on the transfer id, older rows on date + amount +
+  // note (see transfers.ts). Date + amount alone crossed two equal transfers
+  // made on one day and showed the wrong destination account.
   const recentTx = useMemo(() => {
-    const pairedIds = new Set<string>();
-    const mergedList: (typeof transactions[0] & { toAccountId?: string })[] = [];
-    const transferExpenses = transactions.filter(t => t.category === 'Transfer' && t.type === 'expense');
-    const transferIncomes = transactions.filter(t => t.category === 'Transfer' && t.type === 'income');
-    const transferToAccount = new Map<string, string>();
-    for (const exp of transferExpenses) {
-      const match = transferIncomes.find(inc => inc.date === exp.date && inc.amount === exp.amount && !pairedIds.has(inc.id));
-      if (match) {
-        pairedIds.add(exp.id);
-        pairedIds.add(match.id);
-        transferToAccount.set(exp.id, match.accountId);
-      }
-    }
-    for (const tx of transactions) {
-      if (pairedIds.has(tx.id) && !transferToAccount.has(tx.id)) continue; // skip income half
-      mergedList.push({ ...tx, toAccountId: transferToAccount.get(tx.id) });
-    }
-    return mergedList.slice(0, 5);
+    const pairs = pairTransfers(transactions);
+    const incomeHalves = new Set([...pairs.values()].map(p => p.to.id));
+    return transactions
+      .filter(tx => !incomeHalves.has(tx.id))
+      .slice(0, 5)
+      .map(tx => ({ ...tx, toAccountId: pairs.get(tx.id)?.to.accountId }));
   }, [transactions]);
 
 
