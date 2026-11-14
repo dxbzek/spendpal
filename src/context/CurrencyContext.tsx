@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -62,12 +63,14 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
   const [secondaryRate, setSecondaryRate] = useState<number | null>(null);
 
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
-    supabase.from('profiles').select('currency').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+    if (!userId) return;
+    supabase.from('profiles').select('currency').eq('user_id', userId).maybeSingle().then(({ data, error }) => {
+      if (error) logger.warn('Could not load the profile currency', error);
       if (data?.currency) setCurrencyState(data.currency);
     });
-  }, [user]);
+  }, [userId]);
 
   // Fetch secondary rate; inline effect avoids the useCallback→useEffect dependency chain
   // that caused spurious refetches. AbortController cancels stale requests on re-run.
