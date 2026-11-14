@@ -12,14 +12,14 @@ import { projectBalance } from '@/lib/finance/balanceProjection';
 const now = new Date(2026, 9, 25, 15, 30); // 25 Oct 2026, mid-afternoon
 
 const acct = (o: Partial<Account>): Account => ({
-  id: o.name ?? 'x', name: 'x', type: 'debit', balance: 0, currency: 'AED', icon: '💳', ...o,
+  id: o.name ?? 'x', name: 'x', type: 'debit', balance: 0, currency: 'AED', icon: 'x', ...o,
 });
 const bank = acct({ name: 'Bank', balance: 5_000 });
 const card = acct({ name: 'Card', type: 'credit', balance: 900 });
 
 let n = 0;
 const tx = (o: Partial<Transaction>): Transaction => ({
-  id: `t${n++}`, type: 'expense', amount: 0, currency: 'AED', category: 'Subscriptions', categoryIcon: '🔄',
+  id: `t${n++}`, type: 'expense', amount: 0, currency: 'AED', category: 'Subscriptions', categoryIcon: 'x',
   merchant: 'x', accountId: 'Bank', date: '2026-10-20', isRecurring: true, ...o,
 });
 

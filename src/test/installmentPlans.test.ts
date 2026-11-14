@@ -8,7 +8,7 @@ import {
 
 let n = 0;
 const row = (o: Partial<Transaction>): Transaction => ({
-  id: `t${n++}`, type: 'expense', amount: 0, currency: 'AED', category: 'Shopping', categoryIcon: '🛍️',
+  id: `t${n++}`, type: 'expense', amount: 0, currency: 'AED', category: 'Shopping', categoryIcon: 'x',
   merchant: 'Tabby', accountId: 'Tabby Card', date: '2026-10-01', isRecurring: true, isTrackingOnly: true,
   totalInstallments: 4, currentInstallment: 0, ...o,
 });

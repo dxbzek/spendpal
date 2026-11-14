@@ -4,7 +4,7 @@ import { pairTransfers, transferPartner } from '@/lib/finance/transfers';
 
 let n = 0;
 const half = (type: 'expense' | 'income', accountId: string, o: Partial<Transaction> = {}): Transaction => ({
-  id: `t${n++}`, type, amount: 500, currency: 'AED', category: 'Transfer', categoryIcon: '🔁',
+  id: `t${n++}`, type, amount: 500, currency: 'AED', category: 'Transfer', categoryIcon: 'x',
   merchant: 'Transfer', accountId, date: '2026-11-10', isInternal: true, ...o,
 });
 

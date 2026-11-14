@@ -22,11 +22,11 @@ describe('the Recurring switch', () => {
   it('a 20/month subscription saved with Recurring on is a bill with no debt', () => {
     const switches = setRecurring(fresh, true);
     const saved: Transaction = {
-      id: 't1', type: 'expense', amount: 20, currency: 'AED', category: 'Subscriptions', categoryIcon: '🔄',
+      id: 't1', type: 'expense', amount: 20, currency: 'AED', category: 'Subscriptions', categoryIcon: 'x',
       merchant: 'Spotify', accountId: 'Bank', date: '2026-11-01', isRecurring: switches.isRecurring,
       ...planFields({ ...fields, ...switches }),
     };
-    const bank: Account = { id: 'Bank', name: 'Bank', type: 'debit', balance: 1_000, currency: 'AED', icon: '💳' };
+    const bank: Account = { id: 'Bank', name: 'Bank', type: 'debit', balance: 1_000, currency: 'AED', icon: 'x' };
     expect(buildPlans([saved])).toEqual([]); // was 1 plan
     expect(totalLeft(buildPlans([saved]))).toBe(0); // was 220 "left"
     expect(nextRecurringBills([bank], [saved], new Date(2026, 10, 14)).map(b => b.name)).toEqual(['Spotify']); // was no bill
@@ -74,7 +74,7 @@ describe('installments paid so far', () => {
 
   it('a plan with 0 paid owes every instalment', () => {
     const saved: Transaction = {
-      id: 't1', type: 'expense', amount: 100, currency: 'AED', category: 'Shopping', categoryIcon: '🛍️',
+      id: 't1', type: 'expense', amount: 100, currency: 'AED', category: 'Shopping', categoryIcon: 'x',
       merchant: 'Tabby', accountId: 'Tabby Card', date: '2026-11-01', isRecurring: true,
       ...planFields({ ...fields, isRecurring: true, hasInstallments: true, totalInstallments: '4', currentInstallment: '0', isTrackingOnly: true }),
     };
