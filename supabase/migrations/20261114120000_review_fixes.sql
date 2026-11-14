@@ -271,3 +271,138 @@ CREATE POLICY "Users can view own ai usage" ON public.ai_usage
 REVOKE ALL ON public.ai_usage FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.ai_usage TO anon, authenticated;
 GRANT ALL ON public.ai_usage TO service_role;
+
+-- 22l. restore_backup(payload): replace everything the caller owns with the
+--    rows of a backup, in one transaction. The app did this as many separate
+--    requests, so a closed tab or one refused row left the account half
+--    written. Here any error undoes the whole call and the old data stays.
+--
+--    payload = { accounts, balances: [{id, balance}], transactions, budgets,
+--    goals, goal_contributions }, rows keyed by column name as
+--    src/lib/backup.ts prepareRestore() builds them. Only the columns named
+--    below are read, and user_id is always the caller, never the payload's.
+--    SECURITY INVOKER: row level security still applies to every statement.
+CREATE OR REPLACE FUNCTION public.restore_backup(payload JSONB)
+RETURNS JSONB LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE
+  uid UUID := auth.uid();
+  k TEXT;
+  n_accounts INTEGER := 0;
+  n_transactions INTEGER := 0;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'not signed in'; END IF;
+
+  -- Check the shape before anything is deleted.
+  IF payload IS NULL OR jsonb_typeof(payload) <> 'object' THEN
+    RAISE EXCEPTION 'invalid backup: not an object';
+  END IF;
+  FOREACH k IN ARRAY ARRAY['accounts', 'transactions'] LOOP
+    IF jsonb_typeof(payload->k) IS DISTINCT FROM 'array' THEN
+      RAISE EXCEPTION 'invalid backup: % must be a list', k;
+    END IF;
+  END LOOP;
+  FOREACH k IN ARRAY ARRAY['balances', 'budgets', 'goals', 'goal_contributions'] LOOP
+    IF payload->k IS NULL OR jsonb_typeof(payload->k) = 'null' THEN
+      payload := payload || jsonb_build_object(k, '[]'::jsonb);
+    ELSIF jsonb_typeof(payload->k) <> 'array' THEN
+      RAISE EXCEPTION 'invalid backup: % must be a list', k;
+    END IF;
+  END LOOP;
+
+  DELETE FROM goal_contributions WHERE user_id = uid;
+  DELETE FROM transactions WHERE user_id = uid;
+  DELETE FROM budgets WHERE user_id = uid;
+  DELETE FROM goals WHERE user_id = uid;
+  DELETE FROM accounts WHERE user_id = uid;
+
+  -- Accounts start at 0: inserting the transactions replays them onto the
+  -- balance through the trigger, then the backed-up balance is set.
+  -- Lists are ordered by created_at and every row of one transaction would
+  -- share now(), so each row is one microsecond after the one before it.
+  -- A missing value takes the column's default (icon: credit card emoji).
+  INSERT INTO accounts (
+    id, user_id, name, type, balance, currency, icon, credit_limit, due_date, statement_date, apr,
+    statement_total_due, statement_min_due, statement_due_on, exclude_from_spendable, created_at)
+  SELECT r.id, uid, r.name, r.type, 0, COALESCE(r.currency, 'AED'), COALESCE(r.icon, U&'\+01F4B3'),
+         r.credit_limit, r.due_date, r.statement_date, r.apr,
+         r.statement_total_due, r.statement_min_due, r.statement_due_on,
+         COALESCE(r.exclude_from_spendable, false), now() + e.ord * interval '1 microsecond'
+  FROM jsonb_array_elements(payload->'accounts') WITH ORDINALITY AS e(item, ord)
+  CROSS JOIN LATERAL jsonb_to_record(e.item) AS r(
+    id UUID, name TEXT, type TEXT, currency TEXT, icon TEXT, credit_limit NUMERIC, due_date INTEGER,
+    statement_date INTEGER, apr NUMERIC, statement_total_due NUMERIC, statement_min_due NUMERIC,
+    statement_due_on DATE, exclude_from_spendable BOOLEAN);
+  GET DIAGNOSTICS n_accounts = ROW_COUNT;
+
+  -- Default category icon: pushpin emoji.
+  INSERT INTO transactions (
+    user_id, account_id, type, amount, currency, category, category_icon, merchant, date, note,
+    is_recurring, total_installments, current_installment, loan_total_amount, is_tracking_only,
+    is_internal, is_pending, remaining_principal, dupe_dismissed, plan_id, transfer_id)
+  SELECT uid, r.account_id, r.type, r.amount, COALESCE(r.currency, 'AED'), r.category,
+         COALESCE(r.category_icon, U&'\+01F4CC'), r.merchant, COALESCE(r.date, CURRENT_DATE), r.note,
+         COALESCE(r.is_recurring, false), r.total_installments, r.current_installment, r.loan_total_amount,
+         COALESCE(r.is_tracking_only, false), COALESCE(r.is_internal, false), COALESCE(r.is_pending, false),
+         r.remaining_principal, COALESCE(r.dupe_dismissed, false), r.plan_id, r.transfer_id
+  FROM jsonb_to_recordset(payload->'transactions') AS r(
+    account_id UUID, type TEXT, amount NUMERIC, currency TEXT, category TEXT, category_icon TEXT,
+    merchant TEXT, date DATE, note TEXT, is_recurring BOOLEAN, total_installments INTEGER,
+    current_installment INTEGER, loan_total_amount NUMERIC, is_tracking_only BOOLEAN,
+    is_internal BOOLEAN, is_pending BOOLEAN, remaining_principal NUMERIC, dupe_dismissed BOOLEAN,
+    plan_id UUID, transfer_id UUID);
+  GET DIAGNOSTICS n_transactions = ROW_COUNT;
+
+  UPDATE accounts a SET balance = b.balance
+  FROM jsonb_to_recordset(payload->'balances') AS b(id UUID, balance NUMERIC)
+  WHERE a.id = b.id AND a.user_id = uid AND b.balance IS NOT NULL;
+
+  INSERT INTO budgets (user_id, category, category_icon, amount, period, month, is_fixed)
+  SELECT uid, r.category, COALESCE(r.category_icon, U&'\+01F4CC'), r.amount,
+         COALESCE(r.period, 'monthly'), r.month, COALESCE(r.is_fixed, false)
+  FROM jsonb_to_recordset(payload->'budgets') AS r(
+    category TEXT, category_icon TEXT, amount NUMERIC, period TEXT, month TEXT, is_fixed BOOLEAN);
+
+  -- An older backup can hold weekly budgets. Same rule as the one-time
+  -- conversion in 22i, for this user's rows.
+  UPDATE budgets m
+  SET amount = m.amount + w.converted
+  FROM (
+    SELECT category, month, sum(round(amount * 52 / 12, 2)) AS converted
+    FROM budgets WHERE user_id = uid AND period = 'weekly'
+    GROUP BY category, month
+  ) w
+  WHERE m.user_id = uid AND m.period = 'monthly' AND m.category = w.category AND m.month = w.month;
+  DELETE FROM budgets w
+  WHERE w.user_id = uid AND w.period = 'weekly'
+    AND EXISTS (
+      SELECT 1 FROM budgets m
+      WHERE m.user_id = uid AND m.period = 'monthly' AND m.category = w.category AND m.month = w.month
+    );
+  UPDATE budgets SET amount = round(amount * 52 / 12, 2), period = 'monthly'
+  WHERE user_id = uid AND period = 'weekly';
+
+  -- Default goal icon: target emoji.
+  INSERT INTO goals (id, user_id, name, icon, type, target_amount, saved_amount, deadline, status, created_at)
+  SELECT r.id, uid, r.name, COALESCE(r.icon, U&'\+01F3AF'), r.type, r.target_amount,
+         COALESCE(r.saved_amount, 0), r.deadline, COALESCE(r.status, 'active'),
+         now() + e.ord * interval '1 microsecond'
+  FROM jsonb_array_elements(payload->'goals') WITH ORDINALITY AS e(item, ord)
+  CROSS JOIN LATERAL jsonb_to_record(e.item) AS r(
+    id UUID, name TEXT, icon TEXT, type TEXT, target_amount NUMERIC, saved_amount NUMERIC,
+    deadline DATE, status TEXT);
+
+  -- The log shows created_at as the contribution's date, so it is kept.
+  INSERT INTO goal_contributions (user_id, goal_id, amount, note, created_at)
+  SELECT uid, r.goal_id, r.amount, r.note, COALESCE(r.created_at, now())
+  FROM jsonb_to_recordset(payload->'goal_contributions') AS r(
+    goal_id UUID, amount NUMERIC, note TEXT, created_at TIMESTAMPTZ);
+
+  RETURN jsonb_build_object('accounts', n_accounts, 'transactions', n_transactions);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.restore_backup(JSONB) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.restore_backup(JSONB) TO authenticated;
+
+-- 22m. Tell the API about the new tables, columns and function now.
+NOTIFY pgrst, 'reload schema';
