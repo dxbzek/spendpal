@@ -55,6 +55,12 @@ export interface Transaction {
   remainingPrincipal?: number | null;
   // The user said this isn't a duplicate; Transactions stops flagging it.
   dupeDismissed?: boolean;
+  // One id per instalment plan, on every row of that plan.
+  // null = row has none (logged before the column, or imported);
+  // undefined = column not on the database yet.
+  planId?: string | null;
+  // One id shared by the two halves of a transfer. Same null/undefined meaning.
+  transferId?: string | null;
 }
 
 export interface Budget {

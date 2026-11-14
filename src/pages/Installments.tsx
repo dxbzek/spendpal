@@ -7,7 +7,8 @@ import { CreditCard, CheckCircle2, ChevronLeft, ChevronDown, Plus, Trash2, Penci
 import AddTransactionSheet from '@/components/transactions/AddTransactionSheet';
 import type { Transaction } from '@/types/finance';
 import {
-  buildPlans, planDisplayName, planLeft, planSchedule, totalLeft, type InstallmentPlan,
+  buildPlans, latestPlanRow, planDisplayName, planLeft, planRows, planSchedule, principalAfterProgress, totalLeft,
+  type InstallmentPlan,
 } from '@/lib/finance/installments';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -43,10 +44,7 @@ const Installments = () => {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   /** Get the latest transaction record for a given plan */
-  const getLatestTx = (plan: InstallmentPlan): Transaction | undefined =>
-    transactions
-      .filter(tx => tx.merchant === plan.merchant && tx.totalInstallments === plan.totalInstallments)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
+  const getLatestTx = (plan: InstallmentPlan): Transaction | undefined => latestPlanRow(transactions, plan);
 
   /** Increment or decrement currentInstallment on the latest tx for a plan */
   // One update per plan at a time: `next` is computed from current state, so a
@@ -56,10 +54,16 @@ const Installments = () => {
     if (updatingPlan === plan.key) return;
     const tx = getLatestTx(plan);
     if (!tx) return;
-    const next = Math.max(0, Math.min(plan.totalInstallments, (tx.currentInstallment ?? 0) + delta));
+    const paid = tx.currentInstallment ?? 0;
+    const next = Math.max(0, Math.min(plan.totalInstallments, paid + delta));
     setUpdatingPlan(plan.key);
     try {
-      await updateTransaction({ ...tx, currentInstallment: next });
+      await updateTransaction({
+        ...tx,
+        currentInstallment: next,
+        // A typed remaining principal was true at the old count; move it with the count.
+        remainingPrincipal: principalAfterProgress(tx.remainingPrincipal, plan.totalInstallments, paid, next),
+      });
     } finally {
       setUpdatingPlan(null);
     }
@@ -67,9 +71,8 @@ const Installments = () => {
 
   const handleDeletePlan = async () => {
     if (!planToDelete) return;
-    const ids = transactions
-      .filter(tx => tx.merchant === planToDelete.merchant && tx.totalInstallments === planToDelete.totalInstallments)
-      .map(tx => tx.id);
+    // Only this plan's rows: another plan at the same merchant keeps its own.
+    const ids = planRows(transactions, planToDelete).map(tx => tx.id);
     await bulkRemoveTransactions(ids);
     setPlanToDelete(null);
     setSelectedPlan(null);
@@ -104,6 +107,7 @@ const Installments = () => {
     // Live plan data, so every figure follows the +/- stepper, not just the stepper.
     const plan = plans.find(p => p.key === selectedPlan.key) ?? selectedPlan;
     const remainingInstallments = Math.max(0, plan.totalInstallments - plan.paidInstallments);
+    const isDone = remainingInstallments === 0;
     const remainingPayments = round2(remainingInstallments * plan.amountPerInstallment);
     const paidPayments = round2(plan.paidInstallments * plan.amountPerInstallment);
     const grossTotal = round2(plan.totalInstallments * plan.amountPerInstallment);
@@ -111,14 +115,14 @@ const Installments = () => {
     const loanTotal = plan.loanTotalAmount ?? grossTotal;
     const principalPerInstallment = round2(loanTotal / plan.totalInstallments);
     const interestPerInstallment = round2(plan.amountPerInstallment - principalPerInstallment);
-    const paidPrincipal = round2(plan.paidInstallments * principalPerInstallment);
+    // With a purchase price, plan.paidAmount is the principal paid (same figure as the list card).
+    const paidPrincipal = hasLoan ? plan.paidAmount : paidPayments;
     // The statement's figure wins over the straight-line estimate.
-    const remainingPrincipal = plan.remainingPrincipal ?? round2(loanTotal - paidPrincipal);
+    const remainingPrincipal = isDone ? 0 : plan.remainingPrincipal ?? round2(loanTotal - paidPrincipal);
     const remainingInterest = round2(remainingInstallments * interestPerInstallment);
     const progressPct = plan.totalInstallments > 0
       ? Math.round((plan.paidInstallments / plan.totalInstallments) * 100)
       : 0;
-    const isDone = plan.paidInstallments >= plan.totalInstallments;
 
     const schedule = planSchedule(plan, accountOf(plan), now);
 

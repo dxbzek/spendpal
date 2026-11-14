@@ -3,12 +3,13 @@
 // Cards: what the latest statement asks for, due on the statement's date —
 // the same figure Card payments shows, never the card's whole balance. A card
 // without an upcoming statement isn't listed; Card payments asks for it.
-// Recurring expenses: the next occurrence within 30 days. Instalments on a
-// card (tracking-only rows) are left out: they're already in that card's
-// statement total.
-import { addMonths, differenceInDays, parseISO } from 'date-fns';
+// Recurring expenses: each running bill once, at its next occurrence within
+// 30 days. Instalment rows are left out: card instalments are already in that
+// card's statement total, and the Installments page owns the rest.
+import { differenceInDays } from 'date-fns';
 import type { Account, Transaction } from '@/types/finance';
 import { cardStatuses } from '@/lib/finance/cardPayments';
+import { activeRecurring, nextDueDate } from '@/lib/finance/recurringBills';
 
 export interface UpcomingBill {
   name: string;
@@ -35,20 +36,14 @@ export function upcomingBills(accounts: Account[], transactions: Transaction[], 
     });
   }
 
-  for (const t of transactions) {
-    if (!t.isRecurring || t.type !== 'expense' || t.isInternal || t.isTrackingOnly) continue;
-    // Step from the original date (not the last computed one) so the day of
-    // month survives short months (Jan 31 → Feb 28 → Mar 31).
-    const origDate = parseISO(t.date);
-    let offset = 1;
-    let nextDate = addMonths(origDate, offset);
-    while (differenceInDays(nextDate, today) < 0 && offset < 13) {
-      offset++;
-      nextDate = addMonths(origDate, offset);
-    }
+  // One entry per bill, from its latest row. Every logged row used to be
+  // listed, so a bill logged in September and October showed twice.
+  for (const t of activeRecurring(transactions, now)) {
+    const nextDate = nextDueDate(t.date, now);
+    if (!nextDate) continue;
     const daysLeft = differenceInDays(nextDate, today);
-    if (daysLeft >= 0 && daysLeft <= 30) {
-      bills.push({ name: t.merchant, icon: t.categoryIcon, amount: t.amount, dueDate: nextDate, daysLeft });
+    if (daysLeft <= 30) {
+      bills.push({ name: t.merchant || t.category, icon: t.categoryIcon, amount: t.amount, dueDate: nextDate, daysLeft });
     }
   }
 

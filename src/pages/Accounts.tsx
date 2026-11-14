@@ -12,7 +12,8 @@ import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, Ch
 import { Button } from '@/components/ui/button';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, addDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { projectBalance } from '@/lib/finance/balanceProjection';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,27 +79,12 @@ const Accounts = () => {
     return holds;
   }, [transactions]);
 
-  // Balance projection: project total assets 30 days forward using recurring transactions
+  // Balance projection: cash and debit balances 30 days forward, each running
+  // bill and recurring income counted once (see balanceProjection.ts).
   const balanceProjection = useMemo(() => {
-    const assetAccs = accounts.filter(a => a.type !== 'credit');
-    if (assetAccs.length === 0) return null;
-    const startBalance = assetAccs.reduce((s, a) => s + a.balance, 0);
-    const recurring = transactions.filter(t => t.isRecurring);
-    const now = new Date();
-    const points: Array<{ day: number; balance: number }> = [{ day: 0, balance: startBalance }];
-    let running = startBalance;
-    for (let d = 1; d <= 30; d++) {
-      const date = addDays(now, d);
-      // Check for recurring transactions due this day of month
-      recurring.forEach(r => {
-        const lastDate = parseISO(r.date);
-        if (lastDate.getDate() === date.getDate()) {
-          if (r.type === 'expense') running -= r.amount;
-          else if (r.type === 'income') running += r.amount;
-        }
-      });
-      points.push({ day: d, balance: running });
-    }
+    const projection = projectBalance(accounts, transactions, new Date());
+    if (!projection) return null;
+    const { points, startBalance } = projection;
     // Build SVG path
     const vals = points.map(p => p.balance);
     const min = Math.min(...vals);
@@ -110,9 +96,7 @@ const Accounts = () => {
       const y = H - ((p.balance - min) / range) * H;
       return `${x},${y}`;
     }).join(' ');
-    const end = points[points.length - 1].balance;
-    const change = end - startBalance;
-    return { pts, startBalance, endBalance: end, change };
+    return { pts, startBalance, endBalance: projection.endBalance, change: projection.change };
   }, [accounts, transactions]);
 
   const handleDelete = () => {

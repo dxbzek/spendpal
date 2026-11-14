@@ -1,9 +1,9 @@
 import { memo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
-import { getMonth, getYear, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import type { Transaction } from '@/types/finance';
+import { notLoggedThisMonth } from '@/lib/finance/recurringBills';
 
 interface Props {
   transactions: Transaction[];
@@ -11,36 +11,9 @@ interface Props {
 
 const RecurringDueBanner = ({ transactions }: Props) => {
   const navigate = useNavigate();
-  const now = new Date();
-  const currentMonth = getMonth(now);
-  const currentYear = getYear(now);
-
-  // Find unique recurring transaction templates (by merchant+category) that have been logged before
-  const recurringTemplates = transactions.filter(tx => tx.isRecurring && tx.type === 'expense' && !tx.isInternal);
-
-  // Group by merchant+category to get unique recurring items
-  const seen = new Set<string>();
-  const unique = recurringTemplates.filter(tx => {
-    const key = `${tx.merchant}|${tx.category}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  // For each unique recurring item, check if it was logged this month
-  const overdue = unique.filter(template => {
-    const key = `${template.merchant}|${template.category}`;
-    const loggedThisMonth = transactions.some(tx => {
-      const d = parseISO(tx.date);
-      return (
-        tx.isRecurring &&
-        `${tx.merchant}|${tx.category}` === key &&
-        getMonth(d) === currentMonth &&
-        getYear(d) === currentYear
-      );
-    });
-    return !loggedThisMonth;
-  });
+  // Running bills with no row this month. Instalment plans, tracking-only
+  // rows and bills not logged for 3 months are not asked for.
+  const overdue = notLoggedThisMonth(transactions, new Date());
 
   if (overdue.length === 0) return null;
 
