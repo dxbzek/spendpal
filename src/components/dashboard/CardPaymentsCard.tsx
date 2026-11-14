@@ -74,7 +74,10 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
                 </p>
               )}
               {c.kind === 'passed' && (
-                <p className="text-[11px] text-warning">Due date {format(c.dueOn, 'd MMM')} has passed</p>
+                <p className="text-xs text-warning">
+                  Statement due {format(c.dueOn, 'd MMM')} has passed
+                  {c.account.dueDate ? ` · next due ${format(nextPayday(c.account.dueDate, now), 'd MMM')}` : ''}
+                </p>
               )}
             </div>
             {c.kind === 'due' ? (

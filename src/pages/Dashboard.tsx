@@ -3,6 +3,7 @@ import { useBalanceMask, dispatchBalanceMaskToggle } from '@/hooks/useBalanceMas
 import { getCategoryChartColor } from '@/utils/categoryColors';
 import { activeBudgets } from '@/utils/budgets';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
+import { savingsSummary } from '@/lib/finance/pace';
 import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
@@ -124,7 +125,7 @@ const Dashboard = () => {
     }
     return [inc, exp];
   }, [transactions, now, creditAccountIds]);
-  const savingsRate = thisMonthIncome > 0 ? Math.round(((thisMonthIncome - thisMonthExpenses) / thisMonthIncome) * 100) : null;
+  const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
   // Note: the financial-health score now lives solely on the AI Advisor page,
   // where it is actually computed — per the SpendPal design handoff.
 
@@ -142,10 +143,15 @@ const Dashboard = () => {
   const budgetPart = totalBudgeted > 0
     ? (leftOfBudget < 0 ? `${fmt(-leftOfBudget)} over budget` : `${fmt(leftOfBudget)} left of budget`)
     : null;
-  const statusLine = savingsRate !== null && budgetPart
-    ? `Saving ${savingsRate}% · ${budgetPart}`
-    : savingsRate !== null
-      ? `Saving ${savingsRate}% this month`
+  const savingsPart = savings.kind === 'saved'
+    ? `Saving ${savings.rate}%`
+    : savings.kind === 'overspent'
+      ? `${fmt(savings.amount)} more out than in`
+      : null;
+  const statusLine = savingsPart && budgetPart
+    ? `${savingsPart} · ${budgetPart}`
+    : savingsPart
+      ? `${savingsPart} this month`
       : budgetPart;
   const outsideBudgetsLine = totalBudgeted > 0 && unbudgetedSpent >= 0.005
     ? `+${fmt(unbudgetedSpent)} spent outside your budgets`
@@ -368,28 +374,44 @@ const Dashboard = () => {
             {sec(expenses) && <p className="text-[11px] text-muted-foreground truncate">≈ {sec(expenses)}</p>}
           </Card>
 
-          {savingsRate !== null && (
+          {savings.kind === 'saved' && (
             <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-primary">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-xs text-muted-foreground mb-0.5">Savings Rate — This Month</p>
-                  <p className={`text-financial-medium ${savingsRate >= 20 ? 'text-income' : savingsRate >= 0 ? 'text-warning' : 'text-expense'}`}>
-                    {hidden ? '••' : `${savingsRate}%`}
+                  <p className={`text-financial-medium ${savings.rate >= 20 ? 'text-income' : 'text-warning'}`}>
+                    {hidden ? '••' : `${savings.rate}%`}
                   </p>
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
-                  <p>Saved: {mask(fmt(thisMonthIncome - thisMonthExpenses))}</p>
-                  <p className="text-[11px]">{savingsRate >= 20 ? 'On track' : savingsRate < 0 ? 'Overspending' : 'Room to save'}</p>
+                  <p>Saved: {mask(fmt(savings.amount))}</p>
+                  <p className="text-xs">{savings.rate >= 20 ? 'On track' : 'Room to save'}</p>
                 </div>
               </div>
               {!hidden && (
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden" role="progressbar" aria-label="Savings rate" aria-valuenow={savings.rate} aria-valuemin={0} aria-valuemax={100}>
                   <div
-                    className={`h-full rounded-full transition-all ${savingsRate >= 20 ? 'bg-income' : savingsRate >= 0 ? 'bg-warning' : 'bg-expense'}`}
-                    style={{ width: `${Math.max(0, Math.min(savingsRate, 100))}%` }}
+                    className={`h-full rounded-full transition-all ${savings.rate >= 20 ? 'bg-income' : 'bg-warning'}`}
+                    style={{ width: `${Math.min(savings.rate, 100)}%` }}
                   />
                 </div>
               )}
+            </Card>
+          )}
+          {/* A rate against a small income is noise ("-3050%"): show the gap in money. */}
+          {savings.kind === 'overspent' && (
+            <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-expense">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">This month so far</p>
+                  <p className="text-financial-medium text-expense">{mask(fmt(savings.amount))}</p>
+                  <p className="text-xs text-muted-foreground">more went out than came in</p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <p>In: {mask(fmt(thisMonthIncome))}</p>
+                  <p>Out: {mask(fmt(thisMonthExpenses))}</p>
+                </div>
+              </div>
             </Card>
           )}
         </div>

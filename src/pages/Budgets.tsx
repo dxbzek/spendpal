@@ -17,6 +17,7 @@ import { useAI } from '@/hooks/useAI';
 import { toast } from 'sonner';
 import AddBudgetDialog from '@/components/forms/AddBudgetDialog';
 import type { Budget } from '@/types/finance';
+import { budgetPace } from '@/lib/finance/pace';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -79,12 +80,19 @@ const Budgets = () => {
   const totalSpent = thisMonthBudgets.reduce((s, b) => s + b.spent, 0);
   const overallPct = totalBudgeted ? Math.round((totalSpent / totalBudgeted) * 100) : 0;
 
-  // Projected spend at current daily rate, capped at budget when within budget
-  const projectedSpend = daysElapsed > 0
-    ? (totalSpent <= totalBudgeted
-      ? Math.min((totalSpent / daysElapsed) * totalDays, totalBudgeted)
-      : (totalSpent / daysElapsed) * totalDays)
-    : 0;
+  // Where each budget ends the month: everyday spending projected forward,
+  // bills and one-offs counted once. Not capped at the budget.
+  const paces = useMemo(() => {
+    const today = format(now, 'yyyy-MM-dd');
+    const byCategory: Record<string, typeof transactions> = {};
+    for (const t of transactions) {
+      if (!isCountableExpense(t) || !t.date.startsWith(currentMonthKey) || t.date > today) continue;
+      (byCategory[t.category] ??= []).push(t);
+    }
+    return Object.fromEntries(thisMonthBudgets.map(b =>
+      [b.id, budgetPace(b, byCategory[b.category] ?? [], daysElapsed, totalDays)]));
+  }, [transactions, thisMonthBudgets, currentMonthKey, daysElapsed, totalDays, now]);
+  const projectedSpend = thisMonthBudgets.reduce((s, b) => s + (paces[b.id]?.projected ?? b.spent), 0);
   const projectedPct = totalBudgeted ? Math.round((projectedSpend / totalBudgeted) * 100) : 0;
 
   // Last month's spending per category
@@ -410,10 +418,8 @@ const Budgets = () => {
               const periodDays = b.period === 'weekly' ? 7 : daysLeft;
               const dailyLeft = periodDays > 0 ? remaining / periodDays : 0;
               // Velocity for this budget
-              const dailyRate = daysElapsed > 0 ? b.spent / daysElapsed : 0;
-              const projected = b.spent <= b.amount
-                ? Math.min(dailyRate * totalDays, b.amount)
-                : dailyRate * totalDays;
+              const pace = paces[b.id] ?? { projected: b.spent, hasPace: false };
+              const projected = pace.projected;
               const projPct = b.amount ? Math.round((projected / b.amount) * 100) : 0;
               const lastMonthAmt = lastMonthData[b.category];
               return (
@@ -448,10 +454,12 @@ const Budgets = () => {
                   {/* Velocity + last month */}
                   {daysElapsed > 0 && (
                     <div className="flex items-center justify-between pt-2 border-t border-border text-[11px]">
-                      <span className={`flex items-center gap-1 ${velocityColor(projPct)}`}>
-                        {projPct > 100 ? <TrendingUp size={10} /> : null}
-                        On pace: {mask(fmt(projected))}
-                      </span>
+                      {pace.hasPace ? (
+                        <span className={`flex items-center gap-1 ${velocityColor(projPct)}`}>
+                          {projPct > 100 ? <TrendingUp size={10} /> : null}
+                          {projPct > 100 ? 'Heading for' : 'On pace for'} {mask(fmt(projected))}
+                        </span>
+                      ) : <span />}
                       {lastMonthAmt !== undefined && (
                         <span className="text-muted-foreground">Last mo: {mask(fmt(lastMonthAmt))}</span>
                       )}
