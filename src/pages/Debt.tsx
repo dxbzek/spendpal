@@ -8,7 +8,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_APR, allocateMonth, minimumMonthlyBudget, monthsToPayoff, simulateStrategy } from '@/lib/finance/debtPayoff';
-import { creditUtilization } from '@/lib/finance/credit';
+import { creditTotals, creditUtilization } from '@/lib/finance/credit';
 import AppIcon from '@/components/AppIcon';
 
 const Debt = () => {
@@ -57,8 +57,10 @@ const Debt = () => {
 
   const totalOwed = creditDebts.reduce((s, d) => s + d.owed, 0);
   const limited = creditDebts.filter(d => d.utilization != null);
-  const totalLimit = limited.reduce((s, d) => s + (d.creditLimit || 0), 0);
-  const overallUtil = totalLimit ? (limited.reduce((s, d) => s + d.owed, 0) / totalLimit) * 100 : 0;
+  // Limit and utilization come from every card with a limit, paid off or not:
+  // the same totals as Home. Only the list below is limited to cards that owe.
+  const { limit: totalLimit, utilization: overallUtilization } = useMemo(() => creditTotals(accounts), [accounts]);
+  const overallUtil = Math.round(overallUtilization ?? 0);
   // The label follows the most-used card: a maxed-out card hurts even when
   // the total across cards looks fine.
   const worstCard = limited.reduce<(typeof limited)[number] | null>(
@@ -156,7 +158,7 @@ const Debt = () => {
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
                 <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Utilization</p>
                 <div className="flex items-baseline gap-1.5">
-                  <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil.toFixed(0)}%</p>
+                  <p className="text-sm sm:text-lg font-heading text-primary-foreground">{overallUtil}%</p>
                   {worstUtil >= 30 && (
                     <span className="text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-raised text-primary-foreground shrink-0">
                       {worstUtil >= 75 ? 'High' : 'Watch'}
