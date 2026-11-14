@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isMissingLinkColumn, newUuid, retryWithoutLinks, roundAmount, roundAmountOrNull, withoutLinkColumns,
 } from '@/lib/finance/transactionWrite';
+import { roundMoney } from '@/lib/finance/money';
 import { TransactionRowSchema } from '@/lib/schemas';
 
 describe('amounts are saved in whole cents', () => {
@@ -14,6 +15,14 @@ describe('amounts are saved in whole cents', () => {
   it('leaves a clean amount as it is', () => {
     expect(roundAmount(198.53)).toBe(198.53);
     expect(roundAmount(20_000)).toBe(20_000);
+  });
+
+  it('rounds like account, budget and goal writes do', () => {
+    // 1.005 is held as 1.00499999999999989; plain Math.round gave 1.00 here
+    // and 1.01 on the account side.
+    expect(roundAmount(1.005)).toBe(roundMoney(1.005));
+    expect(roundAmount(1.005)).toBe(1.01);
+    expect(roundAmount(-0.004)).toBe(0);
   });
 
   it('keeps an empty column empty', () => {

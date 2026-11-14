@@ -1,11 +1,15 @@
 // Rules for writing transaction rows. Pure, so they are unit-tested.
+import { roundMoney } from '@/lib/finance/money';
 
 /**
  * Money is saved in whole cents. A difference such as 1234.56 - 1000.1 is
  * 234.45999999999992 in floating point; unrounded, the tail lands in the
  * amount column and then in the account balance.
+ * One rule for every write: this is roundMoney, the rule account, budget and
+ * goal writes use, so a transaction of 1.005 and a balance of 1.005 both
+ * save as 1.01.
  */
-export const roundAmount = (n: number) => Math.round(n * 100) / 100;
+export const roundAmount = (n: number): number => roundMoney(n);
 
 /** roundAmount for a column that can be empty. */
 export const roundAmountOrNull = (n: number | null | undefined) => (n == null ? null : roundAmount(n));
