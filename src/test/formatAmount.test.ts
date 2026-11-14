@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatAmount, LRI, PDI } from '@/lib/finance/formatAmount';
+import { formatAmount, displaySymbol, latinDigits, LRI, PDI } from '@/lib/finance/formatAmount';
+import { CURRENCY_MAP } from '@/utils/currencies';
 
 const AED = 'د.إ';
 
@@ -54,5 +55,38 @@ describe('displaySymbol', () => {
     expect(displaySymbol('SAR', '﷼')).toBe('SAR');
     expect(displaySymbol('USD', '$')).toBe('$');
     expect(formatAmount(displaySymbol('AED', 'د.إ'), 'en-AE', 699.86)).toBe(`${LRI}AED 699.86${PDI}`);
+  });
+});
+
+// Regression: 19 currencies (SAR, QAR, KWD, BHD, OMR, EGP, JOD and others)
+// printed Arabic-Indic, Persian, Bengali, Devanagari, Burmese or Tibetan
+// numerals, because the digits followed the currency's locale.
+describe('amounts use Latin digits in every currency', () => {
+  const entries = Object.entries(CURRENCY_MAP);
+
+  it('covers the whole currency map', () => {
+    expect(entries.length).toBeGreaterThan(100);
+  });
+
+  it.each(entries)('%s prints 0 to 9 only', (code, { symbol, locale }) => {
+    const out = formatAmount(displaySymbol(code, symbol), locale, 1234567.5);
+    const digits = out.match(/\p{Nd}/gu) ?? [];
+    // 1234567.50, whatever the grouping and the decimal mark are.
+    expect(digits.join('')).toBe('123456750');
+  });
+
+  it('prints SAR like AED: code, then Latin digits', () => {
+    const { symbol, locale } = CURRENCY_MAP.SAR;
+    expect(formatAmount(displaySymbol('SAR', symbol), locale, 6830.9)).toBe(`${LRI}SAR 6,830.90${PDI}`);
+  });
+
+  it('keeps the locale grouping and decimal mark', () => {
+    // German: dot for thousands, comma for decimals.
+    expect(formatAmount('€', 'de-DE', 1234.5)).toBe(`${LRI}€ 1.234,50${PDI}`);
+  });
+
+  it('leaves a locale that already names a numbering system alone', () => {
+    expect(latinDigits('ar-SA')).toBe('ar-SA-u-nu-latn');
+    expect(latinDigits('ar-SA-u-nu-arab')).toBe('ar-SA-u-nu-arab');
   });
 });
