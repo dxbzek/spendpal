@@ -36,14 +36,25 @@ export interface PickerCategory {
   isCustom?: boolean;
 }
 
-/** Categories the user's own rows use for this type, most used first, with the icon of the newest row. */
+/** How far back a row still says "this is a category I use". */
+export const RECENT_DAYS = 90;
+/** One row is a one-off (a car rental on a trip), not a category to offer every day. */
+export const MIN_USES = 2;
+
+/**
+ * Categories the user's recent rows use for this type, most used first, with
+ * the icon of the newest row. Only rows on or after `since` (YYYY-MM-DD) count,
+ * and a name needs MIN_USES of them: all of history would bring back every
+ * name an old import ever produced.
+ */
 export function usedCategories(
   transactions: Pick<Transaction, 'type' | 'category' | 'categoryIcon' | 'date' | 'isInternal'>[],
   type: TransactionType,
+  since = '',
 ): PickerCategory[] {
   const seen = new Map<string, { count: number; icon: string; latest: string }>();
   for (const t of transactions) {
-    if (t.type !== type || t.isInternal || !t.category) continue;
+    if (t.type !== type || t.isInternal || !t.category || t.date < since) continue;
     const e = seen.get(t.category);
     if (!e) seen.set(t.category, { count: 1, icon: t.categoryIcon, latest: t.date });
     else {
@@ -52,6 +63,7 @@ export function usedCategories(
     }
   }
   return [...seen.entries()]
+    .filter(([, e]) => e.count >= MIN_USES)
     .sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
     .map(([name, e]) => ({ name, icon: e.icon }));
 }
