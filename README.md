@@ -34,6 +34,8 @@ supabase secrets set ANTHROPIC_API_KEY=<your_key>
 supabase functions deploy ai-finance
 ```
 
+Optional secrets for the AI limits: `AI_DAILY_CEILING` (calls all users together may make per UTC day, default 300; 0 turns AI off) and `AI_UNCAPPED_USERS` (user ids, comma separated, that the shared ceiling does not stop, so other accounts cannot turn AI off for the owner). Each account may make 30 calls a day, or 3 while it is less than a day old or its email is unconfirmed.
+
 Create a key at [platform.claude.com](https://platform.claude.com).
 
 ## Deployment

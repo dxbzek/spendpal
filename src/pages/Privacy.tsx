@@ -55,7 +55,7 @@ const Privacy = () => (
         <><strong>Budget suggestions</strong> on the Budgets page: the category, amount and date of each of your expenses.</>,
       ]} />
       <p>
-        The answer comes back to your browser. Each account can make up to 30 AI requests a day. Anthropic's own terms
+        The answer comes back to your browser. Each account can make up to 30 AI requests a day (3 a day for an account that is less than a day old or has not confirmed its email). Anthropic's own terms
         cover how it handles what it receives.
       </p>
     </LegalSection>

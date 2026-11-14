@@ -3,8 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.135.0";
 import { corsHeadersFor } from "../_shared/cors.ts";
 import {
-  AI_REQUEST_TYPES, type AiRequestType, DAILY_USER_LIMIT, MAX_TOKENS,
-  countCall, parseCeiling, refusalMessage, remainingAfter, usageDay,
+  AI_REQUEST_TYPES, type AiRequestType, MAX_TOKENS,
+  countCall, dailyLimitFor, parseCeiling, parseUserList, refusalMessage, remainingAfter, usageDay,
 } from "../_shared/aiLimits.ts";
 import { type AiFailure, AI_UNAVAILABLE_MESSAGE, mapAiError } from "../_shared/aiErrors.ts";
 import { usageStore } from "./usageStore.ts";
@@ -85,6 +85,10 @@ serve(async (req) => {
     const meter = serviceKey
       ? usageStore(createClient(Deno.env.get("SUPABASE_URL")!, serviceKey))
       : null;
+    // A new or unconfirmed account gets a small daily limit, and the owner
+    // (AI_UNCAPPED_USERS) is not stopped by the limit shared by all users.
+    const userLimit = dailyLimitFor(user, new Date());
+    const capped = !parseUserList(Deno.env.get("AI_UNCAPPED_USERS")).has(user.id.toLowerCase());
 
     // "usage" asks how many uses are left today. It calls no model and is not counted.
     if (type === "usage") {
@@ -94,7 +98,7 @@ serve(async (req) => {
       }
       try {
         const calls = await meter.read(user.id, usageDay(new Date()));
-        return reply(200, { remaining: remainingAfter(calls ?? 0), limit: DAILY_USER_LIMIT });
+        return reply(200, { remaining: remainingAfter(calls ?? 0, userLimit), limit: userLimit });
       } catch (err) {
         console.error("AI usage read failed:", err);
         return reply(503, { error: METER_DOWN });
@@ -474,11 +478,11 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       if (!meter) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
       const counted = await countCall(
         meter, user.id, usageDay(new Date()),
-        DAILY_USER_LIMIT, parseCeiling(Deno.env.get("AI_DAILY_CEILING")),
+        userLimit, parseCeiling(Deno.env.get("AI_DAILY_CEILING")), capped,
       );
       if (!counted.ok) {
         if (counted.reason === "ceiling") console.error("AI daily ceiling reached; request refused");
-        return reply(429, { error: refusalMessage(counted.reason), remaining: 0 });
+        return reply(429, { error: refusalMessage(counted.reason, userLimit), remaining: 0 });
       }
       remaining = counted.remaining;
     } catch (err) {

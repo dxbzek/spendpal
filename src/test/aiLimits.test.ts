@@ -2,8 +2,8 @@
 // Before it existed any signed-in user could call the model without limit.
 import { describe, it, expect } from 'vitest';
 import {
-  AI_REQUEST_TYPES, DAILY_USER_LIMIT, DEFAULT_DAILY_CEILING, MAX_TOKENS,
-  countCall, parseCeiling, refusalMessage, remainingAfter, usageDay,
+  AI_REQUEST_TYPES, DAILY_USER_LIMIT, DEFAULT_DAILY_CEILING, MAX_TOKENS, NEW_ACCOUNT_DAILY_LIMIT,
+  countCall, dailyLimitFor, parseCeiling, parseUserList, refusalMessage, remainingAfter, usageDay,
   type UsageStore,
 } from '../../supabase/functions/_shared/aiLimits';
 import { mapAiError, OUT_OF_CREDIT_MESSAGE } from '../../supabase/functions/_shared/aiErrors';
@@ -176,5 +176,36 @@ describe('mapAiError', () => {
     expect(mapAiError({ status: 429, type: 'rate_limit_error' }).status).toBe(429);
     expect(mapAiError({ status: 401, type: 'authentication_error' }))
       .toEqual({ status: 503, error: 'AI is unavailable right now. Try again later.' });
+  });
+});
+
+// Review: ten throwaway accounts using 30 calls each reached the shared
+// ceiling of 300 and turned AI off for every user, the owner included.
+describe('the shared ceiling cannot be used up by new accounts or stop the owner', () => {
+  const now = new Date('2026-11-14T12:00:00Z');
+  const OWNER = '6f1c2e9a-1b2c-4d5e-8f90-123456789abc';
+
+  it('a new or unconfirmed account gets 3 calls a day, a confirmed one a day old gets 30', () => {
+    expect(dailyLimitFor({ id: 'n', created_at: '2026-11-14T08:00:00Z', email_confirmed_at: '2026-11-14T08:01:00Z' }, now)).toBe(NEW_ACCOUNT_DAILY_LIMIT);
+    expect(dailyLimitFor({ id: 'u', created_at: '2026-10-01T00:00:00Z', email_confirmed_at: null }, now)).toBe(NEW_ACCOUNT_DAILY_LIMIT);
+    expect(dailyLimitFor({ id: 'o', created_at: '2026-10-01T00:00:00Z', email_confirmed_at: '2026-10-01T00:05:00Z' }, now)).toBe(DAILY_USER_LIMIT);
+    expect(NEW_ACCOUNT_DAILY_LIMIT * 10).toBeLessThan(DEFAULT_DAILY_CEILING);
+  });
+
+  it('a new account stops at its own small limit', async () => {
+    const { store } = fakeStore({ [`new|${DAY}`]: NEW_ACCOUNT_DAILY_LIMIT });
+    expect(await countCall(store, 'new', DAY, NEW_ACCOUNT_DAILY_LIMIT)).toEqual({ ok: false, reason: 'user', remaining: 0 });
+  });
+
+  it('the owner is not stopped by the shared ceiling, but still by a ceiling of 0', async () => {
+    const { store } = fakeStore({ [`a|${DAY}`]: 300 });
+    expect((await countCall(store, 'other', DAY, 30, 300)).ok).toBe(false);
+    expect(await countCall(store, OWNER, DAY, 30, 300, false)).toEqual({ ok: true, remaining: 29 });
+    expect((await countCall(store, OWNER, DAY, 30, 0, false)).ok).toBe(false);
+  });
+
+  it('reads the owner list from the secret', () => {
+    expect(parseUserList(` ${OWNER.toUpperCase()}, not-an-id `)).toEqual(new Set([OWNER]));
+    expect(parseUserList(undefined).size).toBe(0);
   });
 });

@@ -16,6 +16,13 @@ export type AiRequestType = typeof AI_REQUEST_TYPES[number];
 
 /** Calls one user may make in one UTC day. */
 export const DAILY_USER_LIMIT = 30;
+/**
+ * Calls a new account may make in one UTC day: until its email is confirmed
+ * and it is a day old. Sign-up costs nothing, so without this ten throwaway
+ * accounts used up the shared ceiling and turned AI off for every user.
+ */
+export const NEW_ACCOUNT_DAILY_LIMIT = 3;
+const NEW_ACCOUNT_MS = 24 * 60 * 60 * 1000;
 /** Calls all users together may make in one UTC day, unless AI_DAILY_CEILING says otherwise. */
 export const DEFAULT_DAILY_CEILING = 300;
 
@@ -50,6 +57,32 @@ export function parseCeiling(raw: string | undefined | null): number {
   return Number(raw.trim());
 }
 
+/** The parts of a Supabase auth user the limit looks at. */
+export interface LimitUser {
+  id: string;
+  created_at?: string | null;
+  email_confirmed_at?: string | null;
+  confirmed_at?: string | null;
+}
+
+/** The user's own daily limit: the small one for a new or unconfirmed account. */
+export function dailyLimitFor(user: LimitUser, now: Date): number {
+  const confirmed = !!(user.email_confirmed_at || user.confirmed_at);
+  const created = user.created_at ? Date.parse(user.created_at) : NaN;
+  const aged = Number.isFinite(created) && now.getTime() - created >= NEW_ACCOUNT_MS;
+  return confirmed && aged ? DAILY_USER_LIMIT : NEW_ACCOUNT_DAILY_LIMIT;
+}
+
+/**
+ * The AI_UNCAPPED_USERS secret: user ids, separated by commas or spaces, that
+ * the shared ceiling does not stop (the owner). Their own daily limit still
+ * applies, and a ceiling of 0 still turns AI off for them too.
+ */
+export function parseUserList(raw: string | undefined | null): Set<string> {
+  if (typeof raw !== "string") return new Set();
+  return new Set(raw.split(/[\s,]+/).map(s => s.trim().toLowerCase()).filter(s => /^[0-9a-f-]{36}$/.test(s)));
+}
+
 export function remainingAfter(calls: number, limit: number = DAILY_USER_LIMIT): number {
   return Math.max(0, limit - calls);
 }
@@ -72,7 +105,10 @@ export type CountResult =
 
 /**
  * Count one call for the user, before the model runs. Refuses when the user
- * is at the limit or all users together are at the ceiling.
+ * is at the limit or all users together are at the ceiling. `capped` false:
+ * the shared ceiling does not stop this user (AI_UNCAPPED_USERS), unless it
+ * is 0. The ceiling is read before the count, so requests landing at the same
+ * moment can pass it by at most their number; the per-user count is exact.
  *
  * Two requests at the same moment must not both take the last use. So the
  * write only succeeds if the count is still the one that was read; the loser
@@ -85,8 +121,9 @@ export async function countCall(
   day: string,
   limit: number = DAILY_USER_LIMIT,
   ceiling: number = DEFAULT_DAILY_CEILING,
+  capped = true,
 ): Promise<CountResult> {
-  if (ceiling <= 0 || (await store.totalToday(day, ceiling)) >= ceiling) {
+  if (ceiling <= 0 || (capped && (await store.totalToday(day, ceiling)) >= ceiling)) {
     return { ok: false, reason: "ceiling", remaining: 0 };
   }
   for (let attempt = 0; attempt < 5; attempt++) {

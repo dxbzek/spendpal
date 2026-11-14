@@ -59,7 +59,10 @@ describe('ai-finance', () => {
 
   it('refuses with 503 when the counter fails, and with 429 at the limit', () => {
     expect(src).toContain('return reply(503, { error: METER_DOWN });');
-    expect(src).toContain('return reply(429, { error: refusalMessage(counted.reason), remaining: 0 });');
+    expect(src).toContain('return reply(429, { error: refusalMessage(counted.reason, userLimit), remaining: 0 });');
+    // The small limit for new accounts and the owner list reach the counter.
+    expect(src).toContain('const userLimit = dailyLimitFor(user, new Date());');
+    expect(src).toContain('userLimit, parseCeiling(Deno.env.get("AI_DAILY_CEILING")), capped,');
   });
 
   it('no longer asks for 16000 tokens on every request', () => {
