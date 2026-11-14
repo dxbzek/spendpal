@@ -5,7 +5,7 @@ import {
   Pin, Pizza, Plane, Plug, Receipt, Repeat, Scale, Scissors, Shield, ShoppingBag, ShoppingCart,
   Smartphone, Snowflake, SprayCan, Store, Tag, Target, TrainFront, TreePalm, TrendingUp, Trophy,
   Umbrella, Users, Utensils, Wallet, Wrench, Mail, ChartPie, NotebookPen, Pencil,
-  ArrowLeftRight, CarTaxiFront, CircleHelp, Popcorn, Ticket, Tv, Undo2,
+  ArrowLeftRight, CarTaxiFront, CircleHelp, Mic, Popcorn, Ticket, Tv, Undo2,
 } from 'lucide-react';
 
 // Category, account and goal icons are stored as emoji (in the database, in
@@ -34,7 +34,7 @@ const MODIFIERS = /\uFE0F|\uD83C[\uDFFB-\uDFFF]/g;
 // twin in BY_EMOJI already.
 const ALSO_DRAWN: Record<string, LucideIcon> = {
   '🍔': Utensils, '🍿': Popcorn, '🚕': CarTaxiFront, '👪': Users, '📺': Tv, '🎟': Ticket,
-  '🙏': HandHeart, '🏛': Landmark, '↩': Undo2, '↔': ArrowLeftRight, '❓': CircleHelp,
+  '🙏': HandHeart, '🏛': Landmark, '↩': Undo2, '↔': ArrowLeftRight, '❓': CircleHelp, '🎤': Mic,
 };
 
 export function iconFor(value: string | null | undefined): LucideIcon {
