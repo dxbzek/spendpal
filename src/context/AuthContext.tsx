@@ -24,7 +24,8 @@ interface AuthContextType {
   /** `outcome` says what a sign-up without an error means: signed in, confirm the email, or address taken. */
   signUp: (email: string, password: string, displayName?: string) => Promise<AuthResult & { outcome: SignUpOutcome | null }>;
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signOut: () => Promise<void>;
+  /** On an error the user is still signed in and nothing was forgotten. */
+  signOut: () => Promise<AuthResult>;
   /** Send the "confirm your email" message again. */
   resendConfirmation: (email: string) => Promise<AuthResult>;
   /** Email a link that opens /reset. */
@@ -169,8 +170,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       userSettings.flush().catch(() => false),
       new Promise(resolve => setTimeout(resolve, SETTINGS_FLUSH_MS)),
     ]);
-    await supabase.auth.signOut();
+    // When the server cannot be reached the client keeps the session and no
+    // SIGNED_OUT event comes, so the user is still signed in. Forgetting the
+    // settings then would blank them and drop every later change unseen.
+    let error: AuthError | null;
+    try {
+      ({ error } = await supabase.auth.signOut());
+    } catch (e) {
+      error = asError(e);
+    }
+    if (error) return { error };
     forgetUser();
+    return { error: null };
   }, []);
 
   const resendConfirmation = useCallback(async (email: string) => {

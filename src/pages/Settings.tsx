@@ -956,7 +956,12 @@ const Settings = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={signOut} className="bg-destructive text-destructive-foreground hover:brightness-95">Sign Out</AlertDialogAction>
+            <AlertDialogAction
+              onClick={async () => {
+                const { error } = await signOut();
+                if (error) toast.error('Could not sign out. Check your connection and try again.');
+              }}
+              className="bg-destructive text-destructive-foreground hover:brightness-95">Sign Out</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

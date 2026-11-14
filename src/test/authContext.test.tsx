@@ -205,6 +205,22 @@ describe('sign-out and the next user', () => {
     flush.mockRestore();
   });
 
+  it('keeps the settings when the sign-out did not reach the server', async () => {
+    await mount();
+    emit('SIGNED_IN', session);
+    await waitFor(() => expect(userSettings.getSnapshot().userId).toBe('u1'));
+    act(() => userSettings.set('monthly_income', 10000));
+    // auth-js keeps the session on a network error and fires no SIGNED_OUT.
+    fake.auth.signOut.mockResolvedValueOnce({ error: { message: 'Failed to fetch', name: 'AuthRetryableFetchError' } });
+    let result: { error: unknown } | undefined;
+    await run(async () => { result = await ctx.signOut(); });
+    expect(result?.error).toBeTruthy();
+    expect(userSettings.getSnapshot()).toMatchObject({ userId: 'u1', data: { monthly_income: 10000 } });
+    // A change made now is still kept.
+    act(() => userSettings.set('payday_day', 25));
+    expect(userSettings.get('payday_day')).toBe(25);
+  });
+
   it('runs the sign-out resets when another user signs in', async () => {
     const reset = vi.fn();
     const off = onSignOut(reset);
