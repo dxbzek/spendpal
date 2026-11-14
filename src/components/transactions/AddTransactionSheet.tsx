@@ -510,7 +510,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium">Tracking Only</p>
-                            <p className="text-xs text-muted-foreground">From CC / Tabby — no balance deduction</p>
+                            <p className="text-xs text-muted-foreground">Paid by card or pay-later. This account's balance is not reduced.</p>
                           </div>
                           <Switch checked={isTrackingOnly} onCheckedChange={(v) => {
                             setIsTrackingOnly(v);
