@@ -17,6 +17,7 @@ import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload
 import CategoryManager from '@/components/settings/CategoryManager';
 import ConvertCurrencyDialog from '@/components/settings/ConvertCurrencyDialog';
 import MonthlyReportPrint from '@/components/reports/MonthlyReportPrint';
+import { EMAIL_ALERTS_ENABLED } from '@/lib/notifications';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import {
@@ -350,30 +351,24 @@ const DangerZoneCard = () => {
 
 const NotificationsCard = ({ userId }: { userId: string }) => {
   const [notifyEmail, setNotifyEmail] = useState(false);
-  const [notifySms, setNotifySms] = useState(false);
-  const [phone, setPhone] = useState('');
+  // A phone number saved while text alerts were offered. Text alerts are gone
+  // (a number could not be verified), so all that is left is to remove it.
+  const [savedPhone, setSavedPhone] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from('profiles').select('notify_email, notify_sms, phone_number').eq('user_id', userId).single().then(({ data }) => {
+    supabase.from('profiles').select('notify_email, phone_number').eq('user_id', userId).single().then(({ data }) => {
       if (data) {
         setNotifyEmail(data.notify_email ?? false);
-        setNotifySms(data.notify_sms ?? false);
-        setPhone(data.phone_number ?? '');
+        setSavedPhone(data.phone_number ?? null);
       }
     });
   }, [userId]);
 
   const handleSave = async () => {
-    if (notifySms && !/^\+[1-9]\d{6,14}$/.test(phone.trim())) {
-      toast.error('Enter a valid phone number in international format, e.g. +971501234567');
-      return;
-    }
     setSaving(true);
     const { error } = await supabase.from('profiles').update({
       notify_email: notifyEmail,
-      notify_sms: notifySms,
-      phone_number: phone.trim() || null,
     }).eq('user_id', userId);
     if (error) {
       toast.error('Failed to save notification settings');
@@ -383,41 +378,54 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
     setSaving(false);
   };
 
+  const handleRemovePhone = async () => {
+    setSaving(true);
+    // The text-alert flag goes off with it: the database refuses the flag without a number.
+    const { error } = await supabase.from('profiles').update({
+      notify_sms: false,
+      phone_number: null,
+    }).eq('user_id', userId);
+    if (error) {
+      toast.error('Failed to remove the phone number');
+    } else {
+      setSavedPhone(null);
+      toast.success('Phone number removed');
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">Email Alerts</p>
-          <p className="text-xs text-muted-foreground">Get budget alerts sent to your email</p>
-        </div>
-        <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
-      </div>
+      {EMAIL_ALERTS_ENABLED ? (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Email alerts</p>
+              <p className="text-xs text-muted-foreground">Send budget alerts to your sign-in email</p>
+            </div>
+            <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
+          </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">SMS / Text Alerts</p>
-          <p className="text-xs text-muted-foreground">Receive budget alerts as text messages</p>
-        </div>
-        <Switch checked={notifySms} onCheckedChange={setNotifySms} />
-      </div>
-
-      {notifySms && (
-        <div>
-          <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
-          <Input
-            type="tel"
-            placeholder="+971501234567"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            className="h-11"
-          />
-          <p className="text-xs text-muted-foreground mt-1">International format required (e.g. +971…)</p>
-        </div>
+          <Button onClick={handleSave} disabled={saving} className="w-full h-11 bg-primary text-primary-foreground">
+            {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save notifications'}
+          </Button>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Email alerts are not available yet. SpendPal has no verified sender address, so it cannot send email.
+        </p>
       )}
 
-      <Button onClick={handleSave} disabled={saving} className="w-full h-11 bg-primary text-primary-foreground">
-        {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save Notifications'}
-      </Button>
+      {savedPhone && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Text alerts are no longer offered. Your saved number {savedPhone} is not used.
+          </p>
+          <Button variant="outline" size="sm" onClick={handleRemovePhone} disabled={saving}>
+            Remove number
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
@@ -772,7 +780,7 @@ const Settings = () => {
               </div>
               <div>
                 <p className="text-sm font-medium">Budget Alerts</p>
-                <p className="text-xs text-muted-foreground">Get notified by email or text when you approach or exceed a budget — even when the app is closed.</p>
+                <p className="text-xs text-muted-foreground">An email when a budget reaches 75%, 90% or 100% of its limit. SpendPal checks this when you open the app.</p>
               </div>
             </div>
             <NotificationsCard userId={user!.id} />

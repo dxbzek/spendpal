@@ -2,19 +2,23 @@ import { useEffect, useRef } from 'react';
 import { format, subMonths } from 'date-fns';
 import type { Budget } from '@/types/finance';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  ALERT_THRESHOLDS, EMAIL_ALERTS_ENABLED, alertRequestBody, reachedThreshold,
+  type AlertThreshold,
+} from '@/lib/notifications';
 
-const THRESHOLDS = [
-  { pct: 100, label: 'Over budget', desc: (b: Budget) => `${b.category} has exceeded its budget!` },
-  { pct: 90, label: 'Almost at limit', desc: (b: Budget) => `${b.category} is at ${Math.round((b.spent / b.amount) * 100)}% of budget` },
-  { pct: 75, label: 'Heads up', desc: (b: Budget) => `${b.category} has used 75%+ of its budget` },
-];
-
-async function sendBudgetNotification(label: string, description: string) {
+// Ask the server to email one budget alert. The server decides whether the
+// user wants email, builds the text from the budget row, and limits how many
+// are sent per day.
+async function sendBudgetNotification(budgetId: string, threshold: AlertThreshold) {
+  // No verified sender address yet: the server could not deliver, so don't ask.
+  if (!EMAIL_ALERTS_ENABLED) return;
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
     await supabase.functions.invoke('send-notification', {
-      body: { subject: `SpendPal Budget Alert: ${label}`, message: description },
+      body: alertRequestBody(budgetId, threshold),
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
   } catch {
     // Notification delivery failures are non-critical - swallow silently
@@ -61,6 +65,9 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
   useEffect(() => {
     if (budgets.length === 0) return;
 
+    // Month-namespaced key prevents cross-month alert suppression
+    const keyOf = (b: Budget, threshold: AlertThreshold) => `${b.id}-${threshold}-${CURRENT_MONTH}`;
+
     budgets.forEach(b => {
       if (b.amount <= 0) return;
       if (b.isFixed) return; // Fixed expenses always reach 100% - alerts are noise
@@ -68,25 +75,23 @@ export const useBudgetAlerts = (budgets: Budget[]) => {
 
       // Clear stale keys for thresholds the budget has fallen back below,
       // so the alert re-fires if spending crosses the threshold again.
-      for (const threshold of THRESHOLDS) {
-        if (pct < threshold.pct) {
-          alerted.current.delete(`${b.id}-${threshold.pct}-${CURRENT_MONTH}`);
-        }
+      for (const threshold of ALERT_THRESHOLDS) {
+        if (pct < threshold) alerted.current.delete(keyOf(b, threshold));
       }
 
-      for (const threshold of THRESHOLDS) {
-        // Month-namespaced key prevents cross-month alert suppression
-        const key = `${b.id}-${threshold.pct}-${CURRENT_MONTH}`;
-        if (pct >= threshold.pct && !alerted.current.has(key)) {
-          alerted.current.add(key);
-          saveAlerted(alerted.current);
-          // In-app toast pop-ups were removed by request - they fired one per
-          // budget on every dashboard load, which felt spammy. Budget alerts
-          // are still delivered via the opt-in push/email notification below.
-          sendBudgetNotification(threshold.label, threshold.desc(b));
-          break; // only fire highest threshold
-        }
+      const top = reachedThreshold(b.spent, b.amount);
+      if (top === null || alerted.current.has(keyOf(b, top))) return;
+
+      // One alert for the highest threshold reached. The lower ones are marked
+      // as done too: a budget that jumps straight to 100% must not send
+      // "reached 90%" and "reached 75%" on the next two loads.
+      for (const threshold of ALERT_THRESHOLDS) {
+        if (threshold <= top) alerted.current.add(keyOf(b, threshold));
       }
+      // In-app toast pop-ups were removed by request - they fired one per
+      // budget on every dashboard load, which felt spammy. The alert is an
+      // opt-in email, sent only while the app is open.
+      sendBudgetNotification(b.id, top);
     });
 
     saveAlerted(alerted.current);
