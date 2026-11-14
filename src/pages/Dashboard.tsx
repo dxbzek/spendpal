@@ -4,7 +4,7 @@ import { getCategoryChartColor } from '@/utils/categoryColors';
 import { activeBudgets } from '@/utils/budgets';
 import { availableCredit, creditUtilization } from '@/lib/finance/credit';
 import { savingsSummary } from '@/lib/finance/pace';
-import { isCountableExpense, isCountableIncome } from '@/lib/finance/transactionFilters';
+import { grossSpending, isCountableExpense, isCountableIncome, netSpending, refundTotal } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -102,7 +102,13 @@ const Dashboard = () => {
 
   const creditAccountIds = useMemo(() => new Set(accounts.filter(a => a.type === 'credit').map(a => a.id)), [accounts]);
   const income = useMemo(() => filtered.filter(t => isCountableIncome(t, creditAccountIds)).reduce((s, t) => s + t.amount, 0), [filtered, creditAccountIds]);
-  const expenses = useMemo(() => filtered.filter(isCountableExpense).reduce((s, t) => s + t.amount, 0), [filtered]);
+  // Spending after refunds. A refund is an income row, but it is money back
+  // for a purchase: it lowers spending and is never counted as income.
+  const expenses = useMemo(() => netSpending(filtered), [filtered]);
+  const refunds = useMemo(() => refundTotal(filtered), [filtered]);
+  // Before refunds: the base for the category shares, which cannot take a
+  // refund off (a refund row does not say which category it undoes).
+  const grossExpenses = useMemo(() => grossSpending(filtered), [filtered]);
   const animatedIncome = useCountUp(income, 700);
   const animatedExpenses = useCountUp(expenses, 700);
 
@@ -117,15 +123,14 @@ const Dashboard = () => {
 
   const [thisMonthIncome, thisMonthExpenses] = useMemo(() => {
     const month = now.getMonth(), year = now.getFullYear();
-    let inc = 0, exp = 0;
-    for (const tx of transactions) {
+    const rows = transactions.filter(tx => {
       const d = parseISO(tx.date);
-      if (d.getMonth() !== month || d.getFullYear() !== year) continue;
-      if (d > now) continue; // skip future-dated transactions — not spent/earned yet
-      if (isCountableIncome(tx, creditAccountIds)) inc += tx.amount;
-      else if (isCountableExpense(tx)) exp += tx.amount;
-    }
-    return [inc, exp];
+      // Future-dated rows are skipped: not spent or earned yet.
+      return d.getMonth() === month && d.getFullYear() === year && d <= now;
+    });
+    const inc = rows.reduce((s, tx) => (isCountableIncome(tx, creditAccountIds) ? s + tx.amount : s), 0);
+    // After refunds, like the Expenses figure above.
+    return [inc, netSpending(rows)];
   }, [transactions, now, creditAccountIds]);
   const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
   // Note: the financial-health score now lives solely on the AI Advisor page,
@@ -346,6 +351,7 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground mb-1">Expenses</p>
             <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
             {sec(expenses) && <p className="text-xs text-muted-foreground truncate">≈ {sec(expenses)}</p>}
+            {refunds > 0 && <p className="text-xs text-muted-foreground truncate">After {mask(fmt(refunds))} in refunds</p>}
           </Card>
 
           {savings.kind === 'saved' && (
@@ -506,7 +512,7 @@ const Dashboard = () => {
               <h2 className="font-heading text-sm mb-3">By Category</h2>
               <div className="space-y-2.5">
                 {categorySpending.slice(0, 5).map(([cat, data], idx) => {
-                  const pct = expenses ? Math.round((data.total / expenses) * 100) : 0;
+                  const pct = grossExpenses ? Math.round((data.total / grossExpenses) * 100) : 0;
                   const barColor = getCategoryChartColor(cat, idx);
                   return (
                     <div key={cat}>
