@@ -16,6 +16,7 @@ import { type TransactionType } from '@/types/finance';
 import type { Transaction } from '@/types/finance';
 import { findNearDuplicate } from '@/utils/detectDuplicates';
 import { transferPartner } from '@/lib/finance/transfers';
+import { isPlanForm, planFields, setRecurring } from '@/lib/finance/transactionForm';
 import { format } from 'date-fns';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -164,6 +165,8 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   };
 
   const isTransfer = type === 'transfer';
+  // Saved as an instalment plan: an expense with Recurring and Installment Plan on.
+  const isPlan = isPlanForm(type, { isRecurring, hasInstallments });
 
   // Same amount + merchant within a few days (not an exact date match) —
   // bank statements often post a charge a day or two after it was first
@@ -223,15 +226,13 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
       date,
       note: note || undefined,
       isRecurring: isTransfer ? false : isRecurring,
-      totalInstallments: (hasInstallments && isRecurring) ? (parseInt(totalInstallments) || 12) : undefined,
-      currentInstallment: (hasInstallments && isRecurring) ? Math.max(0, isNaN(parseInt(currentInstallment)) ? 0 : parseInt(currentInstallment)) : undefined,
-      loanTotalAmount: (hasInstallments && isRecurring && loanTotalAmount) ? (parseFloat(loanTotalAmount) || undefined) : undefined,
-      isTrackingOnly: (hasInstallments && isRecurring) ? isTrackingOnly : false,
+      // Instalment fields only when the row is a plan (see transactionForm.ts).
+      ...planFields({ type, isRecurring, hasInstallments, totalInstallments, currentInstallment, loanTotalAmount, isTrackingOnly }),
       isInternal,
       isPending,
       // Sent only when entered, or when clearing one that was entered, so a
       // database without the column still saves new transactions.
-      remainingPrincipal: (hasInstallments && isRecurring && remainingPrincipal.trim() !== '')
+      remainingPrincipal: (isPlan && remainingPrincipal.trim() !== '')
         ? (parseFloat(remainingPrincipal) || 0)
         : editTransaction?.remainingPrincipal != null ? null : undefined,
     };
@@ -297,10 +298,10 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const totalInst = parseInt(totalInstallments) || 0;
   const currentInst = parseInt(currentInstallment) || 0;
   const loanTotal = parseFloat(loanTotalAmount) || 0;
-  const displayTotal = hasInstallments
+  const displayTotal = isPlan
     ? (loanTotal || perInstallment * totalInst)
     : perInstallment;
-  const remainingInstCount = hasInstallments ? Math.max(0, totalInst - currentInst) : 0;
+  const remainingInstCount = isPlan ? Math.max(0, totalInst - currentInst) : 0;
   const remainingBalance = Math.round(remainingInstCount * perInstallment * 100) / 100;
   const totalAmount = displayTotal;
 
@@ -313,7 +314,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
   const formBody = (
           <div className="space-y-5 mt-4">
             <div className="flex gap-1 p-1 bg-muted rounded-xl">
-              {TYPES.filter(t => !recurringMode || t.value !== 'transfer').map(t => (
+              {TYPES.filter(t => !recurringMode || t.value === 'expense').map(t => (
                 <button key={t.value} onClick={() => { setType(t.value); setCategory(''); setCategoryIcon(''); }}
                   className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
                     type === t.value
@@ -331,7 +332,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
 
             <div>
               <label htmlFor="tx-amount" className="text-sm font-medium mb-1.5 block">
-                {hasInstallments ? `Per Installment (${currency})` : `Amount (${currency})`}
+                {isPlan ? `Per Installment (${currency})` : `Amount (${currency})`}
               </label>
               <AmountInput id="tx-amount" placeholder="0.00" value={amount} onChange={setAmount}
                 className="text-3xl font-heading h-16 text-center tracking-tight" />
@@ -420,12 +421,13 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">Recurring</p>
-                          <p className="text-xs text-muted-foreground">Monthly recurring expense</p>
+                          <p className="text-xs text-muted-foreground">{type === 'income' ? 'Comes in every month' : 'A bill you pay every month'}</p>
                         </div>
+                        {/* Recurring alone is a bill. Installment Plan is its own switch below. */}
                         <Switch checked={isRecurring} onCheckedChange={(v) => {
-                          setIsRecurring(v);
-                          if (v) setHasInstallments(true);
-                          if (!v) setHasInstallments(false);
+                          const next = setRecurring({ isRecurring, hasInstallments }, v);
+                          setIsRecurring(next.isRecurring);
+                          setHasInstallments(next.hasInstallments);
                         }} />
                       </div>
                     )}
@@ -446,17 +448,17 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                       <Switch checked={isPending} onCheckedChange={setIsPending} />
                     </div>
 
-                    {isRecurring && (
+                    {isRecurring && type === 'expense' && (
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">Installment Plan</p>
-                          <p className="text-xs text-muted-foreground">Track payment progress</p>
+                          <p className="text-xs text-muted-foreground">A fixed number of payments. Shows on Installments.</p>
                         </div>
                         <Switch checked={hasInstallments} onCheckedChange={setHasInstallments} />
                       </div>
                     )}
 
-                    {hasInstallments && isRecurring && (
+                    {isPlan && (
                       <div className="space-y-3 pt-2 border-t border-border">
                         <div className="flex items-center justify-between">
                           <div>
@@ -529,7 +531,7 @@ const AddTransactionSheet = ({ open, onOpenChange, editTransaction, prefill, rec
                 )}
 
                 {/* Allocate to Goal */}
-                {!isEditing && !hasInstallments && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
+                {!isEditing && !isPlan && !recurringMode && goals.filter(g => g.status === 'active').length > 0 && (
                   <div className="bg-muted rounded-xl p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
