@@ -3,6 +3,7 @@ import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { useCurrency } from '@/context/CurrencyContext';
 import { PieChart } from 'lucide-react';
 import GlossaryLink from '@/components/GlossaryLink';
+import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
 import { m } from 'framer-motion';
 import type { Account, Transaction } from '@/types/finance';
 
@@ -14,9 +15,9 @@ interface Props {
 }
 
 const TYPE_CONFIG = {
-  cash: { label: 'Cash', color: 'bg-income' },
-  debit: { label: 'Debit', color: 'bg-primary' },
-  credit: { label: 'Credit', color: 'bg-warning' },
+  cash: { label: ACCOUNT_TYPE_NAMES.cash, color: 'bg-income' },
+  debit: { label: ACCOUNT_TYPE_NAMES.debit, color: 'bg-primary' },
+  credit: { label: ACCOUNT_TYPE_NAMES.credit, color: 'bg-warning' },
 } as const;
 
 const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, mask }: Props) => {

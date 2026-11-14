@@ -170,7 +170,7 @@ const Debt = () => {
       {/* Header */}
       <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl md:rounded-b-none">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt Tracker</h1>
+          <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt</h1>
           {creditDebts.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">

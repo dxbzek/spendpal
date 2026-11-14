@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Loader2, Receipt, PiggyBank, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNoIndex } from "@/hooks/useNoIndex";
+import { PAGE_NAMES } from "@/lib/pageNames";
 
 const QUICK_LINKS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/transactions", label: "Transactions", icon: Receipt },
-  { to: "/budgets", label: "Budgets", icon: PiggyBank },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/", label: PAGE_NAMES["/"], icon: LayoutDashboard },
+  { to: "/transactions", label: PAGE_NAMES["/transactions"], icon: Receipt },
+  { to: "/budgets", label: PAGE_NAMES["/budgets"], icon: PiggyBank },
+  { to: "/settings", label: PAGE_NAMES["/settings"], icon: Settings },
 ];
 
 const NotFound = () => {

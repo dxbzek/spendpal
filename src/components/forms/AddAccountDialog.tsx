@@ -12,6 +12,7 @@ import { ACCOUNT_ICONS, type AccountType, type Account } from '@/types/finance';
 import { DEFAULT_APR } from '@/lib/finance/debtPayoff';
 import { parseBalance } from '@/lib/finance/normalizeAmount';
 import { toast } from 'sonner';
+import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
 
 interface Props {
   open: boolean;
@@ -139,11 +140,11 @@ const AddAccountDialog = ({ open, onOpenChange, editAccount }: Props) => {
             <div>
               <label className="text-sm font-medium text-foreground mb-1 block">Type</label>
               <Select value={type} onValueChange={v => setType(v as AccountType)}>
-                <SelectTrigger className="h-11 text-base w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 text-base w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="debit">Debit</SelectItem>
-                  <SelectItem value="credit">Credit</SelectItem>
+                  {(['cash', 'debit', 'credit'] as const).map(t => (
+                    <SelectItem key={t} value={t}>{ACCOUNT_TYPE_NAMES[t]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

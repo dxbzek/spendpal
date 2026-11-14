@@ -187,7 +187,7 @@ const Installments = () => {
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <p className="text-sm text-muted-foreground">
-                Mark installments as paid when your CC statement arrives
+                Mark installments as paid when your card statement arrives
               </p>
               <div className="flex items-center gap-2 shrink-0">
                 <button

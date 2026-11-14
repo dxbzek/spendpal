@@ -35,6 +35,7 @@ import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
 import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
 import { ordinal } from '@/lib/ordinal';
+import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
@@ -184,7 +185,7 @@ const Dashboard = () => {
   // First-run onboarding when the user has no accounts yet.
   if (!dataLoading && accounts.length === 0) {
     const steps = [
-      { icon: Wallet, label: 'Add your first account', hint: 'Cash, bank, or credit card', done: accounts.length > 0 },
+      { icon: Wallet, label: 'Add your first account', hint: 'Cash, bank account or credit card', done: accounts.length > 0 },
       { icon: Receipt, label: 'Record a transaction', hint: 'Income or expense', done: transactions.length > 0 },
       { icon: PiggyBank, label: 'Create a budget', hint: 'Track spending by category', done: budgets.length > 0 },
       { icon: Target, label: 'Set a savings goal', hint: 'Something to work toward', done: goals.length > 0 },
@@ -247,8 +248,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-4 min-w-0">
               <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
               <div className="min-w-0">
-                <p className="text-base font-heading font-bold text-primary-foreground leading-tight">Overview</p>
-                <p className="text-[11.5px] text-primary-subtle mt-0.5">Financial overview</p>
+                <h1 className="text-base font-heading font-bold text-primary-foreground leading-tight">{PAGE_NAMES['/']}</h1>
               </div>
             </div>
             <button onClick={toggleHidden} className="text-primary-subtle p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
@@ -312,7 +312,7 @@ const Dashboard = () => {
         {/* ── OVERVIEW ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
           <div className="col-span-2 lg:col-span-4 flex items-center gap-4 pt-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Overview</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Income and expenses</span>
             <div className="flex-1 h-px bg-border" />
             <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
               {(['all', 'month', 'year'] as const).map(p => (
@@ -400,10 +400,9 @@ const Dashboard = () => {
               {(['cash', 'debit', 'credit'] as const).map(accountType => {
                 const group = accounts.filter(a => a.type === accountType);
                 if (group.length === 0) return null;
-                const labels = { cash: 'Cash', debit: 'Debit Cards', credit: 'Credit Cards' };
                 return (
                   <div key={accountType}>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">{labels[accountType]}</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{ACCOUNT_TYPE_GROUP_NAMES[accountType]}</p>
                     <div className="space-y-5">
                       {group.map(a => {
                         // balance IS the amount owed for credit accounts.
