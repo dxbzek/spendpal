@@ -273,15 +273,12 @@ const Installments = () => {
     <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Installments</h1>
-          <p className="text-sm text-muted-foreground">Track your payment plans</p>
-        </div>
+        <h1 className="text-2xl font-heading font-bold">Installments</h1>
         <button
           onClick={openAdd}
           className="bg-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-transform"
         >
-          <Plus size={15} /> New Plan
+          <Plus size={15} /> New plan
         </button>
       </div>
 
@@ -289,7 +286,6 @@ const Installments = () => {
         <div className="text-center py-16 text-muted-foreground">
           <CreditCard size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">No installment plans yet</p>
-          <p className="text-sm">Tap "New Plan" to start tracking a payment plan</p>
         </div>
       ) : (
         <>
@@ -298,7 +294,7 @@ const Installments = () => {
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-card rounded-xl border border-border p-4 text-center">
                 <p className="text-2xl font-bold text-primary">{activePlans.length}</p>
-                <p className="text-xs text-muted-foreground">Active plans</p>
+                <p className="text-xs text-muted-foreground">Plans</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4 text-center">
                 <p className="text-sm font-bold">{fmt(activePlans.reduce((s, p) => s + p.amountPerInstallment, 0))}</p>
@@ -339,7 +335,7 @@ const Installments = () => {
                     {/* Progress bar */}
                     <div>
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{progress}% complete</span>
+                        <span>{progress}%</span>
                         <span>{fmt(plan.paidAmount)} / {fmt(plan.totalAmount)}</span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">

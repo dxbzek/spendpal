@@ -42,20 +42,19 @@ const RecurringTracker = () => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <CalendarClock size={16} className="text-primary" />
-          <h2 className="font-heading text-sm">Recurring Expenses</h2>
+          <h2 className="font-heading text-sm">Recurring</h2>
         </div>
-        <span className="text-xs font-medium text-expense">{fmt(monthlyTotal)}/mo</span>
       </div>
 
       {/* Summary bar */}
       <div className="flex items-center gap-3 bg-muted rounded-xl p-3 mb-3">
         <div className="flex-1">
-          <p className="text-xs text-muted-foreground">Monthly Commitment</p>
+          <p className="text-xs text-muted-foreground">Monthly</p>
           <p className="text-lg font-heading">{fmt(monthlyTotal)}</p>
         </div>
         <div className="w-px h-8 bg-border" />
         <div className="flex-1">
-          <p className="text-xs text-muted-foreground">Yearly Estimate</p>
+          <p className="text-xs text-muted-foreground">Yearly</p>
           <p className="text-lg font-heading">{fmt(yearlyTotal)}</p>
         </div>
       </div>
@@ -90,7 +89,7 @@ const RecurringTracker = () => {
       {/* Category breakdown */}
       {byCategory.length > 1 && (
         <div className="mt-3 pt-3 border-t border-border">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">By Category</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">By category</p>
           <div className="flex gap-2 flex-wrap">
             {byCategory.map(([cat, data], i) => {
               const color = getCategoryChartColor(cat, i);

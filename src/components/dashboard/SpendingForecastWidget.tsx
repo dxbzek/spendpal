@@ -36,14 +36,14 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
     <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp size={16} className="text-primary" />
-        <h2 className="font-heading text-sm">Spending Forecast</h2>
+        <h2 className="font-heading text-sm">Forecast</h2>
       </div>
 
       <div className="flex items-end justify-between mb-3">
         <div>
-          <p className="text-xs text-muted-foreground mb-0.5">Projected month-end</p>
+          <p className="text-xs text-muted-foreground mb-0.5">Month-end</p>
           <p className={`text-financial-large font-heading ${isOnTrack ? 'text-primary' : 'text-expense'}`}>
-            <span className="text-sm font-normal text-muted-foreground">about </span>{fmt(projected)}
+            {fmt(projected)}
           </p>
           {high - low >= 1 && (
             <p className="text-xs text-muted-foreground mt-0.5">{fmt(low)} – {fmt(high)}</p>
@@ -72,11 +72,11 @@ const SpendingForecastWidget = ({ transactions }: Props) => {
       </div>
       <div className="flex justify-between text-[11px] text-muted-foreground">
         <span>Day {daysElapsed} of {daysInMonth}</span>
-        <span>{fmt(Math.round(everydayPerDay))}/day everyday spend</span>
+        <span>{fmt(Math.round(everydayPerDay))}/day</span>
       </div>
       {oneOffs.count > 0 && (
         <p className="text-[11px] text-muted-foreground mt-1.5">
-          {oneOffs.count} one-off{oneOffs.count > 1 ? 's' : ''} over {fmt(oneOffOver)} ({fmt(Math.round(oneOffs.total))}) counted once, not projected.
+          Not projected: {oneOffs.count} one-off{oneOffs.count > 1 ? 's' : ''} over {fmt(oneOffOver)}, {fmt(Math.round(oneOffs.total))}
         </p>
       )}
     </div>

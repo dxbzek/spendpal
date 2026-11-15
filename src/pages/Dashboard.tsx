@@ -55,8 +55,7 @@ import type { Account } from '@/types/finance';
 // row instead of sitting beside an empty half, and a widget that renders
 // nothing leaves its slot empty, which empty:hidden removes. A section whose
 // cards are all empty hides its title too.
-const SECTION = 'flex flex-wrap gap-4 lg:gap-5 mt-6 [&:not(:has(>:not(:first-child):not(:empty)))]:hidden';
-const SECTION_HEADER = 'basis-full flex items-center gap-4';
+const SECTION = 'flex flex-wrap gap-4 lg:gap-5 mt-4 lg:mt-5 [&:not(:has(>:not(:empty)))]:hidden';
 // Half a row from lg up (50% less half the 1.25rem gap), a full row below.
 const HALF = 'min-w-0 grow basis-full lg:basis-[calc(50%-0.625rem)]';
 const FULL = 'min-w-0 basis-full';
@@ -402,13 +401,13 @@ const Dashboard = () => {
             <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-primary">
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Savings Rate — This Month</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Saved this month</p>
                   <p className={`text-financial-medium ${savings.rate >= 20 ? 'text-income' : 'text-warning'}`}>
                     {hidden ? '••' : `${savings.rate}%`}
                   </p>
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
-                  <p>Saved: {mask(fmt(savings.amount))}</p>
+                  <p>{mask(fmt(savings.amount))}</p>
                   <p className="text-xs">{savings.rate >= 20 ? 'On track' : 'Room to save'}</p>
                 </div>
               </div>
@@ -427,9 +426,8 @@ const Dashboard = () => {
             <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-expense">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">This month so far</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Overspent this month</p>
                   <p className="text-financial-medium text-expense">{mask(fmt(savings.amount))}</p>
-                  <p className="text-xs text-muted-foreground">more went out than came in</p>
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
                   <p>In: {mask(fmt(thisMonthIncome))}</p>
@@ -441,12 +439,7 @@ const Dashboard = () => {
         </div>
 
         {/* ── ACCOUNTS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-6">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Accounts</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-4 lg:mt-5">
           <Card className="col-span-2 lg:col-span-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-heading text-sm">Accounts</h2>
@@ -463,8 +456,6 @@ const Dashboard = () => {
                     <p className="text-xs font-medium text-muted-foreground mb-2">{ACCOUNT_TYPE_GROUP_NAMES[accountType]}</p>
                     <div className="space-y-5">
                       {group.map(a => {
-                        // balance IS the amount owed for credit accounts.
-                        const spent = a.type === 'credit' ? a.balance : 0;
                         const available = availableCredit(a);
                         const utilization = Math.round(creditUtilization(a) ?? 0);
                         const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-warning' : 'bg-primary';
@@ -508,7 +499,7 @@ const Dashboard = () => {
                               <div className="mt-1.5 ml-[3.25rem]">
                                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                   <span>{utilization}% used</span>
-                                  <span>{fmt(spent)} / {fmt(a.creditLimit)}</span>
+                                  <span>Limit {fmt(a.creditLimit)}</span>
                                 </div>
                                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                                   <div className={`h-full rounded-full transition-all ${utilizationColor}`} style={{ width: `${utilization}%` }} />
@@ -522,18 +513,13 @@ const Dashboard = () => {
                   </div>
                 );
               })}
-              {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet. Add one to get started!</p>}
+              {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet.</p>}
             </div>
           </Card>
         </div>
 
         {/* ── SPENDING ── */}
         <div className={SECTION}>
-          <div className={SECTION_HEADER}>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Spending</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
           {categorySpending.length > 0 && (
             <Card className={HALF}>
               <h2 className="font-heading text-sm mb-3">Breakdown</h2>
@@ -545,7 +531,7 @@ const Dashboard = () => {
 
           {transactions.length > 0 && (
             <Card className={HALF}>
-              <h2 className="font-heading text-sm mb-3">Monthly Trends</h2>
+              <h2 className="font-heading text-sm mb-3">Monthly trends</h2>
               <Suspense fallback={<ChartSkeleton />}>
                 <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
               </Suspense>
@@ -554,7 +540,7 @@ const Dashboard = () => {
 
           {categorySpending.length > 0 && (
             <Card className={HALF}>
-              <h2 className="font-heading text-sm mb-3">By Category</h2>
+              <h2 className="font-heading text-sm mb-3">By category</h2>
               <div className="space-y-2.5">
                 {categorySpending.slice(0, 5).map(([cat, data], idx) => {
                   const pct = grossExpenses ? Math.round((data.total / grossExpenses) * 100) : 0;
@@ -589,14 +575,9 @@ const Dashboard = () => {
 
         {/* ── PLANNING ── */}
         <div className={SECTION}>
-          <div className={SECTION_HEADER}>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Planning</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
           <Card className={HALF}>
             <div className="flex items-center justify-between mb-2">
-              <h2 className="font-heading text-sm">Budget Overview</h2>
+              <h2 className="font-heading text-sm">Budgets</h2>
               <button onClick={() => navigate('/budgets')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
             </div>
             {activeBudgetsList.length === 0 ? (
@@ -648,13 +629,13 @@ const Dashboard = () => {
           {installmentSummary.count > 0 && (
             <Card className={HALF}>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-heading text-sm">Installment Plans</h2>
+                <h2 className="font-heading text-sm">Installments</h2>
                 <button onClick={() => navigate('/installments')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
                   <p className="text-2xl font-bold text-primary">{installmentSummary.count}</p>
-                  <p className="text-xs text-muted-foreground">Active plans</p>
+                  <p className="text-xs text-muted-foreground">Active</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold">{mask(fmt(installmentSummary.monthlyTotal))}</p>
@@ -675,11 +656,6 @@ const Dashboard = () => {
 
         {/* ── INSIGHTS ── */}
         <div className={SECTION}>
-          <div className={SECTION_HEADER}>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Insights</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
           <div className={HALF_SLOT}>
             <SpendingForecastWidget transactions={transactions} />
           </div>
@@ -687,7 +663,7 @@ const Dashboard = () => {
           {recentTx.length > 0 && (
             <Card className={FULL}>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-heading text-sm">Recent Transactions</h2>
+                <h2 className="font-heading text-sm">Recent</h2>
                 <button onClick={() => navigate('/transactions')} className="tap-area text-xs text-primary font-medium flex items-center gap-0.5">View all <ChevronRight size={14} /></button>
               </div>
               <div className="space-y-5">

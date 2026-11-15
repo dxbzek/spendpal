@@ -91,7 +91,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     term: 'Recurring',
     definition:
-      'A switch on a transaction that comes in or goes out every month. A recurring expense shows in Recurring Expenses on Home.',
+      'A switch on a transaction that comes in or goes out every month. A recurring expense shows in Recurring on Home.',
   },
   {
     term: 'Installment Plan',

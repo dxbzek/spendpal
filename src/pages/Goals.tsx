@@ -145,12 +145,12 @@ const Goals = () => {
               </button>
               <button onClick={() => { setEditGoal(null); setShowAddGoal(true); }}
                 className="bg-primary-raised rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
-                <Plus size={14} /> New Goal
+                <Plus size={14} /> New goal
               </button>
             </div>
           </div>
           <div className="bg-primary-raised rounded-xl p-4">
-            <p className="text-primary-subtle text-xs mb-1">Total Progress</p>
+            <p className="text-primary-subtle text-xs mb-1">Progress</p>
             <p className="text-2xl font-heading text-primary-foreground mb-2">
               {overallPct}% <span className="text-sm font-normal text-primary-subtle">of {mask(fmt(totalTarget))}</span>
             </p>
@@ -163,12 +163,11 @@ const Goals = () => {
 
       {/* Content */}
       <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto">
-        <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide mb-4">Active Goals</h2>
+        <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide mb-4">Active</h2>
 
         {activeGoals.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl card-shadow">
             <p className="text-muted-foreground text-sm">No active goals</p>
-            <p className="text-xs text-muted-foreground mt-1">Create a goal to start saving</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -241,7 +240,7 @@ const Goals = () => {
                         </>
                       ) : (
                         <p className="text-xs font-semibold text-income flex items-center gap-1">
-                          <Trophy size={12} /> Goal reached!
+                          <Trophy size={12} /> Reached
                         </p>
                       )}
                     </div>
@@ -276,7 +275,7 @@ const Goals = () => {
                     const visible = isShowingAll ? log : log.slice(0, 5);
                     return (
                       <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Contribution History</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">History</p>
                         {log.length === 0 ? (
                           <p className="text-xs text-muted-foreground">No contributions yet</p>
                         ) : (
@@ -382,7 +381,7 @@ const Goals = () => {
 
       <AlertDialog open={!!deleteGoalId} onOpenChange={(o) => { if (!o) setDeleteGoalId(null); }}>
         <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader><AlertDialogTitle>Delete this goal?</AlertDialogTitle><AlertDialogDescription>This deletes the goal and its saved-progress history. We'll hold it for a few seconds so you can undo.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Delete this goal?</AlertDialogTitle><AlertDialogDescription>Deletes the goal and its history. You can undo for a few seconds.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (deleteGoalId) scheduleGoalDelete([deleteGoalId], 'Goal deleted'); setDeleteGoalId(null); }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>

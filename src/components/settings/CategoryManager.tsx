@@ -157,10 +157,7 @@ const CategoryManager = () => {
   return (
     <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">Categories</p>
-          <p className="text-xs text-muted-foreground">Customize icons or add new</p>
-        </div>
+        <p className="text-sm font-medium">Categories</p>
         <button onClick={() => setShowAdd(!showAdd)}
           className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary-soft transition-colors">
           {showAdd ? <X size={12} /> : <Plus size={12} />}
@@ -243,7 +240,7 @@ const CategoryManager = () => {
               </div>
             ) : (item.type === 'custom' && mergingName === item.name) ? (
               <div className="flex-1 space-y-2">
-                <p className="text-xs text-muted-foreground">Merge "{item.name}" into another category — every transaction and budget using it moves over, then "{item.name}" is removed.</p>
+                <p className="text-xs text-muted-foreground">Merge "{item.name}" into another category. Its transactions and budgets move over.</p>
                 <Select value={mergeTarget} onValueChange={setMergeTarget}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Choose target category" /></SelectTrigger>
                   <SelectContent>

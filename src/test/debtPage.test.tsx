@@ -63,9 +63,9 @@ describe('Debt page instalment plans', () => {
 
   it('shows plan principal and the revolving rest as separate lines', () => {
     render(<Debt />);
-    const plans = screen.getByText('In instalment plans').parentElement!;
+    const plans = screen.getByText('In plans').parentElement!;
     expect(within(plans).getByText('4700.50')).toBeInTheDocument();
-    const rest = screen.getByText('Rest of the balance, at the card rate').parentElement!;
+    const rest = screen.getByText('Rest, at card rate').parentElement!;
     expect(within(rest).getByText('7699.50')).toBeInTheDocument();
     // Plan name on one line, payments left and amount on the next.
     expect(screen.getByText('Laptop').nextElementSibling?.textContent).toMatch(/^42 × 150\.00/);

@@ -1,3 +1,4 @@
+import GlossaryLink from '@/components/GlossaryLink';
 import { PageSpinner } from '@/components/ui/spinner';
 import { NARROW_PAGE } from '@/lib/pageLayout';
 import { useState, useMemo } from 'react';
@@ -116,22 +117,19 @@ const Accounts = () => {
     <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Accounts</h1>
-          <p className="text-sm text-muted-foreground">Manage your financial accounts</p>
-        </div>
+        <h1 className="text-2xl font-heading font-bold">Accounts</h1>
         <Button
           onClick={() => setAddOpen(true)}
           size="sm"
           className="bg-primary text-primary-foreground"
         >
-          <Plus size={16} className="mr-1" /> Add Account
+          <Plus size={16} className="mr-1" /> Add account
         </Button>
       </div>
 
       {/* Net Worth Summary */}
       <div className="rounded-xl bg-primary-soft border border-primary-line p-5">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Total Net Worth</p>
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1 flex items-center gap-1">Net worth <GlossaryLink term="Total Net Worth" /></p>
         <p className={`text-3xl font-bold font-heading ${netWorth >= 0 ? 'text-foreground' : 'text-destructive'}`}>
           {netWorth < 0 ? '-' : ''}{mask(fmt(Math.abs(netWorth)))}
         </p>
@@ -145,7 +143,6 @@ const Accounts = () => {
         <div className="text-center py-16 text-muted-foreground">
           <Wallet size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">No accounts yet</p>
-          <p className="text-sm">Add your first account to get started</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -223,7 +220,7 @@ const Accounts = () => {
                 </div>
                 {!!pendingHolds[account.id] && (
                   <p className="text-xs text-muted-foreground -mt-2">
-                    {mask(fmt(pendingHolds[account.id]))} in pending holds not yet settled
+                    {mask(fmt(pendingHolds[account.id]))} pending
                   </p>
                 )}
 
@@ -231,7 +228,7 @@ const Accounts = () => {
                 {utilization !== null && (
                   <div>
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Utilization</span>
+                      <span>Used</span>
                       <span className={
                         utilization > 75 ? 'text-destructive font-semibold' :
                         utilization > 30 ? 'text-warning font-semibold' : 'text-primary'
@@ -276,7 +273,7 @@ const Accounts = () => {
                   onClick={() => setExpandedId(expandedId === account.id ? null : account.id)}
                   className="w-full flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <span className="flex items-center gap-1"><Receipt size={11} /> Recent transactions</span>
+                  <span className="flex items-center gap-1"><Receipt size={11} /> Transactions</span>
                   {expandedId === account.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </button>
 
@@ -310,7 +307,7 @@ const Accounts = () => {
                             onClick={() => navigate('/transactions')}
                             className="w-full text-xs text-primary font-medium text-center py-1 hover:underline"
                           >
-                            See all transactions →
+                            See all →
                           </button>
                         </>
                       )}
@@ -327,7 +324,7 @@ const Accounts = () => {
       {balanceProjection && (
         <div className="bg-card rounded-xl border border-border p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">30-Day Balance Projection</h2>
+            <h2 className="text-sm font-semibold">Next 30 days</h2>
             <span className={`text-xs font-semibold ${balanceProjection.change >= 0 ? 'text-income' : 'text-expense'}`}>
               {hidden ? '••••••' : `${balanceProjection.change >= 0 ? '+' : ''}${fmt(balanceProjection.change)}`}
             </span>
@@ -371,12 +368,11 @@ const Accounts = () => {
             <AlertDialogDescription>
               {deleteTxCount > 0 ? (
                 <>
-                  This deletes the account and all {deleteTxCount} transaction{deleteTxCount !== 1 ? 's' : ''} on it
-                  {deleteTxSpend > 0 ? <>, totaling {fmt(deleteTxSpend)} in spending history</> : null}.
-                  Balances on other accounts are unaffected. We'll hold the delete for a few seconds so you can undo.
+                  Deletes the account and its {deleteTxCount} transaction{deleteTxCount !== 1 ? 's' : ''}
+                  {deleteTxSpend > 0 ? <> ({fmt(deleteTxSpend)} spent)</> : null}. You can undo for a few seconds.
                 </>
               ) : (
-                <>This deletes the account. It has no transactions. We'll hold the delete for a few seconds so you can undo.</>
+                <>Deletes the account. It has no transactions. You can undo for a few seconds.</>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>

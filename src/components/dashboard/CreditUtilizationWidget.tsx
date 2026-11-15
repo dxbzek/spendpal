@@ -30,7 +30,7 @@ const CreditUtilizationWidget = ({ accounts, hidden: _hidden, mask }: Props) => 
     <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
         <CreditCard size={16} className="text-primary" />
-        <h2 className="font-heading text-sm">Credit Utilization</h2>
+        <h2 className="font-heading text-sm">Credit used</h2>
         <GlossaryLink term="Credit Utilization" />
       </div>
 

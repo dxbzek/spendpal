@@ -47,7 +47,7 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, m
     <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
         <PieChart size={16} className="text-primary" />
-        <h2 className="font-heading text-sm">Expenses by Account Type</h2>
+        <h2 className="font-heading text-sm">By account type</h2>
         <GlossaryLink term="Expense" />
       </div>
 
@@ -80,7 +80,7 @@ const ExpenseByAccountTypeWidget = ({ accounts, transactions, hidden: _hidden, m
       </div>
 
       <div className="mt-3 pt-3 border-t border-border flex justify-between text-xs text-muted-foreground">
-        <span>Total Expenses</span>
+        <span>Total</span>
         <span className="font-heading text-foreground">{mask(fmt(total))}</span>
       </div>
     </div>

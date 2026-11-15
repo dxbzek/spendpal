@@ -175,10 +175,7 @@ const Reports = () => {
     <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Reports</h1>
-          <p className="text-sm text-muted-foreground">Analytics &amp; insights</p>
-        </div>
+        <h1 className="text-2xl font-heading font-bold">Reports</h1>
         <div className="flex items-center gap-2 shrink-0">
           {hasData && (
             <>
@@ -236,7 +233,7 @@ const Reports = () => {
         </div>
         <div className="bg-card rounded-xl border border-border p-3 text-center">
           <PiggyBank size={18} className={`mx-auto mb-1 ${savingsRate !== null && savingsRate >= 20 ? 'text-primary' : 'text-muted-foreground'}`} />
-          <p className="text-xs text-muted-foreground">Savings Rate</p>
+          <p className="text-xs text-muted-foreground">Savings rate</p>
           <p className={`font-bold text-sm ${savingsRate === null ? 'text-muted-foreground' : savingsRate >= 20 ? 'text-primary' : savingsRate < 0 ? 'text-destructive' : 'text-foreground'}`}>
             {savingsRate === null ? '—' : `${savingsRate}%`}
           </p>
@@ -245,7 +242,7 @@ const Reports = () => {
 
       {/* 6-Month Trend */}
       <div className="bg-card rounded-xl border border-border p-4">
-        <h2 className="font-semibold text-sm mb-3">6-Month Trend</h2>
+        <h2 className="font-semibold text-sm mb-3">6 months</h2>
         <Suspense fallback={<ChartSkeleton />}>
           <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
         </Suspense>
@@ -254,7 +251,7 @@ const Reports = () => {
       {/* Spending by Category */}
       {categoryData.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">Spending by Category</h2>
+          <h2 className="font-semibold text-sm mb-3">By category</h2>
           <Suspense fallback={<ChartSkeleton />}>
             <SpendingPieChart data={categoryData} />
           </Suspense>
@@ -308,7 +305,7 @@ const Reports = () => {
       {/* Budget Performance */}
       {monthBudgets.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-4 space-y-3">
-          <h2 className="font-semibold text-sm">Budget Performance</h2>
+          <h2 className="font-semibold text-sm">Budgets</h2>
           {monthBudgets.map(b => {
             const spent = monthSpentByCategory[b.category] ?? 0;
             const pct = b.amount > 0 ? Math.min((spent / b.amount) * 100, 100) : 0;
@@ -341,7 +338,7 @@ const Reports = () => {
       {/* Top Merchants */}
       {topMerchants.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">Top Merchants</h2>
+          <h2 className="font-semibold text-sm mb-3">Top merchants</h2>
           <div className="space-y-2">
             {topMerchants.map(({ merchant, amount }, i) => (
               <div key={merchant} className="flex items-center justify-between gap-3">
@@ -359,7 +356,7 @@ const Reports = () => {
       {/* Income by Source */}
       {incomeBySource.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">Income by Source</h2>
+          <h2 className="font-semibold text-sm mb-3">Income sources</h2>
           <div className="space-y-2">
             {incomeBySource.map(([source, data], _i) => {
               const pct = income > 0 ? Math.round((data.value / income) * 100) : 0;
@@ -385,7 +382,7 @@ const Reports = () => {
       {/* Day of Week Heatmap */}
       {dayOfWeekData.some(d => d.total > 0) && (
         <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">Spending by Day of Week</h2>
+          <h2 className="font-semibold text-sm mb-3">By weekday</h2>
           <div className="flex items-end gap-1.5">
             {dayOfWeekData.map(({ label, total, pct }) => (
               <div key={label} className="flex-1 flex flex-col items-center gap-1">
@@ -408,7 +405,6 @@ const Reports = () => {
           <p className="font-medium">
             No data for {format(parseISO(selectedMonth + '-01'), 'MMMM yyyy')}
           </p>
-          <p className="text-sm">Add some transactions to see reports</p>
         </div>
       )}
     </div>

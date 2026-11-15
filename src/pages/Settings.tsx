@@ -49,8 +49,7 @@ const SecondaryCurrencyCard = () => {
   return (
     <div className="bg-card rounded-xl p-5 card-shadow space-y-3">
       <div>
-        <p className="text-sm font-medium mb-1">Secondary Currency</p>
-        <p className="text-xs text-muted-foreground mb-3">Show converted values alongside your primary currency</p>
+        <p className="text-sm font-medium mb-3">Second currency</p>
         <Select value={secondaryCurrency || '__none__'} onValueChange={v => {
           const next = v === '__none__' ? null : v;
           setSecondaryCurrency(next);
@@ -172,8 +171,7 @@ const DataBackupCard = () => {
   return (
     <>
       <div className="bg-card rounded-xl p-5 card-shadow space-y-3">
-        <p className="text-sm font-medium">Data Backup & Restore</p>
-        <p className="text-xs text-muted-foreground">Export all your data as JSON or restore from a previous backup.</p>
+        <p className="text-sm font-medium">Backup and restore</p>
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1 h-11 gap-2" disabled={exporting} onClick={handleExport}>
             {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
@@ -300,19 +298,19 @@ const DangerZoneCard = () => {
   const dialog = {
     transactions: {
       title: 'Delete All Transactions?',
-      body: <>This will permanently delete every transaction, including ones older than the app shows. Account balances are adjusted back. This action <span className="font-semibold text-foreground">cannot be undone</span>.</>,
+      body: <>Deletes every transaction, older ones too. Balances are adjusted back. This <span className="font-semibold text-foreground">cannot be undone</span>.</>,
       action: 'Yes, Delete All Transactions',
       run: handleDeleteTransactions,
     },
     everything: {
       title: 'Delete All Data?',
-      body: <>This will permanently delete all {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets and {goals.length} goals, and your custom categories, saved settings, advisor history, name, phone number and profile photo. Your sign-in stays. If the photo cannot be removed, you are told. This action <span className="font-semibold text-foreground">cannot be undone</span>. There is no Undo for Delete All.</>,
+      body: <>Deletes {accounts.length} accounts, {transactions.length} transactions, {budgets.length} budgets and {goals.length} goals, plus your categories, settings, advisor history, name, phone number and profile photo. Your sign-in stays. This <span className="font-semibold text-foreground">cannot be undone</span>.</>,
       action: 'Yes, Delete Everything',
       run: handleDeleteAll,
     },
     account: {
       title: 'Delete my account?',
-      body: <>This will permanently delete your sign-in for <span className="font-medium text-foreground break-all">{user?.email}</span> and everything stored with it: accounts, transactions, budgets, goals, categories, advisor history, profile and photo. This action <span className="font-semibold text-foreground">cannot be undone</span>. Export a backup first if you want a copy.</>,
+      body: <>Deletes the sign-in for <span className="font-medium text-foreground break-all">{user?.email}</span> and all its data. This <span className="font-semibold text-foreground">cannot be undone</span>. Export a backup first.</>,
       action: 'Yes, delete my account',
       run: handleDeleteAccount,
     },
@@ -330,7 +328,7 @@ const DangerZoneCard = () => {
             <div className="flex-1">
               <p className="text-sm font-medium">Delete All Transactions</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Permanently removes every transaction. Accounts, budgets and goals stay; account balances are adjusted back.
+                Accounts, budgets and goals stay. Balances are adjusted back.
               </p>
               <Button
                 variant="outline"
@@ -349,7 +347,7 @@ const DangerZoneCard = () => {
             <div className="flex-1">
               <p className="text-sm font-medium">Delete All Data</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Permanently removes all {total} records: accounts, transactions, budgets and goals. Also removes your custom categories, saved settings, advisor history, name, phone number and profile photo. Your sign-in stays; Delete my account removes it too.
+                All {total} records, categories, settings and profile. Your sign-in stays.
               </p>
               <Button
                 variant="outline"
@@ -368,7 +366,7 @@ const DangerZoneCard = () => {
             <div className="flex-1">
               <p className="text-sm font-medium">Delete my account</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Permanently removes your sign-in and everything stored with it. You cannot sign in again with this account.
+                Your sign-in and all your data.
               </p>
               <Button
                 variant="outline"
@@ -476,7 +474,7 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Email alerts</p>
-              <p className="text-xs text-muted-foreground">Send budget alerts to your sign-in email</p>
+              <p className="text-xs text-muted-foreground">To your sign-in email</p>
             </div>
             <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
           </div>
@@ -487,14 +485,14 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
         </>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Email alerts are not available yet. SpendPal has no verified sender address, so it cannot send email.
+          Email alerts are not available yet.
         </p>
       )}
 
       {savedPhone && (
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            Text alerts are no longer offered. Your saved number {savedPhone} is not used.
+            Text alerts ended. {savedPhone} is not used.
           </p>
           <Button variant="outline" size="sm" onClick={handleRemovePhone} disabled={saving}>
             Remove number
@@ -536,8 +534,8 @@ const EmailUpdateCard = ({ currentEmail }: { currentEmail: string }) => {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium mb-1.5 block">Update Email</label>
-      <p className="text-xs text-muted-foreground">A confirmation link will be sent to the new address. Your email won't change until you click it.</p>
+      <label className="text-sm font-medium mb-1.5 block">Email</label>
+      <p className="text-xs text-muted-foreground">Changes after you click the link we email.</p>
       <div className="flex gap-2">
         <Input
           type="email"
@@ -732,8 +730,7 @@ const Settings = () => {
                   {theme === 'dark' ? <Moon size={17} className="text-primary" /> : <Sun size={17} className="text-primary" />}
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Dark Mode</p>
-                  <p className="text-xs text-muted-foreground">Switch between light and dark theme</p>
+                  <p className="text-sm font-medium">Dark mode</p>
                 </div>
               </div>
               <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
@@ -746,14 +743,14 @@ const Settings = () => {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Profile</p>
           <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Display Name</label>
+              <label className="text-sm font-medium mb-1.5 block">Name</label>
               <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" className="h-12" />
             </div>
 
             <EmailUpdateCard currentEmail={user?.email ?? ''} />
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Preferred Currency</label>
+              <label className="text-sm font-medium mb-1.5 block">Currency</label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger className="h-12">
                   <SelectValue />
@@ -805,7 +802,7 @@ const Settings = () => {
             />
 
             <Button onClick={handleSave} disabled={saving} className="w-full h-12 bg-primary text-primary-foreground">
-              {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
+              {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save'}
             </Button>
           </div>
         </section>
@@ -825,8 +822,8 @@ const Settings = () => {
                 <Wallet size={17} className="text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium">Monthly Income</p>
-                <p className="text-xs text-muted-foreground mb-3">Used to show how much of your income you're projected to spend</p>
+                <p className="text-sm font-medium">Monthly income</p>
+                <p className="text-xs text-muted-foreground mb-3">Used by the forecast</p>
                 <Input
                   type="number"
                   placeholder="e.g. 15000"
@@ -866,8 +863,8 @@ const Settings = () => {
                 <Bell size={17} className="text-primary" />
               </div>
               <div>
-                <p className="text-sm font-medium">Budget Alerts</p>
-                <p className="text-xs text-muted-foreground">An email when a budget reaches 75%, 90% or 100% of its limit. SpendPal checks this when you open the app.</p>
+                <p className="text-sm font-medium">Budget alerts</p>
+                <p className="text-xs text-muted-foreground">At 75%, 90% and 100%, checked when you open the app</p>
               </div>
             </div>
             <NotificationsCard userId={user!.id} />
@@ -876,13 +873,11 @@ const Settings = () => {
 
         {/* Categories */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Categories</p>
           <CategoryManager />
         </section>
 
         {/* Currency */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Secondary Currency</p>
           <SecondaryCurrencyCard />
         </section>
 
@@ -939,7 +934,7 @@ const Settings = () => {
               <div className="w-8 h-8 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
                 <LogOut size={15} className="text-destructive" />
               </div>
-              Sign Out
+              Sign out
             </button>
           </div>
         </section>
