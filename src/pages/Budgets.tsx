@@ -1,3 +1,4 @@
+import GlossaryLink from '@/components/GlossaryLink';
 import { useState, useMemo } from 'react';
 import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -346,7 +347,7 @@ const Budgets = () => {
       {/* Template picker */}
       {showTemplates && (
         <div className="mx-5 md:mx-8 mb-2 bg-card rounded-xl border border-border p-4 space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Load a Template</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Templates</p>
           {templates.map(t => (
             <div key={t.name} className="flex items-center justify-between py-1">
               <div>
@@ -384,7 +385,8 @@ const Budgets = () => {
             <div className="flex items-center justify-between text-xs mt-1">
               <span className="text-muted-foreground flex items-center gap-1">
                 {projectedPct > 100 ? <TrendingUp size={11} /> : null}
-                Projected month-end
+                Month-end
+                <GlossaryLink term="Projected month-end" />
               </span>
               <span className={`font-semibold ${velocityColor(projectedPct)}`}>
                 {mask(fmt(projectedSpend))} ({projectedPct}%)
@@ -410,19 +412,15 @@ const Budgets = () => {
         {budgets.length === 0 ? (
           <div className="bg-card rounded-xl p-8 card-shadow text-center">
             <ChartPie className="mx-auto mb-3 text-primary" size={40} strokeWidth={1.5} aria-hidden="true" />
-            <h3 className="font-heading text-base mb-1">No budgets yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Create your first budget to start tracking your spending limits</p>
+            <h3 className="font-heading text-base mb-4">No budgets yet</h3>
             <button onClick={() => { setEditBudget(null); setShowAddBudget(true); }}
               className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-2">
-              <Plus size={16} /> Create First Budget
+              <Plus size={16} /> Add budget
             </button>
           </div>
         ) : tab === 'this' && thisMonthBudgets.length === 0 ? (
           <div className="bg-card rounded-xl p-6 card-shadow text-center">
-            <h3 className="font-heading text-base mb-1">No budgets for {format(now, 'MMMM')} yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {lastMonthBudgets.length > 0 ? `Bring over ${lastMonthLabel}'s budgets or add new ones.` : 'Add a budget to start tracking this month.'}
-            </p>
+            <h3 className="font-heading text-base mb-4">No budgets for {format(now, 'MMMM')} yet</h3>
             <div className="flex flex-wrap justify-center gap-2">
               {lastMonthBudgets.length > 0 && (
                 <button onClick={copyFromLastMonth} disabled={copyingLastMonth}
@@ -454,7 +452,6 @@ const Budgets = () => {
                       <IconTile value={b.categoryIcon} />
                       <div className="min-w-0">
                         <p className="text-sm font-semibold break-words">{b.category}</p>
-                        <p className="text-xs text-muted-foreground">Monthly · {daysLeft}d left</p>
                         {thisMonthIncludes[b.category] && (
                           <p className="text-xs text-muted-foreground break-words">Includes {thisMonthIncludes[b.category].join(', ')}</p>
                         )}
@@ -462,7 +459,7 @@ const Budgets = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {pct > 100 ? (
-                        <Badge variant="destructive" className="text-[11px] px-2 py-0.5">Over Budget</Badge>
+                        <Badge variant="destructive" className="text-[11px] px-2 py-0.5">{pct}%</Badge>
                       ) : (
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pct > 75 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'}`}>{pct}%</span>
                       )}
@@ -510,7 +507,7 @@ const Budgets = () => {
                     <IconTile value={b.categoryIcon} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{b.category}</p>
-                      <p className="text-xs text-muted-foreground">{lastMonthLabel} · budget {mask(fmt(b.amount))}</p>
+                      <p className="text-xs text-muted-foreground">Budget {mask(fmt(b.amount))}</p>
                       {lastMonthIncludes[b.category] && (
                         <p className="text-xs text-muted-foreground break-words">Includes {lastMonthIncludes[b.category].join(', ')}</p>
                       )}
@@ -541,7 +538,7 @@ const Budgets = () => {
             <div className="w-7 h-7 rounded-xl bg-primary flex items-center justify-center shrink-0">
               <Lightbulb size={13} className="text-primary-foreground" />
             </div>
-            <h2 className="font-heading text-sm flex-1">AI Budget Suggestions</h2>
+            <h2 className="font-heading text-sm flex-1">AI suggestions</h2>
             <button onClick={() => { setShowAI(false); setSuggestions([]); }} className="text-muted-foreground p-1" aria-label="Close suggestions">
               <X size={14} />
             </button>
@@ -570,10 +567,9 @@ const Budgets = () => {
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground mb-3">Get AI-recommended budget amounts based on your spending</p>
               <button onClick={handleGenerateSuggestions} disabled={aiLoading}
                 className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Analyzing…</> : <><Lightbulb size={14} /> Generate Suggestions</>}
+                {aiLoading ? <><Loader2 size={14} className="animate-spin" /> Analyzing…</> : <><Lightbulb size={14} /> Suggest budgets</>}
               </button>
             </>
           )}
@@ -592,7 +588,7 @@ const Budgets = () => {
 
       <AlertDialog open={!!deleteBudgetId} onOpenChange={(o) => { if (!o) setDeleteBudgetId(null); }}>
         <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader><AlertDialogTitle>Delete this budget?</AlertDialogTitle><AlertDialogDescription>This removes the budget limit only — your transactions and spending history are unaffected. We'll hold it for a few seconds so you can undo.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Delete this budget?</AlertDialogTitle><AlertDialogDescription>Your transactions stay. You can undo for a few seconds.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (deleteBudgetId) scheduleBudgetDelete([deleteBudgetId], 'Budget deleted'); setDeleteBudgetId(null); }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
@@ -605,7 +601,7 @@ const Budgets = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete All Budgets?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete all {budgets.length} budgets. This action cannot be undone.
+              Deletes all {budgets.length} budgets. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
