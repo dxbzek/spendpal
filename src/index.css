@@ -284,3 +284,9 @@
    what a thumb can hit to about 40px without moving anything on the page. */
 .tap-area { position: relative; }
 .tap-area::after { content: ''; position: absolute; inset: -12px -8px; }
+
+/* The page never scrolls sideways. On iPhone a sideways swipe (or the zoom on
+   tapping a field) could leave the page or an open sheet panned, with half of
+   the Add Transaction sheet off screen until the app was closed. */
+html, body { overflow-x: hidden; overscroll-behavior-x: none; }
+#root { max-width: 100vw; }
