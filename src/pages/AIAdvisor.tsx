@@ -12,7 +12,7 @@ import { nextResetAt, usageLine } from '@/lib/aiUsage';
 import { format, parseISO, subMonths, getMonth, getYear, differenceInCalendarDays } from 'date-fns';
 import { m, AnimatePresence } from 'framer-motion';
 import {
-  Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
+  Brain, Loader2, AlertTriangle, CheckCircle2,
   Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink, Info,
   History, Trash2, ChevronDown, ChevronUp,
 } from 'lucide-react';
@@ -72,12 +72,6 @@ const INSIGHT_ICONS = {
   warning: <AlertTriangle size={16} className="text-warning" />,
   positive: <CheckCircle2 size={16} className="text-income" />,
   suggestion: <Lightbulb size={16} className="text-primary" />,
-};
-
-const INSIGHT_COLORS = {
-  warning: 'bg-warning-soft border-warning-line border-l-4 border-l-warning',
-  positive: 'bg-accent border-accent-foreground border-l-4 border-l-income',
-  suggestion: 'bg-primary-soft border-primary-line border-l-4 border-l-primary',
 };
 
 // Budget Health Score ring with a count-up arc + number on mount.
@@ -424,122 +418,108 @@ const AIAdvisor = () => {
                 <p className={`text-xs text-right ${limitReached ? 'text-warning' : 'text-muted-foreground'}`}>{usageText}</p>
               )}
 
-              {/* Recommended Method */}
-              <div className="bg-card rounded-xl p-5 card-shadow border-2 border-primary-line">
-                <div className="flex items-start gap-3 mb-3">
-                  <span className="text-3xl"><AppIcon value={METHOD_LABELS[analysis.recommendedMethod]?.emoji} /></span>
-                  <div>
-                    <p className="text-xs text-primary font-medium uppercase tracking-wide">Recommended Method</p>
-                    <h2 className="font-heading text-lg">{METHOD_LABELS[analysis.recommendedMethod]?.name}</h2>
-                    <p className="text-xs text-muted-foreground">{METHOD_LABELS[analysis.recommendedMethod]?.desc}</p>
+              {/* Summary: score, its four parts and the method, in one card */}
+              <div className="bg-card rounded-xl p-4 card-shadow">
+                <div className="flex items-center gap-4">
+                  <HealthScoreRing score={analysis.healthScore} colorClass={scoreColor(analysis.healthScore)} />
+                  <div className="min-w-0">
+                    <p className={`text-lg font-heading ${scoreColor(analysis.healthScore)}`}>{scoreLabel(analysis.healthScore)}</p>
+                    <p className="text-xs text-muted-foreground">Health score</p>
+                    <p className="text-sm font-medium mt-1">{METHOD_LABELS[analysis.recommendedMethod]?.name}</p>
                   </div>
                 </div>
-                <p className="text-sm text-foreground leading-relaxed">{shown?.methodReason}</p>
-              </div>
-
-              {/* Health Score + Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-card rounded-xl p-5 card-shadow">
-                  <h3 className="font-heading text-sm mb-3">Health score</h3>
-                  <div className="flex items-center gap-4 mb-4">
-                    <HealthScoreRing score={analysis.healthScore} colorClass={scoreColor(analysis.healthScore)} />
-                    <div>
-                      <p className={`text-lg font-heading ${scoreColor(analysis.healthScore)}`}>{scoreLabel(analysis.healthScore)}</p>
-                      <p className="text-xs text-muted-foreground mb-2">out of 100</p>
-                      <Badge
-                        variant="outline"
-                        className={`text-[11px] ${
-                          analysis.healthScore >= 75 ? 'border-income text-income bg-income-soft' :
-                          analysis.healthScore >= 50 ? 'border-warning text-warning bg-warning-soft' :
-                          'border-expense text-expense bg-expense-soft'
-                        }`}
-                      >
-                        {scoreLabel(analysis.healthScore)}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-card rounded-xl p-5 card-shadow">
-                  <h3 className="font-heading text-sm mb-3">Score breakdown</h3>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'Savings Ratio', value: analysis.healthBreakdown.savingsRatio, max: 25 },
-                      { label: 'Expense Stability', value: analysis.healthBreakdown.expenseStability, max: 25 },
-                      { label: 'Budget Adherence', value: analysis.healthBreakdown.budgetAdherence, max: 25 },
-                      { label: 'Debt Management', value: analysis.healthBreakdown.debtManagement, max: 25 },
-                    ].map(item => (
-                      <div key={item.label}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">{item.label}</span>
-                          <span className="font-medium">{item.value}/{item.max}</span>
-                        </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(item.value / item.max) * 100}%` }} />
-                        </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
+                  {[
+                    { label: 'Savings', value: analysis.healthBreakdown.savingsRatio },
+                    { label: 'Stability', value: analysis.healthBreakdown.expenseStability },
+                    { label: 'Budgets', value: analysis.healthBreakdown.budgetAdherence },
+                    { label: 'Debt', value: analysis.healthBreakdown.debtManagement },
+                  ].map(item => (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="font-medium tabular-nums">{item.value}/25</span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden" role="progressbar" aria-label={item.label} aria-valuenow={item.value} aria-valuemin={0} aria-valuemax={25}>
+                        <div className="h-full rounded-full bg-primary" style={{ width: `${(item.value / 25) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                {shown?.methodReason && (
+                  <details className="mt-3 group">
+                    <summary className="text-xs text-primary font-medium cursor-pointer list-none py-1">Why {METHOD_LABELS[analysis.recommendedMethod]?.name ?? 'this method'}</summary>
+                    <p className="text-sm text-muted-foreground leading-relaxed mt-1">{shown.methodReason}</p>
+                  </details>
+                )}
               </div>
 
               {/* Insights */}
               {!!shown?.insights.length && (
-              <div className="bg-card rounded-xl p-5 card-shadow">
-                <h3 className="font-heading text-sm mb-3">Insights</h3>
-                <div className="space-y-2.5">
+              <div className="bg-card rounded-xl p-4 card-shadow">
+                <h3 className="font-heading text-sm mb-2">Insights</h3>
+                <div className="divide-y divide-border">
                   {shown.insights.map((insight) => (
-                    <div key={insight.title} className={`flex items-start gap-3 p-3 rounded-xl border ${INSIGHT_COLORS[insight.type]}`}>
-                      <div className="shrink-0 mt-0.5">{INSIGHT_ICONS[insight.type]}</div>
-                      <div>
-                        <p className="text-sm font-medium">{insight.title}</p>
-                        <p className="text-xs text-muted-foreground">{insight.description}</p>
-                      </div>
-                    </div>
+                    <details key={insight.title} className="py-2">
+                      <summary className="flex items-center gap-3 cursor-pointer list-none min-h-[40px]">
+                        <span className="shrink-0">{INSIGHT_ICONS[insight.type]}</span>
+                        <span className="text-sm font-medium flex-1">{insight.title}</span>
+                        <ChevronDown size={14} className="text-muted-foreground shrink-0" aria-hidden="true" />
+                      </summary>
+                      <p className="text-xs text-muted-foreground mt-1 ml-7">{insight.description}</p>
+                    </details>
                   ))}
                 </div>
               </div>
               )}
 
               {/* Suggested Envelopes */}
-              <div className="bg-card rounded-xl p-5 card-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-heading text-sm">Suggested envelopes</h3>
+              <div className="bg-card rounded-xl p-4 card-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-heading text-sm">Suggested budgets</h3>
                   <Button size="sm" onClick={handleApplyEnvelopes} disabled={applyingEnvelopes}
                     className="text-xs bg-primary text-primary-foreground h-8">
                     {applyingEnvelopes ? <Loader2 size={12} className="animate-spin mr-1" /> : null}
                     Apply All
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {analysis.suggestedEnvelopes.map((env) => {
-                    const diff = env.amount - env.currentSpending;
-                    return (
-                      <div key={env.category} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                        <div className="flex items-center gap-2.5">
-                          <IconTile value={env.icon} />
-                          <div>
-                            <p className="text-sm font-medium">{env.category}</p>
-                            <p className="text-[11px] text-muted-foreground">Currently: {mask(fmt(env.currentSpending))}/mo</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-heading">{mask(fmt(env.amount))}</p>
-                          <p className={`text-[11px] font-medium ${diff >= 0 ? 'text-income' : 'text-expense'}`}>
-                            {diff >= 0 ? <TrendingUp size={10} className="inline mr-0.5" /> : <TrendingDown size={10} className="inline mr-0.5" />}
-                            {hidden ? '••••••' : `${diff >= 0 ? '+' : ''}${fmt(Math.abs(diff))}`}
-                          </p>
-                        </div>
+                {(() => {
+                  // Only envelopes that move by at least 1 are worth a row; the rest is one line.
+                  const changed = analysis.suggestedEnvelopes.filter(env => Math.abs(env.amount - env.currentSpending) >= 1);
+                  const same = analysis.suggestedEnvelopes.length - changed.length;
+                  return (
+                    <>
+                      <div className="divide-y divide-border">
+                        {changed.map((env) => {
+                          const diff = env.amount - env.currentSpending;
+                          return (
+                            <div key={env.category} className="flex items-center justify-between gap-3 py-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <AppIcon value={env.icon} className="text-lg text-muted-foreground" />
+                                <span className="text-sm font-medium truncate">{env.category}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="text-sm font-heading tabular-nums">{mask(fmt(env.amount))}</span>
+                                <span className={`ml-2 text-xs tabular-nums ${diff >= 0 ? 'text-income' : 'text-expense'}`}>
+                                  {hidden ? '••' : `${diff >= 0 ? '+' : '−'}${Math.round(Math.abs(diff)).toLocaleString('en')}`}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
+                      {same > 0 && <p className="text-xs text-muted-foreground mt-2">{same} unchanged</p>}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Budget Simulation */}
-              <div className="bg-card rounded-xl p-5 card-shadow">
-                <h3 className="font-heading text-sm mb-3">Monthly savings by method</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <details className="bg-card rounded-xl p-4 card-shadow">
+                <summary className="font-heading text-sm cursor-pointer list-none flex items-center justify-between min-h-[40px]">
+                  Compare methods <ChevronDown size={14} className="text-muted-foreground" aria-hidden="true" />
+                </summary>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
                   {([
                     { key: 'envelope', label: 'Envelope', value: analysis.simulation.envelope },
                     { key: '50-30-20', label: '50/30/20', value: analysis.simulation.fiftyThirtyTwenty },
@@ -688,23 +668,36 @@ const AIAdvisor = () => {
                     <><ExternalLink size={16} className="mr-2 shrink-0" /> <span className="truncate">Apply & Go to Budgets</span></>
                   )}
                 </Button>
-              </div>
+              </details>
 
               {/* Dynamic Adjustments */}
               {!!shown?.dynamicAdjustments.length && (
-              <div className="bg-card rounded-xl p-5 card-shadow">
-                <h3 className="font-heading text-sm mb-3">Adjustments</h3>
-                <div className="space-y-2.5">
-                  {shown.dynamicAdjustments.map((adj) => (
-                    <div key={adj.action} className="flex items-start gap-3 p-3 bg-accent rounded-xl">
-                      <ArrowRight size={16} className="text-primary shrink-0 mt-0.5" />
+              <div className="bg-card rounded-xl p-4 card-shadow">
+                <h3 className="font-heading text-sm mb-2">Next steps</h3>
+                {(() => {
+                  const row = (adj: { action: string; impact: string }) => (
+                    <div key={adj.action} className="flex items-start gap-2.5 py-2">
+                      <ArrowRight size={14} className="text-primary shrink-0 mt-1" />
                       <div>
-                        <p className="text-sm font-medium">{adj.action}</p>
-                        <p className="text-xs text-muted-foreground">{adj.impact}</p>
+                        <p className="text-sm">{adj.action}</p>
+                        <p className="text-xs text-primary">{adj.impact}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                  const first = shown.dynamicAdjustments.slice(0, 3);
+                  const rest = shown.dynamicAdjustments.slice(3);
+                  return (
+                    <div className="divide-y divide-border">
+                      {first.map(row)}
+                      {rest.length > 0 && (
+                        <details className="py-1">
+                          <summary className="text-xs text-primary font-medium cursor-pointer list-none py-2">{rest.length} more</summary>
+                          <div className="divide-y divide-border">{rest.map(row)}</div>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               )}
             </m.div>
