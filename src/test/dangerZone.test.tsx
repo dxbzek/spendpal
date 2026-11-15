@@ -125,8 +125,8 @@ describe('Delete Everything', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete everything/i }));
     const dialog = screen.getByRole('alertdialog');
     expect(dialog).toHaveTextContent('1 accounts, 2 transactions, 0 budgets and 0 goals');
-    expect(dialog).toHaveTextContent(/custom categories, saved settings, advisor history, name, phone number and profile photo/);
-    expect(dialog).toHaveTextContent('Your sign-in stays. If the photo cannot be removed, you are told.');
+    expect(dialog).toHaveTextContent(/categories, settings, advisor history, name, phone number and profile photo/);
+    expect(dialog).toHaveTextContent('Your sign-in stays.');
   });
 
   it('removes the server data and the lists kept in this browser', async () => {

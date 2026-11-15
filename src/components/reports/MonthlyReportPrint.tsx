@@ -99,9 +99,8 @@ const MonthlyReportPrint = () => {
     <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
       <div className="flex items-center gap-2">
         <FileText size={16} className="text-primary" />
-        <p className="text-sm font-medium">Monthly Report</p>
+        <p className="text-sm font-medium">Monthly report</p>
       </div>
-      <p className="text-xs text-muted-foreground">Generate a printable summary of income, expenses, and budget performance for any month.</p>
       <div className="flex items-center gap-3 flex-wrap">
         <select
           value={selectedMonth}
