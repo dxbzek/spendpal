@@ -22,7 +22,7 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
     <div className="bg-card rounded-xl p-4 card-shadow">
       <div className="flex items-center gap-2 mb-3">
         <CalendarClock size={16} className="text-primary shrink-0" />
-        <h2 className="font-heading text-sm">Upcoming Bills</h2>
+        <h2 className="font-heading text-sm">Upcoming bills</h2>
       </div>
       <div className="space-y-2">
         {bills.map((bill) => {
@@ -51,7 +51,7 @@ const UpcomingBillsWidget = ({ accounts, transactions }: Props) => {
                 <p className={`text-xs font-semibold ${
                   urgent ? 'text-expense' : soon ? 'text-warning' : 'text-muted-foreground'
                 }`}>
-                  {bill.daysLeft === 0 ? 'Today!' : bill.daysLeft === 1 ? 'Tomorrow' : `${bill.daysLeft}d`}
+                  {bill.daysLeft === 0 ? 'Today' : bill.daysLeft === 1 ? 'Tomorrow' : `${bill.daysLeft}d`}
                 </p>
               </div>
             </div>

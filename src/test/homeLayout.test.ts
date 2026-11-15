@@ -23,8 +23,8 @@ describe('Home layout', () => {
     expect(src.match(/col-span-1 lg:col-span-2 overflow-hidden/g)).toHaveLength(2);
   });
 
-  it('keeps both category cards: Breakdown and By Category', () => {
+  it('keeps both category cards: Breakdown and By category', () => {
     expect(src).toContain('>Breakdown</h2>');
-    expect(src).toContain('>By Category</h2>');
+    expect(src).toContain('>By category</h2>');
   });
 });

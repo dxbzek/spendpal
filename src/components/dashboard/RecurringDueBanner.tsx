@@ -29,7 +29,7 @@ const RecurringDueBanner = ({ transactions }: Props) => {
         <RefreshCw size={16} className="shrink-0 text-primary mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-accent-foreground">
-            {overdue.length} recurring {overdue.length === 1 ? 'expense' : 'expenses'} not logged this month
+            {overdue.length} recurring not logged
           </p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
             {overdue.map(tx => tx.merchant || tx.category).join(', ')}
