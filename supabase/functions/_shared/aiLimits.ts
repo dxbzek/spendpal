@@ -97,6 +97,8 @@ export interface UsageStore {
   insertFirst(userId: string, day: string): Promise<boolean>;
   /** Set calls to from + 1, only if calls is still `from`. False when it changed. */
   bump(userId: string, day: string, from: number): Promise<boolean>;
+  /** Set calls to from - 1, only if calls is still `from`. False when it changed. */
+  drop(userId: string, day: string, from: number): Promise<boolean>;
 }
 
 export type CountResult =
@@ -135,6 +137,32 @@ export async function countCall(
     if (written) return { ok: true, remaining: remainingAfter((calls ?? 0) + 1, limit) };
   }
   throw new Error("ai_usage: the call could not be recorded after 5 tries");
+}
+
+/**
+ * Give back a use counted by countCall when the model never answered (out of
+ * credit, bad key, provider down, timeout). Before this a failed call still
+ * cost the user one of the day's uses, so tapping Re-analyze while the AI
+ * account was empty counted down to zero with nothing to show. Returns the
+ * uses left after the refund. Never throws: a refund that fails is logged and
+ * the user keeps the lower count, which only errs on the safe side.
+ */
+export async function giveBackCall(
+  store: UsageStore,
+  userId: string,
+  day: string,
+  limit: number = DAILY_USER_LIMIT,
+): Promise<number | null> {
+  try {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const calls = await store.read(userId, day);
+      if (!calls) return remainingAfter(0, limit);
+      if (await store.drop(userId, day, calls)) return remainingAfter(calls - 1, limit);
+    }
+  } catch (err) {
+    console.error("ai_usage: could not give the use back:", err);
+  }
+  return null;
 }
 
 /** What the user is told when a call is refused. */

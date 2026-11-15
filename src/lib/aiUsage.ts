@@ -7,6 +7,9 @@
 
 import { onSignOut } from '@/lib/signOutReset';
 
+/** At or below this many uses left, the AI pages say how many remain. */
+export const LOW_USES = 5;
+
 /** The number in a server answer, or null when the answer does not carry one. */
 export function readRemaining(payload: unknown): number | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -29,7 +32,8 @@ export function nextResetAt(now: Date): Date {
  * clock, e.g. "04:00". Null when the number is not known: show nothing then.
  */
 export function usageLine(remaining: number | null, resetTime: string): string | null {
-  if (remaining === null) return null;
+  // Only worth a line when the uses are running low: "29 left" every visit is noise.
+  if (remaining === null || remaining > LOW_USES) return null;
   if (remaining === 0) return `No AI uses left today. The count resets at ${resetTime}.`;
   return `${remaining} AI ${remaining === 1 ? 'use' : 'uses'} left today.`;
 }

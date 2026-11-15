@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   AI_REQUEST_TYPES, DAILY_USER_LIMIT, DEFAULT_DAILY_CEILING, MAX_TOKENS, NEW_ACCOUNT_DAILY_LIMIT,
-  countCall, dailyLimitFor, parseCeiling, parseUserList, refusalMessage, remainingAfter, usageDay,
+  countCall, giveBackCall, dailyLimitFor, parseCeiling, parseUserList, refusalMessage, remainingAfter, usageDay,
   type UsageStore,
 } from '../../supabase/functions/_shared/aiLimits';
 import { mapAiError, OUT_OF_CREDIT_MESSAGE } from '../../supabase/functions/_shared/aiErrors';
@@ -31,9 +31,31 @@ function fakeStore(rows: Record<string, number> = {}) {
       calls.set(key(u, d), from + 1);
       return true;
     },
+    async drop(u, d, from) {
+      if (calls.get(key(u, d)) !== from) return false;
+      calls.set(key(u, d), Math.max(0, from - 1));
+      return true;
+    },
   };
   return { store, get: (u: string) => calls.get(key(u, DAY)) ?? 0 };
 }
+
+describe('giveBackCall', () => {
+  it('returns the use when the model never answered (out of credit)', async () => {
+    const { store, get } = fakeStore();
+    const counted = await countCall(store, 'u1', DAY);
+    expect(counted).toEqual({ ok: true, remaining: DAILY_USER_LIMIT - 1 });
+    expect(await giveBackCall(store, 'u1', DAY)).toBe(DAILY_USER_LIMIT);
+    expect(get('u1')).toBe(0);
+  });
+  it('never goes below zero and never throws', async () => {
+    const { store, get } = fakeStore();
+    expect(await giveBackCall(store, 'u1', DAY)).toBe(DAILY_USER_LIMIT);
+    expect(get('u1')).toBe(0);
+    const broken = { ...store, read: async () => { throw new Error('down'); } };
+    expect(await giveBackCall(broken, 'u1', DAY)).toBeNull();
+  });
+});
 
 describe('countCall', () => {
   it('counts the first call of the day and says 29 are left', async () => {
@@ -93,6 +115,7 @@ describe('countCall', () => {
       read: async () => null,
       insertFirst: async () => true,
       bump: async () => true,
+      drop: async () => true,
     };
     await expect(countCall(broken, 'u1', DAY)).rejects.toThrow(/ai_usage/);
   });

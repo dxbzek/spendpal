@@ -54,5 +54,17 @@ export function usageStore(admin: SupabaseClient): UsageStore {
       if (error) throw new Error(`ai_usage update: ${error.code ?? ""} ${error.message}`);
       return (data ?? []).length === 1;
     },
+
+    async drop(userId, day, from) {
+      const { data, error } = await admin
+        .from("ai_usage")
+        .update({ calls: Math.max(0, from - 1) })
+        .eq("user_id", userId)
+        .eq("day", day)
+        .eq("calls", from)
+        .select("calls");
+      if (error) throw new Error(`ai_usage refund: ${error.code ?? ""} ${error.message}`);
+      return (data ?? []).length === 1;
+    },
   };
 }

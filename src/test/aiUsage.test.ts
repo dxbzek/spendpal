@@ -24,7 +24,9 @@ describe('usageLine', () => {
   });
 
   it('shows the uses left', () => {
-    expect(usageLine(12, '04:00')).toBe('12 AI uses left today.');
+    // Plenty left: no line at all.
+    expect(usageLine(12, '04:00')).toBeNull();
+    expect(usageLine(5, '04:00')).toBe('5 AI uses left today.');
     expect(usageLine(1, '04:00')).toBe('1 AI use left today.');
   });
 

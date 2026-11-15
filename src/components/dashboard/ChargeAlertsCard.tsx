@@ -32,10 +32,15 @@ const ChargeAlertsCard = ({ transactions, mask }: Props) => {
       {fees.fees.length > 0 && (
         <div className="py-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Fees, last 30 days</p>
-            <p className="text-sm font-heading tabular-nums text-expense">{mask(fmt(fees.total))}</p>
+            <p className="text-sm font-medium min-w-0">
+              {fees.fees.length === 1 ? (fees.fees[0].merchant || fees.fees[0].category) : 'Fees, last 30 days'}
+              {fees.fees.length === 1 && (
+                <span className="block text-xs font-normal text-muted-foreground">Fee · {format(parseISO(fees.fees[0].date.slice(0, 10)), 'd MMM')}</span>
+              )}
+            </p>
+            <p className="text-sm font-heading tabular-nums text-expense shrink-0">{mask(fmt(fees.total))}</p>
           </div>
-          <ul className="mt-1 space-y-0.5">
+          {fees.fees.length > 1 && <ul className="mt-1 space-y-0.5">
             {fees.fees.slice(0, 5).map(t => (
               <li key={t.id} className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="truncate">{t.merchant || t.category} · {format(parseISO(t.date.slice(0, 10)), 'd MMM')}</span>
@@ -45,7 +50,7 @@ const ChargeAlertsCard = ({ transactions, mask }: Props) => {
             {fees.fees.length > 5 && (
               <li className="text-xs text-muted-foreground">+{fees.fees.length - 5} more</li>
             )}
-          </ul>
+          </ul>}
         </div>
       )}
 

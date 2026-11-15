@@ -59,25 +59,23 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
               <p className="text-sm font-medium line-clamp-2 break-words">{c.account.name}</p>
               {c.kind === 'due' && (
                 <p className="text-xs text-muted-foreground">
-                  {c.min != null && <>Min {mask(fmt(c.min))} · </>}
-                  {daysTo(c.dueOn) === 0 ? 'due today' : `${daysTo(c.dueOn)}d left`}
+                  {daysTo(c.dueOn) === 0 ? 'Due today' : `Due ${format(c.dueOn, 'd MMM')} · ${daysTo(c.dueOn)} days`}
+                  {c.min != null && c.min > 0 && <> · min {mask(fmt(c.min))}</>}
                 </p>
               )}
               {c.kind === 'passed' && (
                 <p className="text-xs text-warning">
-                  Statement due {format(c.dueOn, 'd MMM')} has passed
-                  {c.account.dueDate ? ` · next due ${format(nextPayday(c.account.dueDate, now), 'd MMM')}` : ''}
+                  {c.account.dueDate ? `Next due ${format(nextPayday(c.account.dueDate, now), 'd MMM')} · ` : ''}needs new statement
                 </p>
               )}
             </div>
             {c.kind === 'due' ? (
               <p className="text-sm font-heading tabular-nums text-right shrink-0">
                 {mask(fmt(c.total))}
-                <span className="block text-xs font-normal text-muted-foreground">by {format(c.dueOn, 'd MMM yyyy')}</span>
               </p>
             ) : (
               <button onClick={() => onEditAccount(c.account)} className="tap-area text-xs font-medium text-primary shrink-0">
-                {c.kind === 'missing' ? 'Add statement' : 'Update statement'}
+                {c.kind === 'missing' ? 'Add' : 'Update'}
               </button>
             )}
           </div>
@@ -103,11 +101,9 @@ const CardPaymentsCard = ({ accounts, transactions, mask, onEditAccount }: Props
         {runway ? (
           <>
             <p className={`text-financial-medium tabular-nums ${runway.left < 0 ? 'text-expense' : ''}`}>{mask(fmt(runway.left))}</p>
-            <p className="text-xs text-muted-foreground">
-              {mask(fmt(runway.cash))} spendable − {mask(fmt(runway.cardsDue))} cards
-              {runway.billsDue > 0 && <> − {mask(fmt(runway.billsDue))} bills</>}
-              {runway.perDay != null && <> · {mask(fmt(runway.perDay))}/day for {runway.days} days</>}
-            </p>
+            {runway.perDay != null && (
+              <p className="text-xs text-muted-foreground">{mask(fmt(runway.perDay))} a day for {runway.days} days</p>
+            )}
             {runway.holds > 0 && (
               <p className="text-xs text-muted-foreground">Spendable is after {mask(fmt(runway.holds))} in pending holds.</p>
             )}

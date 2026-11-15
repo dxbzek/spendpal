@@ -4,7 +4,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.135.0";
 import { corsHeadersFor } from "../_shared/cors.ts";
 import {
   AI_REQUEST_TYPES, type AiRequestType, MAX_TOKENS,
-  countCall, dailyLimitFor, parseCeiling, parseUserList, refusalMessage, remainingAfter, usageDay,
+  countCall, dailyLimitFor, giveBackCall, parseCeiling, parseUserList, refusalMessage, remainingAfter, usageDay,
 } from "../_shared/aiLimits.ts";
 import { type AiFailure, AI_UNAVAILABLE_MESSAGE, mapAiError } from "../_shared/aiErrors.ts";
 import { usageStore } from "./usageStore.ts";
@@ -525,7 +525,8 @@ For simulation, estimate monthly savings potential if the user adopted each budg
       } catch (err) {
         const failure = aiFailure(err);
         if (!failure) throw err;
-        return reply(failure.status, { error: failure.error, remaining });
+        const left = meter ? await giveBackCall(meter, user.id, usageDay(new Date()), userLimit) : null;
+        return reply(failure.status, { error: failure.error, remaining: left ?? remaining, unavailable: failure.status === 503 });
       }
       const encoder = new TextEncoder();
       const send = (payload: unknown) => encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
@@ -556,7 +557,8 @@ For simulation, estimate monthly savings potential if the user adopted each budg
     } catch (err) {
       const failure = aiFailure(err);
       if (!failure) throw err;
-      return reply(failure.status, { error: failure.error, remaining });
+      const left = meter ? await giveBackCall(meter, user.id, usageDay(new Date()), userLimit) : null;
+      return reply(failure.status, { error: failure.error, remaining: left ?? remaining, unavailable: failure.status === 503 });
     }
 
     if (message.stop_reason === "refusal") {
