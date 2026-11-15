@@ -336,7 +336,7 @@ const AIAdvisor = () => {
           <div className="bg-card rounded-xl p-5 card-shadow">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle size={16} className="text-warning" />
-              <h3 className="font-heading text-sm">Unusual spending this month</h3>
+              <h3 className="font-heading text-sm">Unusual spending</h3>
             </div>
             <div className="space-y-2.5">
               {anomalies.map(a => (
@@ -364,10 +364,7 @@ const AIAdvisor = () => {
             <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
               <Brain size={32} className="text-primary-foreground" />
             </div>
-            <h2 className="font-heading text-lg mb-2">Get Your Budget Analysis</h2>
-            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              AI will analyze your income, expenses, spending patterns, and goals to recommend the best budgeting strategy for you.
-            </p>
+            <h2 className="font-heading text-lg mb-4">Budget analysis</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-left">
               {[
                 { icon: Wallet, label: `${accounts.length} accounts` },
@@ -384,7 +381,7 @@ const AIAdvisor = () => {
               ))}
             </div>
             <Button onClick={handleAnalyze} disabled={loading || limitReached} className="bg-primary text-primary-foreground px-8 h-12 text-base">
-              {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing…</> : <><Zap size={18} className="mr-2" /> Analyze My Finances</>}
+              {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing…</> : <><Zap size={18} className="mr-2" /> Analyze</>}
             </Button>
             {usageText && (
               <p className={`text-xs mt-3 ${limitReached ? 'text-warning' : 'text-muted-foreground'}`}>{usageText}</p>
@@ -443,7 +440,7 @@ const AIAdvisor = () => {
               {/* Health Score + Breakdown */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-card rounded-xl p-5 card-shadow">
-                  <h3 className="font-heading text-sm mb-3">Budget Health Score</h3>
+                  <h3 className="font-heading text-sm mb-3">Health score</h3>
                   <div className="flex items-center gap-4 mb-4">
                     <HealthScoreRing score={analysis.healthScore} colorClass={scoreColor(analysis.healthScore)} />
                     <div>
@@ -464,7 +461,7 @@ const AIAdvisor = () => {
                 </div>
 
                 <div className="bg-card rounded-xl p-5 card-shadow">
-                  <h3 className="font-heading text-sm mb-3">Score Breakdown</h3>
+                  <h3 className="font-heading text-sm mb-3">Score breakdown</h3>
                   <div className="space-y-3">
                     {[
                       { label: 'Savings Ratio', value: analysis.healthBreakdown.savingsRatio, max: 25 },
@@ -489,7 +486,7 @@ const AIAdvisor = () => {
               {/* Insights */}
               {!!shown?.insights.length && (
               <div className="bg-card rounded-xl p-5 card-shadow">
-                <h3 className="font-heading text-sm mb-3">Behavior Insights</h3>
+                <h3 className="font-heading text-sm mb-3">Insights</h3>
                 <div className="space-y-2.5">
                   {shown.insights.map((insight) => (
                     <div key={insight.title} className={`flex items-start gap-3 p-3 rounded-xl border ${INSIGHT_COLORS[insight.type]}`}>
@@ -507,7 +504,7 @@ const AIAdvisor = () => {
               {/* Suggested Envelopes */}
               <div className="bg-card rounded-xl p-5 card-shadow">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-heading text-sm">Suggested Budget Envelopes</h3>
+                  <h3 className="font-heading text-sm">Suggested envelopes</h3>
                   <Button size="sm" onClick={handleApplyEnvelopes} disabled={applyingEnvelopes}
                     className="text-xs bg-primary text-primary-foreground h-8">
                     {applyingEnvelopes ? <Loader2 size={12} className="animate-spin mr-1" /> : null}
@@ -541,8 +538,7 @@ const AIAdvisor = () => {
 
               {/* Budget Simulation */}
               <div className="bg-card rounded-xl p-5 card-shadow">
-                <h3 className="font-heading text-sm mb-3">Budget Method Simulation</h3>
-                <p className="text-xs text-muted-foreground mb-3">Estimated monthly savings with each method — tap to select</p>
+                <h3 className="font-heading text-sm mb-3">Monthly savings by method</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {([
                     { key: 'envelope', label: 'Envelope', value: analysis.simulation.envelope },
@@ -697,7 +693,7 @@ const AIAdvisor = () => {
               {/* Dynamic Adjustments */}
               {!!shown?.dynamicAdjustments.length && (
               <div className="bg-card rounded-xl p-5 card-shadow">
-                <h3 className="font-heading text-sm mb-3">Recommended Adjustments</h3>
+                <h3 className="font-heading text-sm mb-3">Adjustments</h3>
                 <div className="space-y-2.5">
                   {shown.dynamicAdjustments.map((adj) => (
                     <div key={adj.action} className="flex items-start gap-3 p-3 bg-accent rounded-xl">

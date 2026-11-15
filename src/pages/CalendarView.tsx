@@ -95,10 +95,7 @@ const CalendarView = () => {
     <div className={`${NARROW_PAGE} py-6 pb-6 space-y-5`}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Calendar</h1>
-          <p className="text-sm text-muted-foreground">Spending by day</p>
-        </div>
+        <h1 className="text-2xl font-heading font-bold">Calendar</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => { setCurrent(d => subMonths(d, 1)); setSelectedDay(null); }} aria-label="Previous month" className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl hover:bg-muted transition-colors">
             <ChevronLeft size={18} />
@@ -130,7 +127,7 @@ const CalendarView = () => {
 
       {scheduledCount > 0 && (
         <p className="text-[11px] text-muted-foreground -mt-2">
-          {scheduledCount} row{scheduledCount === 1 ? '' : 's'} dated after today {scheduledCount === 1 ? 'is' : 'are'} not in these totals.
+          Totals leave out {scheduledCount} future row{scheduledCount === 1 ? '' : 's'}.
         </p>
       )}
 

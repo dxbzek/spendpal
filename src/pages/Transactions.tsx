@@ -304,8 +304,7 @@ const Transactions = () => {
           <h1 className="text-2xl font-heading">Transactions</h1>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          {filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
-          {visibleCount < filtered.length && ` (showing ${visibleCount})`}
+          {visibleCount < filtered.length && `${visibleCount} of `}{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
         </p>
 
         {/* Duplicate warning banner */}
@@ -546,7 +545,6 @@ const Transactions = () => {
           <div className="text-center py-16">
             <Receipt size={64} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-sm">No transactions found</p>
-            <p className="text-xs text-muted-foreground mt-1">Add your first transaction to get started</p>
           </div>
         ) : isMobile ? (
           <AnimatePresence>

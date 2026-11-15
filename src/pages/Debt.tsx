@@ -195,8 +195,7 @@ const Debt = () => {
             </div>
           ) : (
             <div className="bg-primary-raised rounded-xl p-4 text-center">
-              <p className="text-primary-subtle text-sm">No credit card debt detected</p>
-              <p className="text-primary-subtle text-xs mt-1">Add credit accounts to track debt</p>
+              <p className="text-primary-subtle text-sm">No credit card debt</p>
             </div>
           )}
         </div>
@@ -210,11 +209,10 @@ const Debt = () => {
             <AlertCircle size={14} className={worstUtil >= 30 ? 'text-warning mt-0.5' : 'text-income mt-0.5'} />
             <div>
               {worstUtil >= 75
-                ? <p className="font-semibold text-expense">High utilization — {worstCard?.name} is at {worstUtil.toFixed(0)}%</p>
+                ? <p className="font-semibold text-expense">{worstCard?.name} at {worstUtil.toFixed(0)}%. Aim under 30%.</p>
                 : worstUtil >= 30
-                ? <p className="font-semibold text-warning">Moderate utilization — {worstCard?.name} is at {worstUtil.toFixed(0)}%</p>
-                : <p className="font-semibold text-income">Good utilization — every card is below 30%</p>}
-              <p className="text-muted-foreground mt-0.5">Credit bureaus recommend keeping utilization under 30%</p>
+                ? <p className="font-semibold text-warning">{worstCard?.name} at {worstUtil.toFixed(0)}%. Aim under 30%.</p>
+                : <p className="font-semibold text-income">Every card under 30%</p>}
             </div>
           </div>
         )}
@@ -225,12 +223,10 @@ const Debt = () => {
             <div className="w-16 h-16 rounded-xl bg-accent flex items-center justify-center mx-auto mb-4">
               <CreditCard size={28} className="text-muted-foreground" />
             </div>
-            <h3 className="font-heading text-base mb-2">No active debt</h3>
-            <p className="text-sm text-muted-foreground">When your credit cards have outstanding balances, payoff details will appear here.</p>
+            <h3 className="font-heading text-base">No active debt</h3>
           </div>
         ) : (
           <>
-            <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide">Credit Cards</h2>
             {creditDebts.map(debt => {
               const apr = getApr(debt.id, debt.apr);
               const minPay = getMinPay(debt);
@@ -261,7 +257,7 @@ const Debt = () => {
                           <p className="text-sm font-semibold">{debt.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {debt.utilization != null
-                              ? <>{mask(fmt(debt.owed))} owed of {mask(fmt(debt.creditLimit || 0))} limit</>
+                              ? <>{mask(fmt(debt.owed))} of {mask(fmt(debt.creditLimit || 0))}</>
                               : <>{mask(fmt(debt.owed))} owed</>}
                           </p>
                         </div>
@@ -316,7 +312,7 @@ const Debt = () => {
                   {debt.plans.length > 0 && (
                     <div className="px-4 pb-3 text-xs">
                       <div className="flex items-center justify-between gap-2 text-muted-foreground">
-                        <span>In instalment plans</span>
+                        <span>In plans</span>
                         <span className="font-medium text-foreground tabular-nums">{mask(fmt(debt.inPlans))}</span>
                       </div>
                       <ul className="mt-1 space-y-1">
@@ -340,7 +336,7 @@ const Debt = () => {
                         })}
                       </ul>
                       <div className="flex items-center justify-between gap-2 text-muted-foreground mt-1.5 pt-1.5 border-t border-border">
-                        <span>Rest of the balance, at the card rate</span>
+                        <span>Rest, at card rate</span>
                         <span className="font-medium text-foreground tabular-nums">{mask(fmt(debt.revolving))}</span>
                       </div>
                     </div>
@@ -357,23 +353,23 @@ const Debt = () => {
                         className="overflow-hidden"
                       >
                         <div className="px-4 pb-4 pt-0 border-t border-border">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 mt-3">Payoff Calculator</p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 mt-3">Payoff calculator</p>
                           {!hasRevolving ? (
                             <p className="text-xs text-muted-foreground text-center">
-                              All of this balance is in instalment plans. Each plan ends on its own date.
+                              All of this is in instalment plans.
                             </p>
                           ) : (<>
                           {debt.inPlans > 0 && (
                             <p className="text-xs text-muted-foreground mb-3">
-                              For the {mask(fmt(debt.revolving))} that is not in a plan.
+                              For the {mask(fmt(debt.revolving))} not in a plan.
                               {debt.statementMinDue != null && debt.planMonthly > 0 && (
-                                <> The statement minimum includes {mask(fmt(debt.planMonthly))} of instalments.</>
+                                <> Minimum includes {mask(fmt(debt.planMonthly))} of instalments.</>
                               )}
                             </p>
                           )}
                           <div className="grid grid-cols-2 gap-3 mb-4">
                             <div>
-                              <label className="text-xs text-muted-foreground mb-1 block">Monthly Payment</label>
+                              <label className="text-xs text-muted-foreground mb-1 block">Monthly payment</label>
                               <Input
                                 type="number"
                                 min="1"
@@ -398,7 +394,7 @@ const Debt = () => {
                                 className="h-9 text-sm"
                               />
                               {isAprAssumed(debt.id, debt.apr) && (
-                                <p className="text-[11px] text-muted-foreground mt-1">No APR set on this card. {DEFAULT_APR}% is assumed.</p>
+                                <p className="text-[11px] text-muted-foreground mt-1">{DEFAULT_APR}% assumed</p>
                               )}
                             </div>
                           </div>
@@ -420,12 +416,12 @@ const Debt = () => {
                               </div>
                             </div>
                           ) : !payment ? (
-                            <p className="text-xs text-muted-foreground text-center">Enter a monthly payment to see when it&apos;s paid off.</p>
+                            <p className="text-xs text-muted-foreground text-center">Enter a payment to see the payoff date.</p>
                           ) : (
                             <div className="bg-destructive-soft rounded-xl p-3 text-center">
-                              <p className="text-xs text-expense font-semibold">Payment too low — doesn't cover interest</p>
+                              <p className="text-xs text-expense font-semibold">Too low to cover interest</p>
                               <p className="text-xs text-muted-foreground mt-0.5">
-                                Minimum to cover interest: {mask(fmt(Math.ceil((debt.revolving * apr) / 100 / 12 * 100) / 100))}/mo
+                                Needs over {mask(fmt(Math.ceil((debt.revolving * apr) / 100 / 12 * 100) / 100))}/mo
                               </p>
                             </div>
                           )}
@@ -443,14 +439,11 @@ const Debt = () => {
               <div className="bg-card rounded-xl card-shadow border border-border p-4 space-y-4">
                 <div>
                   <p className="text-sm font-heading">Payoff plan</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Pay the minimum on every card, and put everything else on one card until it's gone. Then move to the next.
-                  </p>
                 </div>
 
                 <div>
                   <label htmlFor="payoff-budget" className="text-xs text-muted-foreground mb-1 block">
-                    How much can you pay toward these {strategyDebts.length} cards each month?
+                    Monthly payment, {strategyDebts.length} cards
                   </label>
                   <Input
                     id="payoff-budget"
@@ -464,7 +457,7 @@ const Debt = () => {
                   />
                   {planMonthlyTotal > 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Instalment plans are not part of this. They take {mask(fmt(planMonthlyTotal))} a month until they end.
+                      Plans are separate. They take {mask(fmt(planMonthlyTotal))} a month until they end.
                     </p>
                   )}
                 </div>
@@ -486,17 +479,14 @@ const Debt = () => {
                 </div>
                 <p className="text-xs text-muted-foreground -mt-2">
                   {strategyTab === 'avalanche'
-                    ? 'Highest interest rate first (the "avalanche" method). Costs you the least overall.'
-                    : 'Smallest balance first (the "snowball" method). Clears whole cards sooner, which some people find easier to stick with.'}
+                    ? 'Highest rate first. Minimums on the rest.'
+                    : 'Smallest balance first. Minimums on the rest.'}
                 </p>
 
                 {activeResult?.hitCap ? (
                   <div className="rounded-lg border border-destructive-line bg-destructive-soft p-3">
                     <p className="text-sm font-medium text-expense">
-                      {mask(fmt(monthlyBudget))} a month won't keep up with the interest
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Pay at least {mask(fmt(minimumBudget))} a month across these cards to start shrinking them.
+                      {mask(fmt(monthlyBudget))} a month won't cover the interest
                     </p>
                     <button onClick={() => setBudgetInput(minimumBudget)} className="mt-2 text-xs font-medium text-primary">
                       Use {mask(fmt(minimumBudget))}
@@ -510,13 +500,13 @@ const Debt = () => {
                       <p className="text-xs text-muted-foreground">{activeResult.months} months</p>
                     </div>
                     <div className="rounded-lg bg-muted p-3">
-                      <p className="text-xs text-muted-foreground">Interest you'll pay</p>
+                      <p className="text-xs text-muted-foreground">Interest</p>
                       <p className="text-sm font-semibold font-mono">{mask(fmt(activeResult.totalInterest))}</p>
                       {otherResult && !otherResult.hitCap && otherResult.totalInterest !== activeResult.totalInterest && (
                         <p className="text-xs text-muted-foreground">
                           {otherResult.totalInterest > activeResult.totalInterest
-                            ? `${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} less than the other order`
-                            : `${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} more than the other order`}
+                            ? `${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} less than other order`
+                            : `${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} more than other order`}
                         </p>
                       )}
                     </div>
@@ -545,12 +535,12 @@ const Debt = () => {
                   </ol>
                   {strategyDebts.some(d => !d.minPay) && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Cards without a statement minimum use an estimate of 2% of the balance. Add the real minimum on the card for an exact plan.
+                      Cards with no minimum use 2% of the balance.
                     </p>
                   )}
                   {strategyDebts.some(d => d.aprAssumed) && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Cards with no APR set use {DEFAULT_APR}%. Add the real rate on the card (0 for interest-free plans).
+                      Cards with no APR set use {DEFAULT_APR}%.
                     </p>
                   )}
                 </div>
@@ -560,15 +550,15 @@ const Debt = () => {
             {/* Single card strategy tip */}
             {strategyDebts.length === 1 && (
               <div className="bg-card rounded-xl p-4 card-shadow border border-dashed border-primary-line">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff Strategies</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff strategies</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="bg-accent rounded-xl p-3">
                     <p className="font-semibold mb-1">Debt snowball</p>
-                    <p className="text-muted-foreground">Pay smallest balance first. Wins motivation through quick wins.</p>
+                    <p className="text-muted-foreground">Smallest balance first.</p>
                   </div>
                   <div className="bg-accent rounded-xl p-3">
                     <p className="font-semibold mb-1">Debt avalanche</p>
-                    <p className="text-muted-foreground">Pay highest APR first. Saves the most money long-term.</p>
+                    <p className="text-muted-foreground">Highest APR first. Least interest.</p>
                   </div>
                 </div>
               </div>
