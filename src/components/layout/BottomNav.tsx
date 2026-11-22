@@ -8,21 +8,23 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { m } from 'framer-motion';
-import { PAGE_NAMES } from '@/lib/pageNames';
+import { NAV_SHORT_NAMES, PAGE_NAMES } from '@/lib/pageNames';
 
+// Three slots either side of +. Installments and Accounts moved out of More
+// (Zek, 2026-11-22): they are the pages he opens most.
 const NAV_ITEMS_LEFT = [
   { path: '/', label: PAGE_NAMES['/'], icon: LayoutDashboard },
-  { path: '/transactions', label: PAGE_NAMES['/transactions'], icon: Receipt },
+  { path: '/transactions', label: PAGE_NAMES['/transactions'], short: NAV_SHORT_NAMES['/transactions'], icon: Receipt },
+  { path: '/installments', label: PAGE_NAMES['/installments'], short: NAV_SHORT_NAMES['/installments'], icon: Layers },
 ];
 
 const NAV_ITEMS_RIGHT = [
+  { path: '/accounts', label: PAGE_NAMES['/accounts'], icon: Wallet },
   { path: '/budgets', label: PAGE_NAMES['/budgets'], icon: PiggyBank },
 ];
 
 const MORE_ITEMS = [
-  { path: '/installments', label: PAGE_NAMES['/installments'], icon: Layers },
   { path: '/goals', label: PAGE_NAMES['/goals'], icon: Target },
-  { path: '/accounts', label: PAGE_NAMES['/accounts'], icon: Wallet },
   { path: '/reports', label: PAGE_NAMES['/reports'], icon: BarChart3 },
   { path: '/debt', label: PAGE_NAMES['/debt'], icon: CreditCard },
   { path: '/advisor', label: PAGE_NAMES['/advisor'], icon: Brain },
@@ -36,11 +38,12 @@ interface BottomNavProps {
   onAddClick: () => void;
 }
 
-const NavButton = ({ path, label, icon: Icon, active, onClick }: {
-  path: string; label: string; icon: LucideIcon; active: boolean; onClick: () => void;
+const NavButton = ({ path, label, short, icon: Icon, active, onClick }: {
+  path: string; label: string; short?: string; icon: LucideIcon; active: boolean; onClick: () => void;
 }) => (
   <button
     onClick={onClick}
+    aria-label={label}
     aria-current={active ? 'page' : undefined}
     className="w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-xl min-h-[48px] relative transition-colors"
   >
@@ -52,11 +55,10 @@ const NavButton = ({ path, label, icon: Icon, active, onClick }: {
       />
     )}
     <Icon size={20} className={`relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-    {/* 10px so "Transactions" (62 px in Geist 500) fits a slot on a 360 px
-        wide phone (64 px with the + button at mx-2). truncate stays for
-        narrower screens. */}
-    <span title={label} className={`relative z-10 max-w-full text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
-      {label}
+    {/* Six slots leave ~46-50 px each on a 360-390 px phone, so long names
+        show a short word; the full name is the aria-label and the title. */}
+    <span title={label} aria-hidden="true" className={`relative z-10 max-w-full text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+      {short ?? label}
     </span>
   </button>
 );
@@ -166,9 +168,9 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
 
       {/* Bottom bar */}
       <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] bg-card border-t border-border safe-bottom">
-        {/* Equal slots, two either side of +, so + sits dead centre however
+        {/* Equal slots, three either side of +, so + sits dead centre however
             long the labels are. */}
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-end justify-items-center gap-0.5 max-w-lg mx-auto h-[68px] px-2 pb-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-end justify-items-center gap-0.5 max-w-lg mx-auto h-[68px] px-1 pb-1">
           {NAV_ITEMS_LEFT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
@@ -176,7 +178,7 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
           {/* FAB */}
           <button
             onClick={onAddClick}
-            className="bg-primary rounded-xl w-14 h-14 flex items-center justify-center relative -top-5 mx-2 ring-4 ring-card transition-transform shrink-0"
+            className="bg-primary rounded-xl w-14 h-14 flex items-center justify-center relative -top-5 mx-1 ring-4 ring-card transition-transform shrink-0"
             aria-label="Add transaction"
           >
             <Plus size={28} className="text-primary-foreground" />

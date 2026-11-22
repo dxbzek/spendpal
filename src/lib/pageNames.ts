@@ -21,6 +21,13 @@ export const PAGE_NAMES = {
 
 export type PagePath = keyof typeof PAGE_NAMES;
 
+/** Shorter words for the phone bar only, where 6 slots share ~50 px each.
+    The button's accessible name stays the full PAGE_NAMES value. */
+export const NAV_SHORT_NAMES: Partial<Record<PagePath, string>> = {
+  '/transactions': 'Txns',
+  '/installments': 'Plans',
+};
+
 /** An account's type, as the Add Account form offers it. */
 export const ACCOUNT_TYPE_NAMES: Record<AccountType, string> = {
   cash: 'Cash',
