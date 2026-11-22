@@ -15,8 +15,9 @@ const page = (name: string) => readFileSync(join(root, 'src/pages', `${name}.tsx
 describe('page names', () => {
   it('the phone nav and the desktop sidebar use the same name for each page', () => {
     const phone = render(<MemoryRouter><BottomNav onAddClick={() => {}} /></MemoryRouter>);
-    const bar = screen.getByRole('navigation', { name: /main navigation/i });
-    expect(bar).toHaveTextContent(PAGE_NAMES['/transactions']);
+    for (const path of ['/', '/transactions', '/installments', '/accounts', '/budgets'] as const) {
+      expect(screen.getByRole('button', { name: PAGE_NAMES[path] })).toBeInTheDocument();
+    }
     phone.unmount();
 
     render(<MemoryRouter><DesktopSidebar onAddClick={() => {}} /></MemoryRouter>);

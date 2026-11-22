@@ -24,7 +24,7 @@ describe("BottomNav More menu", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /close menu/i })).toBeInTheDocument(),
     );
-    expect(screen.getByText("Accounts")).toBeInTheDocument();
+    expect(screen.getByText("Goals")).toBeInTheDocument();
 
     // Tap the X — the menu must close.
     fireEvent.click(screen.getByRole("button", { name: /close menu/i }));
@@ -45,23 +45,25 @@ describe("BottomNav More menu", () => {
     );
   });
 
-  it("has five slots: Home, Transactions, +, Budgets, More; the rest is in More", async () => {
+  it("has seven slots: Home, Transactions, Installments, +, Accounts, Budgets, More; the rest is in More", async () => {
     renderNav();
     const bar = screen.getByRole("navigation", { name: /main navigation/i });
-    expect(bar.querySelectorAll("button")).toHaveLength(5);
-    for (const label of ["Home", "Transactions", "Budgets", "More"]) {
-      expect(bar).toHaveTextContent(label);
+    expect(bar.querySelectorAll("button")).toHaveLength(7);
+    for (const name of ["Home", "Transactions", "Installments", "Accounts", "Budgets"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
-    for (const label of ["Installments", "Goals", "AI Advisor"]) {
+    for (const label of ["Goals", "AI Advisor"]) {
       expect(bar).not.toHaveTextContent(label);
     }
 
     fireEvent.click(screen.getByRole("button", { name: /more/i }));
     const sheet = await screen.findByRole("dialog", { name: /more/i });
-    for (const label of ["Installments", "Goals", "AI Advisor"]) {
+    for (const label of ["Goals", "Debt", "AI Advisor"]) {
       expect(sheet).toHaveTextContent(label);
     }
-    expect(sheet).not.toHaveTextContent("Budgets");
+    for (const label of ["Budgets", "Installments", "Accounts"]) {
+      expect(sheet).not.toHaveTextContent(label);
+    }
   });
 
   it("removes the sheet as soon as it closes, without waiting on an animation", () => {
