@@ -42,6 +42,7 @@ import {
 } from '@/lib/onboarding';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useAuth } from '@/context/AuthContext';
+import { BigAmount } from '@/components/orbix';
 import { userSettings } from '@/lib/userSettings';
 import { PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
@@ -79,13 +80,6 @@ import { IconTile } from '@/components/AppIcon';
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
   <div className={`bg-card rounded-3xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
 );
-
-// Orbix style: the cents sit smaller and dimmer than the whole amount.
-const BigAmount = ({ text }: { text: string }) => {
-  const m2 = text.match(/^(.*\d)([.,]\d{2})(\D*)$/);
-  if (!m2) return <>{text}</>;
-  return <>{m2[1]}<span className="text-[0.5em] opacity-60 align-baseline">{m2[2]}</span>{m2[3]}</>;
-};
 
 const Dashboard = () => {
   const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
