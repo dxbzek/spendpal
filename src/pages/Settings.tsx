@@ -5,7 +5,6 @@ import { WORLD_CURRENCIES } from '@/utils/currencies';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,7 +13,9 @@ import { logger } from '@/lib/logger';
 import { format } from 'date-fns';
 import { exportBackup, restoreBackup, RestoreError } from '@/lib/backup';
 import { ArrowLeft, Camera, Loader2, LogOut, Moon, Sun, Search, Download, Upload, AlertTriangle, BookOpen, Trash2, Wallet, Bell } from 'lucide-react';
-import { UserX, ShieldCheck, FileText, Mail } from 'lucide-react';
+import { UserX, ShieldCheck, FileText, Mail, ChevronRight, User, Coins, Globe, AtSign, Phone } from 'lucide-react';
+import { IconButton, ListCard, SectionLabel } from '@/components/orbix';
+import { cn } from '@/lib/utils';
 import { OPERATOR, contactEmail } from '@/lib/operator';
 import { deleteEverything, deleteAccount, clearLocalData } from '@/lib/accountDeletion';
 import { userSettings } from '@/lib/userSettings';
@@ -34,6 +35,62 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+// iOS-style grouped rows: one dark card per group, hairline-split rows, each
+// with a round icon, a label (and optional sub line) and a control on the right.
+const RowIcon = ({ children, danger }: { children: React.ReactNode; danger?: boolean }) => (
+  <span className={cn('w-10 h-10 shrink-0 rounded-full flex items-center justify-center',
+    danger ? 'bg-destructive-soft text-destructive' : 'bg-muted text-foreground')}>{children}</span>
+);
+
+const Row = ({ icon, label, sub, children, className }: {
+  icon: React.ReactNode; label: React.ReactNode; sub?: React.ReactNode; children?: React.ReactNode; className?: string;
+}) => (
+  <div className={cn('flex items-center gap-3 py-3 min-h-[60px]', className)}>
+    <RowIcon>{icon}</RowIcon>
+    <div className="min-w-0 flex-1">
+      <div className="text-[15px] font-medium">{label}</div>
+      {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
+    </div>
+    {children}
+  </div>
+);
+
+/** A row whose value is edited in place: small label on top, the field as the value. */
+const FieldRow = ({ icon, label, htmlFor, children, trailing, sub }: {
+  icon: React.ReactNode; label: string; htmlFor?: string; children: React.ReactNode; trailing?: React.ReactNode; sub?: React.ReactNode;
+}) => (
+  <div className="flex items-center gap-3 py-3 min-h-[64px]">
+    <RowIcon>{icon}</RowIcon>
+    <div className="min-w-0 flex-1">
+      <label htmlFor={htmlFor} className="block text-xs text-muted-foreground">{label}</label>
+      {children}
+      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    </div>
+    {trailing}
+  </div>
+);
+
+/** A whole row that is one button, with a chevron on the right. */
+const LinkRow = ({ icon, label, sub, onClick, danger, disabled }: {
+  icon: React.ReactNode; label: React.ReactNode; sub?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean;
+}) => (
+  <button type="button" onClick={onClick} disabled={disabled} className="w-full flex items-center gap-3 py-3 min-h-[60px] text-left disabled:opacity-60">
+    <RowIcon danger={danger}>{icon}</RowIcon>
+    <span className="min-w-0 flex-1">
+      <span className={cn('block text-[15px] font-medium', danger && 'text-destructive')}>{label}</span>
+      {sub && <span className="block text-xs text-muted-foreground mt-0.5">{sub}</span>}
+    </span>
+    <ChevronRight size={18} className="text-muted-foreground shrink-0" aria-hidden="true" />
+  </button>
+);
+
+// Inputs and selects drawn as plain text inside a row.
+const FIELD = 'h-7 w-full px-0 py-0 border-0 bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none';
+const FIELD_SELECT = 'h-7 w-auto max-w-full px-0 py-0 gap-1.5 border-0 bg-transparent text-[15px] justify-start shadow-none focus:ring-0 focus:ring-offset-0';
+// Small pills for a row's own action ("Save", "Update").
+const ROW_BUTTON = 'h-9 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium shrink-0 inline-flex items-center justify-center disabled:opacity-50';
+const ROW_BUTTON_QUIET = 'h-9 px-4 rounded-full bg-muted text-foreground text-sm font-medium shrink-0 inline-flex items-center justify-center disabled:opacity-50';
+const SAVE_BUTTON = 'w-full h-12 rounded-full bg-primary text-primary-foreground text-[15px] font-medium inline-flex items-center justify-center disabled:opacity-50';
 
 const SecondaryCurrencyCard = () => {
   const { secondaryCurrency, setSecondaryCurrency, currency } = useCurrency();
@@ -47,15 +104,13 @@ const SecondaryCurrencyCard = () => {
     : WORLD_CURRENCIES;
 
   return (
-    <div className="bg-card rounded-xl p-5 card-shadow space-y-3">
-      <div>
-        <p className="text-sm font-medium mb-3">Second currency</p>
+    <FieldRow icon={<Globe size={17} />} label="Second currency" htmlFor="second-currency">
         <Select value={secondaryCurrency || '__none__'} onValueChange={v => {
           const next = v === '__none__' ? null : v;
           setSecondaryCurrency(next);
           toast.success(next ? `Secondary currency set to ${next}` : 'Secondary currency disabled');
         }}>
-          <SelectTrigger className="h-12">
+          <SelectTrigger id="second-currency" className={FIELD_SELECT}>
             <SelectValue placeholder="None" />
           </SelectTrigger>
           <SelectContent className="max-h-[280px]">
@@ -75,8 +130,7 @@ const SecondaryCurrencyCard = () => {
             ))}
           </SelectContent>
         </Select>
-      </div>
-    </div>
+    </FieldRow>
   );
 };
 const DataBackupCard = () => {
@@ -170,21 +224,15 @@ const DataBackupCard = () => {
 
   return (
     <>
-      <div className="bg-card rounded-xl p-5 card-shadow space-y-3">
-        <p className="text-sm font-medium">Backup and restore</p>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 h-11 gap-2" disabled={exporting} onClick={handleExport}>
-            {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            {exporting ? 'Exporting…' : 'Export'}
-          </Button>
-          <Button variant="outline" className="flex-1 h-11 gap-2" disabled={restoring}
-            onClick={() => fileRef.current?.click()}>
-            {restoring ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            {restoring ? 'Restoring…' : 'Import'}
-          </Button>
-          <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFileSelected} />
-        </div>
-      </div>
+      <ListCard>
+        <LinkRow disabled={exporting} onClick={handleExport}
+          icon={exporting ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
+          label={exporting ? 'Exporting…' : 'Export'} sub="Backup file of all your data" />
+        <LinkRow disabled={restoring} onClick={() => fileRef.current?.click()}
+          icon={restoring ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
+          label={restoring ? 'Restoring…' : 'Import'} sub="Replace everything with a backup file" />
+        <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFileSelected} />
+      </ListCard>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>
@@ -319,66 +367,18 @@ const DangerZoneCard = () => {
   return (
     <>
       <section>
-        <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3 px-1">Danger Zone</p>
-        <div className="bg-card rounded-xl p-5 card-shadow border border-destructive-line space-y-5">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
-              <Trash2 size={16} className="text-destructive" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Delete All Transactions</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Accounts, budgets and goals stay. Balances are adjusted back.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setConfirming('transactions')}
-              >
-                <Trash2 size={14} className="mr-1.5" /> Delete All Transactions
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
-              <Trash2 size={16} className="text-destructive" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Delete All Data</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                All {total} records, categories, settings and profile. Your sign-in stays.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setConfirming('everything')}
-              >
-                <Trash2 size={14} className="mr-1.5" /> Delete Everything
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
-              <UserX size={16} className="text-destructive" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Delete my account</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Your sign-in and all your data.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setConfirming('account')}
-              >
-                <UserX size={14} className="mr-1.5" /> Delete my account
-              </Button>
-            </div>
-          </div>
-        </div>
+        <SectionLabel label={<span className="text-destructive">Danger Zone</span>} />
+        <ListCard>
+          <LinkRow danger icon={<Trash2 size={17} />} label="Delete All Transactions"
+            sub="Accounts, budgets and goals stay. Balances are adjusted back."
+            onClick={() => setConfirming('transactions')} />
+          <LinkRow danger icon={<Trash2 size={17} />} label="Delete Everything"
+            sub={`All ${total} records, categories, settings and profile. Your sign-in stays.`}
+            onClick={() => setConfirming('everything')} />
+          <LinkRow danger icon={<UserX size={17} />} label="Delete my account"
+            sub="Your sign-in and all your data."
+            onClick={() => setConfirming('account')} />
+        </ListCard>
       </section>
 
       {/* Stays open while a delete runs: closing it would hide a delete that is still going. */}
@@ -468,38 +468,30 @@ const NotificationsCard = ({ userId }: { userId: string }) => {
   };
 
   return (
-    <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
+    <>
       {EMAIL_ALERTS_ENABLED ? (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Email alerts</p>
-              <p className="text-xs text-muted-foreground">To your sign-in email</p>
-            </div>
-            <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
+          <Row icon={<Mail size={17} />} label="Email alerts" sub="To your sign-in email">
+            <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} aria-label="Email alerts" />
+          </Row>
+          <div className="py-3">
+            <button type="button" onClick={handleSave} disabled={saving} className={SAVE_BUTTON}>
+              {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save notifications'}
+            </button>
           </div>
-
-          <Button onClick={handleSave} disabled={saving} className="w-full h-11 bg-primary text-primary-foreground">
-            {saving ? <Loader2 className="animate-spin" size={16} /> : 'Save notifications'}
-          </Button>
         </>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          Email alerts are not available yet.
-        </p>
+        <Row icon={<Mail size={17} />} label="Email alerts" sub="Email alerts are not available yet." />
       )}
 
       {savedPhone && (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Text alerts ended. {savedPhone} is not used.
-          </p>
-          <Button variant="outline" size="sm" onClick={handleRemovePhone} disabled={saving}>
+        <Row icon={<Phone size={17} />} label="Phone number" sub={<>Text alerts ended. {savedPhone} is not used.</>}>
+          <button type="button" onClick={handleRemovePhone} disabled={saving} className={ROW_BUTTON_QUIET}>
             Remove number
-          </Button>
-        </div>
+          </button>
+        </Row>
       )}
-    </div>
+    </>
   );
 };
 
@@ -533,22 +525,22 @@ const EmailUpdateCard = ({ currentEmail }: { currentEmail: string }) => {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium mb-1.5 block">Email</label>
-      <p className="text-xs text-muted-foreground">Changes after you click the link we email.</p>
-      <div className="flex gap-2">
-        <Input
-          type="email"
-          placeholder={currentEmail}
-          value={newEmail}
-          onChange={e => setNewEmail(e.target.value)}
-          className="h-11 flex-1"
-        />
-        <Button onClick={handleUpdate} disabled={sending} variant="outline" className="h-11 px-4 shrink-0">
+    <FieldRow icon={<AtSign size={17} />} label="Email" htmlFor="settings-email"
+      sub="Changes after you click the link we email."
+      trailing={
+        <button type="button" onClick={handleUpdate} disabled={sending} className={ROW_BUTTON_QUIET}>
           {sending ? <Loader2 size={15} className="animate-spin" /> : 'Update'}
-        </Button>
-      </div>
-    </div>
+        </button>
+      }>
+      <Input
+        id="settings-email"
+        type="email"
+        placeholder={currentEmail}
+        value={newEmail}
+        onChange={e => setNewEmail(e.target.value)}
+        className={FIELD}
+      />
+    </FieldRow>
   );
 };
 
@@ -689,70 +681,61 @@ const Settings = () => {
   }
 
   return (
-    <div className={`${NARROW_PAGE} pt-12 pb-8`}>
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <button onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
-          <ArrowLeft size={20} className="text-foreground" />
-        </button>
-        <h1 className="text-2xl font-heading">Settings</h1>
+    <div className={`${NARROW_PAGE} pb-8`}>
+      {/* Header: round back button, big title */}
+      <div className="flex items-center gap-3 pt-[calc(env(safe-area-inset-top,0px)+20px)] md:pt-8 pb-4">
+        <IconButton aria-label="Back" onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))}>
+          <ArrowLeft size={20} />
+        </IconButton>
+        <h1 className="text-[1.75rem] leading-tight font-heading font-semibold tracking-tight">Settings</h1>
       </div>
 
-      {/* Avatar Section */}
-      <div className="flex flex-col items-center gap-3 pb-8 mb-2">
-        <div className="relative">
-          <Avatar className="w-24 h-24 border-4 border-card card-shadow">
+      {/* Profile card */}
+      <div className="bg-card rounded-3xl p-4 flex items-center gap-4 mb-7">
+        <div className="relative shrink-0">
+          <Avatar className="w-16 h-16">
             <AvatarImage src={avatarUrl ?? undefined} alt={displayName} />
-            <AvatarFallback className="text-2xl font-heading bg-accent text-accent-foreground">
+            <AvatarFallback className="text-xl font-heading bg-primary text-primary-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>
-          {/* 44px touch target */}
-          <label className="absolute bottom-0 right-0 w-11 h-11 rounded-full bg-primary flex items-center justify-center cursor-pointer transition-transform">
-            {uploading ? <Loader2 size={16} className="animate-spin text-primary-foreground" /> : <Camera size={16} className="text-primary-foreground" />}
-            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
-          </label>
         </div>
-        <div className="text-center">
-          <p className="font-semibold text-base">{displayName || 'Your Name'}</p>
-          <p className="text-sm text-muted-foreground">{user?.email}</p>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-[17px] truncate">{displayName || 'Your Name'}</p>
+          <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
         </div>
+        {/* 44px touch target */}
+        <label aria-label="Change profile photo" className="w-11 h-11 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer">
+          {uploading ? <Loader2 size={17} className="animate-spin" /> : <Camera size={17} />}
+          <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
+        </label>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-7">
         {/* Appearance */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Appearance</p>
-          <div className="bg-card rounded-xl p-5 card-shadow">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                  {theme === 'dark' ? <Moon size={17} className="text-primary" /> : <Sun size={17} className="text-primary" />}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Dark mode</p>
-                </div>
-              </div>
-              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-            </div>
-          </div>
+          <SectionLabel label="Appearance" />
+          <ListCard>
+            <Row icon={theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />} label="Dark mode">
+              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} aria-label="Dark mode" />
+            </Row>
+            <SecondaryCurrencyCard />
+          </ListCard>
         </section>
 
         {/* Profile */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Profile</p>
-          <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Name</label>
-              <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" className="h-12" />
-            </div>
+          <SectionLabel label="Profile" />
+          <ListCard>
+            <FieldRow icon={<User size={17} />} label="Name" htmlFor="settings-name">
+              <Input id="settings-name" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" className={FIELD} />
+            </FieldRow>
 
             <EmailUpdateCard currentEmail={user?.email ?? ''} />
 
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Currency</label>
+            <FieldRow icon={<Coins size={17} />} label="Currency" htmlFor="settings-currency">
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="h-12">
+                <SelectTrigger id="settings-currency" className={FIELD_SELECT}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
@@ -777,64 +760,51 @@ const Settings = () => {
                   )}
                 </SelectContent>
               </Select>
-            </div>
+            </FieldRow>
 
             {unconvertedCurrency && unconvertedCurrency !== currency && (
-              <div className="rounded-xl border border-warning-line bg-warning-soft p-3 text-sm">
-                <p>Your accounts are still in {unconvertedCurrency}, so their amounts show with the {savedCurrency} symbol unconverted.</p>
-                <Button
-                  size="sm"
-                  className="mt-2"
+              <div className="py-3 text-sm">
+                <p className="text-warning">Your accounts are still in {unconvertedCurrency}, so their amounts show with the {savedCurrency} symbol unconverted.</p>
+                <button
+                  type="button"
+                  className={cn(ROW_BUTTON, 'mt-2')}
                   onClick={() => setConversion({ from: unconvertedCurrency, to: savedCurrency, allowRelabel: false })}
                 >
                   Convert {unconvertedCurrency} to {savedCurrency}
-                </Button>
+                </button>
               </div>
             )}
+          </ListCard>
 
-            <ConvertCurrencyDialog
-              open={conversion !== null}
-              from={conversion?.from ?? savedCurrency}
-              to={conversion?.to ?? currency}
-              allowRelabel={conversion?.allowRelabel}
-              onDone={handleConversionDone}
-              onCancel={() => setConversion(null)}
-            />
+          <ConvertCurrencyDialog
+            open={conversion !== null}
+            from={conversion?.from ?? savedCurrency}
+            to={conversion?.to ?? currency}
+            allowRelabel={conversion?.allowRelabel}
+            onDone={handleConversionDone}
+            onCancel={() => setConversion(null)}
+          />
 
-            <Button onClick={handleSave} disabled={saving} className="w-full h-12 bg-primary text-primary-foreground">
-              {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save'}
-            </Button>
-          </div>
+          <button type="button" onClick={handleSave} disabled={saving} className={cn(SAVE_BUTTON, 'mt-3')}>
+            {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save'}
+          </button>
         </section>
 
         {/* Password */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Password</p>
+          <SectionLabel label="Password" />
           <ChangePasswordCard />
         </section>
 
         {/* Financial */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Financial</p>
-          <div className="bg-card rounded-xl p-5 card-shadow">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0 mt-0.5">
-                <Wallet size={17} className="text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Monthly income</p>
-                <p className="text-xs text-muted-foreground mb-3">Used by the forecast</p>
-                <Input
-                  type="number"
-                  placeholder="e.g. 15000"
-                  value={monthlyIncome}
-                  onChange={e => setIncomeDraft(e.target.value)}
-                  className="h-11"
-                  min="0"
-                />
-                <Button
-                  size="sm"
-                  className="mt-2 bg-primary text-primary-foreground"
+          <SectionLabel label="Financial" />
+          <ListCard>
+            <FieldRow icon={<Wallet size={17} />} label="Monthly income" htmlFor="settings-income" sub="Used by the forecast"
+              trailing={
+                <button
+                  type="button"
+                  className={ROW_BUTTON}
                   onClick={() => {
                     const val = parseFloat(monthlyIncome);
                     if (monthlyIncome === '' || (!isNaN(val) && val >= 0)) {
@@ -848,27 +818,28 @@ const Settings = () => {
                   }}
                 >
                   Save
-                </Button>
-              </div>
-            </div>
-          </div>
+                </button>
+              }>
+              <Input
+                id="settings-income"
+                type="number"
+                placeholder="e.g. 15000"
+                value={monthlyIncome}
+                onChange={e => setIncomeDraft(e.target.value)}
+                className={cn(FIELD, 'tabular-nums')}
+                min="0"
+              />
+            </FieldRow>
+          </ListCard>
         </section>
 
         {/* Notifications */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Notifications</p>
-          <div className="bg-card rounded-xl p-5 card-shadow mb-3">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                <Bell size={17} className="text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Budget alerts</p>
-                <p className="text-xs text-muted-foreground">At 75%, 90% and 100%, checked when you open the app</p>
-              </div>
-            </div>
+          <SectionLabel label="Notifications" />
+          <ListCard>
+            <Row icon={<Bell size={17} />} label="Budget alerts" sub="At 75%, 90% and 100%, checked when you open the app" />
             <NotificationsCard userId={user!.id} />
-          </div>
+          </ListCard>
         </section>
 
         {/* Categories */}
@@ -876,15 +847,11 @@ const Settings = () => {
           <CategoryManager />
         </section>
 
-        {/* Currency */}
-        <section>
-          <SecondaryCurrencyCard />
-        </section>
-
         {/* Data */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">Data</p>
-          <div className="space-y-3">
+          <SectionLabel label="Data" />
+          {/* The report card is shared with Reports; soften its corners to match. */}
+          <div className="space-y-3 [&>div:first-child]:rounded-3xl [&>div:first-child]:shadow-none">
             <MonthlyReportPrint />
             <DataBackupCard />
           </div>
@@ -892,51 +859,23 @@ const Settings = () => {
 
         {/* More */}
         <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">More</p>
-          <div className="space-y-2">
-            <button onClick={() => navigate('/glossary')}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
-              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                <BookOpen size={15} className="text-primary" />
-              </div>
-              {PAGE_NAMES['/glossary']}
-            </button>
-
-            <button onClick={() => navigate('/privacy')}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
-              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                <ShieldCheck size={15} className="text-primary" />
-              </div>
-              Privacy policy
-            </button>
-
-            <button onClick={() => navigate('/terms')}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
-              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                <FileText size={15} className="text-primary" />
-              </div>
-              Terms of use
-            </button>
+          <SectionLabel label="More" />
+          <ListCard>
+            <LinkRow icon={<BookOpen size={17} />} label={PAGE_NAMES['/glossary']} onClick={() => navigate('/glossary')} />
+            <LinkRow icon={<ShieldCheck size={17} />} label="Privacy policy" onClick={() => navigate('/privacy')} />
+            <LinkRow icon={<FileText size={17} />} label="Terms of use" onClick={() => navigate('/terms')} />
 
             {/* Only once the owner has filled in an inbox (src/lib/operator.ts). */}
             {supportEmail && (
-              <a href={`mailto:${supportEmail}`}
-                className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-foreground font-medium text-sm hover:bg-muted transition-colors">
-                <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                  <Mail size={15} className="text-primary" />
-                </div>
-                Contact support
+              <a href={`mailto:${supportEmail}`} className="w-full flex items-center gap-3 py-3 min-h-[60px]">
+                <RowIcon><Mail size={17} /></RowIcon>
+                <span className="min-w-0 flex-1 text-[15px] font-medium">Contact support</span>
+                <ChevronRight size={18} className="text-muted-foreground shrink-0" aria-hidden="true" />
               </a>
             )}
 
-            <button onClick={() => setShowLogoutConfirm(true)}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-card card-shadow text-destructive font-medium text-sm hover:bg-destructive-soft transition-colors">
-              <div className="w-8 h-8 rounded-xl bg-destructive-soft flex items-center justify-center shrink-0">
-                <LogOut size={15} className="text-destructive" />
-              </div>
-              Sign out
-            </button>
-          </div>
+            <LinkRow danger icon={<LogOut size={17} />} label="Sign out" onClick={() => setShowLogoutConfirm(true)} />
+          </ListCard>
         </section>
 
         {/* Danger Zone */}

@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, KeyRound, Lock } from 'lucide-react';
 import { authErrorMessage, authProblem, passwordProblem, MIN_PASSWORD_LENGTH, PASSWORD_RULE } from '@/lib/auth';
 
 const ChangePasswordCard = () => {
@@ -46,51 +45,60 @@ const ChangePasswordCard = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card rounded-xl p-5 card-shadow space-y-4">
-      <div>
-        <label htmlFor="current-password" className="text-sm font-medium mb-1.5 block">Current password</label>
-        <Input
-          id="current-password"
-          name="current-password"
-          type={show ? 'text' : 'password'}
-          value={current}
-          onChange={e => setCurrent(e.target.value)}
-          autoComplete="current-password"
-          className="h-12"
-        />
-      </div>
-      <div>
-        <label htmlFor="new-password" className="text-sm font-medium mb-1.5 block">New password</label>
-        <div className="relative">
-          <Input
-            id="new-password"
-            name="new-password"
-            type={show ? 'text' : 'password'}
-            value={next}
-            onChange={e => setNext(e.target.value)}
-            minLength={MIN_PASSWORD_LENGTH}
-            autoComplete="new-password"
-            className="h-12 pr-12"
-          />
+    <form onSubmit={handleSubmit}>
+      <div className="bg-card rounded-3xl px-4 divide-y divide-border">
+        <div className="flex items-center gap-3 py-3 min-h-[64px]">
+          <span className="w-10 h-10 shrink-0 rounded-full bg-muted flex items-center justify-center"><KeyRound size={17} /></span>
+          <div className="min-w-0 flex-1">
+            <label htmlFor="current-password" className="block text-xs text-muted-foreground">Current password</label>
+            <Input
+              id="current-password"
+              name="current-password"
+              type={show ? 'text' : 'password'}
+              value={current}
+              onChange={e => setCurrent(e.target.value)}
+              autoComplete="current-password"
+              placeholder="Enter current password"
+              className="h-7 w-full px-0 py-0 border-0 bg-transparent text-[15px] shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 py-3 min-h-[64px]">
+          <span className="w-10 h-10 shrink-0 rounded-full bg-muted flex items-center justify-center"><Lock size={17} /></span>
+          <div className="min-w-0 flex-1">
+            <label htmlFor="new-password" className="block text-xs text-muted-foreground">New password</label>
+            <Input
+              id="new-password"
+              name="new-password"
+              type={show ? 'text' : 'password'}
+              value={next}
+              onChange={e => setNext(e.target.value)}
+              minLength={MIN_PASSWORD_LENGTH}
+              autoComplete="new-password"
+              placeholder="Enter new password"
+              className="h-7 w-full px-0 py-0 border-0 bg-transparent text-[15px] shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+            />
+            <p className="text-xs text-muted-foreground mt-1">{PASSWORD_RULE}</p>
+          </div>
           <button
             type="button"
             onClick={() => setShow(v => !v)}
-            className="absolute right-0 top-0 h-12 w-12 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="h-11 w-11 shrink-0 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
             aria-label={show ? 'Hide passwords' : 'Show passwords'}
           >
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">{PASSWORD_RULE}</p>
       </div>
-      <Button type="submit" disabled={saving} className="w-full h-12 bg-primary text-primary-foreground">
+      <button type="submit" disabled={saving}
+        className="mt-3 w-full h-12 rounded-full bg-primary text-primary-foreground text-[15px] font-medium inline-flex items-center justify-center disabled:opacity-50">
         {saving ? <Loader2 className="animate-spin" size={18} /> : 'Change password'}
-      </Button>
+      </button>
       <button
         type="button"
         onClick={handleSendLink}
         disabled={sending}
-        className="block w-full text-center text-sm text-primary font-medium py-1 disabled:opacity-60"
+        className="block w-full text-center text-sm text-primary font-medium py-3 disabled:opacity-60"
       >
         {sending ? 'Sending…' : 'Forgot it? Email me a reset link'}
       </button>

@@ -11,8 +11,7 @@ import { isCountableExpense } from '@/lib/finance/transactionFilters';
 import { pendingHolds as holdsByAccount } from '@/lib/finance/cardPayments';
 import AddAccountDialog from '@/components/forms/AddAccountDialog';
 import ReconcileDialog from '@/components/forms/ReconcileDialog';
-import { Wallet, Pencil, Trash2, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Receipt, Scale } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Wallet, Pencil, Trash2, Plus, ChevronDown, Scale } from 'lucide-react';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -29,7 +28,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import AppIcon from '@/components/AppIcon';
 import { ACCOUNT_TYPE_NAMES } from '@/lib/pageNames';
+import { BigAmount, HeroCard, HeroChip, IconButton, Meter, PageHeader, SectionAction, SectionLabel, Tile } from '@/components/orbix';
 
+/** A small pill action inside an opened account row (Reconcile / Edit / Delete). */
+const RowAction = ({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+  <button
+    type="button"
+    className={`h-9 px-3 rounded-full bg-muted text-xs font-medium flex items-center gap-1.5 hover:bg-accent transition-colors ${className ?? 'text-foreground'}`}
+    {...props}
+  >
+    {children}
+  </button>
+);
 
 const Accounts = () => {
   const { accounts, transactions, removeAccount, loading } = useFinance();
@@ -44,11 +54,12 @@ const Accounts = () => {
   const navigate = useNavigate();
   const { scheduleDelete, isPending } = useUndoableDelete({ deleteOne: removeAccount });
 
-  const netWorth = useMemo(() => {
+  // The two halves of net worth; the hero shows both beside the total.
+  const { assets, liabilities, netWorth } = useMemo(() => {
     const assets = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
     // balance IS the amount owed for credit accounts (see Account type).
     const liabilities = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0);
-    return assets - liabilities;
+    return { assets, liabilities, netWorth: assets - liabilities };
   }, [accounts]);
 
   const accountStats = useMemo(() => {
@@ -113,236 +124,203 @@ const Accounts = () => {
 
   if (loading) return <PageSpinner />;
 
+  // Whole units in the narrow hero chips, as Home does.
+  const fmtCompact = (n: number) => fmt(Math.round(n)).replace(/[.,]00(?=\D*$)/, '');
+  /** An amount with small cents, or the mask when balances are hidden. */
+  const amount = (n: number) => (hidden ? mask(fmt(n)) : <BigAmount text={fmt(n)} />);
+
   return (
-    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-heading font-bold">Accounts</h1>
-        <Button
-          onClick={() => setAddOpen(true)}
-          size="sm"
-          className="bg-primary text-primary-foreground"
-        >
-          <Plus size={16} className="mr-1" /> Add account
-        </Button>
-      </div>
+    <div className={`${NARROW_PAGE} pb-8`}>
+      <PageHeader
+        title="Accounts"
+        actions={
+          <IconButton tone="primary" onClick={() => setAddOpen(true)} aria-label="Add account" title="Add account">
+            <Plus size={20} />
+          </IconButton>
+        }
+      />
 
-      {/* Net Worth Summary */}
-      <div className="rounded-xl bg-primary-soft border border-primary-line p-5">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1 flex items-center gap-1">Net worth <GlossaryLink term="Total Net Worth" /></p>
-        <p className={`text-3xl font-bold font-heading ${netWorth >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-          {netWorth < 0 ? '-' : ''}{mask(fmt(Math.abs(netWorth)))}
+      {/* Hero: net worth, then what you have, what you owe, how many accounts */}
+      <HeroCard>
+        <p className="text-sm opacity-70 flex items-center gap-1">Net worth <GlossaryLink term="Total Net Worth" /></p>
+        <p className="mt-1 text-[2.5rem] leading-none font-medium tracking-tight tabular-nums">
+          {netWorth < 0 ? '-' : ''}{amount(Math.abs(netWorth))}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {visibleAccounts.length} account{visibleAccounts.length !== 1 ? 's' : ''}
-        </p>
-      </div>
-
-      {/* Account Cards */}
-      {visibleAccounts.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Wallet size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No accounts yet</p>
+        <div className="grid grid-cols-3 gap-2 mt-5">
+          <HeroChip label="Cash" value={mask(fmtCompact(assets))} />
+          <HeroChip label="Owed" value={mask(fmtCompact(liabilities))} />
+          <HeroChip dark label="Accounts" value={visibleAccounts.length} />
         </div>
-      ) : (
-        <div className="space-y-3">
-          {visibleAccounts.map(account => {
-            const stats = accountStats[account.id] || { income: 0, expenses: 0 };
-            // Clamped 0–100 (or null for no-limit) via the shared helper so the
-            // displayed percentage can't read e.g. "134%" while every other page
-            // caps the same account at 100%.
-            const utilization = creditUtilization(account);
+      </HeroCard>
 
-            return (
-              <div key={account.id} className="bg-card rounded-xl border border-border p-4 space-y-3">
-                {/* Top row: icon + name + actions */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-xl shrink-0">
+      {/* Accounts: one list card, a row per account; tap a row to open it */}
+      <div className="mt-6">
+        <SectionLabel label="Accounts" count={visibleAccounts.length} />
+        {visibleAccounts.length === 0 ? (
+          <Tile className="text-center py-14 text-muted-foreground">
+            <span className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+              <Wallet size={24} className="opacity-60" />
+            </span>
+            <p className="font-medium">No accounts yet</p>
+          </Tile>
+        ) : (
+          <div className="bg-card rounded-3xl px-4 divide-y divide-border">
+            {visibleAccounts.map(account => {
+              const stats = accountStats[account.id] || { income: 0, expenses: 0 };
+              // Clamped 0–100 (or null for no-limit) via the shared helper so the
+              // displayed percentage can't read e.g. "134%" while every other page
+              // caps the same account at 100%.
+              const utilization = creditUtilization(account);
+              const hold = pendingHolds[account.id] ?? 0;
+              const isOpen = expandedId === account.id;
+              const isCredit = account.type === 'credit';
+              const available = isCredit
+                ? (account.creditLimit != null ? account.creditLimit - account.balance - hold : null)
+                : (hold ? account.balance - hold : null);
+              const subParts = [
+                ACCOUNT_TYPE_NAMES[account.type],
+                account.excludeFromSpendable ? 'Savings' : null,
+                hold ? `${mask(fmt(hold))} pending` : null,
+              ].filter(Boolean).join(' · ');
+
+              return (
+                <div key={account.id} className="py-3.5">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isOpen ? null : account.id)}
+                    aria-expanded={isOpen}
+                    className="w-full flex items-center gap-3 text-left"
+                  >
+                    <span className="w-11 h-11 shrink-0 rounded-full bg-muted flex items-center justify-center text-[18px]">
                       <AppIcon value={account.icon} />
-                    </div>
-                    <div>
-                      <p className="font-semibold line-clamp-2 break-words">{account.name}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground`}>
-                        {ACCOUNT_TYPE_NAMES[account.type]}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-medium line-clamp-2 break-words">{account.name}</span>
+                      <span className="block text-xs text-muted-foreground truncate mt-0.5">{subParts}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className={`block text-[15px] font-medium tabular-nums tracking-tight ${isCredit && account.balance > 0 ? 'text-expense' : ''}`}>
+                        {amount(account.balance)}
                       </span>
-                      {account.excludeFromSpendable && (
-                        <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Savings</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setReconcileAccount(account)}
-                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Reconcile account"
-                      title="Reconcile with your bank/card's actual balance"
-                    >
-                      <Scale size={16} />
-                    </button>
-                    <button
-                      onClick={() => { setEditAccount(account); setAddOpen(true); }}
-                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Edit account"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => setDeleteId(account.id)}
-                      className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-destructive-soft text-muted-foreground hover:text-destructive transition-colors"
-                      aria-label="Delete account"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Balance row */}
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{account.type === 'credit' ? 'Owed' : 'Balance'}</p>
-                    <p className={`text-xl font-bold font-heading ${account.type === 'credit' && account.balance > 0 ? 'text-expense' : ''}`}>
-                      {mask(fmt(account.balance))}
-                    </p>
-                  </div>
-                  {account.type === 'credit' && account.creditLimit != null && (
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Available</p>
-                      <p className="text-sm font-medium">{mask(fmt(account.creditLimit - account.balance - (pendingHolds[account.id] ?? 0)))}</p>
-                    </div>
-                  )}
-                  {account.type !== 'credit' && !!pendingHolds[account.id] && (
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Available</p>
-                      <p className="text-sm font-medium">{mask(fmt(account.balance - pendingHolds[account.id]))}</p>
-                    </div>
-                  )}
-                </div>
-                {!!pendingHolds[account.id] && (
-                  <p className="text-xs text-muted-foreground -mt-2">
-                    {mask(fmt(pendingHolds[account.id]))} pending
-                  </p>
-                )}
-
-                {/* Credit utilization bar */}
-                {utilization !== null && (
-                  <div>
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Used</span>
-                      <span className={
-                        utilization > 75 ? 'text-destructive font-semibold' :
-                        utilization > 30 ? 'text-warning font-semibold' : 'text-primary'
-                      }>
-                        {Math.round(utilization)}%
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        {available != null ? <>Available {mask(fmt(available))}</> : isCredit ? 'Owed' : 'Balance'}
                       </span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          utilization > 75 ? 'bg-destructive' :
-                          utilization > 30 ? 'bg-warning' : 'bg-primary'
-                        }`}
-                        style={{ width: `${utilization}%` }}
+                    </span>
+                    <ChevronDown size={14} aria-hidden="true" className={`shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Credit utilization: thin bar under the row */}
+                  {utilization !== null && (
+                    <div className="mt-3 pl-14 flex items-center gap-3">
+                      <Meter
+                        value={utilization}
+                        className="flex-1 h-1"
+                        barClassName={utilization > 75 ? 'bg-expense' : utilization > 30 ? 'bg-warning' : 'bg-primary'}
+                        label={`${account.name} used`}
                       />
+                      <span className={`text-xs font-medium tabular-nums ${utilization > 75 ? 'text-expense' : utilization > 30 ? 'text-warning' : 'text-primary'}`}>
+                        {Math.round(utilization)}% used
+                      </span>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* This-month in/out stats */}
-                {(stats.income > 0 || stats.expenses > 0) && (
-                  <div className="flex gap-4 pt-1 border-t border-border">
-                    {stats.income > 0 && (
-                      <div className="flex items-center gap-1 text-xs">
-                        <TrendingUp size={12} className="text-primary" />
-                        <span className="text-muted-foreground">In:</span>
-                        <span className="font-medium text-primary">{mask(fmt(stats.income))}</span>
-                      </div>
-                    )}
-                    {stats.expenses > 0 && (
-                      <div className="flex items-center gap-1 text-xs">
-                        <TrendingDown size={12} className="text-destructive" />
-                        <span className="text-muted-foreground">Out:</span>
-                        <span className="font-medium text-destructive">{mask(fmt(stats.expenses))}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Transactions toggle */}
-                <button
-                  onClick={() => setExpandedId(expandedId === account.id ? null : account.id)}
-                  className="w-full flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <span className="flex items-center gap-1"><Receipt size={11} /> Transactions</span>
-                  {expandedId === account.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                </button>
-
-                {/* Inline transactions */}
-                {expandedId === account.id && (() => {
-                  const acctTxs = transactions
-                    .filter(tx => tx.accountId === account.id)
-                    .sort((a, b) => b.date.localeCompare(a.date))
-                    .slice(0, 10);
-                  return (
-                    <div className="space-y-1.5 pt-1">
-                      {acctTxs.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-2">No transactions yet</p>
-                      ) : (
-                        <>
-                          {acctTxs.map(tx => (
-                            <div key={tx.id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-muted">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-base shrink-0"><AppIcon value={tx.categoryIcon} /></span>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium truncate">{tx.merchant}</p>
-                                  <p className="text-[11px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
-                                </div>
-                              </div>
-                              <span className={`text-xs font-semibold shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                                {tx.type === 'income' ? '+' : '-'}{mask(fmt(tx.amount))}
-                              </span>
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => navigate('/transactions')}
-                            className="w-full text-xs text-primary font-medium text-center py-1 hover:underline"
+                  {/* Opened: this month, actions, recent transactions */}
+                  {isOpen && (() => {
+                    const acctTxs = transactions
+                      .filter(tx => tx.accountId === account.id)
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .slice(0, 10);
+                    return (
+                      <div className="mt-3 pl-14 space-y-3">
+                        {(stats.income > 0 || stats.expenses > 0) && (
+                          <p className="text-xs text-muted-foreground flex flex-wrap gap-x-4">
+                            {stats.income > 0 && <span>In <span className="font-medium text-income">{mask(fmt(stats.income))}</span></span>}
+                            {stats.expenses > 0 && <span>Out <span className="font-medium text-expense">{mask(fmt(stats.expenses))}</span></span>}
+                            <span>this month</span>
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          <RowAction
+                            onClick={() => setReconcileAccount(account)}
+                            aria-label="Reconcile account"
+                            title="Reconcile with your bank/card's actual balance"
                           >
-                            See all →
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                            <Scale size={14} /> Reconcile
+                          </RowAction>
+                          <RowAction onClick={() => { setEditAccount(account); setAddOpen(true); }} aria-label="Edit account">
+                            <Pencil size={14} /> Edit
+                          </RowAction>
+                          <RowAction
+                            onClick={() => setDeleteId(account.id)}
+                            aria-label="Delete account"
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={14} />
+                          </RowAction>
+                        </div>
+                        {acctTxs.length === 0 ? (
+                          <p className="text-xs text-muted-foreground py-1">No transactions yet</p>
+                        ) : (
+                          <div>
+                            <div className="divide-y divide-border">
+                              {acctTxs.map(tx => (
+                                <div key={tx.id} className="flex items-center justify-between gap-3 py-2">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center text-sm">
+                                      <AppIcon value={tx.categoryIcon} />
+                                    </span>
+                                    <div className="min-w-0">
+                                      <p className="text-sm truncate">{tx.merchant}</p>
+                                      <p className="text-[11px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium tabular-nums shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                                    {tx.type === 'income' ? '+' : '-'}{mask(fmt(tx.amount))}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-end pt-1">
+                              <SectionAction onClick={() => navigate('/transactions')}>See all</SectionAction>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Balance Projection */}
       {balanceProjection && (
-        <div className="bg-card rounded-xl border border-border p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Next 30 days</h2>
-            <span className={`text-xs font-semibold ${balanceProjection.change >= 0 ? 'text-income' : 'text-expense'}`}>
-              {hidden ? '••••••' : `${balanceProjection.change >= 0 ? '+' : ''}${fmt(balanceProjection.change)}`}
-            </span>
-          </div>
-          <svg viewBox="0 0 100 36" className="w-full h-12" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="proj-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <polyline points={balanceProjection.pts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            <polygon points={`0,36 ${balanceProjection.pts} 100,36`} fill="url(#proj-grad)" />
-          </svg>
-          <div className="flex justify-between text-[11px] text-muted-foreground">
-            <span>Today: {mask(fmt(balanceProjection.startBalance))}</span>
-            <span>+30d: {mask(fmt(balanceProjection.endBalance))}</span>
-          </div>
+        <div className="mt-6">
+          <SectionLabel label="Next 30 days" />
+          <Tile className="space-y-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-2xl font-medium tracking-tight tabular-nums">{amount(balanceProjection.endBalance)}</p>
+              <span className={`text-sm font-medium tabular-nums ${balanceProjection.change >= 0 ? 'text-income' : 'text-expense'}`}>
+                {hidden ? '••••••' : `${balanceProjection.change >= 0 ? '+' : ''}${fmt(balanceProjection.change)}`}
+              </span>
+            </div>
+            <svg viewBox="0 0 100 36" className="w-full h-14" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="proj-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polyline points={balanceProjection.pts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+              <polygon points={`0,36 ${balanceProjection.pts} 100,36`} fill="url(#proj-grad)" />
+            </svg>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Today: {mask(fmt(balanceProjection.startBalance))}</span>
+              <span>+30d: {mask(fmt(balanceProjection.endBalance))}</span>
+            </div>
+          </Tile>
         </div>
       )}
 

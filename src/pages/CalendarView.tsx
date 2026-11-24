@@ -10,13 +10,15 @@ import {
   addMonths, subMonths, isSameDay, isSameMonth,
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
-import { IconTile } from '@/components/AppIcon';
+import AppIcon from '@/components/AppIcon';
+import { PageHeader, IconButton, HeroCard, HeroChip, SectionLabel, ListCard, ListRow, BigAmount } from '@/components/orbix';
+import { cn } from '@/lib/utils';
 import { useToday } from '@/hooks/useToday';
 
 const CalendarView = () => {
   const { transactions, accounts, loading } = useFinance();
   const { fmt } = useCurrency();
-  const { hidden, mask } = useBalanceMask();
+  const { hidden } = useBalanceMask();
   const today = useToday();
   const [current, setCurrent] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -91,146 +93,138 @@ const CalendarView = () => {
 
   if (loading) return <PageSpinner />;
 
+  const net = totalIncome - totalExpenses;
+  const legend: [string, string][] = [['bg-primary-soft', 'Low'], ['bg-primary', 'Med'], ['bg-warning', 'High'], ['bg-expense', 'Very high']];
+
   return (
-    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-5`}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-heading font-bold">Calendar</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => { setCurrent(d => subMonths(d, 1)); setSelectedDay(null); }} aria-label="Previous month" className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl hover:bg-muted transition-colors">
+    <div className={`${NARROW_PAGE} pb-6`}>
+      <PageHeader
+        title="Calendar"
+        subtitle={format(current, 'MMMM yyyy')}
+        actions={<>
+          <IconButton onClick={() => { setCurrent(d => subMonths(d, 1)); setSelectedDay(null); }} aria-label="Previous month">
             <ChevronLeft size={18} />
-          </button>
-          <span className="text-sm font-semibold min-w-[110px] text-center">{format(current, 'MMMM yyyy')}</span>
-          <button onClick={() => { setCurrent(d => addMonths(d, 1)); setSelectedDay(null); }} aria-label="Next month" className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl hover:bg-muted transition-colors">
+          </IconButton>
+          <IconButton onClick={() => { setCurrent(d => addMonths(d, 1)); setSelectedDay(null); }} aria-label="Next month">
             <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
+          </IconButton>
+        </>}
+      />
 
-      {/* Month summary */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card rounded-xl border border-border p-3 text-center">
-          <p className="text-xs text-muted-foreground">Income</p>
-          <p className="font-bold text-primary text-sm">{mask(fmt(totalIncome))}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 text-center">
-          <p className="text-xs text-muted-foreground">Expenses</p>
-          <p className="font-bold text-expense text-sm">{mask(fmt(totalExpenses))}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 text-center">
-          <p className="text-xs text-muted-foreground">Net</p>
-          <p className={`font-bold text-sm ${totalIncome - totalExpenses >= 0 ? 'text-primary' : 'text-expense'}`}>
-            {hidden ? '••••••' : `${totalIncome - totalExpenses < 0 ? '-' : '+'}${fmt(Math.abs(totalIncome - totalExpenses))}`}
-          </p>
-        </div>
-      </div>
-
-      {scheduledCount > 0 && (
-        <p className="text-[11px] text-muted-foreground -mt-2">
-          Totals leave out {scheduledCount} future row{scheduledCount === 1 ? '' : 's'}.
+      {/* Hero: the month's net so far, money in and out as chips */}
+      <HeroCard className="mb-5">
+        <p className="text-sm font-medium opacity-80">Net · {format(current, 'MMMM')}</p>
+        <p className="text-financial-hero mt-1">
+          {hidden ? '••••••' : <BigAmount text={`${net < 0 ? '-' : '+'}${fmt(Math.abs(net))}`} />}
         </p>
-      )}
+        {scheduledCount > 0 && (
+          <p className="text-xs opacity-70 mt-0.5">
+            Totals leave out {scheduledCount} future row{scheduledCount === 1 ? '' : 's'}.
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <HeroChip label="Income" value={hidden ? '••••••' : <BigAmount text={fmt(totalIncome)} />} />
+          <HeroChip label="Expenses" value={hidden ? '••••••' : <BigAmount text={fmt(totalExpenses)} />} dark />
+        </div>
+      </HeroCard>
 
-      {/* Legend */}
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
-        <span>Spending:</span>
-        {[['bg-primary-soft', 'Low'], ['bg-primary', 'Med'], ['bg-warning', 'High'], ['bg-expense', 'Very high']].map(([cls, label]) => (
-          <span key={label} className="flex items-center gap-1">
-            <span className={`w-3 h-1.5 rounded-full ${cls}`} />
-            {label}
-          </span>
-        ))}
-        <span className="flex items-center gap-1 ml-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-income" />
-          Income
-        </span>
-      </div>
-
-      {/* Calendar grid */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        {/* Day headers */}
-        <div className="grid grid-cols-7 border-b border-border">
+      {/* Month grid */}
+      <div className="bg-card rounded-3xl p-3 sm:p-4 mb-5">
+        <div className="grid grid-cols-7 mb-1">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-            <div key={d} className="py-2 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            <div key={d} className="py-1.5 text-center text-[11px] font-medium text-muted-foreground">
               {d}
             </div>
           ))}
         </div>
 
-        {/* Weeks */}
-        <div className="grid grid-cols-7">
-          {/* Padding cells */}
+        <div className="grid grid-cols-7 gap-y-1">
           {Array.from({ length: days.startDow }).map((_, i) => (
-            <div key={`pad-${i}`} className="h-14 border-b border-r border-border last:border-r-0" />
+            <div key={`pad-${i}`} className="h-16" />
           ))}
 
-          {days.all.map((day, i) => {
+          {days.all.map(day => {
             const key = format(day, 'yyyy-MM-dd');
             const total = dayTotals[key] || 0;
             const income = dayIncome[key] || 0;
-            const isSelected = selectedDay && isSameDay(day, selectedDay);
+            const isSelected = !!selectedDay && isSameDay(day, selectedDay);
             const isToday = key === today;
-            const colPos = (days.startDow + i) % 7;
             return (
               <button
                 key={key}
                 onClick={() => setSelectedDay(isSelected ? null : day)}
-                className={`h-14 flex flex-col items-center pt-1.5 gap-0.5 border-b border-r border-border last:border-r-0 transition-colors relative
-                  ${isSelected ? 'bg-primary-soft ring-1 ring-inset ring-primary' : 'hover:bg-muted'}
-                  ${colPos === 6 ? 'border-r-0' : ''}`}
+                aria-pressed={isSelected}
+                aria-label={format(day, 'EEEE, MMMM d')}
+                className={cn(
+                  'h-16 w-full max-w-[46px] mx-auto rounded-full flex flex-col items-center pt-2 gap-1 transition-colors',
+                  isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                )}
               >
-                <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full
-                  ${isToday ? 'bg-primary text-primary-foreground' : 'text-foreground'}`}>
+                <span className={cn('text-sm leading-none tabular-nums',
+                  isSelected ? 'font-semibold' : isToday ? 'font-semibold text-primary' : 'text-foreground')}>
                   {format(day, 'd')}
                 </span>
-                <div className="flex items-center gap-0.5">
+                <span className="flex items-center gap-0.5 h-1.5">
                   {total > 0 && (
-                    <div className={`w-4 h-1.5 rounded-full ${dayColor(total)}`} />
+                    <span className={cn('w-4 h-1.5 rounded-full', isSelected ? 'bg-primary-foreground/50' : dayColor(total))} />
                   )}
                   {income > 0 && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-income shrink-0" />
+                    <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', isSelected ? 'bg-primary-foreground' : 'bg-income')} />
                   )}
-                </div>
+                </span>
                 {total > 0 && !hidden && (
-                  <span className="text-[10px] text-muted-foreground leading-none tabular-nums" title={fmt(total)}>{Math.round(total).toLocaleString('en')}</span>
+                  <span className={cn('text-[10px] leading-none tabular-nums', isSelected ? 'opacity-70' : 'text-muted-foreground')} title={fmt(total)}>
+                    {Math.round(total).toLocaleString('en')}
+                  </span>
                 )}
               </button>
             );
           })}
         </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap mt-3 pt-3 border-t border-border px-1">
+          <span>Spending</span>
+          {legend.map(([cls, label]) => (
+            <span key={label} className="flex items-center gap-1">
+              <span className={`w-3 h-1.5 rounded-full ${cls}`} />
+              {label}
+            </span>
+          ))}
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-income" />
+            Income
+          </span>
+        </div>
       </div>
 
-      {/* Selected day transactions */}
+      {/* Selected day */}
       {selectedDay && (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <div className="px-4 py-3 border-b border-border">
-            <p className="text-sm font-semibold">{format(selectedDay, 'EEEE, MMMM d')}</p>
-            <p className="text-xs text-muted-foreground">{selectedTxs.length} transaction{selectedTxs.length !== 1 ? 's' : ''}</p>
-          </div>
+        <section>
+          <SectionLabel label={format(selectedDay, 'EEEE, MMMM d')} count={selectedTxs.length} />
           {selectedTxs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="bg-card rounded-3xl text-center py-8 text-muted-foreground">
               <CalendarDays size={28} className="mx-auto mb-2 opacity-30" />
               <p className="text-sm">No transactions on this day</p>
             </div>
           ) : (
-            <div className="divide-y divide-border">
+            <ListCard>
               {selectedTxs.map(tx => (
-                <div key={tx.id} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <IconTile value={tx.categoryIcon} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{tx.merchant}</p>
-                      <p className="text-xs text-muted-foreground">{tx.category}</p>
-                    </div>
-                  </div>
-                  <span className={`text-sm font-semibold shrink-0 ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                    {tx.type === 'income' ? '+' : '-'}{mask(fmt(tx.amount))}
-                  </span>
-                </div>
+                <ListRow
+                  key={tx.id}
+                  icon={<span className="text-[20px] flex"><AppIcon value={tx.categoryIcon} /></span>}
+                  title={tx.merchant}
+                  sub={tx.category}
+                  value={
+                    <span className={tx.type === 'income' ? 'text-income' : 'text-foreground'}>
+                      {hidden ? '••••••' : <BigAmount text={`${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}`} />}
+                    </span>
+                  }
+                />
               ))}
-            </div>
+            </ListCard>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

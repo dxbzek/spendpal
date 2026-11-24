@@ -13,10 +13,11 @@ import { useToday } from '@/hooks/useToday';
 import { lastMonthSameDays } from '@/lib/today';
 const MonthlyTrendChart = lazy(() => import('@/components/charts/MonthlyTrendChart'));
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
-import { BarChart3, TrendingUp, TrendingDown, Minus, X, Receipt, Download, PiggyBank, Printer } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, X, Receipt, Download, Printer, ChevronDown } from 'lucide-react';
+import { IconButton, HeroCard, HeroChip, SectionLabel, Tile, ListCard, ListRow, BigAmount, Meter } from '@/components/orbix';
 import AppIcon from '@/components/AppIcon';
 
-const ChartSkeleton = () => <div className="h-[220px] w-full rounded-xl bg-muted animate-pulse" />;
+const ChartSkeleton = () => <div className="h-[200px] w-full rounded-2xl bg-muted animate-pulse" />;
 
 const Reports = () => {
   const { transactions, accounts, budgets, loading } = useFinance();
@@ -171,241 +172,225 @@ const Reports = () => {
 
   if (loading) return <PageSpinner />;
 
+  // Whole units for the hero chips, so they fit at phone width.
+  const fmtCompact = (n: number) => fmt(Math.round(n)).replace(/[.,]00(?=\D*$)/, '');
+  const monthLabel = format(parseISO(selectedMonth + '-01'), 'MMMM yyyy');
+  const peakDay = Math.max(...dayOfWeekData.map(d => d.total));
+
   return (
-    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-heading font-bold">Reports</h1>
-        <div className="flex items-center gap-2 shrink-0">
-          {hasData && (
-            <>
-              {/* Print-to-PDF button */}
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors print:hidden"
-                title="Print or save as PDF"
-              >
-                <Printer size={13} /> <span className="hidden sm:inline">Print PDF</span>
-              </button>
-              <button
-                onClick={exportCsv}
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors print:hidden"
-              >
-                <Download size={13} /> <span className="hidden sm:inline">Export CSV</span>
-              </button>
-            </>
-          )}
-          <select
-            value={selectedMonth}
-            onChange={e => setSelectedMonth(e.target.value)}
-            className="text-xs sm:text-sm border border-border rounded-xl px-2 sm:px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring max-w-[130px] sm:max-w-none"
-          >
-            {months.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </div>
+    <div className={`${NARROW_PAGE} pb-8 space-y-6`}>
+      {/* Header: big title, round icon buttons */}
+      <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+20px)] md:pt-8">
+        <h1 className="text-[1.75rem] leading-tight font-heading font-semibold tracking-tight">Reports</h1>
+        {hasData && (
+          <div className="flex items-center gap-2 shrink-0 print:hidden">
+            <IconButton onClick={() => window.print()} aria-label="Print or save as PDF" title="Print or save as PDF"><Printer size={18} /></IconButton>
+            <IconButton onClick={exportCsv} aria-label="Export CSV" title="Export CSV"><Download size={18} /></IconButton>
+          </div>
+        )}
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-card rounded-xl border border-border p-3 text-center">
-          <TrendingUp size={18} className="text-primary mx-auto mb-1" />
-          <p className="text-xs text-muted-foreground">Income</p>
-          <p className="font-bold text-sm">{mask(fmt(income))}</p>
+      {/* Hero: the month and its totals */}
+      <HeroCard>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium opacity-80">Spent</p>
+          <label className="relative hero-chip rounded-full h-8 pl-3 pr-7 flex items-center text-xs font-medium shrink-0">
+            <span className="sr-only">Month</span>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              aria-label="Month"
+              className="appearance-none bg-transparent outline-none cursor-pointer pr-1 text-[hsl(258_30%_8%)]"
+            >
+              {months.map(m => (
+                <option key={m.value} value={m.value} className="text-foreground bg-popover">{m.label}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 pointer-events-none opacity-70" />
+          </label>
         </div>
-        <div className="bg-card rounded-xl border border-border p-3 text-center">
-          <TrendingDown size={18} className="text-destructive mx-auto mb-1" />
-          <p className="text-xs text-muted-foreground">Expenses</p>
-          <p className="font-bold text-sm">{mask(fmt(expenses))}</p>
+        <div className="mt-1 flex items-end gap-2 flex-wrap">
+          <p className="text-[2.4rem] leading-none font-medium tracking-tight tabular-nums">
+            {hidden ? '••••••' : <BigAmount text={fmt(expenses)} />}
+          </p>
           {expenseChange !== null && (
-            <p className={`text-[11px] font-medium ${expenseChange > 0 ? 'text-destructive' : 'text-primary'}`}>
-              {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs {partialCompare ? `${format(parseISO(partialCompare.start), 'MMM')} 1-${partialCompare.endDay}` : 'prev'}
-            </p>
+            <span className="hero-chip rounded-full px-2 py-0.5 mb-1 text-[11px] font-medium tabular-nums flex items-center gap-1">
+              {expenseChange > 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+              {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}%
+            </span>
           )}
         </div>
-        <div className="bg-card rounded-xl border border-border p-3 text-center">
-          <Minus size={18} className={`mx-auto mb-1 ${net >= 0 ? 'text-primary' : 'text-destructive'}`} />
-          <p className="text-xs text-muted-foreground">Net</p>
-          <p className={`font-bold text-sm ${net >= 0 ? 'text-primary' : 'text-destructive'}`}>
-            {hidden ? '••••••' : `${net < 0 ? '-' : ''}${fmt(Math.abs(net))}`}
-          </p>
+        <p className="text-xs opacity-70 mt-1.5">
+          {monthLabel}
+          {expenseChange !== null && <> · vs {partialCompare ? `${format(parseISO(partialCompare.start), 'MMM')} 1-${partialCompare.endDay}` : 'prev'}</>}
+        </p>
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          <HeroChip label="Income" value={mask(fmtCompact(income))} />
+          <HeroChip label="Net" value={hidden ? '••••••' : `${net < 0 ? '-' : ''}${fmtCompact(Math.abs(net))}`} />
+          <HeroChip dark label="Savings rate" value={savingsRate === null ? '—' : `${savingsRate}%`} />
         </div>
-        <div className="bg-card rounded-xl border border-border p-3 text-center">
-          <PiggyBank size={18} className={`mx-auto mb-1 ${savingsRate !== null && savingsRate >= 20 ? 'text-primary' : 'text-muted-foreground'}`} />
-          <p className="text-xs text-muted-foreground">Savings rate</p>
-          <p className={`font-bold text-sm ${savingsRate === null ? 'text-muted-foreground' : savingsRate >= 20 ? 'text-primary' : savingsRate < 0 ? 'text-destructive' : 'text-foreground'}`}>
-            {savingsRate === null ? '—' : `${savingsRate}%`}
-          </p>
-        </div>
-      </div>
+      </HeroCard>
 
       {/* 6-Month Trend */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <h2 className="font-semibold text-sm mb-3">6 months</h2>
-        <Suspense fallback={<ChartSkeleton />}>
-          <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
-        </Suspense>
-      </div>
+      <section>
+        <SectionLabel label="6 months" />
+        <Tile>
+          <Suspense fallback={<ChartSkeleton />}>
+            <MonthlyTrendChart transactions={transactions} creditAccountIds={creditAccountIds} />
+          </Suspense>
+        </Tile>
+      </section>
 
       {/* Spending by Category */}
       {categoryData.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">By category</h2>
-          <Suspense fallback={<ChartSkeleton />}>
-            <SpendingPieChart data={categoryData} />
-          </Suspense>
-          <div className="mt-3 space-y-1.5">
+        <section>
+          <SectionLabel label="By category" count={categoryData.length} />
+          <div className="bg-card rounded-3xl overflow-hidden">
+            <div className="p-4 pb-5">
+              <Suspense fallback={<ChartSkeleton />}>
+                <SpendingPieChart data={categoryData} />
+              </Suspense>
+            </div>
+            <ListCard className="rounded-none border-t border-border">
             {categoryData.map(cat => (
-              <button
+              <ListRow
                 key={cat.name}
                 onClick={() => setDrillCategory(drillCategory === cat.name ? null : cat.name)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${drillCategory === cat.name ? 'bg-primary-soft border border-primary-line' : 'hover:bg-muted'}`}
-              >
-                <span className="flex items-center gap-2">
-                  <span><AppIcon value={cat.icon} /></span>
-                  <span className="font-medium">{cat.name}</span>
-                </span>
-                <span className="font-semibold">{mask(fmt(cat.value))}</span>
-              </button>
+                icon={<span className="text-[18px]"><AppIcon value={cat.icon} /></span>}
+                title={<span className={drillCategory === cat.name ? 'text-primary' : ''}>{cat.name}</span>}
+                sub={expenses > 0 ? `${Math.round((cat.value / expenses) * 100)}% of spending` : undefined}
+                value={mask(fmt(cat.value))}
+              />
             ))}
+            </ListCard>
           </div>
 
           {/* Drill-through panel */}
-          {drillCategory && (() => {
-            const catTxs = drillTxs;
-            return (
-              <div className="mt-3 pt-3 border-t border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{drillCategory} transactions</p>
-                  <button onClick={() => setDrillCategory(null)} className="text-muted-foreground hover:text-foreground"><X size={14} /></button>
-                </div>
-                <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                  {catTxs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-3">No transactions</p>
-                  ) : catTxs.map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-muted">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Receipt size={11} className="text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium truncate">{tx.merchant}</p>
-                          <p className="text-[11px] text-muted-foreground">{format(parseISO(tx.date), 'MMM d')}</p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-semibold text-expense shrink-0 ml-2">{mask(fmt(tx.amount))}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
+          {drillCategory && (
+            <div className="mt-3">
+              <SectionLabel label={`${drillCategory} transactions`} count={drillTxs.length}
+                action={(
+                  <button onClick={() => setDrillCategory(null)} aria-label="Close" className="tap-area p-1 text-muted-foreground hover:text-foreground"><X size={16} /></button>
+                )} />
+              <ListCard className="max-h-80 overflow-y-auto">
+                {drillTxs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No transactions</p>
+                ) : drillTxs.map(tx => (
+                  <ListRow key={tx.id}
+                    icon={<Receipt size={16} className="text-muted-foreground" />}
+                    title={tx.merchant}
+                    sub={format(parseISO(tx.date), 'MMM d')}
+                    value={<span className="text-expense">{mask(fmt(tx.amount))}</span>} />
+                ))}
+              </ListCard>
+            </div>
+          )}
+        </section>
       )}
 
       {/* Budget Performance */}
       {monthBudgets.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4 space-y-3">
-          <h2 className="font-semibold text-sm">Budgets</h2>
-          {monthBudgets.map(b => {
-            const spent = monthSpentByCategory[b.category] ?? 0;
-            const pct = b.amount > 0 ? Math.min((spent / b.amount) * 100, 100) : 0;
-            const over = spent > b.amount;
-            return (
-              <div key={b.id} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="flex items-center gap-1">
-                    <span><AppIcon value={b.categoryIcon} /></span>
-                    <span>{b.category}</span>
-                  </span>
-                  <span className={over ? 'text-destructive font-semibold' : 'text-muted-foreground'}>
-                    {mask(fmt(spent))} / {mask(fmt(b.amount))}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      over ? 'bg-destructive' : pct > 75 ? 'bg-warning' : 'bg-primary'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Top Merchants */}
-      {topMerchants.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">Top merchants</h2>
-          <div className="space-y-2">
-            {topMerchants.map(({ merchant, amount }, i) => (
-              <div key={merchant} className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}</span>
-                  <span className="text-sm truncate">{merchant}</span>
-                </div>
-                <span className="text-sm font-medium shrink-0">{mask(fmt(amount))}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Income by Source */}
-      {incomeBySource.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">Income sources</h2>
-          <div className="space-y-2">
-            {incomeBySource.map(([source, data], _i) => {
-              const pct = income > 0 ? Math.round((data.value / income) * 100) : 0;
+        <section>
+          <SectionLabel label="Budgets" count={monthBudgets.length} />
+          <ListCard>
+            {monthBudgets.map(b => {
+              const spent = monthSpentByCategory[b.category] ?? 0;
+              const pct = b.amount > 0 ? Math.min((spent / b.amount) * 100, 100) : 0;
+              const over = spent > b.amount;
               return (
-                <div key={source}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="flex items-center gap-1.5">
-                      <span><AppIcon value={data.icon} /></span>
-                      <span className="font-medium">{source}</span>
-                    </span>
-                    <span className="font-semibold text-primary">{mask(fmt(data.value))} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                <div key={b.id} className="flex items-center gap-3 py-3.5">
+                  <span className="w-11 h-11 shrink-0 rounded-full bg-muted flex items-center justify-center text-[18px]"><AppIcon value={b.categoryIcon} /></span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[15px] font-medium truncate">{b.category}</span>
+                      <span className="text-sm tabular-nums shrink-0">
+                        <span className={over ? 'text-expense' : ''}>{mask(fmt(spent))}</span>
+                        <span className="text-muted-foreground"> / {mask(fmt(b.amount))}</span>
+                      </span>
+                    </div>
+                    <Meter value={pct} label={`${b.category} budget used`} className="mt-2 h-1"
+                      barClassName={over ? 'bg-expense' : pct > 75 ? 'bg-warning' : undefined} />
                   </div>
                 </div>
               );
             })}
-          </div>
-        </div>
+          </ListCard>
+        </section>
       )}
 
-      {/* Day of Week Heatmap */}
-      {dayOfWeekData.some(d => d.total > 0) && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-3">By weekday</h2>
-          <div className="flex items-end gap-1.5">
-            {dayOfWeekData.map(({ label, total, pct }) => (
-              <div key={label} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground leading-none tabular-nums">{total > 0 && !hidden ? Math.round(total).toLocaleString('en') : ''}</span>
-                <div
-                  className={`w-full rounded-t-sm transition-all ${total > 0 ? 'bg-primary' : 'bg-muted'}`}
-                  style={{ height: `${Math.max(pct * 0.52, total > 0 ? 4 : 2)}px` }}
-                />
-                <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
-              </div>
+      {/* Top Merchants */}
+      {topMerchants.length > 0 && (
+        <section>
+          <SectionLabel label="Top merchants" count={topMerchants.length} />
+          <ListCard>
+            {topMerchants.map(({ merchant, amount }, i) => (
+              <ListRow key={merchant}
+                icon={<span className="text-sm font-medium tabular-nums text-muted-foreground">{i + 1}</span>}
+                title={merchant}
+                value={mask(fmt(amount))} />
             ))}
-          </div>
-        </div>
+          </ListCard>
+        </section>
+      )}
+
+      {/* Income by Source */}
+      {incomeBySource.length > 0 && (
+        <section>
+          <SectionLabel label="Income sources" count={incomeBySource.length} />
+          <ListCard>
+            {incomeBySource.map(([source, data]) => {
+              const pct = income > 0 ? Math.round((data.value / income) * 100) : 0;
+              return (
+                <div key={source} className="flex items-center gap-3 py-3.5">
+                  <span className="w-11 h-11 shrink-0 rounded-full bg-muted flex items-center justify-center text-[18px]"><AppIcon value={data.icon} /></span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[15px] font-medium truncate">{source}</span>
+                      <span className="text-sm tabular-nums shrink-0">{mask(fmt(data.value))} <span className="text-primary">{pct}%</span></span>
+                    </div>
+                    <Meter value={pct} label={`${source} share of income`} className="mt-2 h-1" />
+                  </div>
+                </div>
+              );
+            })}
+          </ListCard>
+        </section>
+      )}
+
+      {/* Day of Week */}
+      {dayOfWeekData.some(d => d.total > 0) && (
+        <section>
+          <SectionLabel label="By weekday" />
+          <Tile className="pt-5">
+            <div className="flex items-end gap-2 h-32">
+              {dayOfWeekData.map(({ label, total, pct }) => {
+                const isPeak = total > 0 && total === peakDay;
+                return (
+                  <div key={label} className="flex-1 h-full flex flex-col items-center justify-end gap-1.5">
+                    <span className={`text-[10px] leading-none tabular-nums ${isPeak ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {total > 0 && !hidden ? Math.round(total).toLocaleString('en') : ''}
+                    </span>
+                    <div
+                      className={`w-full max-w-[28px] rounded-full transition-all ${total > 0 ? (isPeak ? 'bg-[hsl(var(--pink,326_75%_80%))]' : 'bg-primary') : 'bg-muted'}`}
+                      style={{ height: `${Math.max(pct * 0.8, total > 0 ? 6 : 4)}px` }}
+                    />
+                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Tile>
+        </section>
       )}
 
       {/* Empty state */}
       {!hasData && (
-        <div className="text-center py-16 text-muted-foreground">
-          <BarChart3 size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">
-            No data for {format(parseISO(selectedMonth + '-01'), 'MMMM yyyy')}
-          </p>
-        </div>
+        <Tile className="text-center py-14 text-muted-foreground">
+          <span className="mx-auto mb-3 w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+            <BarChart3 size={24} className="text-primary" />
+          </span>
+          <p className="font-medium">No data for {monthLabel}</p>
+        </Tile>
       )}
     </div>
   );

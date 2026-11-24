@@ -1,4 +1,4 @@
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { memo, useMemo } from 'react';
 import { parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -9,6 +9,30 @@ interface Props {
   transactions: Transaction[];
   creditAccountIds: Set<string>;
 }
+
+// Orbix strokes: lavender for income, pink for expenses.
+const INCOME = 'hsl(var(--primary))';
+const EXPENSE = 'hsl(var(--pink, 326 75% 80%))';
+const INK = 'hsl(258 30% 8%)';
+
+/** White pill tooltip, like the Orbix "$50,000 · Milestone" bubble. */
+const PillTooltip = ({ active, payload, label, fmt }: {
+  active?: boolean; label?: string; fmt: (n: number) => string;
+  payload?: { dataKey?: string | number; value?: number }[];
+}) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-2xl bg-white px-3 py-2 shadow-lg" style={{ color: INK }}>
+      <p className="text-[11px] opacity-60 mb-0.5">{label}</p>
+      {payload.map(p => (
+        <p key={String(p.dataKey)} className="text-sm font-semibold tabular-nums leading-snug">
+          {fmt(Number(p.value ?? 0))}
+          <span className="ml-1.5 text-[11px] font-medium" style={{ color: p.dataKey === 'Income' ? 'hsl(252 60% 58%)' : 'hsl(330 70% 55%)' }}>{String(p.dataKey)}</span>
+        </p>
+      ))}
+    </div>
+  );
+};
 
 const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
   const { fmt } = useCurrency();
@@ -60,43 +84,44 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
       </table>
       <div className="h-[180px] sm:h-[200px] lg:h-[220px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
+        <AreaChart data={data} margin={{ top: 8, right: 0, bottom: 0, left: 4 }}>
           <defs>
             <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(142, 72%, 36%)" stopOpacity={0.15} />
-              <stop offset="95%" stopColor="hsl(142, 72%, 36%)" stopOpacity={0.02} />
+              <stop offset="0%" stopColor={INCOME} stopOpacity={0.28} />
+              <stop offset="100%" stopColor={INCOME} stopOpacity={0} />
             </linearGradient>
             <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.1} />
-              <stop offset="95%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.02} />
+              <stop offset="0%" stopColor={EXPENSE} stopOpacity={0.22} />
+              <stop offset="100%" stopColor={EXPENSE} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
-          <XAxis dataKey="month" tick={{ fontSize: 11 }} className="stroke-muted-foreground" />
-          <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 11 }} className="stroke-muted-foreground" domain={[0, Math.ceil(maxVal * 1.1)]} />
+          <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickMargin={8} />
+          <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={40} orientation="right" domain={[0, Math.ceil(maxVal * 1.1)]} />
           <Tooltip
-            formatter={(val: number) => fmt(val)}
-            contentStyle={{ borderRadius: '0.75rem', fontSize: '0.75rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'hsl(var(--card))' }}
+            content={<PillTooltip fmt={fmt} />}
+            cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.35, strokeDasharray: '2 4' }}
           />
           <Area
             type="monotone"
             dataKey="Income"
-            stroke="hsl(142, 72%, 36%)"
-            strokeWidth={2.5}
+            stroke={INCOME}
+            strokeWidth={3}
+            strokeLinecap="round"
             fill="url(#incomeGradient)"
             dot={false}
-            activeDot={{ r: 5, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+            activeDot={{ r: 5, fill: INCOME, stroke: '#fff', strokeWidth: 2 }}
             isAnimationActive={true}
             animationDuration={600}
           />
           <Area
             type="monotone"
             dataKey="Expenses"
-            stroke="hsl(0, 72%, 51%)"
-            strokeWidth={2.5}
+            stroke={EXPENSE}
+            strokeWidth={3}
+            strokeLinecap="round"
             fill="url(#expenseGradient)"
             dot={false}
-            activeDot={{ r: 5, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+            activeDot={{ r: 5, fill: EXPENSE, stroke: '#fff', strokeWidth: 2 }}
             isAnimationActive={true}
             animationDuration={600}
           />
@@ -105,13 +130,13 @@ const MonthlyTrendChart = memo(({ transactions, creditAccountIds }: Props) => {
       </div>
       </figure>
       {/* Custom legend */}
-      <div className="flex items-center justify-center gap-5 mt-1">
+      <div className="flex items-center gap-4 mt-2 px-1">
         <div className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 rounded-full bg-income inline-block" />
+          <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: INCOME }} />
           <span className="text-xs text-muted-foreground">Income</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 rounded-full bg-expense inline-block" />
+          <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: EXPENSE }} />
           <span className="text-xs text-muted-foreground">Expenses</span>
         </div>
       </div>

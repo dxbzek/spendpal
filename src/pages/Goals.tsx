@@ -7,9 +7,10 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
-import { Plus, Edit2, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown, Pause, Play, Trophy, ScanLine } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarClock, TrendingUp, CheckCircle2, ChevronDown, Pause, Play, Trophy, ScanLine, MoreHorizontal, History } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PAGE_X, IconButton, HeroCard, HeroChip, SectionLabel, SectionAction, Tile, ListCard, ListRow, BigAmount, Meter } from '@/components/orbix';
 import ScanScreenshotSheet from '@/components/forms/ScanScreenshotSheet';
-import { m } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ interface Contribution { id?: string; amount: number; note: string; date: string
 const Goals = () => {
   const { goals, addGoalProgress, withdrawGoalProgress, removeGoal, updateGoal, loading } = useFinance();
   const { fmt } = useCurrency();
-  const { mask } = useBalanceMask();
+  const { hidden, mask } = useBalanceMask();
   const { user } = useAuth();
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressMode, setProgressMode] = useState<'add' | 'withdraw'>('add');
@@ -130,207 +131,200 @@ const Goals = () => {
 
   if (loading) return <PageSpinner />;
 
+  // Whole units for the hero chips, so they fit at phone width.
+  const fmtCompact = (n: number) => fmt(Math.round(n)).replace(/[.,]00(?=\D*$)/, '');
+  const openAddGoal = () => { setEditGoal(null); setShowAddGoal(true); };
+  const toggleLog = (goalId: string) => {
+    const next = showLog === goalId ? null : goalId;
+    setShowLog(next);
+    if (next && !contributionLogs[next]) fetchContributions(next);
+  };
+  const openProgress = (goalId: string) => { setProgressGoalId(goalId); setProgressAmount(''); setProgressNote(''); setProgressMode('add'); };
+
   return (
-    <div>
-      {/* Header */}
-      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 md:rounded-b-none rounded-b-2xl">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-heading text-primary-foreground">Goals</h1>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setShowScan(true)}
-                className="bg-primary-raised rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1"
-                title="Scan a goals screenshot">
-                <ScanLine size={14} /> Scan
-              </button>
-              <button onClick={() => { setEditGoal(null); setShowAddGoal(true); }}
-                className="bg-primary-raised rounded-full px-3 py-1.5 text-xs text-primary-foreground font-medium flex items-center gap-1">
-                <Plus size={14} /> New goal
-              </button>
-            </div>
-          </div>
-          <div className="bg-primary-raised rounded-xl p-4">
-            <p className="text-primary-subtle text-xs mb-1">Progress</p>
-            <p className="text-2xl font-heading text-primary-foreground mb-2">
-              {overallPct}% <span className="text-sm font-normal text-primary-subtle">of {mask(fmt(totalTarget))}</span>
-            </p>
-            <div className="h-3.5 bg-primary-raised rounded-full overflow-hidden">
-              <m.div initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} className="h-full rounded-full bg-primary-foreground" />
-            </div>
-          </div>
+    <div className={`${PAGE_X} pb-8 max-w-4xl mx-auto`}>
+      {/* Header: big title, round icon buttons */}
+      <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+20px)] md:pt-8 pb-4">
+        <h1 className="text-[1.75rem] leading-tight font-heading font-semibold tracking-tight">Goals</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          <IconButton onClick={() => setShowScan(true)} aria-label="Scan a goals screenshot" title="Scan a goals screenshot"><ScanLine size={19} /></IconButton>
+          <IconButton onClick={openAddGoal} aria-label="New goal"><Plus size={20} /></IconButton>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto">
-        <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wide mb-4">Active</h2>
-
-        {activeGoals.length === 0 ? (
-          <div className="text-center py-12 bg-card rounded-xl card-shadow">
-            <p className="text-muted-foreground text-sm">No active goals</p>
+      <div className="space-y-6">
+        {/* Hero: saved across every goal against their targets */}
+        <HeroCard>
+          <p className="text-sm font-medium opacity-80">Total saved</p>
+          <p className="mt-1 text-[2.4rem] leading-none font-medium tracking-tight tabular-nums">
+            {hidden ? '••••••' : <BigAmount text={fmt(totalSaved)} />}
+            <span className="text-base font-normal opacity-60"> / {mask(fmt(totalTarget))}</span>
+          </p>
+          <div className="mt-5 h-2 rounded-full bg-[hsl(258_30%_8%/0.12)] overflow-hidden"
+            role="progressbar" aria-label="Progress" aria-valuenow={overallPct} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-[hsl(258_30%_8%)] transition-all" style={{ width: `${Math.min(overallPct, 100)}%` }} />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeGoals.map(goal => {
-              const pct = goal.targetAmount ? Math.round((goal.savedAmount / goal.targetAmount) * 100) : 0;
-              const remaining = goal.targetAmount - goal.savedAmount;
-              const daysLeft = getDaysRemaining(goal.deadline);
-              const debt = isDebtGoal(goal);
-              // A paused goal asks for nothing until it's resumed.
-              const pace = goalPace(remaining, daysLeft, goal.status === 'paused');
-              const paceLabel = goalPaceLabel(pace, n => mask(fmt(n)));
-              return (
-                <div key={goal.id} className={`relative overflow-hidden bg-card rounded-xl p-4 card-shadow transition-shadow hover:card-shadow-hover group ${goal.status === 'paused' ? 'opacity-70' : ''}`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="text-sm font-semibold line-clamp-2 break-words">{goal.name}</p>
-                          {goal.status === 'paused' && (
-                            <span className="shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Paused</span>
-                          )}
+          <div className="grid grid-cols-[0.75fr_1.4fr_0.95fr] gap-2 mt-4">
+            <HeroChip label="Active" value={activeGoals.length} />
+            <HeroChip label="Left to go" value={mask(fmtCompact(Math.max(0, totalTarget - totalSaved)))} />
+            <HeroChip dark label="Progress" value={`${overallPct}%`} />
+          </div>
+        </HeroCard>
+
+        <div>
+          <SectionLabel label="Saving goals" count={activeGoals.length}
+            action={<SectionAction onClick={openAddGoal}>New goal</SectionAction>} />
+
+          {activeGoals.length === 0 ? (
+            <Tile className="text-center py-12">
+              <p className="text-muted-foreground text-sm">No active goals</p>
+            </Tile>
+          ) : (
+            <ListCard>
+              {activeGoals.map(goal => {
+                const pct = goal.targetAmount ? Math.round((goal.savedAmount / goal.targetAmount) * 100) : 0;
+                const remaining = goal.targetAmount - goal.savedAmount;
+                const daysLeft = getDaysRemaining(goal.deadline);
+                const debt = isDebtGoal(goal);
+                const paused = goal.status === 'paused';
+                // A paused goal asks for nothing until it's resumed.
+                const pace = goalPace(remaining, daysLeft, paused);
+                const paceLabel = goalPaceLabel(pace, n => mask(fmt(n)));
+                return (
+                  <div key={goal.id} className="py-4">
+                    <div className={`flex items-start gap-3 ${paused ? 'opacity-60' : ''}`}>
+                      <span className="w-11 h-11 rounded-full bg-muted flex items-center justify-center text-[20px] shrink-0"><AppIcon value={goal.icon} /></span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="text-[15px] font-medium truncate flex items-center gap-1.5 min-w-0">
+                            <span className="truncate">{goal.name}</span>
+                            {paused && <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Paused</span>}
+                          </p>
+                          <p className="text-[15px] font-medium tabular-nums text-primary shrink-0">{pct}%</p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
-                          <p className="text-xs text-muted-foreground">{goal.type}</p>
+                        <div className="flex items-center justify-between gap-2 mt-0.5 text-xs text-muted-foreground">
+                          <span className="truncate tabular-nums">
+                            {mask(fmt(goal.savedAmount))} of {mask(fmt(goal.targetAmount))}{debt ? ' paid off' : ''}
+                          </span>
                           {daysLeft !== null && (
-                        <span className={`flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
-                          daysLeft <= 7 ? 'bg-destructive-soft text-expense' : daysLeft <= 30 ? 'bg-warning-soft text-warning' : 'bg-accent text-accent-foreground'
-                        }`}>
-                          <CalendarClock size={10} />
-                          {goalDeadlineLabel(daysLeft)}
-                        </span>
+                            <span className={`shrink-0 flex items-center gap-1 ${daysLeft <= 7 ? 'text-expense' : daysLeft <= 30 ? 'text-warning' : ''}`}>
+                              <CalendarClock size={11} /> {goalDeadlineLabel(daysLeft)}
+                            </span>
                           )}
                         </div>
+                        <Meter value={pct} label={`${goal.name} progress`} className="mt-2 h-1" />
                       </div>
                     </div>
-                    <div className="flex items-center shrink-0 -mr-2">
-                      <button
-                        onClick={() => updateGoal({ ...goal, status: 'active' === goal.status ? 'paused' : 'active' })}
-                        aria-label={goal.status === 'paused' ? 'Resume goal' : 'Pause goal'}
-                        title={goal.status === 'paused' ? 'Resume' : 'Pause'}
-                        className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2">
-                        {goal.status === 'paused' ? <Play size={14} /> : <Pause size={14} />}
-                      </button>
-                      <button onClick={() => { setEditGoal(goal); setShowAddGoal(true); }} aria-label="Edit goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2"><Edit2 size={14} /></button>
-                      <button onClick={() => setDeleteGoalId(goal.id)} aria-label="Delete goal" className="md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2"><Trash2 size={14} /></button>
-                    </div>
-                  </div>
-                  {/* Prominent percentage */}
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-2xl font-heading text-primary">{pct}%</p>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{mask(fmt(goal.savedAmount))} {debt ? 'paid off' : 'saved'}</p>
-                      <p className="text-xs text-muted-foreground">of {mask(fmt(goal.targetAmount))}</p>
-                    </div>
-                  </div>
-                  <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
-                    <m.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      {remaining > 0 ? (
-                        <>
-                          <p className="text-xs text-muted-foreground">{mask(fmt(remaining))} remaining</p>
-                          {paceLabel && (
-                            <p className={`text-xs flex items-center gap-0.5 mt-0.5 ${pace?.kind === 'perMonth' ? 'text-primary' : 'text-warning'}`}>
-                              <TrendingUp size={10} /> {paceLabel}
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-xs font-semibold text-income flex items-center gap-1">
-                          <Trophy size={12} /> Reached
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {pct >= 100 ? (
-                        <button
-                          onClick={() => updateGoal({ ...goal, status: 'completed' })}
-                          className="px-3 py-1.5 rounded-lg bg-income-soft text-income text-xs font-semibold flex items-center gap-1 transition-transform">
-                          <CheckCircle2 size={12} /> Complete
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              const next = showLog === goal.id ? null : goal.id;
-                              setShowLog(next);
-                              if (next && !contributionLogs[next]) fetchContributions(next);
-                            }}
-                            className="px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium"
-                          >
-                            Log
-                          </button>
-                          <button onClick={() => { setProgressGoalId(goal.id); setProgressAmount(''); setProgressNote(''); setProgressMode('add'); }}
-                            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold transition-transform">Add</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {showLog === goal.id && (() => {
-                    const log = contributionLogs[goal.id] ?? [];
-                    const isShowingAll = showAllLog === goal.id;
-                    const visible = isShowingAll ? log : log.slice(0, 5);
-                    return (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">History</p>
-                        {log.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No contributions yet</p>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {visible.map((c, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs">
-                                <div>
-                                  <span className="font-medium text-income">+{mask(fmt(c.amount))}</span>
-                                  {c.note && <span className="text-muted-foreground ml-1.5">· {c.note}</span>}
-                                </div>
-                                <span className="text-muted-foreground">{format(parseISO(c.date), 'MMM d, yyyy')}</span>
-                              </div>
-                            ))}
-                            {log.length > 5 && (
-                              <button
-                                onClick={() => setShowAllLog(isShowingAll ? null : goal.id)}
-                                className="text-xs text-primary hover:underline mt-1"
-                              >
-                                {isShowingAll ? 'Show less' : `Show all ${log.length} entries`}
-                              </button>
+
+                    {/* What's left, and the row's actions */}
+                    <div className="flex items-center justify-between gap-2 mt-2.5 pl-14">
+                      <div className="min-w-0 text-[11px]">
+                        {remaining > 0 ? (
+                          <>
+                            <p className="text-muted-foreground truncate">{mask(fmt(remaining))} remaining · {goal.type}</p>
+                            {paceLabel && (
+                              <p className={`flex items-center gap-1 mt-0.5 ${pace?.kind === 'perMonth' ? 'text-primary' : 'text-warning'}`}>
+                                <TrendingUp size={10} className="shrink-0" /> {paceLabel}
+                              </p>
                             )}
-                          </div>
+                          </>
+                        ) : (
+                          <p className="font-medium text-income flex items-center gap-1"><Trophy size={12} /> Reached</p>
                         )}
                       </div>
-                    );
-                  })()}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {pct >= 100 ? (
+                          <button onClick={() => updateGoal({ ...goal, status: 'completed' })}
+                            className="h-8 px-3.5 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1">
+                            <CheckCircle2 size={12} /> Complete
+                          </button>
+                        ) : (
+                          <button onClick={() => openProgress(goal.id)}
+                            className="h-8 px-4 rounded-full bg-primary text-primary-foreground text-xs font-medium">Add</button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button type="button" aria-label={`${goal.name} actions`} className="tap-area p-1.5 rounded-full text-muted-foreground hover:text-foreground">
+                              <MoreHorizontal size={16} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onSelect={() => updateGoal({ ...goal, status: 'active' === goal.status ? 'paused' : 'active' })}
+                              aria-label={paused ? 'Resume goal' : 'Pause goal'}>
+                              {paused ? <Play size={14} className="mr-2" /> : <Pause size={14} className="mr-2" />} {paused ? 'Resume' : 'Pause'}
+                            </DropdownMenuItem>
+                            {pct < 100 && (
+                              <DropdownMenuItem onSelect={() => toggleLog(goal.id)}>
+                                <History size={14} className="mr-2" /> {showLog === goal.id ? 'Hide log' : 'Log'}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onSelect={() => { setEditGoal(goal); setShowAddGoal(true); }} aria-label="Edit goal">
+                              <Pencil size={14} className="mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setDeleteGoalId(goal.id)} aria-label="Delete goal" className="text-destructive focus:text-destructive">
+                              <Trash2 size={14} className="mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    {showLog === goal.id && (() => {
+                      const log = contributionLogs[goal.id] ?? [];
+                      const isShowingAll = showAllLog === goal.id;
+                      const visible = isShowingAll ? log : log.slice(0, 5);
+                      return (
+                        <div className="mt-3 ml-14 rounded-2xl bg-muted/60 px-3 py-2.5">
+                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.16em] mb-2">History</p>
+                          {log.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">No contributions yet</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {visible.map((c, i) => (
+                                <div key={i} className="flex items-center justify-between text-xs">
+                                  <div className="min-w-0 truncate">
+                                    <span className="font-medium text-income tabular-nums">+{mask(fmt(c.amount))}</span>
+                                    {c.note && <span className="text-muted-foreground ml-1.5">· {c.note}</span>}
+                                  </div>
+                                  <span className="text-muted-foreground shrink-0 ml-2">{format(parseISO(c.date), 'MMM d, yyyy')}</span>
+                                </div>
+                              ))}
+                              {log.length > 5 && (
+                                <button onClick={() => setShowAllLog(isShowingAll ? null : goal.id)} className="text-xs text-primary mt-1">
+                                  {isShowingAll ? 'Show less' : `Show all ${log.length} entries`}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })}
+            </ListCard>
+          )}
+        </div>
 
         {completedGoals.length > 0 && (
-          <div className="mt-6">
-            <button
-              onClick={() => setShowCompleted(v => !v)}
-              className="flex items-center gap-2 text-sm font-heading text-muted-foreground uppercase tracking-wide mb-4 hover:text-foreground transition-colors"
-            >
-              <CheckCircle2 size={14} className="text-income" />
-              Completed · {completedGoals.length}
-              <ChevronDown size={14} className={`transition-transform ${showCompleted ? 'rotate-180' : ''}`} />
-            </button>
+          <div>
+            <div className="flex items-center justify-between mb-3 px-1">
+              <button onClick={() => setShowCompleted(v => !v)} aria-expanded={showCompleted}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-[0.16em] hover:text-foreground transition-colors">
+                Completed · <span className="text-foreground">{completedGoals.length}</span>
+                <ChevronDown size={14} className={`transition-transform ${showCompleted ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
             {showCompleted && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ListCard>
                 {completedGoals.map(goal => (
-                  <div key={goal.id} className="bg-card rounded-xl p-4 card-shadow opacity-70 flex items-center gap-4">
-                    <span className="w-12 h-12 rounded-xl bg-income-soft flex items-center justify-center text-2xl shrink-0"><AppIcon value={goal.icon} /></span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{goal.name}</p>
-                      <p className="text-xs text-income font-medium">{mask(fmt(goal.savedAmount))} {isDebtGoal(goal) ? 'paid off' : 'saved'}</p>
-                    </div>
-                    <CheckCircle2 size={18} className="text-income shrink-0" />
-                  </div>
+                  <ListRow key={goal.id}
+                    icon={<span className="text-[20px]"><AppIcon value={goal.icon} /></span>}
+                    title={goal.name}
+                    sub={<span className="text-income">{mask(fmt(goal.savedAmount))} {isDebtGoal(goal) ? 'paid off' : 'saved'}</span>}
+                    trailing={<CheckCircle2 size={18} className="text-income shrink-0" />} />
                 ))}
-              </div>
+              </ListCard>
             )}
           </div>
         )}

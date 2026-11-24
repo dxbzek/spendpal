@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { CreditCard, TrendingDown, AlertCircle, CalendarClock, ChevronDown, ChevronUp } from 'lucide-react';
+import { CreditCard, AlertCircle, CalendarClock, ChevronDown, ChevronUp } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
 import { format, addMonths, getDate, getDaysInMonth } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -14,11 +14,12 @@ import { openPlansByAccount, planPrincipalLeft, splitOwedByPlans } from '@/lib/f
 import { planDisplayName, planSchedule, remainingInstallments } from '@/lib/finance/installments';
 import { creditTotals, creditUtilization } from '@/lib/finance/credit';
 import AppIcon from '@/components/AppIcon';
+import { BigAmount, Meter, SectionLabel } from '@/components/orbix';
 
 const Debt = () => {
   const { accounts, transactions, loading } = useFinance();
   const { fmt } = useCurrency();
-  const { mask } = useBalanceMask();
+  const { hidden, mask } = useBalanceMask();
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aprs, setAprs] = useState<Record<string, number>>({});
@@ -95,12 +96,6 @@ const Debt = () => {
   const isAprAssumed = (id: string, accountApr?: number) => aprs[id] == null && accountApr == null;
   const getPayment = (id: string, minPay: number | null) => payments[id] ?? minPay;
 
-  const utilizationColor = (pct: number) => {
-    if (pct >= 75) return 'text-expense bg-destructive-soft';
-    if (pct >= 30) return 'text-warning bg-warning-soft';
-    return 'text-income bg-income-soft';
-  };
-
   const utilizationBarColor = (pct: number) => {
     if (pct >= 75) return 'bg-expense';
     if (pct >= 30) return 'bg-warning';
@@ -165,68 +160,78 @@ const Debt = () => {
 
   if (loading) return <PageSpinner />;
 
+  // Sum of the statement minimums that are entered; none entered means none to show.
+  const minDues = creditDebts.filter(d => d.statementMinDue != null);
+  const minDueTotal = minDues.reduce((s, d) => s + (d.statementMinDue ?? 0), 0);
+
   return (
-    <div>
-      {/* Header */}
-      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl md:rounded-b-none">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-heading text-primary-foreground mb-4">Debt</h1>
-          {creditDebts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Total Owed</p>
-                <p className="text-base sm:text-lg font-heading text-primary-foreground tabular-nums break-words">{mask(fmt(totalOwed))}</p>
-              </div>
-              <div className="min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Credit Limit</p>
-                <p className="text-base sm:text-lg font-heading text-primary-foreground tabular-nums break-words">{mask(fmt(totalLimit))}</p>
-              </div>
-              <div className="col-span-2 sm:col-span-1 min-w-0 bg-primary-raised border border-primary-edge rounded-xl p-3">
-                <p className="text-primary-subtle text-[11px] sm:text-xs uppercase tracking-wide mb-1">Utilization</p>
-                <div className="flex items-baseline gap-1.5">
-                  <p className="text-base sm:text-lg font-heading text-primary-foreground">{overallUtil}%</p>
-                  {worstUtil >= 30 && (
-                    <span className="text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-raised text-primary-foreground shrink-0">
-                      {worstUtil >= 75 ? 'High' : 'Watch'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-primary-raised rounded-xl p-4 text-center">
-              <p className="text-primary-subtle text-sm">No credit card debt</p>
-            </div>
-          )}
-        </div>
+    <div className="max-w-4xl mx-auto px-4 md:px-8 pb-8">
+      {/* Header: big title, Orbix style */}
+      <div className="pt-[calc(env(safe-area-inset-top,0px)+20px)] md:pt-8 pb-4">
+        <h1 className="text-[1.75rem] leading-tight font-heading font-semibold tracking-tight">Debt</h1>
       </div>
 
-      <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto space-y-4">
-
-        {/* Utilization health (cards with a limit only) */}
-        {limited.length > 0 && (
-          <div className={`flex items-start gap-3 p-3 rounded-xl text-xs ${worstUtil >= 30 ? 'bg-warning-soft border border-warning-line' : 'bg-income-soft border border-income-line'}`}>
-            <AlertCircle size={14} className={worstUtil >= 30 ? 'text-warning mt-0.5' : 'text-income mt-0.5'} />
-            <div>
-              {worstUtil >= 75
-                ? <p className="font-semibold text-expense">{worstCard?.name} at {worstUtil.toFixed(0)}%. Aim under 30%.</p>
-                : worstUtil >= 30
-                ? <p className="font-semibold text-warning">{worstCard?.name} at {worstUtil.toFixed(0)}%. Aim under 30%.</p>
-                : <p className="font-semibold text-income">Every card under 30%</p>}
+      {/* Hero: total owed, then limit, utilization, minimums */}
+      <div className="bg-hero rounded-[28px] p-5">
+        <div>
+          <p className="text-sm opacity-70">Total owed</p>
+          <p className="mt-1 text-[2.5rem] leading-none font-medium tracking-tight tabular-nums">
+            {hidden ? mask(fmt(totalOwed)) : <BigAmount text={fmt(totalOwed)} />}
+          </p>
+        </div>
+        {creditDebts.length > 0 ? (
+          <>
+            {/* The limit is the longest figure, so its chip gets more room. */}
+            <div className="grid grid-cols-[1.4fr_0.85fr_1.15fr] gap-2 mt-5">
+              <div className="hero-chip rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70 truncate">Credit limit</p>
+                <p className="text-base font-semibold tabular-nums truncate">{mask(fmt(totalLimit))}</p>
+              </div>
+              <div className="hero-chip-dark rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70 truncate">Utilization</p>
+                <p className="text-base font-semibold tabular-nums truncate">{overallUtil}%</p>
+              </div>
+              <div className="hero-chip rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70 truncate">Min due</p>
+                <p className="text-base font-semibold tabular-nums truncate">{minDues.length > 0 ? mask(fmt(minDueTotal)) : '—'}</p>
+              </div>
             </div>
-          </div>
+            {/* Utilization health (cards with a limit only), as a quiet pill */}
+            {limited.length > 0 && (
+              <div className="hero-chip rounded-2xl px-3 py-2.5 mt-2 flex items-center gap-2 text-xs">
+                <AlertCircle size={14} className="shrink-0 opacity-70" />
+                <span className="min-w-0 flex-1">
+                  {worstUtil >= 30
+                    ? <>{worstCard?.name} at {worstUtil.toFixed(0)}%. Aim under 30%.</>
+                    : <>Every card under 30%</>}
+                </span>
+                {worstUtil >= 30 && (
+                  <span className="hero-chip-dark text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0">
+                    {worstUtil >= 75 ? 'High' : 'Watch'}
+                  </span>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm opacity-70 mt-3">No credit card debt</p>
         )}
+      </div>
 
+      <div className="mt-6 space-y-6">
         {/* Debt cards */}
         {creditDebts.length === 0 ? (
-          <div className="bg-card rounded-xl p-8 card-shadow text-center">
-            <div className="w-16 h-16 rounded-xl bg-accent flex items-center justify-center mx-auto mb-4">
-              <CreditCard size={28} className="text-muted-foreground" />
-            </div>
-            <h3 className="font-heading text-base">No active debt</h3>
+          <div className="bg-card rounded-3xl p-8 text-center">
+            <span className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+              <CreditCard size={24} className="text-muted-foreground" />
+            </span>
+            <h3 className="font-heading font-medium text-base">No active debt</h3>
           </div>
         ) : (
           <>
+            <div>
+              <SectionLabel label="Cards" count={creditDebts.length} />
+              <div className="space-y-3">
             {creditDebts.map(debt => {
               const apr = getApr(debt.id, debt.apr);
               const minPay = getMinPay(debt);
@@ -245,63 +250,61 @@ const Debt = () => {
               const isDueToday = dueDaysLeft !== null && dueDaysLeft === 0;
 
               return (
-                <div key={debt.id} className="bg-card rounded-xl card-shadow overflow-hidden">
+                <div key={debt.id} className="bg-card rounded-3xl overflow-hidden">
                   <button
-                    className="w-full p-4 text-left hover:bg-muted transition-colors"
+                    className="w-full p-4 text-left"
                     onClick={() => setExpanded(isExpanded ? null : debt.id)}
+                    aria-expanded={isExpanded}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-xl"><AppIcon value={debt.icon} /></span>
-                        <div>
-                          <p className="text-sm font-semibold">{debt.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {debt.utilization != null
-                              ? <>{mask(fmt(debt.owed))} of {mask(fmt(debt.creditLimit || 0))}</>
-                              : <>{mask(fmt(debt.owed))} owed</>}
-                          </p>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <span className="w-11 h-11 shrink-0 rounded-full bg-muted flex items-center justify-center text-[18px]"><AppIcon value={debt.icon} /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[15px] font-medium truncate">{debt.name}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {debt.utilization != null
+                            ? <>{mask(fmt(debt.owed))} of {mask(fmt(debt.creditLimit || 0))}</>
+                            : <>{mask(fmt(debt.owed))} owed</>}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="text-right shrink-0">
+                        <p className="text-[15px] font-medium tabular-nums tracking-tight text-expense">
+                          {hidden ? mask(fmt(debt.owed)) : <BigAmount text={fmt(debt.owed)} />}
+                        </p>
                         {debt.utilization != null && (
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${utilizationColor(debt.utilization)}`}>
+                          <p className={`text-xs font-medium mt-0.5 ${debt.utilization >= 75 ? 'text-expense' : debt.utilization >= 30 ? 'text-warning' : 'text-primary'}`}>
                             {debt.utilization.toFixed(0)}%
-                          </span>
+                          </p>
                         )}
-                        {isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
                       </div>
+                      {isExpanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
                     </div>
 
                     {/* Utilization bar (only with a limit to measure against) */}
                     {debt.utilization != null && (
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${Math.min(debt.utilization, 100)}%` }}
-                          className={`h-full rounded-full transition-all ${utilizationBarColor(debt.utilization)}`}
-                        />
-                      </div>
+                      <Meter
+                        value={Math.min(debt.utilization, 100)}
+                        className="mt-3.5 h-1"
+                        barClassName={utilizationBarColor(debt.utilization)}
+                        label={`${debt.name} utilization`}
+                      />
                     )}
 
-                    {/* Quick stats row */}
-                    <div className="flex items-center justify-between mt-2 text-xs gap-2 flex-wrap">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <TrendingDown size={11} />
-                        {debt.statementMinDue != null ? <>Min: {mask(fmt(debt.statementMinDue))}/mo</> : 'No minimum'}
+                    {/* Quick stats line */}
+                    <div className="flex items-center mt-2.5 text-xs gap-x-3 gap-y-1 flex-wrap text-muted-foreground">
+                      <span>
+                        {debt.statementMinDue != null ? <>Min {mask(fmt(debt.statementMinDue))}/mo</> : 'No minimum'}
                       </span>
                       {payoffDate && (
-                        <span className="text-muted-foreground flex items-center gap-1">
+                        <span className="flex items-center gap-1">
                           <CalendarClock size={11} />
                           {months} mo · {format(payoffDate, 'MMM yyyy')}
                         </span>
                       )}
-                      {/* Due date badge */}
+                      {/* Due date */}
                       {debt.dueDate && (
-                        <span className={`flex items-center gap-1 font-medium px-2 py-0.5 rounded-full ${
-                          isDueToday ? 'bg-destructive-soft text-expense' :
-                          isDueSoon ? 'bg-warning-soft text-warning' :
-                          'bg-muted text-muted-foreground'
+                        <span className={`ml-auto font-medium ${
+                          isDueToday ? 'text-expense' : isDueSoon ? 'text-warning' : ''
                         }`}>
-                          <CalendarClock size={10} />
                           {isDueToday ? 'Due today' : isDueSoon ? `Due in ${dueDaysLeft}d` : `Due day ${debt.dueDate}`}
                         </span>
                       )}
@@ -310,12 +313,12 @@ const Debt = () => {
 
                   {/* Instalment plans billed to this card: fixed lines, not part of the payoff maths */}
                   {debt.plans.length > 0 && (
-                    <div className="px-4 pb-3 text-xs">
+                    <div className="mx-4 mb-4 pt-3 border-t border-border text-xs">
                       <div className="flex items-center justify-between gap-2 text-muted-foreground">
                         <span>In plans</span>
                         <span className="font-medium text-foreground tabular-nums">{mask(fmt(debt.inPlans))}</span>
                       </div>
-                      <ul className="mt-1 space-y-1">
+                      <ul className="mt-2 space-y-2">
                         {debt.plans.map(plan => {
                           const left = remainingInstallments(plan);
                           const endsOn = planSchedule(plan, debt, new Date())?.endsOn;
@@ -324,18 +327,18 @@ const Debt = () => {
                               {/* Two lines, not one truncated line: on a phone the
                                   instalment count and end date were cut off. */}
                               <span className="min-w-0">
-                                <span className="block text-foreground break-words">{planDisplayName(plan.merchant)}</span>
+                                <span className="block text-sm text-foreground break-words">{planDisplayName(plan.merchant)}</span>
                                 <span className="block text-xs">
                                   {left} × {mask(fmt(plan.amountPerInstallment))}
                                   {endsOn ? ` · ends ${format(endsOn, 'MMM yyyy')}` : ''}
                                 </span>
                               </span>
-                              <span className="tabular-nums shrink-0">{mask(fmt(planPrincipalLeft(plan)))}</span>
+                              <span className="text-sm tabular-nums shrink-0 text-foreground">{mask(fmt(planPrincipalLeft(plan)))}</span>
                             </li>
                           );
                         })}
                       </ul>
-                      <div className="flex items-center justify-between gap-2 text-muted-foreground mt-1.5 pt-1.5 border-t border-border">
+                      <div className="flex items-center justify-between gap-2 text-muted-foreground mt-2 pt-2 border-t border-border">
                         <span>Rest, at card rate</span>
                         <span className="font-medium text-foreground tabular-nums">{mask(fmt(debt.revolving))}</span>
                       </div>
@@ -352,8 +355,8 @@ const Debt = () => {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-4 pb-4 pt-0 border-t border-border">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 mt-3">Payoff calculator</p>
+                        <div className="mx-4 pb-4 border-t border-border">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-[0.16em] mb-3 mt-3">Payoff calculator</p>
                           {!hasRevolving ? (
                             <p className="text-xs text-muted-foreground text-center">
                               All of this is in instalment plans.
@@ -378,7 +381,7 @@ const Debt = () => {
                                 placeholder="Amount"
                                 onChange={e => setNumber(`pay:${debt.id}`, e.target.value, setPayments, debt.id)}
                                 onBlur={() => clearDraft(`pay:${debt.id}`)}
-                                className="h-9 text-sm"
+                                className="h-10 text-sm rounded-xl"
                               />
                             </div>
                             <div>
@@ -391,7 +394,7 @@ const Debt = () => {
                                 value={draft[`apr:${debt.id}`] ?? apr}
                                 onChange={e => setNumber(`apr:${debt.id}`, e.target.value, setAprs, debt.id)}
                                 onBlur={() => clearDraft(`apr:${debt.id}`)}
-                                className="h-9 text-sm"
+                                className="h-10 text-sm rounded-xl"
                               />
                               {isAprAssumed(debt.id, debt.apr) && (
                                 <p className="text-[11px] text-muted-foreground mt-1">{DEFAULT_APR}% assumed</p>
@@ -400,26 +403,26 @@ const Debt = () => {
                           </div>
 
                           {months < Infinity ? (
-                            <div className="grid grid-cols-3 gap-3 text-center">
-                              <div className="bg-accent rounded-xl p-3">
-                                <p className="text-xs text-muted-foreground mb-0.5">Payoff in</p>
-                                <p className="text-sm font-heading">{months} mo</p>
+                            <div className="grid grid-cols-3 divide-x divide-border rounded-2xl bg-muted/50 py-3">
+                              <div className="px-3">
+                                <p className="text-[11px] text-muted-foreground mb-0.5">Payoff in</p>
+                                <p className="text-sm font-medium tabular-nums">{months} mo</p>
                                 <p className="text-[11px] text-muted-foreground">{payoffDate ? format(payoffDate, 'MMM yyyy') : ''}</p>
                               </div>
-                              <div className="bg-accent rounded-xl p-3">
-                                <p className="text-xs text-muted-foreground mb-0.5">Total paid</p>
-                                <p className="text-sm font-heading">{mask(fmt(totalCost))}</p>
+                              <div className="px-3">
+                                <p className="text-[11px] text-muted-foreground mb-0.5">Total paid</p>
+                                <p className="text-sm font-medium tabular-nums">{mask(fmt(totalCost))}</p>
                               </div>
-                              <div className="bg-destructive-soft rounded-xl p-3">
-                                <p className="text-xs text-muted-foreground mb-0.5">Interest</p>
-                                <p className="text-sm font-heading text-expense">{mask(fmt(interest))}</p>
+                              <div className="px-3">
+                                <p className="text-[11px] text-muted-foreground mb-0.5">Interest</p>
+                                <p className="text-sm font-medium tabular-nums text-expense">{mask(fmt(interest))}</p>
                               </div>
                             </div>
                           ) : !payment ? (
                             <p className="text-xs text-muted-foreground text-center">Enter a payment to see the payoff date.</p>
                           ) : (
-                            <div className="bg-destructive-soft rounded-xl p-3 text-center">
-                              <p className="text-xs text-expense font-semibold">Too low to cover interest</p>
+                            <div className="rounded-2xl bg-muted/50 p-3 text-center">
+                              <p className="text-xs text-expense font-medium">Too low to cover interest</p>
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 Needs over {mask(fmt(Math.ceil((debt.revolving * apr) / 100 / 12 * 100) / 100))}/mo
                               </p>
@@ -433,132 +436,135 @@ const Debt = () => {
                 </div>
               );
             })}
+              </div>
+            </div>
 
             {/* Multi-card Payoff Optimizer */}
             {strategyDebts.length > 1 && (
-              <div className="bg-card rounded-xl card-shadow border border-border p-4 space-y-4">
-                <div>
-                  <p className="text-sm font-heading">Payoff plan</p>
-                </div>
-
-                <div>
-                  <label htmlFor="payoff-budget" className="text-xs text-muted-foreground mb-1 block">
-                    Monthly payment, {strategyDebts.length} cards
-                  </label>
-                  <Input
-                    id="payoff-budget"
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="100"
-                    value={monthlyBudget}
-                    onChange={e => setBudgetInput(parseFloat(e.target.value) || 0)}
-                    className="h-10 text-base md:text-sm tabular-nums"
-                  />
-                  {planMonthlyTotal > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Plans are separate. They take {mask(fmt(planMonthlyTotal))} a month until they end.
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex gap-1 p-1 bg-muted rounded-lg" role="tablist">
-                  {(['avalanche', 'snowball'] as const).map(tab => (
-                    <button
-                      key={tab}
-                      role="tab"
-                      aria-selected={strategyTab === tab}
-                      onClick={() => setStrategyTab(tab)}
-                      className={`flex-1 py-2 rounded-md text-xs font-medium transition-colors ${
-                        strategyTab === tab ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {tab === 'avalanche' ? 'Least interest' : 'Smallest first'}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground -mt-2">
-                  {strategyTab === 'avalanche'
-                    ? 'Highest rate first. Minimums on the rest.'
-                    : 'Smallest balance first. Minimums on the rest.'}
-                </p>
-
-                {activeResult?.hitCap ? (
-                  <div className="rounded-lg border border-destructive-line bg-destructive-soft p-3">
-                    <p className="text-sm font-medium text-expense">
-                      {mask(fmt(monthlyBudget))} a month won't cover the interest
-                    </p>
-                    <button onClick={() => setBudgetInput(minimumBudget)} className="mt-2 text-xs font-medium text-primary">
-                      Use {mask(fmt(minimumBudget))}
-                    </button>
+              <div>
+                <SectionLabel label="Payoff plan" />
+                <div className="bg-card rounded-3xl p-4 space-y-4">
+                  <div>
+                    <label htmlFor="payoff-budget" className="text-xs text-muted-foreground mb-1 block">
+                      Monthly payment, {strategyDebts.length} cards
+                    </label>
+                    <Input
+                      id="payoff-budget"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="100"
+                      value={monthlyBudget}
+                      onChange={e => setBudgetInput(parseFloat(e.target.value) || 0)}
+                      className="h-11 text-base md:text-sm tabular-nums rounded-xl"
+                    />
+                    {planMonthlyTotal > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Plans are separate. They take {mask(fmt(planMonthlyTotal))} a month until they end.
+                      </p>
+                    )}
                   </div>
-                ) : activeResult && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-muted p-3">
-                      <p className="text-xs text-muted-foreground">Debt-free by</p>
-                      <p className="text-sm font-semibold">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
-                      <p className="text-xs text-muted-foreground">{activeResult.months} months</p>
-                    </div>
-                    <div className="rounded-lg bg-muted p-3">
-                      <p className="text-xs text-muted-foreground">Interest</p>
-                      <p className="text-sm font-semibold font-mono">{mask(fmt(activeResult.totalInterest))}</p>
-                      {otherResult && !otherResult.hitCap && otherResult.totalInterest !== activeResult.totalInterest && (
-                        <p className="text-xs text-muted-foreground">
-                          {otherResult.totalInterest > activeResult.totalInterest
-                            ? `${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} less than other order`
-                            : `${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} more than other order`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
 
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">This month</p>
-                  <ol className="divide-y divide-border rounded-lg border border-border">
-                    {activeOrder.map((d, i) => (
-                      <li key={d.id} className="flex items-center gap-3 p-3">
-                        <span className={`w-5 text-xs font-semibold tabular-nums ${i === 0 ? 'text-primary' : 'text-muted-foreground'}`}>{i + 1}</span>
-                        <AppIcon value={d.icon} className="text-base text-muted-foreground" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{d.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {mask(fmt(d.owed))} {d.hasPlans ? 'not in a plan' : 'owed'} · {d.apr}% APR{d.aprAssumed ? ' (assumed)' : ''}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-semibold font-mono">{mask(fmt(thisMonth[d.id] ?? 0))}</p>
-                          <p className="text-xs text-muted-foreground">{i === 0 ? 'Focus card' : 'Minimum'}</p>
-                        </div>
-                      </li>
+                  <div className="bg-muted rounded-full p-1 grid grid-cols-2 gap-1" role="tablist" aria-label="Payoff order">
+                    {(['avalanche', 'snowball'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        role="tab"
+                        aria-selected={strategyTab === tab}
+                        onClick={() => setStrategyTab(tab)}
+                        className={`h-9 rounded-full text-sm font-medium transition-colors ${
+                          strategyTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {tab === 'avalanche' ? 'Least interest' : 'Smallest first'}
+                      </button>
                     ))}
-                  </ol>
-                  {strategyDebts.some(d => !d.minPay) && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Cards with no minimum use 2% of the balance.
-                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground -mt-2 px-1">
+                    {strategyTab === 'avalanche'
+                      ? 'Highest rate first. Minimums on the rest.'
+                      : 'Smallest balance first. Minimums on the rest.'}
+                  </p>
+
+                  {activeResult?.hitCap ? (
+                    <div className="rounded-2xl bg-muted/50 p-3">
+                      <p className="text-sm font-medium text-expense">
+                        {mask(fmt(monthlyBudget))} a month won't cover the interest
+                      </p>
+                      <button onClick={() => setBudgetInput(minimumBudget)} className="mt-2 text-xs font-medium text-primary">
+                        Use {mask(fmt(minimumBudget))}
+                      </button>
+                    </div>
+                  ) : activeResult && (
+                    <div className="grid grid-cols-2 divide-x divide-border rounded-2xl bg-muted/50 py-3">
+                      <div className="px-3">
+                        <p className="text-[11px] text-muted-foreground">Debt-free by</p>
+                        <p className="text-base font-medium">{format(addMonths(new Date(), activeResult.months), 'MMM yyyy')}</p>
+                        <p className="text-xs text-muted-foreground">{activeResult.months} months</p>
+                      </div>
+                      <div className="px-3">
+                        <p className="text-[11px] text-muted-foreground">Interest</p>
+                        <p className="text-base font-medium tabular-nums text-expense">{mask(fmt(activeResult.totalInterest))}</p>
+                        {otherResult && !otherResult.hitCap && otherResult.totalInterest !== activeResult.totalInterest && (
+                          <p className="text-xs text-muted-foreground">
+                            {otherResult.totalInterest > activeResult.totalInterest
+                              ? `${mask(fmt(otherResult.totalInterest - activeResult.totalInterest))} less than other order`
+                              : `${mask(fmt(activeResult.totalInterest - otherResult.totalInterest))} more than other order`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   )}
-                  {strategyDebts.some(d => d.aprAssumed) && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Cards with no APR set use {DEFAULT_APR}%.
-                    </p>
-                  )}
+
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-[0.16em] mb-1 px-1">This month</p>
+                    <ol className="divide-y divide-border">
+                      {activeOrder.map((d, i) => (
+                        <li key={d.id} className="flex items-center gap-3 py-3">
+                          <span className={`relative w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-base ${i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}>
+                            <AppIcon value={d.icon} />
+                            <span className="sr-only">{i + 1}</span>
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{d.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {mask(fmt(d.owed))} {d.hasPlans ? 'not in a plan' : 'owed'} · {d.apr}% APR{d.aprAssumed ? ' (assumed)' : ''}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-medium tabular-nums">{mask(fmt(thisMonth[d.id] ?? 0))}</p>
+                            <p className={`text-xs ${i === 0 ? 'text-primary' : 'text-muted-foreground'}`}>{i === 0 ? 'Focus card' : 'Minimum'}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                    {strategyDebts.some(d => !d.minPay) && (
+                      <p className="text-xs text-muted-foreground mt-2 px-1">
+                        Cards with no minimum use 2% of the balance.
+                      </p>
+                    )}
+                    {strategyDebts.some(d => d.aprAssumed) && (
+                      <p className="text-xs text-muted-foreground mt-2 px-1">
+                        Cards with no APR set use {DEFAULT_APR}%.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Single card strategy tip */}
             {strategyDebts.length === 1 && (
-              <div className="bg-card rounded-xl p-4 card-shadow border border-dashed border-primary-line">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payoff strategies</p>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-accent rounded-xl p-3">
-                    <p className="font-semibold mb-1">Debt snowball</p>
-                    <p className="text-muted-foreground">Smallest balance first.</p>
+              <div>
+                <SectionLabel label="Payoff strategies" />
+                <div className="bg-card rounded-3xl px-4 divide-y divide-border text-sm">
+                  <div className="py-3.5">
+                    <p className="font-medium">Debt snowball</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Smallest balance first.</p>
                   </div>
-                  <div className="bg-accent rounded-xl p-3">
-                    <p className="font-semibold mb-1">Debt avalanche</p>
-                    <p className="text-muted-foreground">Highest APR first. Least interest.</p>
+                  <div className="py-3.5">
+                    <p className="font-medium">Debt avalanche</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Highest APR first. Least interest.</p>
                   </div>
                 </div>
               </div>
