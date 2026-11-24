@@ -138,7 +138,7 @@ try {
       await context.addInitScript(([key, s, t]) => {
         localStorage.setItem(key, s);
         localStorage.setItem('theme', t);
-        localStorage.setItem('theme-user-set', '1');
+        localStorage.setItem('theme-user-set-v3', '1');
       }, [`sb-${REF}-auth-token`, JSON.stringify(session), theme]);
       const page = await context.newPage();
       page.on('pageerror', err => console.error(`  page error: ${err.stack || err.message}`));

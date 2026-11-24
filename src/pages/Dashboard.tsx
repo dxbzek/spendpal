@@ -42,6 +42,7 @@ import {
   OPEN_ADD_STATE, checklistSteps, needsCurrencyStep, showChecklist, type ChecklistStepId,
 } from '@/lib/onboarding';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useAuth } from '@/context/AuthContext';
 import { userSettings } from '@/lib/userSettings';
 import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
@@ -77,8 +78,15 @@ import { IconTile } from '@/components/AppIcon';
 // Hoisted out of the component so it's a stable type — defining it inline in
 // render made React remount every card (and re-run their effects) each render.
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-card rounded-xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
+  <div className={`bg-card rounded-3xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
 );
+
+// Orbix style: the cents sit smaller and dimmer than the whole amount.
+const BigAmount = ({ text }: { text: string }) => {
+  const m2 = text.match(/^(.*\d)([.,]\d{2})(\D*)$/);
+  if (!m2) return <>{text}</>;
+  return <>{m2[1]}<span className="text-[0.5em] opacity-60 align-baseline">{m2[2]}</span>{m2[3]}</>;
+};
 
 const Dashboard = () => {
   const { accounts, transactions, budgets, goals, removeAccount, loading: dataLoading } = useFinance();
@@ -159,6 +167,13 @@ const Dashboard = () => {
     return [inc, spending];
   }, [transactions, today, creditAccountIds]);
   const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
+  const { user } = useAuth();
+  const name = (user?.user_metadata?.display_name as string | undefined)?.split(' ')[0] ?? null;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const monthShort = format(parseISO(today), 'MMM');
+  // Chips are a third of the card: drop the decimals there.
+  const fmtCompact = (n: number) => fmt(Math.round(n)).replace(/[.,]00(?=\D*$)/, '');
   // Note: the financial-health score now lives solely on the AI Advisor page,
   // where it is actually computed — per the SpendPal design handoff.
 
@@ -210,10 +225,9 @@ const Dashboard = () => {
   if (dataLoading) {
     return (
       <div>
-        <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl">
-          <Skeleton className="h-6 w-40 bg-primary-raised mb-4" />
-          <Skeleton className="h-10 w-48 bg-primary-raised mb-2" />
-          <Skeleton className="h-4 w-28 bg-primary-raised" />
+        <div className="px-4 md:px-8 pt-16 pb-4">
+          <Skeleton className="h-10 w-40 mb-4 rounded-full" />
+          <Skeleton className="h-52 w-full rounded-[28px]" />
         </div>
         <div className="px-5 md:px-8 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -296,57 +310,78 @@ const Dashboard = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div className={`bg-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-2xl' : 'pt-8 pb-6'}`}>
-        <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
-          <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-4'}`}>
-            <div className="flex items-center gap-4 min-w-0">
-              <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
+      {/* Header: Orbix look (2026-11-24). Greeting row, then a gradient
+          card with the balance and this month's in / out / saved. */}
+      <div className={`px-4 md:px-8 ${isMobile ? 'pt-[calc(env(safe-area-inset-top,0px)+20px)]' : 'pt-8'}`}>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <img src={logo} alt="" className="w-10 h-10 rounded-full object-contain bg-card p-1 shrink-0" />
               <div className="min-w-0">
-                <h1 className="text-base font-heading font-bold text-primary-foreground leading-tight">{PAGE_NAMES['/']}</h1>
+                <p className="text-xs text-muted-foreground leading-tight">{greeting}</p>
+                <h1 className="sr-only">{PAGE_NAMES['/']}</h1>
+                <p aria-hidden="true" className="text-lg font-heading font-semibold text-foreground leading-tight truncate">{name ?? PAGE_NAMES['/']}</p>
               </div>
             </div>
-            <button onClick={toggleHidden} className="text-primary-subtle p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
-              {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
+            <button onClick={toggleHidden} className="w-11 h-11 rounded-full bg-card flex items-center justify-center text-foreground" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
+              {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
 
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-primary-subtle text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
-              <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
-              {sec(totalBalance) && <p className="text-sm text-primary-subtle mt-0.5">≈ {sec(totalBalance)}</p>}
-              {spendable.holds > 0 && (
-                <p className="text-xs text-primary-subtle mt-0.5">After {mask(fmt(spendable.holds))} in pending holds</p>
+          <div className="bg-hero rounded-[28px] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium opacity-80">Spendable cash</p>
+              {/* Secondary currency — chosen in Settings; switchable here once set */}
+              {secondaryCurrency && (
+              <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+                <SelectTrigger className="h-7 shrink-0 w-auto min-w-[72px] max-w-[110px] hero-chip border-0 text-[hsl(258_30%_8%)] text-xs rounded-full px-3 gap-1">
+                  <SelectValue placeholder="2nd currency" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[240px]">
+                  <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
+                        className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+                    </div>
+                  </div>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
+                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               )}
             </div>
-
-            {/* Secondary currency — chosen in Settings; switchable here once set */}
-            {secondaryCurrency && (
-            <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-raised border-0 text-primary-subtle text-xs rounded-full px-3 gap-1">
-                <SelectValue placeholder="2nd currency" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[240px]">
-                <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
-                  <div className="relative">
-                    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
-                      className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
-                  </div>
-                </div>
-                <SelectItem value="__none__">None</SelectItem>
-                {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
-                  <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <p className="text-financial-hero mt-1">
+              {hidden ? '••••••' : <BigAmount text={fmt(animatedBalance)} />}
+            </p>
+            {sec(totalBalance) && <p className="text-sm opacity-70 mt-0.5">≈ {sec(totalBalance)}</p>}
+            {spendable.holds > 0 && (
+              <p className="text-xs opacity-70 mt-0.5">After {mask(fmt(spendable.holds))} in pending holds</p>
             )}
+
+            <div className="grid grid-cols-3 gap-2 mt-5">
+              <div className="hero-chip rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70">In · {monthShort}</p>
+                <p className="text-base font-semibold tabular-nums truncate">{mask(fmtCompact(thisMonthIncome))}</p>
+              </div>
+              <div className="hero-chip rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70">Out · {monthShort}</p>
+                <p className="text-base font-semibold tabular-nums truncate">{mask(fmtCompact(thisMonthExpenses))}</p>
+              </div>
+              <div className="hero-chip-dark rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70">{savings.kind === 'overspent' ? 'Over' : 'Saved'}</p>
+                <p className="text-base font-semibold tabular-nums truncate">
+                  {hidden ? '••' : savings.kind === 'saved' ? `${savings.rate}%` : savings.kind === 'overspent' ? fmtCompact(savings.amount) : '—'}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="px-5 md:px-8 -mt-4 pb-8">
+      <div className="px-4 md:px-8 mt-5 pb-8">
         {checklistVisible && <GettingStartedCard steps={steps} onStep={runStep} onDismiss={dismissChecklist} />}
 
         {/* What each card's statement asks for, exactly as entered */}

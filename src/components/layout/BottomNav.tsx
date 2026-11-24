@@ -38,28 +38,25 @@ interface BottomNavProps {
   onAddClick: () => void;
 }
 
-const NavButton = ({ path, label, short, icon: Icon, active, onClick }: {
+// Orbix look (2026-11-24): a floating light pill. Idle slots are icons; the
+// open page grows into a lavender pill with its name.
+const NavButton = ({ label, short, icon: Icon, active, onClick }: {
   path: string; label: string; short?: string; icon: LucideIcon; active: boolean; onClick: () => void;
 }) => (
   <button
     onClick={onClick}
     aria-label={label}
     aria-current={active ? 'page' : undefined}
-    className="w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-xl min-h-[48px] relative transition-colors"
+    className={`h-12 shrink-0 rounded-full flex items-center justify-center gap-1.5 transition-[background-color,padding] duration-200 ${
+      active ? 'bg-primary text-primary-foreground px-3.5' : 'w-10 text-[hsl(258_12%_32%)]'
+    }`}
   >
+    <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
     {active && (
-      <m.div
-        layoutId={`nav-indicator-${path}`}
-        className="absolute inset-0 rounded-xl bg-accent"
-        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      />
+      <span title={label} aria-hidden="true" className="hidden min-[370px]:inline text-[13px] font-semibold whitespace-nowrap">
+        {short ?? label}
+      </span>
     )}
-    <Icon size={20} className={`relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-    {/* Six slots leave ~46-50 px each on a 360-390 px phone, so long names
-        show a short word; the full name is the aria-label and the title. */}
-    <span title={label} aria-hidden="true" className={`relative z-10 max-w-full text-[10px] font-medium truncate ${active ? 'text-primary' : 'text-muted-foreground'}`}>
-      {short ?? label}
-    </span>
   </button>
 );
 
@@ -116,14 +113,14 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
               {/* Centering wrapper: full-width, pinned just above the nav bar.
                   pointer-events-none so taps in the side gutters fall through
                   to the backdrop; the panel re-enables pointer events. */}
-              <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[62] flex justify-center px-3 pointer-events-none">
+              <div className="fixed inset-x-0 bottom-[calc(80px+env(safe-area-inset-bottom))] z-[62] flex justify-center px-3 pointer-events-none">
                 <m.div
                   role="dialog"
                   aria-label="More"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-2xl shadow-overlay overflow-y-auto max-h-[60vh]"
+                  className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-[28px] shadow-overlay overflow-y-auto max-h-[60vh]"
                 >
                   <div className="flex justify-center pt-2 pb-0.5">
                     <div className="w-9 h-1 rounded-full bg-border" />
@@ -167,46 +164,38 @@ const BottomNav = ({ onAddClick }: BottomNavProps) => {
       )}
 
       {/* Bottom bar */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] bg-card border-t border-border safe-bottom">
-        {/* Equal slots, three either side of +, so + sits dead centre however
-            long the labels are. */}
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-end justify-items-center gap-0.5 max-w-lg mx-auto h-[68px] px-1 pb-1">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-[45] px-3 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] pointer-events-none">
+        <div className="nav-pill pointer-events-auto max-w-md mx-auto h-[60px] rounded-full flex items-center justify-between px-1.5">
           {NAV_ITEMS_LEFT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
 
-          {/* FAB */}
+          {/* Add */}
           <button
             onClick={onAddClick}
-            className="bg-primary rounded-xl w-14 h-14 flex items-center justify-center relative -top-5 mx-1 ring-4 ring-card transition-transform shrink-0"
+            className="w-12 h-12 shrink-0 rounded-full bg-[hsl(258_30%_8%)] flex items-center justify-center"
             aria-label="Add transaction"
           >
-            <Plus size={28} className="text-primary-foreground" />
+            <Plus size={24} className="text-primary" />
           </button>
 
           {NAV_ITEMS_RIGHT.map(item => (
             <NavButton key={item.path} {...item} active={location.pathname === item.path} onClick={() => handleNavClick(item.path)} />
           ))}
 
-          {/* More button */}
+          {/* More */}
           <button
             onClick={() => setShowMore(v => !v)}
             aria-expanded={showMore}
             aria-label="More options"
-            className={`w-full flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-xl min-h-[48px] relative transition-colors ${showMore || isMoreActive ? 'text-primary' : 'text-muted-foreground'}`}
+            className={`h-12 shrink-0 rounded-full flex items-center justify-center gap-1.5 transition-[background-color,padding] duration-200 ${
+              showMore || isMoreActive ? 'bg-primary text-primary-foreground px-3.5' : 'w-10 text-[hsl(258_12%_32%)]'
+            }`}
           >
+            {showMore ? <X size={20} /> : <MoreHorizontal size={20} />}
             {(showMore || isMoreActive) && (
-              <m.div
-                layoutId="nav-indicator-more"
-                className="absolute inset-0 rounded-xl bg-accent"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
+              <span aria-hidden="true" className="hidden min-[370px]:inline text-[13px] font-semibold">{showMore ? 'Close' : 'More'}</span>
             )}
-            {showMore
-              ? <X size={20} className="relative z-10" />
-              : <MoreHorizontal size={20} className="relative z-10" />
-            }
-            <span className="relative z-10 text-[10px] font-medium">{showMore ? 'Close' : 'More'}</span>
           </button>
         </div>
       </nav>
