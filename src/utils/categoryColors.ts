@@ -1,6 +1,6 @@
-// Category colours for charts and bars: muted hues around the brand green,
-// distinct enough to tell apart and readable on light and dark surfaces.
-const PALETTE = ['#17663a', '#2f6f8f', '#b3832d', '#8a5a44', '#5e6b8c', '#9a4d5c', '#6b7d3a', '#3f8f6b', '#7a6a9a', '#8c8a80'];
+// Category colours for charts and bars: Orbix pastels (lavender, pink, peach,
+// mint, sky...), distinct from each other and readable on the dark surfaces.
+const PALETTE = ['#b6a3ff', '#f2a7d0', '#fbc3a4', '#7fe0b0', '#9cc8ff', '#ff8fa3', '#f5dc8c', '#6fd3d0', '#d9c9ff', '#8e8a9c'];
 
 const ORDER = [
   'Transfer',

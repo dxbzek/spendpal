@@ -19,8 +19,12 @@ describe('Home layout', () => {
     expect(src).toMatch(/const HALF_SLOT = `\$\{HALF\} empty:hidden/);
   });
 
-  it('Income and Expenses fill the Overview row on wide screens', () => {
-    expect(src.match(/col-span-1 lg:col-span-2 overflow-hidden/g)).toHaveLength(2);
+  // Orbix look (2026-11-25): In / Out / Saved sit in the hero card and follow
+  // its period switch, so there is no second Income / Expenses row below.
+  it('shows In, Out and Saved once, in the hero, for the chosen period', () => {
+    expect(src).toContain('In · {periodShort}');
+    expect(src).toContain('Out · {periodShort}');
+    expect(src).not.toMatch(/col-span-1 lg:col-span-2 overflow-hidden/);
   });
 
   it('keeps both category cards: Breakdown and By category', () => {

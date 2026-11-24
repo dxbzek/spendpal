@@ -297,11 +297,11 @@ const Installments = () => {
                 <p className="text-xs text-muted-foreground">Plans</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <p className="text-sm font-bold">{fmt(activePlans.reduce((s, p) => s + p.amountPerInstallment, 0))}</p>
+                <p className="text-[13px] font-semibold whitespace-nowrap tabular-nums">{fmt(activePlans.reduce((s, p) => s + p.amountPerInstallment, 0))}</p>
                 <p className="text-xs text-muted-foreground">Monthly</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <p className="text-sm font-bold text-expense">{fmt(totalRemaining)}</p>
+                <p className="text-[13px] font-semibold text-expense whitespace-nowrap tabular-nums">{fmt(totalRemaining)}</p>
                 <p className="text-xs text-muted-foreground">Total left</p>
               </div>
             </div>
