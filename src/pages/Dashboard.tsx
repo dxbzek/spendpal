@@ -43,7 +43,7 @@ import {
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useAuth } from '@/context/AuthContext';
 import { userSettings } from '@/lib/userSettings';
-import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
+import { PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
@@ -441,7 +441,7 @@ const Dashboard = () => {
                   <button type="button" onClick={() => { setEditAccount(a); setShowAddAccount(true); }} aria-label={`Edit ${a.name}`} className="absolute inset-0 rounded-3xl" />
                   <IconTile value={a.icon} />
                   <p className="mt-4 text-xs text-muted-foreground truncate">
-                    {a.type === 'credit' ? 'Owed' : ACCOUNT_TYPE_GROUP_NAMES[a.type]} · {a.name}
+                    {a.type === 'credit' ? `Owed · ${a.name}` : a.name}
                   </p>
                   <p className={`mt-0.5 text-xl font-medium tabular-nums tracking-tight truncate ${a.type === 'credit' ? 'text-expense' : ''}`}>
                     {hidden ? '••••' : <BigAmount text={fmt(a.balance)} />}
