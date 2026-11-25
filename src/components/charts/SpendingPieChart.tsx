@@ -27,9 +27,10 @@ const SpendingPieChart = memo(({ data }: Props) => {
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius="40%"
-              outerRadius="72%"
+              innerRadius="62%"
+              outerRadius="84%"
               paddingAngle={3}
+              cornerRadius={3}
               dataKey="value"
               strokeWidth={0}
               isAnimationActive={true}
@@ -43,7 +44,9 @@ const SpendingPieChart = memo(({ data }: Props) => {
             </Pie>
             <Tooltip
               formatter={(val: number) => fmt(val)}
-              contentStyle={{ borderRadius: '0.75rem', fontSize: '0.75rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              separator=" · "
+              contentStyle={{ borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, border: 'none', padding: '6px 12px', background: '#fff', color: 'hsl(258 30% 8%)', boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}
+              itemStyle={{ color: 'hsl(258 30% 8%)', padding: 0 }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -56,14 +59,14 @@ const SpendingPieChart = memo(({ data }: Props) => {
           <tr key={item.name}><td>{item.name}</td><td>{item.value}</td></tr>
         ))}</tbody>
       </table>
-      <div className="flex-1 space-y-1.5 overflow-hidden w-full">
+      <div className="flex-1 space-y-2 overflow-hidden w-full">
         {data.slice(0, 5).map((item, i) => (
           <div key={item.name} className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 truncate">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getCategoryChartColor(item.name, i) }} />
-              <span className="truncate">{item.name}</span>
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getCategoryChartColor(item.name, i) }} />
+              <span className="truncate text-muted-foreground">{item.name}</span>
             </div>
-            <span className="font-medium shrink-0 ml-2">{fmt(item.value)}</span>
+            <span className="font-medium tabular-nums shrink-0 ml-2">{fmt(item.value)}</span>
           </div>
         ))}
       </div>

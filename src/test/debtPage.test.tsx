@@ -41,9 +41,9 @@ describe('Debt page header', () => {
       acct({ name: 'Spare card', balance: 0, creditLimit: 10_000, apr: 36 }),
     ];
     render(<Debt />);
-    expect(within(tile('Credit Limit')).getByText('20000.00')).toBeInTheDocument();
-    expect(within(tile('Utilization')).getByText('25%')).toBeInTheDocument();
-    expect(within(tile('Total Owed')).getByText('5000.00')).toBeInTheDocument();
+    expect(tile('Credit limit')).toHaveTextContent('20000.00');
+    expect(tile('Utilization')).toHaveTextContent('25%');
+    expect(tile('Total owed')).toHaveTextContent('5000.00');
     // Only the card that owes is listed.
     expect(screen.queryByText('Spare card')).toBeNull();
   });
@@ -71,7 +71,7 @@ describe('Debt page instalment plans', () => {
     expect(screen.getByText('Laptop').nextElementSibling?.textContent).toMatch(/^42 × 150\.00/);
     expect(screen.getByText('Phone').nextElementSibling?.textContent).toMatch(/^2 × 250\.00/);
     // The total still counts everything that is owed.
-    expect(within(tile('Total Owed')).getByText('14400.00')).toBeInTheDocument();
+    expect(tile('Total owed')).toHaveTextContent('14400.00');
   });
 
   it('builds the payoff plan on the revolving part only', () => {

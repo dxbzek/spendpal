@@ -5,12 +5,15 @@ import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useBalanceMask } from '@/hooks/useBalanceMask';
-import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag, ArrowUp, ArrowDown, Check, SquareCheck } from 'lucide-react';
+import { Search, Receipt, Upload, Trash2, Download, Wallet, CalendarRange, X, AlertTriangle, Tag, Check, SquareCheck, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PageHeader, IconButton, HeroCard, HeroChip, PillTabs, SectionLabel, BigAmount, PAGE_X } from '@/components/orbix';
+import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useCategories } from '@/hooks/useCategories';
 import { exportTransactionsCsv } from '@/utils/exportCsv';
-import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isToday, isYesterday, isSameYear } from 'date-fns';
 import { detectDuplicates } from '@/utils/detectDuplicates';
 import { pairTransfers } from '@/lib/finance/transfers';
 import { Input } from '@/components/ui/input';
@@ -140,7 +143,7 @@ const Transactions = () => {
   const grouped = useMemo(() => {
     const map: Record<string, typeof paginated> = {};
     paginated.forEach(tx => {
-      const key = format(parseISO(tx.date), 'MMMM d, yyyy');
+      const key = tx.date;
       if (!map[key]) map[key] = [];
       map[key].push(tx);
     });
@@ -176,488 +179,386 @@ const Transactions = () => {
     }
   };
 
-  const renderTxContent = (tx: typeof filtered[0], _idx: number) => {
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Group label: "Today", "Yesterday", "Mon, Nov 24" (year only when not this year).
+  const groupLabel = (iso: string) => {
+    const d = parseISO(iso);
+    if (isToday(d)) return 'Today';
+    if (isYesterday(d)) return 'Yesterday';
+    return format(d, isSameYear(d, new Date()) ? 'EEE, MMM d' : 'MMM d, yyyy');
+  };
+
+  // The hero names the period the totals cover.
+  const periodLabel = (() => {
+    const short = (v: string) => format(parseISO(v), 'd MMM yyyy');
+    if (dateFrom && dateTo) {
+      if (dateFrom === dateTo) return short(dateFrom);
+      return `${format(parseISO(dateFrom), 'd MMM')} – ${short(dateTo)}`;
+    }
+    if (dateFrom) return `Since ${short(dateFrom)}`;
+    if (dateTo) return `Until ${short(dateTo)}`;
+    return 'All time';
+  })();
+
+  // One "Recent Activity" row: round icon, merchant + account line, amount right.
+  const renderTxContent = (tx: typeof filtered[0]) => {
     const pair = transferPairs.get(tx.id);
     const isLinkedTransfer = !!pair;
     const fromAccountName = isLinkedTransfer ? getAccountName(pair.from.accountId) : '';
     const toAccountName = isLinkedTransfer ? getAccountName(pair.to.accountId) : '';
     const isDupe = duplicateIds.has(tx.id);
     const isSelected = selectedIds.has(tx.id);
+    const amountText = isLinkedTransfer
+      ? fmtSigned(tx.amount, 'transfer')
+      : fmtSigned(tx.amount, tx.type as 'income' | 'expense' | 'transfer');
+    const amountTone = isLinkedTransfer || tx.type === 'transfer'
+      ? 'text-muted-foreground'
+      : tx.type === 'income' ? 'text-income' : 'text-foreground';
 
     return (
       <div
-        className={`flex items-center justify-between p-4 cursor-pointer active:bg-muted transition-colors ${isSelected ? 'bg-primary-soft' : ''}`}
-        onClick={() => {
-          if (selectMode) {
-            setSelectedIds(prev => {
-              const next = new Set(prev);
-              if (next.has(tx.id)) next.delete(tx.id);
-              else next.add(tx.id);
-              return next;
-            });
-          } else {
-            openEditSheet(tx);
-          }
-        }}
+        className={cn('flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-muted transition-colors', isSelected && 'bg-primary-soft')}
+        onClick={() => { if (selectMode) toggleSelected(tx.id); else openEditSheet(tx); }}
       >
         {selectMode && (
-          <div className="shrink-0 mr-2">
-            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-              isSelected ? 'bg-primary border-primary' : 'border-border'
-            }`}>
-              {isSelected && <Check size={10} strokeWidth={3} className="text-primary-foreground" aria-hidden="true" />}
-            </div>
-          </div>
+          <span className={cn('w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors',
+            isSelected ? 'bg-primary border-primary' : 'border-border')}>
+            {isSelected && <Check size={11} strokeWidth={3} className="text-primary-foreground" aria-hidden="true" />}
+          </span>
         )}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <IconTile value={tx.categoryIcon} />
-           <div className="min-w-0">
-             <p className="text-sm font-medium truncate flex items-center gap-1.5">
-               <button
-                 className="truncate hover:underline text-left"
-                 aria-label={`View transactions from ${tx.merchant}`}
-                 onClick={e => { e.stopPropagation(); setMerchantProfile(tx.merchant); }}
-               >
-                 {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
-               </button>
-               {isDupe && <span title="Possible duplicate"><AlertTriangle size={12} className="text-warning shrink-0" /></span>}
-             </p>
-             <div className="flex items-center gap-1.5">
-               {isLinkedTransfer ? (
-                 <p className="text-xs text-muted-foreground truncate">
-                   {fromAccountName} → {toAccountName}
-                 </p>
-               ) : (
-                 <p className="text-xs text-muted-foreground truncate">{getAccountName(tx.accountId)}</p>
-               )}
-               {!isLinkedTransfer && tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
-                 <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
-                   Card credit
-                 </span>
-               )}
-               {/* != null, not truthy: 0 paid is a valid count and must not print a bare "0". */}
-               {tx.totalInstallments != null && tx.currentInstallment != null && (
-                 <span className="text-[11px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full shrink-0">
-                   {tx.currentInstallment}/{tx.totalInstallments}
-                 </span>
-               )}
-               {tx.isPending && (
-                 <span className="text-[11px] font-medium text-warning bg-warning-soft px-1.5 py-0.5 rounded-full shrink-0">
-                   Pending
-                 </span>
-               )}
-             </div>
-             {tx.note && !isLinkedTransfer && (
-               <p className="text-xs text-muted-foreground truncate mt-0.5">{tx.note}</p>
-             )}
-             {isDupe && (
-               <button
-                 onClick={e => { e.stopPropagation(); handleNotDuplicate(tx.id); }}
-                 disabled={dismissingId === tx.id}
-                 className="mt-1 text-xs font-medium text-warning bg-warning-soft px-2 py-0.5 rounded-full disabled:opacity-50"
-               >
-                 Not a duplicate
-               </button>
-             )}
-           </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {isLinkedTransfer ? (
-            <p className="text-sm font-heading text-muted-foreground">
-              {fmtSigned(tx.amount, 'transfer')}
+        <IconTile value={tx.categoryIcon} className="h-11 w-11" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-medium truncate flex items-center gap-1.5">
+            <button
+              className="truncate hover:underline text-left"
+              aria-label={`View transactions from ${tx.merchant}`}
+              onClick={e => { e.stopPropagation(); setMerchantProfile(tx.merchant); }}
+            >
+              {isLinkedTransfer && tx.merchant === 'Transfer' ? 'Transfer' : tx.merchant}
+            </button>
+            {isDupe && <span title="Possible duplicate"><AlertTriangle size={12} className="text-warning shrink-0" /></span>}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">
+              {isLinkedTransfer
+                ? `${fromAccountName} → ${toAccountName}`
+                : [getAccountName(tx.accountId), tx.note || tx.category].filter(Boolean).join(' · ')}
             </p>
-          ) : (
-            <span className={`flex items-center gap-0.5 text-sm font-heading ${tx.type === 'income' ? 'text-income' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-expense'}`}>
-              {tx.type === 'income' && <ArrowUp size={12} aria-hidden="true" />}
-              {tx.type === 'expense' && <ArrowDown size={12} aria-hidden="true" />}
-              {fmtSigned(tx.amount, tx.type as 'income' | 'expense' | 'transfer')}
-            </span>
+            {!isLinkedTransfer && tx.type === 'income' && creditAccountIds.has(tx.accountId) && (
+              <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
+                Card credit
+              </span>
+            )}
+            {/* != null, not truthy: 0 paid is a valid count and must not print a bare "0". */}
+            {tx.totalInstallments != null && tx.currentInstallment != null && (
+              <span className="text-[11px] font-medium text-primary bg-primary-soft px-1.5 py-0.5 rounded-full shrink-0">
+                {tx.currentInstallment}/{tx.totalInstallments}
+              </span>
+            )}
+            {tx.isPending && (
+              <span className="text-[11px] font-medium text-warning bg-warning-soft px-1.5 py-0.5 rounded-full shrink-0">
+                Pending
+              </span>
+            )}
+          </div>
+          {isDupe && (
+            <button
+              onClick={e => { e.stopPropagation(); handleNotDuplicate(tx.id); }}
+              disabled={dismissingId === tx.id}
+              className="mt-1.5 text-xs font-medium text-warning bg-warning-soft px-2.5 py-0.5 rounded-full disabled:opacity-50"
+            >
+              Not a duplicate
+            </button>
           )}
-          <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(tx.id); }}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1">
-            <Trash2 size={14} />
-          </button>
         </div>
+        <span className={cn('shrink-0 text-[15px] font-medium tabular-nums tracking-tight', amountTone)}>
+          {hidden ? '••••••' : <BigAmount text={amountText} />}
+        </span>
+        {/* Delete and categorize live in a quiet row menu, not a trash icon per row.
+            The wrapper stops clicks (also from the menu's portal) reaching the row. */}
+        {!selectMode && (
+          <span className="shrink-0 -mr-2" onClick={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Transaction actions">
+                  <MoreVertical size={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[140px]">
+                <DropdownMenuItem onClick={() => setCategorizeTxId(tx.id)} className="gap-2 text-xs">
+                  <Tag size={12} /> Categorize
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDeleteSingle(tx.id)} className="gap-2 text-xs text-destructive focus:text-destructive">
+                  <Trash2 size={12} /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </span>
+        )}
       </div>
     );
   };
 
-  // Skeleton keeps the filter bar layout while transactions load.
+  const filterPill = (active: boolean) => cn(
+    'h-9 px-3.5 shrink-0 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5',
+    active ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground',
+  );
+  const optionPill = (active: boolean) => cn(
+    'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors max-w-full truncate',
+    active ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground',
+  );
+
+  // Skeleton keeps the header, hero and list layout while transactions load.
   if (loading) {
     return (
-      <div className="px-4 md:px-8 pt-12 pb-6 space-y-4">
-        <Skeleton className="h-8 w-40 rounded-xl" />
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="space-y-2">
-          {[...Array(8)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
-          ))}
-        </div>
+      <div className={`${PAGE_X} pt-[calc(env(safe-area-inset-top,0px)+20px)] md:pt-8 pb-6 space-y-4`}>
+        <Skeleton className="h-9 w-48 rounded-xl" />
+        <Skeleton className="h-36 w-full rounded-[28px]" />
+        <Skeleton className="h-12 w-full rounded-full" />
+        <Skeleton className="h-80 w-full rounded-3xl" />
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="px-5 md:px-8 pt-12 pb-4">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-2xl font-heading">Transactions</h1>
-        </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          {visibleCount < filtered.length && `${visibleCount} of `}{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
-        </p>
+    <div className={cn(PAGE_X, 'pb-6')}>
+      <PageHeader
+        title="Transactions"
+        subtitle={<>{visibleCount < filtered.length && `${visibleCount} of `}{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</>}
+        actions={<>
+          <IconButton onClick={() => exportTransactionsCsv(filtered, accounts)} aria-label="Export" title="Export CSV">
+            <Download size={18} />
+          </IconButton>
+          <IconButton onClick={() => setShowImport(true)} aria-label="Import" title="Import statement">
+            <Upload size={18} />
+          </IconButton>
+          <IconButton
+            tone={selectMode ? 'primary' : 'card'}
+            aria-label={selectMode ? 'Cancel' : 'Select'}
+            aria-pressed={selectMode}
+            title={selectMode ? 'Cancel selection' : 'Select'}
+            onClick={() => { setSelectMode(s => !s); setSelectedIds(new Set()); }}
+          >
+            {selectMode ? <X size={18} /> : <SquareCheck size={18} aria-hidden="true" />}
+          </IconButton>
+        </>}
+      />
 
-        {/* Duplicate warning banner */}
-        {visibleDupeCount > 0 && (dupesOnly ? (
-          <div className="flex items-center gap-2 mb-3 px-3 py-2.5 bg-warning-soft border border-warning-line rounded-xl text-xs text-warning font-medium">
-            <AlertTriangle size={14} className="shrink-0" />
-            <span className="flex-1">Showing {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''}.</span>
-            <button onClick={() => setFilter('dupes', '')} className="shrink-0 underline underline-offset-2">Show all</button>
+      {/* Hero: the filtered period's net, with money in and out as chips */}
+      {filtered.length > 0 && (
+        <HeroCard className="mb-4">
+          <p className="text-sm font-medium opacity-80">Net · {periodLabel}</p>
+          <p className="text-financial-hero mt-1">
+            {hidden ? '••••••' : <BigAmount text={`${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`} />}
+          </p>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <HeroChip label="In" value={hidden ? '••••••' : <BigAmount text={fmt(filteredIncome)} />} />
+            <HeroChip label="Out" value={hidden ? '••••••' : <BigAmount text={fmt(filteredExpenses)} />} dark />
           </div>
-        ) : (
-          <button onClick={() => setFilter('dupes', '1')}
-            className="w-full flex items-center gap-2 mb-3 px-3 py-2.5 bg-warning-soft border border-warning-line rounded-xl text-xs text-warning font-medium text-left">
-            <AlertTriangle size={14} className="shrink-0" />
-            {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''}. Tap to review.
-          </button>
-        ))}
+        </HeroCard>
+      )}
 
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <button onClick={() => exportTransactionsCsv(filtered, accounts)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
-            <Download size={14} /> <span>Export</span>
-          </button>
-          <button onClick={() => setShowImport(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium">
-            <Upload size={14} /> <span>Import</span>
-          </button>
+      {/* Duplicate warning */}
+      {visibleDupeCount > 0 && (dupesOnly ? (
+        <div className="flex items-center gap-2 mb-3 px-4 py-3 bg-warning-soft rounded-2xl text-xs text-warning font-medium">
+          <AlertTriangle size={14} className="shrink-0" />
+          <span className="flex-1">Showing {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''}.</span>
+          <button onClick={() => setFilter('dupes', '')} className="shrink-0 underline underline-offset-2">Show all</button>
+        </div>
+      ) : (
+        <button onClick={() => setFilter('dupes', '1')}
+          className="w-full flex items-center gap-2 mb-3 px-4 py-3 bg-warning-soft rounded-2xl text-xs text-warning font-medium text-left">
+          <AlertTriangle size={14} className="shrink-0" />
+          {visibleDupeCount} possible duplicate{visibleDupeCount > 1 ? 's' : ''}. Tap to review.
+        </button>
+      ))}
+
+      {/* Bulk action bar */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 mb-3 pl-4 pr-1.5 py-1.5 bg-card rounded-full">
+          <span className="text-sm font-medium flex-1">{selectedIds.size} selected</span>
           <button
-            onClick={() => {
-              setSelectMode(s => !s);
-              setSelectedIds(new Set());
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              selectMode ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}>
-            {selectMode ? <X size={14} /> : <SquareCheck size={14} aria-hidden="true" />} <span>{selectMode ? 'Cancel' : 'Select'}</span>
+            onClick={() => setSelectedIds(new Set(filtered.map(t => t.id)))}
+            className="text-xs text-muted-foreground hover:text-foreground px-3 h-8 rounded-full hover:bg-muted transition-colors">
+            Select all {filtered.length}
           </button>
-        </div>
-
-        {/* Bulk action bar */}
-        {selectMode && selectedIds.size > 0 && (
-          <div className="flex items-center gap-2 mb-3 px-3 py-2.5 bg-primary-soft border border-primary-line rounded-xl">
-            <span className="text-xs font-semibold text-primary flex-1">{selectedIds.size} selected</span>
-            <button
-              onClick={() => setSelectedIds(new Set(filtered.map(t => t.id)))}
-              className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors">
-              Select all {filtered.length}
-            </button>
-            <Popover open={bulkCategoryOpen} onOpenChange={setBulkCategoryOpen}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
-                  Change Category
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-2 max-h-64 overflow-y-auto">
-                {allCategories.map(cat => (
-                  <button
-                    key={cat.name}
-                    onClick={async () => {
-                      await bulkUpdateCategory([...selectedIds], cat.name, cat.icon);
-                      setBulkCategoryOpen(false);
-                      setSelectedIds(new Set());
-                      setSelectMode(false);
-                    }}
-                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground text-xs transition-colors">
-                    <span><AppIcon value={cat.icon} /></span> {cat.name}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
-
-        <div className="relative mb-3">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search merchant, category, notes…" value={searchInput} onChange={e => {
-            setSearchInput(e.target.value);
-            if (searchDebounce.current) clearTimeout(searchDebounce.current);
-            searchDebounce.current = setTimeout(() => setFilter('q', e.target.value), 250);
-          }} className="pl-10 bg-card" />
-        </div>
-
-        <div className="relative mb-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none pr-8">
-            {['all', 'expense', 'income', 'transfer'].map(f => (
-              <button key={f} onClick={() => setFilter('type', f)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                  filterType === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}>
-                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+          <Popover open={bulkCategoryOpen} onOpenChange={setBulkCategoryOpen}>
+            <PopoverTrigger asChild>
+              <button className="px-3.5 h-8 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                Change Category
               </button>
-            ))}
-            <button onClick={() => setShowAccountFilter(!showAccountFilter)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
-                filterAccount !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}>
-              <Wallet size={12} />
-              {filterAccount !== 'all' ? getAccountName(filterAccount) : 'Account'}
-            </button>
-            <button onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
-                filterCategory !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}>
-              <Tag size={12} />
-              {filterCategory !== 'all' ? filterCategory : 'Category'}
-            </button>
-            <button onClick={() => setShowDateFilter(!showDateFilter)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
-                (dateFrom || dateTo) ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}>
-              <CalendarRange size={12} />
-              {(dateFrom || dateTo) ? 'Dates' : 'Date Range'}
-            </button>
-          </div>
-          <div className="absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
-        </div>
-
-        {showAccountFilter && (
-          <div className="flex gap-1.5 mb-4 flex-wrap">
-            <button onClick={() => { setFilter('account', 'all'); setShowAccountFilter(false); }}
-              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                filterAccount === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
-              }`}>
-              All Accounts
-            </button>
-            {accounts.map(acc => (
-              <button key={acc.id} onClick={() => { setFilter('account', acc.id); setShowAccountFilter(false); }}
-                className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all max-w-full truncate ${
-                  filterAccount === acc.id ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
-                }`}>
-                <AppIcon value={acc.icon} /> {acc.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {showCategoryFilter && (
-          <div className="flex gap-1.5 mb-4 flex-wrap">
-            <button onClick={() => { setFilter('category', 'all'); setShowCategoryFilter(false); }}
-              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                filterCategory === 'all' ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
-              }`}>
-              All Categories
-            </button>
-            {allCategories.map(cat => (
-              <button key={cat.name} onClick={() => { setFilter('category', cat.name); setShowCategoryFilter(false); }}
-                className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all max-w-full truncate ${
-                  filterCategory === cat.name ? 'bg-accent text-accent-foreground ring-1 ring-primary' : 'bg-muted text-muted-foreground'
-                }`}>
-                <AppIcon value={cat.icon} /> {cat.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {showDateFilter && (
-          <div className="flex flex-col gap-2 mb-4">
-            {/* Quick presets */}
-            <div className="flex gap-1.5 flex-wrap">
-              {[
-                { label: 'Today', from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') },
-                { label: 'This week', from: format(startOfWeek(new Date()), 'yyyy-MM-dd'), to: format(endOfWeek(new Date()), 'yyyy-MM-dd') },
-                { label: 'This month', from: format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: format(endOfMonth(new Date()), 'yyyy-MM-dd') },
-                { label: 'Last month', from: format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'), to: format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd') },
-              ].map(preset => (
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-2 max-h-64 overflow-y-auto">
+              {allCategories.map(cat => (
                 <button
-                  key={preset.label}
-                  onClick={() => { setFilter('from', preset.from); setFilter('to', preset.to); }}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    dateFrom === preset.from && dateTo === preset.to
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}>
-                  {preset.label}
+                  key={cat.name}
+                  onClick={async () => {
+                    await bulkUpdateCategory([...selectedIds], cat.name, cat.icon);
+                    setBulkCategoryOpen(false);
+                    setSelectedIds(new Set());
+                    setSelectMode(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground text-xs transition-colors">
+                  <span><AppIcon value={cat.icon} /></span> {cat.name}
                 </button>
               ))}
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <label className="text-xs text-muted-foreground shrink-0">From</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={e => setFilter('from', e.target.value)}
-                  className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <label className="text-xs text-muted-foreground shrink-0">To</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={e => setFilter('to', e.target.value)}
-                  className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-card px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-              {(dateFrom || dateTo) && (
-                <button
-                  onClick={() => { setFilter('from', ''); setFilter('to', ''); }}
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs hover:bg-destructive-soft hover:text-destructive transition-colors"
-                >
-                  <X size={12} /> Clear
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+            </PopoverContent>
+          </Popover>
         </div>
+      )}
 
-      {/* Totals bar */}
-      {filtered.length > 0 && (
-        <div className="px-5 md:px-8 mb-3 -mt-1">
-          <div className="grid grid-cols-3 gap-1 sm:flex sm:items-center sm:gap-3 px-2 sm:px-4 py-2.5 bg-card rounded-xl card-shadow text-[11px] sm:text-xs tabular-nums">
-            <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0">
-              <ArrowUp size={11} className="text-income shrink-0" aria-hidden="true" />
-              <span className="text-muted-foreground hidden sm:inline">Income</span>
-              <span className="font-semibold text-income whitespace-nowrap">{mask(fmt(filteredIncome))}</span>
+      {/* Search */}
+      <div className="relative mb-3">
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Search merchant, category, notes…" value={searchInput} onChange={e => {
+          setSearchInput(e.target.value);
+          if (searchDebounce.current) clearTimeout(searchDebounce.current);
+          searchDebounce.current = setTimeout(() => setFilter('q', e.target.value), 250);
+        }} className="h-12 pl-11 rounded-full bg-card border-0" />
+      </div>
+
+      {/* Type pills, then the narrower filters */}
+      <PillTabs
+        label="Type"
+        value={filterType as 'all' | 'expense' | 'income' | 'transfer'}
+        onChange={v => setFilter('type', v)}
+        options={(['all', 'expense', 'income', 'transfer'] as const).map(f => ({ value: f, label: f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1) }))}
+        className="mb-2"
+      />
+      <div className="flex gap-2 overflow-x-auto scrollbar-none mb-3">
+        <button onClick={() => setShowAccountFilter(!showAccountFilter)} className={filterPill(filterAccount !== 'all')} aria-expanded={showAccountFilter}>
+          <Wallet size={14} />
+          {filterAccount !== 'all' ? getAccountName(filterAccount) : 'Account'}
+        </button>
+        <button onClick={() => setShowCategoryFilter(!showCategoryFilter)} className={filterPill(filterCategory !== 'all')} aria-expanded={showCategoryFilter}>
+          <Tag size={14} />
+          {filterCategory !== 'all' ? filterCategory : 'Category'}
+        </button>
+        <button onClick={() => setShowDateFilter(!showDateFilter)} className={filterPill(!!(dateFrom || dateTo))} aria-expanded={showDateFilter}>
+          <CalendarRange size={14} />
+          {(dateFrom || dateTo) ? 'Dates' : 'Date Range'}
+        </button>
+      </div>
+
+      {showAccountFilter && (
+        <div className="flex gap-1.5 mb-4 flex-wrap">
+          <button onClick={() => { setFilter('account', 'all'); setShowAccountFilter(false); }} className={optionPill(filterAccount === 'all')}>
+            All Accounts
+          </button>
+          {accounts.map(acc => (
+            <button key={acc.id} onClick={() => { setFilter('account', acc.id); setShowAccountFilter(false); }} className={optionPill(filterAccount === acc.id)}>
+              <AppIcon value={acc.icon} /> {acc.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showCategoryFilter && (
+        <div className="flex gap-1.5 mb-4 flex-wrap">
+          <button onClick={() => { setFilter('category', 'all'); setShowCategoryFilter(false); }} className={optionPill(filterCategory === 'all')}>
+            All Categories
+          </button>
+          {allCategories.map(cat => (
+            <button key={cat.name} onClick={() => { setFilter('category', cat.name); setShowCategoryFilter(false); }} className={optionPill(filterCategory === cat.name)}>
+              <AppIcon value={cat.icon} /> {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showDateFilter && (
+        <div className="bg-card rounded-3xl p-4 flex flex-col gap-3 mb-4">
+          {/* Quick presets */}
+          <div className="flex gap-1.5 flex-wrap">
+            {[
+              { label: 'Today', from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') },
+              { label: 'This week', from: format(startOfWeek(new Date()), 'yyyy-MM-dd'), to: format(endOfWeek(new Date()), 'yyyy-MM-dd') },
+              { label: 'This month', from: format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: format(endOfMonth(new Date()), 'yyyy-MM-dd') },
+              { label: 'Last month', from: format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'), to: format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd') },
+            ].map(preset => (
+              <button
+                key={preset.label}
+                onClick={() => { setFilter('from', preset.from); setFilter('to', preset.to); }}
+                className={cn('px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
+                  dateFrom === preset.from && dateTo === preset.to
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground')}>
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <label className="text-xs text-muted-foreground shrink-0 w-9">From</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => setFilter('from', e.target.value)}
+                className="flex-1 min-w-0 text-xs rounded-full bg-muted px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
             </div>
-            <div className="w-px h-3 bg-border hidden sm:block" />
-            <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0 border-x sm:border-x-0 border-border">
-              <ArrowDown size={11} className="text-expense shrink-0" aria-hidden="true" />
-              <span className="text-muted-foreground hidden sm:inline">Expenses</span>
-              <span className="font-semibold text-expense whitespace-nowrap">{mask(fmt(filteredExpenses))}</span>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <label className="text-xs text-muted-foreground shrink-0 w-9">To</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => setFilter('to', e.target.value)}
+                className="flex-1 min-w-0 text-xs rounded-full bg-muted px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
             </div>
-            <div className="w-px h-3 bg-border hidden sm:block" />
-            <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0">
-              {filteredNet >= 0
-                ? <ArrowUp size={11} className="text-income shrink-0" aria-hidden="true" />
-                : <ArrowDown size={11} className="text-expense shrink-0" aria-hidden="true" />}
-              <span className="text-muted-foreground hidden sm:inline">Net</span>
-              <span className={`font-semibold whitespace-nowrap ${filteredNet >= 0 ? 'text-income' : 'text-expense'}`}>{hidden ? '••••••' : `${filteredNet >= 0 ? '+' : ''}${fmt(filteredNet)}`}</span>
-            </div>
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setFilter('from', ''); setFilter('to', ''); }}
+                className="flex items-center justify-center gap-1 px-3 py-2 rounded-full bg-muted text-muted-foreground text-xs hover:text-destructive transition-colors"
+              >
+                <X size={12} /> Clear
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      <div className="px-5 md:px-8 pb-6">
+      {/* Activity, one card per day */}
+      <div className="pt-2">
         {grouped.length === 0 ? (
-          <div className="text-center py-16">
-            <Receipt size={64} className="mx-auto text-muted-foreground mb-4" />
+          <div className="bg-card rounded-3xl text-center py-14">
+            <Receipt size={40} className="mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground text-sm">No transactions found</p>
           </div>
-        ) : isMobile ? (
+        ) : (
           <AnimatePresence>
             {grouped.map(([date, txs]) => (
-              <m.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{date}</p>
-                <div className="bg-card rounded-xl card-shadow overflow-hidden divide-y divide-border">
-                  {txs.map((tx, idx) => (
+              <m.section key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
+                <SectionLabel label={groupLabel(date)} count={txs.length} />
+                <div className="bg-card rounded-3xl overflow-hidden divide-y divide-border" role="list">
+                  {txs.map(tx => isMobile ? (
                     <SwipeableTransaction key={tx.id} onDelete={() => handleDeleteSingle(tx.id)} onCategorize={() => setCategorizeTxId(tx.id)}>
-                      {renderTxContent(tx, idx)}
+                      {renderTxContent(tx)}
                     </SwipeableTransaction>
+                  ) : (
+                    <div key={tx.id} role="listitem">{renderTxContent(tx)}</div>
                   ))}
                 </div>
-              </m.div>
+              </m.section>
             ))}
           </AnimatePresence>
-        ) : (
-          /* Desktop: table layout */
-          <div className="bg-card rounded-xl card-shadow overflow-hidden">
-            {/* Table header */}
-            <div className={`grid ${selectMode ? 'grid-cols-[28px_150px_1fr_160px_110px_60px]' : 'grid-cols-[150px_1fr_160px_110px_60px]'} gap-0 border-b border-border px-4 py-3`}>
-              {selectMode && <span />}
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Merchant / Category</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Account</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Amount</span>
-              <span />
-            </div>
-            <AnimatePresence>
-              {grouped.map(([date, txs]) => (
-                <m.div key={date} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted border-b border-border">
-                    {date}
-                  </div>
-                  {txs.map((tx, _idx) => {
-                    const pair = transferPairs.get(tx.id);
-                    const isLinkedTransfer = !!pair;
-                    const isDupe = duplicateIds.has(tx.id);
-                    const isSelected = selectedIds.has(tx.id);
-                    return (
-                      <div key={tx.id}
-                        className={`grid ${selectMode ? 'grid-cols-[28px_150px_1fr_160px_110px_60px]' : 'grid-cols-[150px_1fr_160px_110px_60px]'} gap-0 px-4 py-3 border-b border-border last:border-0 hover:bg-accent transition-colors cursor-pointer group items-center ${isDupe ? 'bg-warning-soft' : ''} ${isSelected ? 'bg-primary-soft' : ''}`}
-                        onClick={() => {
-                          if (selectMode) {
-                            setSelectedIds(prev => {
-                              const next = new Set(prev);
-                              if (next.has(tx.id)) next.delete(tx.id);
-                              else next.add(tx.id);
-                              return next;
-                            });
-                          } else {
-                            openEditSheet(tx);
-                          }
-                        }}
-                      >
-                        {selectMode && (
-                          <div className="flex items-center">
-                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border'}`}>
-                              {isSelected && <Check size={10} strokeWidth={3} className="text-primary-foreground" aria-hidden="true" />}
-                            </div>
-                          </div>
-                        )}
-                        <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'MMM d, yyyy')}</span>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <IconTile value={tx.categoryIcon} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold truncate flex items-center gap-1.5">
-                              {tx.merchant}
-                              {isDupe && <AlertTriangle size={12} className="text-warning shrink-0" />}
-                              {isDupe && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); handleNotDuplicate(tx.id); }}
-                                  disabled={dismissingId === tx.id}
-                                  className="text-xs font-medium text-warning bg-warning-soft px-2 py-0.5 rounded-full shrink-0 disabled:opacity-50"
-                                >
-                                  Not a duplicate
-                                </button>
-                              )}
-                            </p>
-                            <p className="text-xs font-medium text-muted-foreground truncate">{tx.category}</p>
-                          </div>
-                        </div>
-                        <span className="text-xs text-muted-foreground truncate">
-                          {isLinkedTransfer ? `${getAccountName(pair!.from.accountId)} → ${getAccountName(pair!.to.accountId)}` : getAccountName(tx.accountId)}
-                        </span>
-                        <span className={`text-sm font-heading text-right tabular-nums ${
-                          isLinkedTransfer ? 'text-muted-foreground' :
-                          tx.type === 'income' ? 'text-income' : 'text-expense'
-                        }`}>
-                          {hidden ? '••••••' : isLinkedTransfer ? fmt(tx.amount) : `${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}`}
-                        </span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteSingle(tx.id); }}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 ml-auto"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </m.div>
-              ))}
-            </AnimatePresence>
-          </div>
         )}
       </div>
 
       {/* Show more pagination */}
       {visibleCount < filtered.length && (
-        <div className="px-5 md:px-8 pb-4 flex justify-center">
+        <div className="pb-4 flex justify-center">
           <button
             onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
-            className="px-6 py-2.5 rounded-full bg-muted text-muted-foreground text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+            className="px-6 h-11 rounded-full bg-card text-foreground text-sm font-medium hover:bg-muted transition-colors">
             Show more ({filtered.length - visibleCount} remaining)
           </button>
         </div>
@@ -677,12 +578,12 @@ const Transactions = () => {
           {merchantStats && (
             <div className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted rounded-xl p-3 text-center">
-                  <p className="text-lg font-bold text-expense">{mask(fmt(merchantStats.total))}</p>
+                <div className="bg-muted rounded-2xl p-3 text-center">
+                  <p className="text-lg font-medium tabular-nums tracking-tight">{mask(fmt(merchantStats.total))}</p>
                   <p className="text-xs text-muted-foreground">Total spent</p>
                 </div>
-                <div className="bg-muted rounded-xl p-3 text-center">
-                  <p className="text-lg font-bold">{merchantStats.count}</p>
+                <div className="bg-muted rounded-2xl p-3 text-center">
+                  <p className="text-lg font-medium tabular-nums">{merchantStats.count}</p>
                   <p className="text-xs text-muted-foreground">Transactions</p>
                 </div>
               </div>
@@ -693,7 +594,7 @@ const Transactions = () => {
                       <p className="text-xs font-medium">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
                       <p className="text-xs text-muted-foreground">{tx.category}</p>
                     </div>
-                    <span className={`text-sm font-semibold ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                    <span className={`text-sm font-medium tabular-nums ${tx.type === 'income' ? 'text-income' : 'text-foreground'}`}>
                       {hidden ? '••••••' : `${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}`}
                     </span>
                   </div>

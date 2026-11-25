@@ -80,8 +80,8 @@ export default defineConfig(() => ({
         name: "SpendPal - Personal Finance Tracker",
         short_name: "SpendPal",
         description: "Track your spending, budgets, and financial goals",
-        theme_color: "#17663a",
-        background_color: "#ffffff",
+        theme_color: "#0b0a0f",
+        background_color: "#0b0a0f",
         display: "standalone",
         // "any": the app has a desktop sidebar layout; "portrait" locked an
         // installed tablet or desktop window to a phone shape.

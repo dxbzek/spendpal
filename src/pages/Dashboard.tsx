@@ -5,10 +5,10 @@ import { budgetsForMonth } from '@/utils/budgets';
 import { budgetPercent } from '@/lib/finance/budgetSpend';
 import { isInPeriod } from '@/lib/today';
 import { useToday } from '@/hooks/useToday';
-import { availableCredit, creditUtilization } from '@/lib/finance/credit';
+import { creditUtilization } from '@/lib/finance/credit';
 import { savingsSummary } from '@/lib/finance/pace';
 import { pairTransfers } from '@/lib/finance/transfers';
-import { grossSpending, incomeAndSpending, isCountableExpense, refundTotal } from '@/lib/finance/transactionFilters';
+import { grossSpending, incomeAndSpending, isCountableExpense } from '@/lib/finance/transactionFilters';
 import RecurringTracker from '@/components/dashboard/RecurringTracker';
 import RecurringDueBanner from '@/components/dashboard/RecurringDueBanner';
 import UpcomingBillsWidget from '@/components/dashboard/UpcomingBillsWidget';
@@ -20,7 +20,7 @@ import { useFinance } from '@/context/FinanceContext';
 
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
-import { Eye, EyeOff, Plus, ChevronRight, Trash2, Edit2, Search, Wallet, CheckCircle2, ArrowUpRight, ArrowDown, Coins } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Trash2, Search, Wallet, CheckCircle2, Coins } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
@@ -34,7 +34,6 @@ import CardPaymentsCard from '@/components/dashboard/CardPaymentsCard';
 import ChargeAlertsCard from '@/components/dashboard/ChargeAlertsCard';
 import { spendableCash } from '@/lib/finance/cardPayments';
 import { buildPlans, totalLeft } from '@/lib/finance/installments';
-import { ordinal } from '@/lib/ordinal';
 import { useEditTransaction } from '@/components/layout/AppLayout';
 import CurrencyStep from '@/components/onboarding/CurrencyStep';
 import GettingStartedCard from '@/components/dashboard/GettingStartedCard';
@@ -42,8 +41,10 @@ import {
   OPEN_ADD_STATE, checklistSteps, needsCurrencyStep, showChecklist, type ChecklistStepId,
 } from '@/lib/onboarding';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useAuth } from '@/context/AuthContext';
+import { BigAmount } from '@/components/orbix';
 import { userSettings } from '@/lib/userSettings';
-import { ACCOUNT_TYPE_GROUP_NAMES, PAGE_NAMES } from '@/lib/pageNames';
+import { PAGE_NAMES } from '@/lib/pageNames';
 // Charts pull in ~400 kB of recharts+d3. Defer them so the first Dashboard
 // paint doesn't block on that graph code.
 const SpendingPieChart = lazy(() => import('@/components/charts/SpendingPieChart'));
@@ -77,7 +78,7 @@ import { IconTile } from '@/components/AppIcon';
 // Hoisted out of the component so it's a stable type — defining it inline in
 // render made React remount every card (and re-run their effects) each render.
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-card rounded-xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
+  <div className={`bg-card rounded-3xl p-4 card-shadow transition-shadow duration-200 hover:card-shadow-hover ${className}`}>{children}</div>
 );
 
 const Dashboard = () => {
@@ -135,12 +136,9 @@ const Dashboard = () => {
     () => incomeAndSpending(filtered, creditAccountIds),
     [filtered, creditAccountIds],
   );
-  const refunds = useMemo(() => refundTotal(filtered), [filtered]);
   // Before refunds: the base for the category shares, which cannot take a
   // refund off (a refund row does not say which category it undoes).
   const grossExpenses = useMemo(() => grossSpending(filtered), [filtered]);
-  const animatedIncome = useCountUp(income, 700);
-  const animatedExpenses = useCountUp(expenses, 700);
 
   const categorySpending = useMemo(() => {
     const map: Record<string, { icon: string; total: number }> = {};
@@ -151,14 +149,37 @@ const Dashboard = () => {
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [filtered]);
 
-  const [thisMonthIncome, thisMonthExpenses] = useMemo(() => {
-    // Future-dated rows are skipped by isInPeriod: not spent or earned yet.
-    const rows = transactions.filter(tx => isInPeriod(tx.date, 'month', today));
-    // After refunds, like the Expenses figure above.
-    const { income: inc, spending } = incomeAndSpending(rows, creditAccountIds);
-    return [inc, spending];
-  }, [transactions, today, creditAccountIds]);
-  const savings = savingsSummary(thisMonthIncome, thisMonthExpenses);
+  const savings = savingsSummary(income, expenses);
+  // Hero bars: spending per day (1M) or per month (YTD, 12M).
+  const bars = useMemo(() => {
+    const spend = filtered.filter(isCountableExpense);
+    const keys: string[] = [];
+    if (period === 'month') {
+      const n = Number(today.slice(8, 10));
+      for (let d = 1; d <= n; d++) keys.push(`${monthKey}-${String(d).padStart(2, '0')}`);
+    } else {
+      const y = Number(today.slice(0, 4)), mo = Number(today.slice(5, 7));
+      const count = period === 'year' ? mo : 12;
+      for (let i = count - 1; i >= 0; i--) {
+        const d = new Date(y, mo - 1 - i, 1);
+        keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
+    }
+    const len = period === 'month' ? 10 : 7;
+    const totals = new Map(keys.map(k => [k, 0]));
+    spend.forEach(t => { const k = t.date.slice(0, len); if (totals.has(k)) totals.set(k, (totals.get(k) ?? 0) + t.amount); });
+    const rows = keys.map(k => ({ key: k, total: totals.get(k) ?? 0 }));
+    const max = Math.max(1, ...rows.map(r => r.total));
+    const peak = rows.reduce((a, b) => (b.total > a.total ? b : a), rows[0]);
+    return { rows, max, peak };
+  }, [filtered, period, today, monthKey]);
+  const { user } = useAuth();
+  const name = (user?.user_metadata?.display_name as string | undefined)?.split(' ')[0] ?? null;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const periodShort = period === 'month' ? format(parseISO(today), 'MMM') : period === 'year' ? today.slice(0, 4) : '12M';
+  // Chips are a third of the card: drop the decimals there.
+  const fmtCompact = (n: number) => fmt(Math.round(n)).replace(/[.,]00(?=\D*$)/, '');
   // Note: the financial-health score now lives solely on the AI Advisor page,
   // where it is actually computed — per the SpendPal design handoff.
 
@@ -210,10 +231,9 @@ const Dashboard = () => {
   if (dataLoading) {
     return (
       <div>
-        <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl">
-          <Skeleton className="h-6 w-40 bg-primary-raised mb-4" />
-          <Skeleton className="h-10 w-48 bg-primary-raised mb-2" />
-          <Skeleton className="h-4 w-28 bg-primary-raised" />
+        <div className="px-4 md:px-8 pt-16 pb-4">
+          <Skeleton className="h-10 w-40 mb-4 rounded-full" />
+          <Skeleton className="h-52 w-full rounded-[28px]" />
         </div>
         <div className="px-5 md:px-8 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -296,58 +316,149 @@ const Dashboard = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div className={`bg-primary px-5 md:px-8 ${isMobile ? 'pt-12 pb-8 rounded-b-2xl' : 'pt-8 pb-6'}`}>
-        <div className={`${isMobile ? '' : 'max-w-5xl mx-auto'}`}>
-          <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-4'}`}>
-            <div className="flex items-center gap-4 min-w-0">
-              <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
+      {/* Header: Orbix look (2026-11-24). Greeting row, then a gradient
+          card with the balance and this month's in / out / saved. */}
+      <div className={`px-4 md:px-8 ${isMobile ? 'pt-[calc(env(safe-area-inset-top,0px)+20px)]' : 'pt-8'}`}>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <img src={logo} alt="" className="w-10 h-10 rounded-full object-contain bg-card p-1 shrink-0" />
               <div className="min-w-0">
-                <h1 className="text-base font-heading font-bold text-primary-foreground leading-tight">{PAGE_NAMES['/']}</h1>
+                <p className="text-xs text-muted-foreground leading-tight">{greeting}</p>
+                <h1 className="sr-only">{PAGE_NAMES['/']}</h1>
+                <p aria-hidden="true" className="text-lg font-heading font-semibold text-foreground leading-tight truncate">{name ?? PAGE_NAMES['/']}</p>
               </div>
             </div>
-            <button onClick={toggleHidden} className="text-primary-subtle p-2 -mr-2 rounded-lg" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
-              {hidden ? <EyeOff size={20} /> : <Eye size={20} />}
+            <button onClick={toggleHidden} className="w-11 h-11 rounded-full bg-card flex items-center justify-center text-foreground" role="switch" aria-checked={hidden} aria-label={hidden ? 'Show balance' : 'Hide balance'}>
+              {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
 
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-primary-subtle text-xs uppercase tracking-wider mb-1">Spendable Cash</p>
-              <p className="text-financial-hero text-primary-foreground">{hidden ? '••••••' : fmt(animatedBalance)}</p>
-              {sec(totalBalance) && <p className="text-sm text-primary-subtle mt-0.5">≈ {sec(totalBalance)}</p>}
-              {spendable.holds > 0 && (
-                <p className="text-xs text-primary-subtle mt-0.5">After {mask(fmt(spendable.holds))} in pending holds</p>
+          <div className="bg-hero rounded-[28px] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium opacity-80">Spendable cash</p>
+              {/* Secondary currency — chosen in Settings; switchable here once set */}
+              {secondaryCurrency && (
+              <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
+                <SelectTrigger className="h-7 shrink-0 w-auto min-w-[72px] max-w-[110px] hero-chip border-0 text-[hsl(258_30%_8%)] text-xs rounded-full px-3 gap-1">
+                  <SelectValue placeholder="2nd currency" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[240px]">
+                  <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
+                        className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
+                    </div>
+                  </div>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
+                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               )}
             </div>
-
-            {/* Secondary currency — chosen in Settings; switchable here once set */}
-            {secondaryCurrency && (
-            <Select value={secondaryCurrency} onValueChange={v => setSecondaryCurrency(v === '__none__' ? null : v)}>
-              <SelectTrigger className="h-7 shrink-0 w-auto min-w-[78px] max-w-[110px] sm:max-w-[140px] bg-primary-raised border-0 text-primary-subtle text-xs rounded-full px-3 gap-1">
-                <SelectValue placeholder="2nd currency" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[240px]">
-                <div className="px-2 pb-2 sticky top-0 bg-popover z-10">
-                  <div className="relative">
-                    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input type="text" placeholder="Search…" value={secSearch} onChange={e => setSecSearch(e.target.value)}
-                      className="w-full pl-7 pr-2 py-1.5 text-xs rounded-md border border-input bg-background text-foreground outline-none focus:ring-1 focus:ring-ring" />
-                  </div>
-                </div>
-                <SelectItem value="__none__">None</SelectItem>
-                {filteredSecCurrencies.filter(c => c.code !== userCurrency).map(c => (
-                  <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <p className="text-financial-hero mt-1">
+              {hidden ? '••••••' : <BigAmount text={fmt(animatedBalance)} />}
+            </p>
+            {sec(totalBalance) && <p className="text-sm opacity-70 mt-0.5">≈ {sec(totalBalance)}</p>}
+            {spendable.holds > 0 && (
+              <p className="text-xs opacity-70 mt-0.5">After {mask(fmt(spendable.holds))} in pending holds</p>
             )}
+
+            {/* Period switch, Orbix style: translucent track, dark pill */}
+            <div className="hero-chip rounded-full p-1 grid grid-cols-3 mt-4" role="tablist" aria-label="Period">
+              {(['month', 'year', 'all'] as const).map(p => (
+                <button key={p} role="tab" aria-selected={period === p} onClick={() => setPeriod(p)}
+                  className={`h-8 rounded-full text-xs font-medium transition-colors ${period === p ? 'hero-chip-dark' : 'opacity-70'}`}>
+                  {p === 'month' ? '1M' : p === 'year' ? 'YTD' : '12M'}
+                </button>
+              ))}
+            </div>
+
+            {/* Spending bars; the biggest one carries its amount */}
+            {!hidden && bars.peak && bars.peak.total > 0 && (
+              <div className="relative h-28 mt-4 flex items-end gap-[3px]" aria-label="Spending over the period">
+                {bars.rows.map(r => {
+                  const isPeak = r.key === bars.peak.key;
+                  const label = format(parseISO(r.key.length === 7 ? `${r.key}-01` : r.key), r.key.length === 7 ? 'MMM' : 'd MMM');
+                  return (
+                    <div key={r.key} className="relative flex-1 h-full flex items-end">
+                      <div className={`w-full rounded-full ${isPeak ? 'bg-[hsl(258_30%_8%)]' : 'bg-[hsl(258_30%_8%/0.22)]'}`}
+                        style={{ height: `${Math.max(4, (r.total / bars.max) * 72)}%` }} />
+                      {isPeak && (
+                        <span className="absolute bottom-[calc(72%+8px)] left-1/2 -translate-x-1/2 whitespace-nowrap bg-white text-[hsl(258_30%_8%)] text-[11px] font-semibold rounded-full px-2 py-0.5 shadow">
+                          {fmtCompact(r.total)} · {label}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <div className="hero-chip rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70">In · {periodShort}</p>
+                <p className="text-base font-semibold tabular-nums truncate">{mask(fmtCompact(income))}</p>
+              </div>
+              <div className="hero-chip rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70">Out · {periodShort}</p>
+                <p className="text-base font-semibold tabular-nums truncate">{mask(fmtCompact(expenses))}</p>
+              </div>
+              <div className="hero-chip-dark rounded-2xl px-3 py-2.5 min-w-0">
+                <p className="text-[11px] opacity-70">{savings.kind === 'overspent' ? 'Over' : 'Saved'}</p>
+                <p className="text-base font-semibold tabular-nums truncate">
+                  {hidden ? '••' : savings.kind === 'saved' ? `${savings.rate}%` : savings.kind === 'overspent' ? fmtCompact(savings.amount) : '—'}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="px-5 md:px-8 -mt-4 pb-8">
+      <div className="px-4 md:px-8 mt-5 pb-8">
         {checklistVisible && <GettingStartedCard steps={steps} onStep={runStep} onDismiss={dismissChecklist} />}
+
+        {/* ── ACCOUNTS ── Orbix tiles, two across */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-[0.16em]">Accounts · <span className="text-foreground">{accounts.length}</span></h2>
+            <button onClick={() => navigate('/accounts')} className="tap-area text-sm text-foreground">See all</button>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {accounts.map(a => {
+              const utilization = Math.round(creditUtilization(a) ?? 0);
+              return (
+                <div key={a.id} className="group relative bg-card rounded-3xl p-4 min-w-0">
+                  <button type="button" onClick={() => { setEditAccount(a); setShowAddAccount(true); }} aria-label={`Edit ${a.name}`} className="absolute inset-0 rounded-3xl" />
+                  <IconTile value={a.icon} />
+                  <p className="mt-4 text-xs text-muted-foreground truncate">
+                    {a.type === 'credit' ? `Owed · ${a.name}` : a.name}
+                  </p>
+                  <p className={`mt-0.5 text-xl font-medium tabular-nums tracking-tight truncate ${a.type === 'credit' ? 'text-expense' : ''}`}>
+                    {hidden ? '••••' : <BigAmount text={fmt(a.balance)} />}
+                  </p>
+                  {a.type === 'credit' && a.creditLimit != null && !hidden && (
+                    <div className="mt-2 h-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(utilization, 100)}%` }} />
+                    </div>
+                  )}
+                  <button onClick={() => setDeleteAccountId(a.id)} aria-label={`Delete ${a.name}`} className="hidden md:inline-flex absolute top-3 right-3 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              );
+            })}
+            <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }}
+              className="rounded-3xl border border-dashed border-border p-4 min-h-[128px] flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <Plus size={20} />
+              <span className="text-xs">Add account</span>
+            </button>
+          </div>
+        </div>
+
 
         {/* What each card's statement asks for, exactly as entered */}
         <CardPaymentsCard
@@ -363,159 +474,6 @@ const Dashboard = () => {
         {/* Alerts */}
         <div className="mb-4">
           <RecurringDueBanner transactions={transactions} />
-        </div>
-
-        {/* Section divider helper */}
-        {/* ── OVERVIEW ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-          <div className="col-span-2 lg:col-span-4 flex items-center gap-4 pt-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Income and expenses</span>
-            <div className="flex-1 h-px bg-border" />
-            <div className="flex gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
-              {(['all', 'month', 'year'] as const).map(p => (
-                <button key={p} onClick={() => setPeriod(p)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                    period === p ? 'bg-card text-foreground card-shadow' : 'text-muted-foreground'
-                  }`}>
-                  {p === 'all' ? 'All' : p === 'month' ? 'Month' : 'Year'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
-            <div className="w-[26px] h-[26px] rounded-lg bg-income/[0.12] text-income flex items-center justify-center mb-2"><ArrowUpRight size={15} /></div>
-            <p className="text-xs text-muted-foreground mb-1">Income</p>
-            <p className="text-financial-medium text-income tabular-nums">{mask(fmt(animatedIncome))}</p>
-            {sec(income) && <p className="text-xs text-muted-foreground truncate">≈ {sec(income)}</p>}
-          </Card>
-          <Card className="col-span-1 lg:col-span-2 overflow-hidden">
-            <div className="w-[26px] h-[26px] rounded-lg bg-expense/[0.12] text-expense flex items-center justify-center mb-2"><ArrowDown size={15} /></div>
-            <p className="text-xs text-muted-foreground mb-1">Expenses</p>
-            <p className="text-financial-medium text-expense tabular-nums">{mask(fmt(animatedExpenses))}</p>
-            {sec(expenses) && <p className="text-xs text-muted-foreground truncate">≈ {sec(expenses)}</p>}
-            {refunds > 0 && <p className="text-xs text-muted-foreground">−{mask(fmt(refunds))} refunds</p>}
-          </Card>
-
-          {savings.kind === 'saved' && (
-            <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-primary">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Saved this month</p>
-                  <p className={`text-financial-medium ${savings.rate >= 20 ? 'text-income' : 'text-warning'}`}>
-                    {hidden ? '••' : `${savings.rate}%`}
-                  </p>
-                </div>
-                <div className="text-right text-xs text-muted-foreground">
-                  <p>{mask(fmt(savings.amount))}</p>
-                  <p className="text-xs">{savings.rate >= 20 ? 'On track' : 'Room to save'}</p>
-                </div>
-              </div>
-              {!hidden && (
-                <div className="h-2 bg-muted rounded-full overflow-hidden" role="progressbar" aria-label="Savings rate" aria-valuenow={savings.rate} aria-valuemin={0} aria-valuemax={100}>
-                  <div
-                    className={`h-full rounded-full transition-all ${savings.rate >= 20 ? 'bg-income' : 'bg-warning'}`}
-                    style={{ width: `${Math.min(savings.rate, 100)}%` }}
-                  />
-                </div>
-              )}
-            </Card>
-          )}
-          {/* A rate against a small income is noise ("-3050%"): show the gap in money. */}
-          {savings.kind === 'overspent' && (
-            <Card className="col-span-2 lg:col-span-4 border-t-2 border-t-expense">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Overspent this month</p>
-                  <p className="text-financial-medium text-expense">{mask(fmt(savings.amount))}</p>
-                </div>
-                <div className="text-right text-xs text-muted-foreground">
-                  <p>In: {mask(fmt(thisMonthIncome))}</p>
-                  <p>Out: {mask(fmt(thisMonthExpenses))}</p>
-                </div>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        {/* ── ACCOUNTS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-4 lg:mt-5">
-          <Card className="col-span-2 lg:col-span-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading text-sm">Accounts</h2>
-              <button onClick={() => { setEditAccount(null); setShowAddAccount(true); }} className="tap-area text-xs text-primary font-medium flex items-center gap-1">
-                <Plus size={14} /> Add
-              </button>
-            </div>
-            <div className="space-y-4">
-              {(['cash', 'debit', 'credit'] as const).map(accountType => {
-                const group = accounts.filter(a => a.type === accountType);
-                if (group.length === 0) return null;
-                return (
-                  <div key={accountType}>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">{ACCOUNT_TYPE_GROUP_NAMES[accountType]}</p>
-                    <div className="space-y-5">
-                      {group.map(a => {
-                        const available = availableCredit(a);
-                        const utilization = Math.round(creditUtilization(a) ?? 0);
-                        const utilizationColor = utilization > 75 ? 'bg-expense' : utilization > 50 ? 'bg-warning' : 'bg-primary';
-                        return (
-                          <div key={a.id} className="group">
-                            <div className="flex items-center justify-between gap-3">
-                              {/* On a phone the whole row opens the account: two icon
-                                  buttons per row left the name a few letters wide. */}
-                              <button
-                                type="button"
-                                onClick={() => { if (isMobile) { setEditAccount(a); setShowAddAccount(true); } }}
-                                className="flex items-center gap-3 min-w-0 flex-1 text-left md:cursor-default"
-                                aria-label={isMobile ? `Edit ${a.name}` : undefined}
-                                tabIndex={isMobile ? 0 : -1}
-                              >
-                                <IconTile value={a.icon} />
-                                <p className="text-sm font-medium line-clamp-2 break-words min-w-0">{a.name}</p>
-                              </button>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <div className="text-right">
-                                  <p className="font-heading text-sm tabular-nums">{mask(fmt(a.balance))}</p>
-                                  {sec(a.balance) && <p className="text-xs text-muted-foreground">≈ {sec(a.balance)}</p>}
-                                  {a.type === 'credit' && <p className="text-xs font-medium text-primary">Owed</p>}
-                                </div>
-                                <button onClick={() => { setEditAccount(a); setShowAddAccount(true); }} aria-label={`Edit ${a.name}`} className="hidden md:inline-flex md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-foreground transition-opacity p-2">
-                                  <Edit2 size={14} />
-                                </button>
-                                <button onClick={() => setDeleteAccountId(a.id)} aria-label={`Delete ${a.name}`} className="hidden md:inline-flex md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-2">
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-                            {a.type === 'credit' && (
-                              <div className="ml-[3.25rem] mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                                {a.statementDate && a.statementDate > 0 && <span>Statement {ordinal(a.statementDate)}</span>}
-                                {a.dueDate && <span>Due {ordinal(a.dueDate)}</span>}
-                                {available != null && <span className="text-primary font-medium">{mask(fmt(available))} available</span>}
-                              </div>
-                            )}
-                            {a.type === 'credit' && a.creditLimit != null && (
-                              <div className="mt-1.5 ml-[3.25rem]">
-                                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                  <span>{utilization}% used</span>
-                                  <span>Limit {fmt(a.creditLimit)}</span>
-                                </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                  <div className={`h-full rounded-full transition-all ${utilizationColor}`} style={{ width: `${utilization}%` }} />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-              {accounts.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No accounts yet.</p>}
-            </div>
-          </Card>
         </div>
 
         {/* ── SPENDING ── */}

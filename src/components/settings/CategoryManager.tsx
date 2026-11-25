@@ -4,7 +4,8 @@ import { useFinance } from '@/context/FinanceContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp, Combine } from 'lucide-react';
+import { Pencil, Trash2, Check, ChevronDown, ChevronUp, Combine } from 'lucide-react';
+import { SectionLabel, SectionAction } from '@/components/orbix';
 import { CATEGORIES } from '@/types/finance';
 import { toast } from 'sonner';
 import {
@@ -33,13 +34,13 @@ const TYPE_BADGE: Record<CategoryType, string> = {
 };
 
 const TypeToggle = ({ value, onChange }: { value: CategoryType; onChange: (v: CategoryType) => void }) => (
-  <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
+  <div className="flex gap-1 p-1 bg-muted rounded-full">
     {TYPE_OPTIONS.map(opt => (
       <button
         key={opt.value}
         onClick={() => onChange(opt.value)}
-        className={`flex-1 py-1 rounded-md text-xs font-medium transition-all ${
-          value === opt.value ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'
+        className={`flex-1 h-8 rounded-full text-xs font-medium transition-colors ${
+          value === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
         }`}
       >
         {opt.label}
@@ -155,20 +156,15 @@ const CategoryManager = () => {
   const visibleItems = showAll ? allItems : allItems.slice(0, PREVIEW_COUNT);
 
   return (
-    <div className="bg-card rounded-xl p-5 card-shadow space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">Categories</p>
-        <button onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary-soft transition-colors">
-          {showAdd ? <X size={12} /> : <Plus size={12} />}
-          {showAdd ? 'Cancel' : 'Add'}
-        </button>
-      </div>
+    <>
+      <SectionLabel label="Categories" count={allItems.length}
+        action={<SectionAction onClick={() => setShowAdd(!showAdd)}>{showAdd ? 'Cancel' : 'Add'}</SectionAction>} />
 
+      <div className="bg-card rounded-3xl px-4 divide-y divide-border">
       {/* Add new category */}
       {showAdd && (
-        <div className="bg-muted rounded-xl p-3 space-y-3">
-          <Input placeholder="Category name" value={newName} onChange={e => setNewName(e.target.value)} className="h-10" />
+        <div className="py-4 space-y-3">
+          <Input placeholder="Category name" value={newName} onChange={e => setNewName(e.target.value)} className="h-11 rounded-full bg-muted border-0 px-4" />
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">Type</p>
             <TypeToggle value={newType} onChange={setNewType} />
@@ -178,71 +174,80 @@ const CategoryManager = () => {
             <div className="flex flex-wrap gap-1.5">
               {EMOJI_SUGGESTIONS.map(emoji => (
                 <button key={emoji} onClick={() => setNewIcon(emoji)}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-all ${
-                    newIcon === emoji ? 'bg-primary-soft ring-2 ring-primary' : 'bg-background hover:bg-muted'
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-base transition-colors ${
+                    newIcon === emoji ? 'bg-primary text-primary-foreground' : 'bg-muted hover:text-primary'
                   }`}>
                   <AppIcon value={emoji} />
                 </button>
               ))}
             </div>
           </div>
-          <Button onClick={handleAdd} disabled={!newName.trim()} size="sm" className="w-full h-9 bg-primary text-primary-foreground">
+          <Button onClick={handleAdd} disabled={!newName.trim()} size="sm" className="w-full h-11 rounded-full bg-primary text-primary-foreground">
             <Check size={12} className="mr-1" /> Add Category
           </Button>
         </div>
       )}
 
       {/* Preview / All categories */}
-      <div className="space-y-1.5">
         {visibleItems.map(item => (
-          <div key={(item as { originalName?: string }).originalName ?? item.name} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted group">
+          <div key={(item as { originalName?: string }).originalName ?? item.name} className="flex items-center gap-3 py-2.5 group">
             {(item.type === 'default' && editDefaultName === (item as { originalName?: string }).originalName) ? (
               <div className="flex-1 space-y-2">
                 <Input
                   value={defaultNewName}
                   onChange={e => setDefaultNewName(e.target.value)}
                   placeholder={editDefaultName ?? ''}
-                  className="h-8 text-sm"
+                  className="h-10 text-sm rounded-full bg-muted border-0 px-4"
                 />
                 <div className="flex flex-wrap gap-1">
                   {EMOJI_SUGGESTIONS.slice(0, 20).map(emoji => (
                     <button key={emoji} onClick={() => setDefaultNewIcon(emoji)}
-                      className={`w-7 h-7 rounded flex items-center justify-center text-sm ${
-                        defaultNewIcon === emoji ? 'bg-primary-soft ring-1 ring-primary' : 'hover:bg-muted'
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                        defaultNewIcon === emoji ? 'bg-primary text-primary-foreground' : 'bg-muted'
                       }`}>
                       <AppIcon value={emoji} />
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-1.5">
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setEditDefaultName(null); setDefaultNewName(''); }}>Cancel</Button>
-                  <Button size="sm" className="h-7 text-xs" onClick={handleOverrideDefault}>Save</Button>
+                  <Button size="sm" variant="ghost" className="h-8 text-xs rounded-full" onClick={() => { setEditDefaultName(null); setDefaultNewName(''); }}>Cancel</Button>
+                  <Button size="sm" className="h-8 px-4 text-xs rounded-full" onClick={handleOverrideDefault}>Save</Button>
                 </div>
               </div>
             ) : (item.type === 'custom' && editingId === item.id) ? (
               <div className="flex-1 space-y-2">
-                <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-8 text-sm" />
+                <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-10 text-sm rounded-full bg-muted border-0 px-4" />
                 <TypeToggle value={editType} onChange={setEditType} />
                 <div className="flex flex-wrap gap-1">
                   {EMOJI_SUGGESTIONS.slice(0, 20).map(emoji => (
                     <button key={emoji} onClick={() => setEditIcon(emoji)}
-                      className={`w-7 h-7 rounded flex items-center justify-center text-sm ${
-                        editIcon === emoji ? 'bg-primary-soft ring-1 ring-primary' : 'hover:bg-muted'
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                        editIcon === emoji ? 'bg-primary text-primary-foreground' : 'bg-muted'
                       }`}>
                       <AppIcon value={emoji} />
                     </button>
                   ))}
                 </div>
-                <div className="flex gap-1.5">
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingId(null)}>Cancel</Button>
-                  <Button size="sm" className="h-7 text-xs" onClick={handleUpdate}>Save</Button>
+                <div className="flex items-center gap-1.5">
+                  <Button size="sm" variant="ghost" className="h-8 text-xs rounded-full" onClick={() => setEditingId(null)}>Cancel</Button>
+                  <Button size="sm" className="h-8 px-4 text-xs rounded-full" onClick={handleUpdate}>Save</Button>
+                  <span className="flex-1" />
+                  <button onClick={() => { setEditingId(null); setMergingName(item.name); setMergeTarget(''); }}
+                    title="Merge into another category"
+                    className="h-8 px-3 rounded-full inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                    <Combine size={12} /> Merge
+                  </button>
+                  <button onClick={() => setDeleteId(item.id!)}
+                    className="h-8 px-3 rounded-full inline-flex items-center gap-1 text-xs text-destructive">
+                    <Trash2 size={12} /> Delete
+                  </button>
                 </div>
               </div>
             ) : (item.type === 'custom' && mergingName === item.name) ? (
               <div className="flex-1 space-y-2">
                 <p className="text-xs text-muted-foreground">Merge "{item.name}" into another category. Its transactions and budgets move over.</p>
                 <Select value={mergeTarget} onValueChange={setMergeTarget}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Choose target category" /></SelectTrigger>
+                  <SelectTrigger className="h-10 text-sm rounded-full bg-muted border-0 px-4"><SelectValue placeholder="Choose target category" /></SelectTrigger>
                   <SelectContent>
                     {categories.filter(c => c.name !== item.name).map(c => (
                       <SelectItem key={c.name} value={c.name}><AppIcon value={c.icon} /> {c.name}</SelectItem>
@@ -250,8 +255,8 @@ const CategoryManager = () => {
                   </SelectContent>
                 </Select>
                 <div className="flex gap-1.5">
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setMergingName(null); setMergeTarget(''); }}>Cancel</Button>
-                  <Button size="sm" className="h-7 text-xs" disabled={!mergeTarget || merging} onClick={() => handleMerge(item.name)}>
+                  <Button size="sm" variant="ghost" className="h-8 text-xs rounded-full" onClick={() => { setMergingName(null); setMergeTarget(''); }}>Cancel</Button>
+                  <Button size="sm" className="h-8 px-4 text-xs rounded-full" disabled={!mergeTarget || merging} onClick={() => handleMerge(item.name)}>
                     {merging ? 'Merging…' : 'Merge'}
                   </Button>
                 </div>
@@ -259,7 +264,7 @@ const CategoryManager = () => {
             ) : (
               <>
                 <IconTile value={item.icon} />
-                <span className="text-xs truncate flex-1">{item.name}</span>
+                <span className="text-[15px] font-medium truncate flex-1">{item.name}</span>
                 {item.type === 'custom' && (() => {
                   const cat = customCategories.find(c => c.id === (item as { id?: string }).id);
                   const badge = cat?.type && cat.type !== 'both' ? TYPE_BADGE[cat.type] : null;
@@ -279,35 +284,23 @@ const CategoryManager = () => {
                     setDefaultNewName(item.name);
                   }
                 }}
-                  className="md:opacity-0 md:group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
-                  <Pencil size={12} />
+                  aria-label={`Edit ${item.name}`}
+                  className="md:opacity-0 md:group-hover:opacity-100 w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-all">
+                  <Pencil size={14} />
                 </button>
-                {item.type === 'custom' && (
-                  <button onClick={() => { setMergingName(item.name); setMergeTarget(''); }}
-                    title="Merge into another category"
-                    className="md:opacity-0 md:group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all">
-                    <Combine size={12} />
-                  </button>
-                )}
-                {item.type === 'custom' && (
-                  <button onClick={() => setDeleteId(item.id!)}
-                    className="md:opacity-0 md:group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">
-                    <Trash2 size={12} />
-                  </button>
-                )}
               </>
             )}
           </div>
         ))}
-      </div>
 
       {allItems.length > PREVIEW_COUNT && (
         <button onClick={() => setShowAll(!showAll)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-primary hover:text-primary transition-colors">
+          className="w-full flex items-center justify-center gap-1.5 py-3.5 text-sm font-medium text-primary transition-colors">
           {showAll ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {showAll ? 'Show less' : `Show all ${allItems.length} categories`}
         </button>
       )}
+      </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
         <AlertDialogContent className="max-w-sm">
@@ -322,7 +315,7 @@ const CategoryManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };
 

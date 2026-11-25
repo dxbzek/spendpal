@@ -1,11 +1,5 @@
 import { useRef, useState } from 'react';
-import { Trash2, Tag, MoreVertical } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Trash2, Tag } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
@@ -24,8 +18,8 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
  * framer-motion `drag`) so the app can ship framer-motion's lighter
  * `domAnimation` feature set instead of the full `domMax` that drag requires.
  * Behaviour is preserved: left past the threshold deletes, right categorizes,
- * vertical movement scrolls the list untouched, and the overflow menu remains
- * the accessible fallback for keyboard / non-touch users.
+ * vertical movement scrolls the list untouched. The keyboard / non-touch
+ * fallback is the row's own "Transaction actions" menu (Transactions.tsx).
  */
 const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
   const [dx, setDx] = useState(0);
@@ -133,30 +127,6 @@ const SwipeableTransaction = ({ children, onDelete, onCategorize }: Props) => {
         {children}
       </div>
 
-      {/* Keyboard/pointer fallback - overflow menu for non-touch users. Hidden
-          on touch screens, where it sat invisibly over the row's trash button. */}
-      <div className="hidden [@media(hover:hover)]:block absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/tx:opacity-100 focus-within:opacity-100 transition-opacity">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="p-1.5 rounded-lg bg-card border border-border shadow-sm text-muted-foreground hover:text-foreground"
-              aria-label="Transaction actions"
-            >
-              <MoreVertical size={14} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[120px]">
-            {onCategorize && (
-              <DropdownMenuItem onClick={onCategorize} className="gap-2 text-xs">
-                <Tag size={12} /> Categorize
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={onDelete} className="gap-2 text-xs text-destructive focus:text-destructive">
-              <Trash2 size={12} /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
     </div>
   );
 };

@@ -15,7 +15,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { IconTile } from '@/components/AppIcon';
+import AppIcon, { IconTile } from '@/components/AppIcon';
+import { BigAmount, HeroCard, HeroChip, IconButton, ListCard, ListRow, Meter, PageHeader, SectionLabel, Tile } from '@/components/orbix';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -130,91 +131,79 @@ const Installments = () => {
     const livePlan = plan;
 
     return (
-      <div className={`${NARROW_PAGE} py-6 pb-28`}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSelectedPlan(null)}
-              className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
-              aria-label="Back"
-            >
+      <div className={`${NARROW_PAGE} pb-28`}>
+        {/* Header: round back button, title, round edit / delete */}
+        <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+20px)] md:pt-8 pb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <IconButton onClick={() => setSelectedPlan(null)} aria-label="Back">
               <ChevronLeft size={18} />
-            </button>
-            <h1 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              Installment Plan
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => openEdit(livePlan)}
-              className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground"
-              aria-label="Edit plan"
-            >
-              <Pencil size={15} />
-            </button>
-            <button
-              onClick={() => setPlanToDelete(livePlan)}
-              className="w-9 h-9 rounded-full bg-destructive-soft flex items-center justify-center text-destructive"
-              aria-label="Delete plan"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* Progress card */}
-        <div className="bg-card rounded-xl border border-border p-5 mb-4 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {hasLoan ? 'Principal Paid' : 'Paid Till Now'}
-          </p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-heading font-bold">{fmt(hasLoan ? paidPrincipal : paidPayments)}</span>
-            <span className="text-sm text-muted-foreground">of {fmt(hasLoan ? loanTotal : grossTotal)}</span>
-          </div>
-          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPct}%` }} />
-          </div>
-          <p className="text-xs text-muted-foreground text-right">
-            Remaining &nbsp;<span className="font-medium text-foreground">{fmt(hasLoan ? remainingPrincipal : planLeft(plan))}</span>
-          </p>
-        </div>
-
-        {/* CC / quick progress stepper */}
-        {!isDone && (
-          <div className="bg-primary-soft border border-primary-line rounded-xl p-4 mb-4">
-            <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">
-              Update paid installments
-            </p>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <p className="text-sm text-muted-foreground">
-                Mark installments as paid when your card statement arrives
-              </p>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => updateProgress(livePlan, -1)}
-                  disabled={livePlan.paidInstallments <= 0}
-                  className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center disabled:opacity-40"
-                >
-                  <Minus size={14} />
-                </button>
-                <span className="text-base font-heading font-bold min-w-[72px] text-center">
-                  {livePlan.paidInstallments} / {livePlan.totalInstallments}
-                </span>
-                <button
-                  onClick={() => updateProgress(livePlan, +1)}
-                  disabled={livePlan.paidInstallments >= livePlan.totalInstallments}
-                  className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground disabled:opacity-40"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
+            </IconButton>
+            <div className="min-w-0">
+              <h1 className="text-lg font-heading font-semibold tracking-tight truncate">Installment Plan</h1>
+              <p className="text-xs text-muted-foreground truncate">{planDisplayName(plan.merchant)}</p>
             </div>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <IconButton onClick={() => openEdit(livePlan)} aria-label="Edit plan">
+              <Pencil size={16} />
+            </IconButton>
+            <IconButton onClick={() => setPlanToDelete(livePlan)} aria-label="Delete plan" className="text-muted-foreground hover:text-destructive">
+              <Trash2 size={16} />
+            </IconButton>
+          </div>
+        </div>
+
+        {/* Hero: what is paid, of what, and the bar */}
+        <HeroCard className="mb-5">
+          <p className="text-sm opacity-70">{hasLoan ? 'Principal paid' : 'Paid till now'}</p>
+          <p className="mt-1 text-[2.5rem] leading-none font-medium tracking-tight tabular-nums">
+            <BigAmount text={fmt(hasLoan ? paidPrincipal : paidPayments)} />
+          </p>
+          <p className="text-sm opacity-70 mt-1.5">of {fmt(hasLoan ? loanTotal : grossTotal)}</p>
+          <div className="mt-4 h-1.5 rounded-full bg-[hsl(258_30%_8%/0.15)] overflow-hidden" role="progressbar" aria-label="Plan progress" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-[hsl(258_30%_8%)] transition-all" style={{ width: `${progressPct}%` }} />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <HeroChip label="Remaining" value={fmt(hasLoan ? remainingPrincipal : planLeft(plan))} />
+            <HeroChip label="Done" value={`${progressPct}%`} />
+            <HeroChip dark label="Paid" value={`${livePlan.paidInstallments}/${livePlan.totalInstallments}`} />
+          </div>
+        </HeroCard>
+
+        {/* Stepper: mark statement instalments paid */}
+        {!isDone && (
+          <Tile className="mb-5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[15px] font-medium">Update paid installments</p>
+              <p className="text-xs text-muted-foreground mt-0.5">When your card statement arrives</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <IconButton
+                onClick={() => updateProgress(livePlan, -1)}
+                disabled={livePlan.paidInstallments <= 0}
+                aria-label="One fewer paid"
+                className="bg-muted"
+              >
+                <Minus size={14} />
+              </IconButton>
+              <span className="text-base font-medium tabular-nums min-w-[56px] text-center">
+                {livePlan.paidInstallments} / {livePlan.totalInstallments}
+              </span>
+              <IconButton
+                tone="primary"
+                onClick={() => updateProgress(livePlan, +1)}
+                disabled={livePlan.paidInstallments >= livePlan.totalInstallments}
+                aria-label="One more paid"
+              >
+                <Plus size={14} />
+              </IconButton>
+            </div>
+          </Tile>
         )}
 
         {/* Detail rows */}
-        <div className="bg-card rounded-xl border border-border divide-y divide-border mb-4">
+        <SectionLabel label="Details" />
+        <div className="bg-card rounded-3xl divide-y divide-border mb-4">
           <DetailRow label="Monthly installment" value={fmt(plan.amountPerInstallment)} />
           <DetailRow label="Repayment period" value={`${plan.totalInstallments} month${plan.totalInstallments !== 1 ? 's' : ''}`} />
           {schedule && <DetailRow label="Started" value={format(schedule.startedOn, 'MMM yyyy')} />}
@@ -232,7 +221,7 @@ const Installments = () => {
           {plan.note && <DetailRow label="Description" value={plan.note} />}
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mb-6">
+        <p className="text-center text-xs text-muted-foreground mb-6">
           {livePlan.paidInstallments} of {livePlan.totalInstallments} installments paid · {progressPct}% complete
         </p>
 
@@ -269,122 +258,118 @@ const Installments = () => {
 
   // ── List view ─────────────────────────────────────────────────────────────
 
+  const monthlyTotal = activePlans.reduce((s, p) => s + p.amountPerInstallment, 0);
+
   return (
-    <div className={`${NARROW_PAGE} py-6 pb-6 space-y-6`}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-heading font-bold">Installments</h1>
-        <button
-          onClick={openAdd}
-          className="bg-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-transform"
-        >
-          <Plus size={15} /> New plan
-        </button>
-      </div>
+    <div className={`${NARROW_PAGE} pb-8`}>
+      <PageHeader
+        title="Installments"
+        actions={
+          <IconButton tone="primary" onClick={openAdd} aria-label="New plan" title="New plan">
+            <Plus size={20} />
+          </IconButton>
+        }
+      />
 
       {plans.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <CreditCard size={40} className="mx-auto mb-3 opacity-30" />
+        <Tile className="text-center py-14 text-muted-foreground">
+          <span className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+            <CreditCard size={24} className="opacity-60" />
+          </span>
           <p className="font-medium">No installment plans yet</p>
-        </div>
+        </Tile>
       ) : (
-        <>
-          {/* Summary */}
+        <div className="space-y-6">
+          {/* Hero: what the plans take each month */}
+          <HeroCard>
+            <p className="text-sm opacity-70">Monthly</p>
+            <p className="mt-1 text-[2.5rem] leading-none font-medium tracking-tight tabular-nums">
+              <BigAmount text={fmt(monthlyTotal)} />
+            </p>
+            <p className="text-sm opacity-70 mt-1.5">
+              {activePlans.length} active plan{activePlans.length !== 1 ? 's' : ''}
+            </p>
+            <div className="grid grid-cols-3 gap-2 mt-5">
+              <HeroChip className="col-span-2" dark label="Total left" value={fmt(totalRemaining)} />
+              <HeroChip label="Plans" value={activePlans.length} />
+            </div>
+          </HeroCard>
+
+          {/* Active plans: one tile each, like Orbix saving goals */}
           {activePlans.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <p className="text-2xl font-bold text-primary">{activePlans.length}</p>
-                <p className="text-xs text-muted-foreground">Plans</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <p className="text-sm font-bold">{fmt(activePlans.reduce((s, p) => s + p.amountPerInstallment, 0))}</p>
-                <p className="text-xs text-muted-foreground">Monthly</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <p className="text-sm font-bold text-expense">{fmt(totalRemaining)}</p>
-                <p className="text-xs text-muted-foreground">Total left</p>
+            <div>
+              <SectionLabel label="Active" count={activePlans.length} />
+              <div className="space-y-3">
+                {activePlans.map(plan => {
+                  const progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
+                  const schedule = planSchedule(plan, accountOf(plan), now);
+                  return (
+                    <Tile key={plan.key} className="p-0">
+                      <button
+                        onClick={() => setSelectedPlan(plan)}
+                        className="w-full text-left p-4 active:opacity-70"
+                      >
+                        <div className="flex items-center gap-3">
+                          <IconTile value={plan.categoryIcon} className="w-11 h-11" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[15px] font-medium line-clamp-2 break-words">{planDisplayName(plan.merchant)}</p>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {plan.paidInstallments}/{plan.totalInstallments} paid · {accountOf(plan)?.name ?? plan.category}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[15px] font-medium tabular-nums tracking-tight">
+                              <BigAmount text={fmt(plan.amountPerInstallment)} /><span className="text-xs text-muted-foreground font-normal">/mo</span>
+                            </p>
+                            <p className="text-xs font-medium text-primary mt-0.5">{progress}%</p>
+                          </div>
+                        </div>
+                        <Meter value={progress} className="mt-3.5 h-1" label={`${planDisplayName(plan.merchant)} progress`} />
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-2.5 text-xs text-muted-foreground">
+                          <span>
+                            {schedule && <>Ends {format(schedule.endsOn, 'd MMM yyyy')} · </>}<span className="text-expense">{fmt(planLeft(plan))} left</span>
+                          </span>
+                          <span className="shrink-0 tabular-nums">{fmt(plan.paidAmount)} / {fmt(plan.totalAmount)}</span>
+                        </div>
+                      </button>
+                    </Tile>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Active Plans */}
-          {activePlans.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Active</h2>
-              {activePlans.map(plan => {
-                const progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
-                const schedule = planSchedule(plan, accountOf(plan), now);
-                return (
-                  <div key={plan.key} className="bg-card rounded-xl border border-border p-4 space-y-3">
-                    {/* Tappable top row → detail view */}
-                    <button
-                      onClick={() => setSelectedPlan(plan)}
-                      className="w-full text-left flex items-center gap-3 active:opacity-70"
-                    >
-                      <IconTile value={plan.categoryIcon} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold line-clamp-2 break-words">{planDisplayName(plan.merchant)}</p>
-                        <p className="text-xs text-muted-foreground truncate">{accountOf(plan)?.name ?? plan.category}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-semibold">{fmt(plan.amountPerInstallment)}/mo</p>
-                        <p className="text-xs text-muted-foreground">{plan.paidInstallments}/{plan.totalInstallments} paid</p>
-                      </div>
-                    </button>
-
-                    {/* Progress bar */}
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{progress}%</span>
-                        <span>{fmt(plan.paidAmount)} / {fmt(plan.totalAmount)}</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
-                      </div>
-                    </div>
-
-                    {/* Bottom row: when it ends + what's left */}
-                    <div className="pt-2 border-t border-border">
-                      <span className="text-xs text-muted-foreground">
-                        {schedule && <>Ends {format(schedule.endsOn, 'd MMM yyyy')} · </>}<span className="text-expense font-medium">{fmt(planLeft(plan))} left</span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Completed Plans */}
+          {/* Completed plans: tucked away in one list card */}
           {completedPlans.length > 0 && (
-            <div className="space-y-3">
-              <button
-                onClick={() => setShowCompleted(v => !v)}
-                aria-expanded={showCompleted}
-                className="tap-area flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-              >
-                Completed ({completedPlans.length})
-                <ChevronDown size={14} className={showCompleted ? 'rotate-180' : ''} />
-              </button>
-              {showCompleted && completedPlans.map(plan => (
+            <div>
+              <div className="flex items-center justify-between mb-3 px-1">
                 <button
-                  key={plan.key}
-                  onClick={() => setSelectedPlan(plan)}
-                  className="w-full text-left bg-card rounded-xl border border-border p-4 opacity-60 active:scale-[0.99] transition-transform"
+                  onClick={() => setShowCompleted(v => !v)}
+                  aria-expanded={showCompleted}
+                  className="tap-area flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-[0.16em]"
                 >
-                  <div className="flex items-center gap-3">
-                    <IconTile value={plan.categoryIcon} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold line-clamp-2 break-words">{planDisplayName(plan.merchant)}</p>
-                      <p className="text-xs text-muted-foreground">{plan.totalInstallments} payments · {fmt(plan.totalAmount)} total</p>
-                    </div>
-                    <CheckCircle2 size={16} className="text-income shrink-0" />
-                  </div>
+                  Completed · <span className="text-foreground">{completedPlans.length}</span>
+                  <ChevronDown size={14} className={showCompleted ? 'rotate-180' : ''} />
                 </button>
-              ))}
+              </div>
+              {showCompleted && (
+                <ListCard>
+                  {completedPlans.map(plan => (
+                    <ListRow
+                      key={plan.key}
+                      onClick={() => setSelectedPlan(plan)}
+                      icon={<AppIcon value={plan.categoryIcon} className="text-[18px]" />}
+                      title={planDisplayName(plan.merchant)}
+                      sub={`${plan.totalInstallments} payments · ${fmt(plan.totalAmount)} total`}
+                      trailing={<CheckCircle2 size={16} className="text-income shrink-0" />}
+                      className="opacity-70"
+                    />
+                  ))}
+                </ListCard>
+              )}
             </div>
           )}
-        </>
+        </div>
       )}
 
       <AddTransactionSheet
@@ -400,9 +385,9 @@ const Installments = () => {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex items-center justify-between px-4 py-3.5">
+  <div className="flex items-center justify-between gap-3 px-4 py-3.5">
     <p className="text-sm text-muted-foreground">{label}</p>
-    <p className="text-sm font-medium">{value}</p>
+    <p className="text-sm font-medium tabular-nums text-right">{value}</p>
   </div>
 );
 

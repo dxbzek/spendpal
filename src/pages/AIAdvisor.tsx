@@ -12,12 +12,12 @@ import { nextResetAt, usageLine } from '@/lib/aiUsage';
 import { format, parseISO, subMonths, getMonth, getYear, differenceInCalendarDays } from 'date-fns';
 import { m, AnimatePresence } from 'framer-motion';
 import {
-  Brain, Loader2, AlertTriangle, CheckCircle2,
-  Lightbulb, ArrowRight, RefreshCw, Wallet, BarChart3, Shield, Target, Zap, ExternalLink, Info,
-  History, Trash2, ChevronDown, ChevronUp,
+  Loader2, AlertTriangle, CheckCircle2,
+  Lightbulb, ArrowRight, RefreshCw, Zap, ExternalLink, Info,
+  Trash2, ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { HeroCard, HeroChip, IconButton, ListCard, SectionLabel, SectionAction, PAGE_X } from '@/components/orbix';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -69,14 +69,14 @@ const METHOD_DETAILS: Record<string, {
 const METHOD_LABELS = METHOD_DETAILS;
 
 const INSIGHT_ICONS = {
-  warning: <AlertTriangle size={16} className="text-warning" />,
-  positive: <CheckCircle2 size={16} className="text-income" />,
-  suggestion: <Lightbulb size={16} className="text-primary" />,
+  warning: <AlertTriangle size={17} className="text-warning" />,
+  positive: <CheckCircle2 size={17} className="text-income" />,
+  suggestion: <Lightbulb size={17} className="text-primary" />,
 };
 
-// Budget Health Score ring with a count-up arc + number on mount.
+// Budget Health Score: a big number that counts up on mount.
 // Honors prefers-reduced-motion by landing on the final value immediately.
-const HealthScoreRing = ({ score, colorClass }: { score: number; colorClass: string }) => {
+const HealthScore = ({ score }: { score: number }) => {
   const [val, setVal] = useState(0);
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
@@ -98,16 +98,9 @@ const HealthScoreRing = ({ score, colorClass }: { score: number; colorClass: str
     return () => { cancelAnimationFrame(raf); clearTimeout(safety); };
   }, [score]);
   return (
-    <div className="relative w-28 h-28 shrink-0">
-      <svg className="w-28 h-28 -rotate-90" viewBox="0 0 112 112">
-        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
-        <circle cx="56" cy="56" r="46" fill="none" stroke="hsl(var(--primary))" strokeWidth="8"
-          strokeDasharray={`${(val / 100) * 289.0} 289.0`} strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`text-2xl font-heading ${colorClass}`}>{Math.round(val)}</span>
-      </div>
-    </div>
+    <p className="text-[3.25rem] leading-none font-medium tracking-tight tabular-nums">
+      {Math.round(val)}<span className="text-[0.45em] opacity-60">/100</span>
+    </p>
   );
 };
 
@@ -261,265 +254,192 @@ const AIAdvisor = () => {
     return 'Critical';
   };
 
+  const outOfDate = analysisAt ? differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 : false;
+
   return (
-    <div>
-      {/* Header */}
-      <div className="bg-primary px-5 md:px-8 pt-12 pb-8 rounded-b-2xl md:rounded-b-none">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Brain size={28} className="text-primary-foreground" />
-            <h1 className="text-2xl font-heading text-primary-foreground">AI Advisor</h1>
-          </div>
-        </div>
+    <div className={`${PAGE_X} pb-6 max-w-4xl mx-auto`}>
+      {/* Header: big title, round re-analyze button */}
+      <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+20px)] md:pt-8 pb-4">
+        <h1 className="text-[1.75rem] leading-tight font-heading font-semibold tracking-tight truncate">AI Advisor</h1>
+        {analysis && (
+          <IconButton aria-label="Re-analyze" title="Re-analyze" onClick={handleAnalyze} disabled={loading || limitReached}>
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          </IconButton>
+        )}
       </div>
 
-      <div className="px-5 md:px-8 mt-4 pb-6 max-w-4xl mx-auto space-y-4">
-
-        {/* Past Sessions */}
-        {history.length > 0 && (
-          <div className="bg-card rounded-xl card-shadow overflow-hidden">
-            <button
-              onClick={() => setShowHistory(h => !h)}
-              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted transition-colors">
-              <div className="flex items-center gap-2">
-                <History size={14} className="text-muted-foreground" />
-                <span className="text-sm font-medium">Past Analyses ({history.length})</span>
-              </div>
-              {showHistory ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
-            </button>
-            {showHistory && (
-              <div className="border-t border-border divide-y divide-border">
-                {history.map(session => (
-                  <div key={session.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted transition-colors">
-                    <button
-                      onClick={() => { setAnalysis(session.result); setAnalysisAt(session.created_at); setActiveSimTab(session.result.recommendedMethod); }}
-                      className="flex items-center gap-3 flex-1 text-left">
-                      <div className="w-9 h-9 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
-                        <span className="text-base"><AppIcon value={METHOD_DETAILS[session.result.recommendedMethod]?.emoji ?? '📊'} /></span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {METHOD_DETAILS[session.result.recommendedMethod]?.name ?? session.result.recommendedMethod}
-                          <span className={`ml-2 text-xs font-semibold ${scoreColor(session.result.healthScore)}`}>
-                            {session.result.healthScore}/100
-                          </span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(parseISO(session.created_at), 'MMM d, yyyy · h:mm a')}
-                        </p>
-                      </div>
-                    </button>
-                    <button
-                      aria-label="Delete analysis"
-                      onClick={async () => {
-                        const ok = await deleteAdvisorSession(session.id);
-                        if (ok) setHistory(prev => prev.filter(s => s.id !== session.id));
-                      }}
-                      className="flex items-center justify-center min-w-[40px] min-h-[40px] text-muted-foreground hover:text-destructive transition-colors">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Spending Anomalies */}
-        {anomalies.length > 0 && (
-          <div className="bg-card rounded-xl p-5 card-shadow">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle size={16} className="text-warning" />
-              <h3 className="font-heading text-sm">Unusual spending</h3>
+      <div className="space-y-7">
+        {/* Hero: the health score, or the start of an analysis */}
+        {analysis ? (
+          <HeroCard>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium opacity-80">Health score</p>
+              <span className="hero-chip rounded-full px-2.5 py-1 text-xs font-medium">{scoreLabel(analysis.healthScore)}</span>
             </div>
-            <div className="space-y-2.5">
-              {anomalies.map(a => (
-                <div key={a.category} className="flex items-center justify-between p-3 bg-warning-soft border border-warning-line rounded-xl">
-                  <div className="flex items-center gap-2.5">
-                    <IconTile value={a.icon} />
-                    <div>
-                      <p className="text-sm font-medium">{a.category}</p>
-                      <p className="text-xs text-muted-foreground">Avg: {mask(fmt(a.avg))}/mo</p>
+            <div className="mt-2">
+              <HealthScore score={analysis.healthScore} />
+            </div>
+            <p className="text-sm mt-2 opacity-80">
+              {METHOD_LABELS[analysis.recommendedMethod]?.name}
+              {analysisAt && <> · From {format(parseISO(analysisAt), 'd MMM')}{outOfDate ? ' · out of date' : ''}</>}
+            </p>
+            {(() => {
+              const parts = [
+                { label: 'Savings', value: analysis.healthBreakdown.savingsRatio },
+                { label: 'Stability', value: analysis.healthBreakdown.expenseStability },
+                { label: 'Budgets', value: analysis.healthBreakdown.budgetAdherence },
+                { label: 'Debt', value: analysis.healthBreakdown.debtManagement },
+              ];
+              // The weakest part is the dark chip: that is where the points are.
+              const weakest = parts.reduce((a, b) => (b.value < a.value ? b : a)).label;
+              return (
+                <div className="grid grid-cols-4 gap-2 mt-4">
+                  {parts.map(item => (
+                    <div key={item.label} role="progressbar" aria-label={item.label} aria-valuenow={item.value} aria-valuemin={0} aria-valuemax={25}>
+                      <HeroChip label={item.label} value={<>{item.value}<span className="text-[0.7em] opacity-60">/25</span></>}
+                        dark={item.label === weakest} className="px-2.5" />
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-heading text-warning">{mask(fmt(a.current))}</p>
-                    <p className="text-[11px] font-semibold text-warning">{a.multiple}× average</p>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Analyze Button */}
-        {!analysis && (
-          <div className="bg-card rounded-xl p-6 card-shadow text-center">
-            <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
-              <Brain size={32} className="text-primary-foreground" />
-            </div>
-            <h2 className="font-heading text-lg mb-4">Budget analysis</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-left">
-              {[
-                { icon: Wallet, label: `${accounts.length} accounts` },
-                { icon: BarChart3, label: `${transactions.length} transactions` },
-                { icon: Shield, label: `${budgets.length} budgets` },
-                { icon: Target, label: `${goals.length} goals` },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-2.5 bg-muted rounded-xl p-3">
-                  <div className="w-8 h-8 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
-                    <Icon size={14} className="text-primary" />
-                  </div>
-                  <span className="text-xs text-muted-foreground">{label}</span>
-                </div>
-              ))}
-            </div>
-            <Button onClick={handleAnalyze} disabled={loading || limitReached} className="bg-primary text-primary-foreground px-8 h-12 text-base">
-              {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing…</> : <><Zap size={18} className="mr-2" /> Analyze</>}
-            </Button>
+              );
+            })()}
             {usageText && (
-              <p className={`text-xs mt-3 ${limitReached ? 'text-warning' : 'text-muted-foreground'}`}>{usageText}</p>
+              <p className={`text-xs mt-3 ${limitReached ? 'font-medium' : 'opacity-70'}`}>{usageText}</p>
             )}
-          </div>
+          </HeroCard>
+        ) : (
+          <HeroCard>
+            <p className="text-sm font-medium opacity-80">Budget analysis</p>
+            <p className="text-[1.6rem] leading-tight font-medium tracking-tight mt-1">See where your money goes and what to change</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+              <HeroChip label="Accounts" value={accounts.length} className="px-2.5" />
+              <HeroChip label="Transactions" value={transactions.length} className="px-2.5" />
+              <HeroChip label="Budgets" value={budgets.length} className="px-2.5" />
+              <HeroChip label="Goals" value={goals.length} className="px-2.5" />
+            </div>
+            <button type="button" onClick={handleAnalyze} disabled={loading || limitReached}
+              className="hero-chip-dark mt-4 w-full h-12 rounded-full text-[15px] font-medium inline-flex items-center justify-center disabled:opacity-60">
+              {loading ? <><Loader2 size={18} className="animate-spin mr-2" /> Analyzing…</> : <><Zap size={18} className="mr-2" /> Analyze</>}
+            </button>
+            {usageText && (
+              <p className={`text-xs mt-3 text-center ${limitReached ? 'font-medium' : 'opacity-70'}`}>{usageText}</p>
+            )}
+          </HeroCard>
         )}
 
         {/* Loading skeleton */}
         {loading && !analysis && (
-          <div className="space-y-4">
+          <div className="bg-card rounded-3xl px-4 divide-y divide-border">
             {[1, 2, 3].map(i => (
-              <div key={i} className="bg-card rounded-xl p-5 card-shadow animate-pulse">
-                <div className="h-3 bg-muted rounded w-1/3 mb-3" />
-                <div className="h-4 bg-muted rounded w-2/3 mb-2" />
-                <div className="h-3 bg-muted rounded w-full mb-1.5" />
-                <div className="h-3 bg-muted rounded w-4/5" />
+              <div key={i} className="flex items-center gap-3 py-3.5 animate-pulse">
+                <div className="w-11 h-11 rounded-full bg-muted shrink-0" />
+                <div className="flex-1">
+                  <div className="h-3.5 bg-muted rounded-full w-2/3 mb-2" />
+                  <div className="h-3 bg-muted rounded-full w-1/3" />
+                </div>
               </div>
             ))}
           </div>
         )}
 
+        {/* Spending Anomalies */}
+        {anomalies.length > 0 && (
+          <section>
+            <SectionLabel label="Unusual spending" count={anomalies.length} />
+            <ListCard>
+              {anomalies.map(a => (
+                <div key={a.category} className="flex items-center gap-3 py-3.5">
+                  <IconTile value={a.icon} className="w-11 h-11" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-medium truncate">{a.category}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Avg: {mask(fmt(a.avg))}/mo</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[15px] font-medium tabular-nums">{mask(fmt(a.current))}</p>
+                    <p className="text-xs font-medium text-warning mt-0.5">{a.multiple}× average</p>
+                  </div>
+                </div>
+              ))}
+            </ListCard>
+          </section>
+        )}
+
         {/* Results */}
         <AnimatePresence>
           {analysis && (
-            <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-7">
 
-              {/* Refresh button */}
-              <div className="flex items-center justify-between gap-3">
-                {analysisAt ? (
-                  <p className={`text-xs ${differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? 'text-warning' : 'text-muted-foreground'}`}>
-                    From {format(parseISO(analysisAt), 'd MMM')}
-                    {differenceInCalendarDays(new Date(), parseISO(analysisAt)) > 7 ? ' · out of date' : ''}
-                  </p>
-                ) : <span />}
-                <Button variant="ghost" size="sm" onClick={handleAnalyze} disabled={loading || limitReached} className="text-xs text-muted-foreground">
-                  <RefreshCw size={14} className={loading ? 'animate-spin mr-1' : 'mr-1'} /> Re-analyze
-                </Button>
-              </div>
-              {usageText && (
-                <p className={`text-xs text-right ${limitReached ? 'text-warning' : 'text-muted-foreground'}`}>{usageText}</p>
+              {shown?.methodReason && (
+                <details className="bg-card rounded-3xl px-4 group">
+                  <summary className="flex items-center justify-between gap-3 py-4 cursor-pointer list-none">
+                    <span className="text-[15px] font-medium">Why {METHOD_LABELS[analysis.recommendedMethod]?.name ?? 'this method'}</span>
+                    <ChevronDown size={16} className="text-muted-foreground shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <p className="text-sm text-muted-foreground leading-relaxed pb-4">{shown.methodReason}</p>
+                </details>
               )}
-
-              {/* Summary: score, its four parts and the method, in one card */}
-              <div className="bg-card rounded-xl p-4 card-shadow">
-                <div className="flex items-center gap-4">
-                  <HealthScoreRing score={analysis.healthScore} colorClass={scoreColor(analysis.healthScore)} />
-                  <div className="min-w-0">
-                    <p className={`text-lg font-heading ${scoreColor(analysis.healthScore)}`}>{scoreLabel(analysis.healthScore)}</p>
-                    <p className="text-xs text-muted-foreground">Health score</p>
-                    <p className="text-sm font-medium mt-1">{METHOD_LABELS[analysis.recommendedMethod]?.name}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
-                  {[
-                    { label: 'Savings', value: analysis.healthBreakdown.savingsRatio },
-                    { label: 'Stability', value: analysis.healthBreakdown.expenseStability },
-                    { label: 'Budgets', value: analysis.healthBreakdown.budgetAdherence },
-                    { label: 'Debt', value: analysis.healthBreakdown.debtManagement },
-                  ].map(item => (
-                    <div key={item.label}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">{item.label}</span>
-                        <span className="font-medium tabular-nums">{item.value}/25</span>
-                      </div>
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden" role="progressbar" aria-label={item.label} aria-valuenow={item.value} aria-valuemin={0} aria-valuemax={25}>
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${(item.value / 25) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {shown?.methodReason && (
-                  <details className="mt-3 group">
-                    <summary className="text-xs text-primary font-medium cursor-pointer list-none py-1">Why {METHOD_LABELS[analysis.recommendedMethod]?.name ?? 'this method'}</summary>
-                    <p className="text-sm text-muted-foreground leading-relaxed mt-1">{shown.methodReason}</p>
-                  </details>
-                )}
-              </div>
 
               {/* Insights */}
               {!!shown?.insights.length && (
-              <div className="bg-card rounded-xl p-4 card-shadow">
-                <h3 className="font-heading text-sm mb-2">Insights</h3>
-                <div className="divide-y divide-border">
-                  {shown.insights.map((insight) => (
-                    <details key={insight.title} className="py-2">
-                      <summary className="flex items-center gap-3 cursor-pointer list-none min-h-[40px]">
-                        <span className="shrink-0">{INSIGHT_ICONS[insight.type]}</span>
-                        <span className="text-sm font-medium flex-1">{insight.title}</span>
-                        <ChevronDown size={14} className="text-muted-foreground shrink-0" aria-hidden="true" />
-                      </summary>
-                      <p className="text-xs text-muted-foreground mt-1 ml-7">{insight.description}</p>
-                    </details>
-                  ))}
-                </div>
-              </div>
+                <section>
+                  <SectionLabel label="Insights" count={shown.insights.length} />
+                  <ListCard>
+                    {shown.insights.map((insight) => (
+                      <details key={insight.title} className="group">
+                        <summary className="flex items-center gap-3 cursor-pointer list-none py-3">
+                          <span className="w-11 h-11 shrink-0 rounded-full bg-muted flex items-center justify-center">{INSIGHT_ICONS[insight.type]}</span>
+                          <span className="text-[15px] font-medium flex-1">{insight.title}</span>
+                          <ChevronDown size={16} className="text-muted-foreground shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                        </summary>
+                        <p className="text-sm text-muted-foreground leading-relaxed pb-3.5 pl-14">{insight.description}</p>
+                      </details>
+                    ))}
+                  </ListCard>
+                </section>
               )}
 
               {/* Suggested Envelopes */}
-              <div className="bg-card rounded-xl p-4 card-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-heading text-sm">Suggested budgets</h3>
-                  <Button size="sm" onClick={handleApplyEnvelopes} disabled={applyingEnvelopes}
-                    className="text-xs bg-primary text-primary-foreground h-8">
-                    {applyingEnvelopes ? <Loader2 size={12} className="animate-spin mr-1" /> : null}
-                    Apply All
-                  </Button>
-                </div>
+              <section>
+                <SectionLabel label="Suggested budgets" count={analysis.suggestedEnvelopes.length}
+                  action={
+                    <SectionAction onClick={handleApplyEnvelopes} disabled={applyingEnvelopes}>
+                      {applyingEnvelopes ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
+                      Apply All
+                    </SectionAction>
+                  } />
                 {(() => {
                   // Only envelopes that move by at least 1 are worth a row; the rest is one line.
                   const changed = analysis.suggestedEnvelopes.filter(env => Math.abs(env.amount - env.currentSpending) >= 1);
                   const same = analysis.suggestedEnvelopes.length - changed.length;
                   return (
-                    <>
-                      <div className="divide-y divide-border">
-                        {changed.map((env) => {
-                          const diff = env.amount - env.currentSpending;
-                          return (
-                            <div key={env.category} className="flex items-center justify-between gap-3 py-2">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <AppIcon value={env.icon} className="text-lg text-muted-foreground" />
-                                <span className="text-sm font-medium truncate">{env.category}</span>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <span className="text-sm font-heading tabular-nums">{mask(fmt(env.amount))}</span>
-                                <span className={`ml-2 text-xs tabular-nums ${diff >= 0 ? 'text-income' : 'text-expense'}`}>
-                                  {hidden ? '••' : `${diff >= 0 ? '+' : '−'}${Math.round(Math.abs(diff)).toLocaleString('en')}`}
-                                </span>
-                              </div>
+                    <ListCard>
+                      {changed.map((env) => {
+                        const diff = env.amount - env.currentSpending;
+                        return (
+                          <div key={env.category} className="flex items-center gap-3 py-3">
+                            <IconTile value={env.icon} className="w-11 h-11" />
+                            <span className="text-[15px] font-medium truncate flex-1 min-w-0">{env.category}</span>
+                            <div className="text-right shrink-0">
+                              <p className="text-[15px] font-medium tabular-nums">{mask(fmt(env.amount))}</p>
+                              <p className={`text-xs tabular-nums mt-0.5 ${diff >= 0 ? 'text-income' : 'text-expense'}`}>
+                                {hidden ? '••' : `${diff >= 0 ? '+' : '−'}${Math.round(Math.abs(diff)).toLocaleString('en')}`}
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
-                      {same > 0 && <p className="text-xs text-muted-foreground mt-2">{same} unchanged</p>}
-                    </>
+                          </div>
+                        );
+                      })}
+                      {same > 0 && <p className="text-xs text-muted-foreground py-3">{same} unchanged</p>}
+                    </ListCard>
                   );
                 })()}
-              </div>
+              </section>
 
               {/* Budget Simulation */}
-              <details className="bg-card rounded-xl p-4 card-shadow">
-                <summary className="font-heading text-sm cursor-pointer list-none flex items-center justify-between min-h-[40px]">
-                  Compare methods <ChevronDown size={14} className="text-muted-foreground" aria-hidden="true" />
+              <details className="bg-card rounded-3xl px-4 group">
+                <summary className="text-[15px] font-medium cursor-pointer list-none flex items-center justify-between py-4">
+                  Compare methods <ChevronDown size={16} className="text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
                 </summary>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {([
                     { key: 'envelope', label: 'Envelope', value: analysis.simulation.envelope },
                     { key: '50-30-20', label: '50/30/20', value: analysis.simulation.fiftyThirtyTwenty },
@@ -527,24 +447,26 @@ const AIAdvisor = () => {
                     { key: 'hybrid', label: 'Hybrid', value: analysis.simulation.hybrid },
                   ] as const).map(sim => {
                     const detail = METHOD_DETAILS[sim.key];
+                    const active = activeSimTab === sim.key;
                     return (
                       <div key={sim.key} className="relative">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
                               onClick={() => setActiveSimTab(sim.key)}
-                              className={`w-full p-3 rounded-xl text-center transition-all ${
-                                activeSimTab === sim.key ? 'bg-primary-soft border-2 border-primary' : 'bg-muted border-2 border-transparent'
-                              } ${sim.key === analysis.recommendedMethod ? 'ring-2 ring-primary-line ring-offset-2 ring-offset-card' : ''}`}>
-                              <p className="text-xs text-muted-foreground mb-1">{sim.label}</p>
-                              <p className={`text-sm font-heading ${sim.value > 0 ? 'text-income' : 'text-expense'}`}>
+                              aria-pressed={active}
+                              className={`w-full px-3 py-3 rounded-2xl text-left transition-colors ${
+                                active ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                              }`}>
+                              <p className={`text-xs mb-1 ${active ? 'opacity-70' : 'text-muted-foreground'}`}>
+                                {sim.label}
+                                {sim.key === analysis.recommendedMethod && (
+                                  <span className={`ml-1.5 font-medium ${active ? '' : 'text-primary'}`}>· Best</span>
+                                )}
+                              </p>
+                              <p className={`text-[15px] font-medium tabular-nums ${active ? '' : sim.value > 0 ? 'text-income' : 'text-expense'}`}>
                                 {hidden ? '••••••' : `${sim.value > 0 ? '+' : ''}${fmt(sim.value)}`}
                               </p>
-                              {sim.key === analysis.recommendedMethod && (
-                                <div className="mt-1">
-                                  <Badge variant="outline" className="text-[10px] border-primary text-primary bg-primary-soft px-1.5 py-0">Best</Badge>
-                                </div>
-                              )}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-xs max-w-[200px]">
@@ -554,8 +476,10 @@ const AIAdvisor = () => {
                         {detail && (
                           <Dialog>
                             <DialogTrigger asChild>
-                              <button className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground hover:text-primary hover:bg-primary-soft transition-colors" onClick={e => e.stopPropagation()}>
-                                <Info size={12} />
+                              <button aria-label={`About ${detail.name}`}
+                                className={`absolute top-1.5 right-1.5 p-1.5 rounded-full transition-colors ${active ? 'text-primary-foreground/70' : 'text-muted-foreground hover:text-primary'}`}
+                                onClick={e => e.stopPropagation()}>
+                                <Info size={13} />
                               </button>
                             </DialogTrigger>
                             <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
@@ -660,7 +584,7 @@ const AIAdvisor = () => {
                     }
                   }}
                   disabled={applyingEnvelopes}
-                  className="w-full mt-4 bg-primary text-primary-foreground h-11 text-sm"
+                  className="w-full mt-3 mb-4 rounded-full bg-primary text-primary-foreground h-12 text-[15px] font-medium"
                 >
                   {applyingEnvelopes ? (
                     <><Loader2 size={16} className="animate-spin mr-2 shrink-0" /> Creating…</>
@@ -672,37 +596,80 @@ const AIAdvisor = () => {
 
               {/* Dynamic Adjustments */}
               {!!shown?.dynamicAdjustments.length && (
-              <div className="bg-card rounded-xl p-4 card-shadow">
-                <h3 className="font-heading text-sm mb-2">Next steps</h3>
-                {(() => {
-                  const row = (adj: { action: string; impact: string }) => (
-                    <div key={adj.action} className="flex items-start gap-2.5 py-2">
-                      <ArrowRight size={14} className="text-primary shrink-0 mt-1" />
-                      <div>
-                        <p className="text-sm">{adj.action}</p>
-                        <p className="text-xs text-primary">{adj.impact}</p>
+                <section>
+                  <SectionLabel label="Next steps" count={shown.dynamicAdjustments.length} />
+                  {(() => {
+                    const row = (adj: { action: string; impact: string }) => (
+                      <div key={adj.action} className="flex items-start gap-3 py-3.5">
+                        <span className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                          <ArrowRight size={14} className="text-primary" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[15px]">{adj.action}</p>
+                          <p className="text-xs text-primary mt-0.5">{adj.impact}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                  const first = shown.dynamicAdjustments.slice(0, 3);
-                  const rest = shown.dynamicAdjustments.slice(3);
-                  return (
-                    <div className="divide-y divide-border">
-                      {first.map(row)}
-                      {rest.length > 0 && (
-                        <details className="py-1">
-                          <summary className="text-xs text-primary font-medium cursor-pointer list-none py-2">{rest.length} more</summary>
-                          <div className="divide-y divide-border">{rest.map(row)}</div>
-                        </details>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
+                    );
+                    const first = shown.dynamicAdjustments.slice(0, 3);
+                    const rest = shown.dynamicAdjustments.slice(3);
+                    return (
+                      <ListCard>
+                        {first.map(row)}
+                        {rest.length > 0 && (
+                          <details>
+                            <summary className="text-sm text-primary font-medium cursor-pointer list-none py-3.5">{rest.length} more</summary>
+                            <div className="divide-y divide-border border-t border-border">{rest.map(row)}</div>
+                          </details>
+                        )}
+                      </ListCard>
+                    );
+                  })()}
+                </section>
               )}
             </m.div>
           )}
         </AnimatePresence>
+
+        {/* Past Sessions */}
+        {history.length > 0 && (
+          <section>
+            <SectionLabel label="Past analyses" count={history.length}
+              action={history.length > 1 ? <SectionAction onClick={() => setShowHistory(h => !h)} aria-expanded={showHistory}>{showHistory ? 'Hide' : 'See all'}</SectionAction> : undefined} />
+            <ListCard>
+              {(showHistory ? history : history.slice(0, 1)).map(session => (
+                <div key={session.id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setAnalysis(session.result); setAnalysisAt(session.created_at); setActiveSimTab(session.result.recommendedMethod); }}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left py-3.5">
+                    <span className="w-11 h-11 rounded-full bg-muted flex items-center justify-center shrink-0 text-[18px]">
+                      <AppIcon value={METHOD_DETAILS[session.result.recommendedMethod]?.emoji ?? '📊'} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-medium truncate">
+                        {METHOD_DETAILS[session.result.recommendedMethod]?.name ?? session.result.recommendedMethod}
+                      </span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        {format(parseISO(session.created_at), 'MMM d, yyyy · h:mm a')}
+                      </span>
+                    </span>
+                    <span className={`text-[15px] font-medium tabular-nums shrink-0 ${scoreColor(session.result.healthScore)}`}>
+                      {session.result.healthScore}<span className="text-xs text-muted-foreground">/100</span>
+                    </span>
+                  </button>
+                  <button
+                    aria-label="Delete analysis"
+                    onClick={async () => {
+                      const ok = await deleteAdvisorSession(session.id);
+                      if (ok) setHistory(prev => prev.filter(s => s.id !== session.id));
+                    }}
+                    className="flex items-center justify-center w-9 h-9 shrink-0 rounded-full text-muted-foreground/60 hover:text-destructive transition-colors">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </ListCard>
+          </section>
+        )}
       </div>
     </div>
   );
