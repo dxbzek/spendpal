@@ -15,19 +15,19 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    --primary: 146 63% 25%;
+    --primary: 252 100% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 142 40% 95%;
+    --secondary: 252 60% 96%;
     --secondary-foreground: 220 20% 10%;
 
-    --muted: 142 20% 95%;
+    --muted: 252 25% 96%;
     /* Darkened from 40% -> 32% lightness so secondary/small text clears WCAG AA
        (4.5:1) on white and on the light --muted background. */
     --muted-foreground: 220 12% 32%;
 
-    --accent: 142 60% 94%;
-    --accent-foreground: 146 63% 20%;
+    --accent: 252 90% 95%;
+    --accent-foreground: 252 60% 42%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -45,9 +45,9 @@
     --income: 146 63% 25%;
     --expense: 0 72% 51%;
 
-    --border: 142 20% 88%;
-    --input: 142 20% 88%;
-    --ring: 146 63% 25%;
+    --border: 252 20% 90%;
+    --input: 252 20% 90%;
+    --ring: 252 100% 65%;
 
     --radius: 0.75rem;
 
@@ -74,8 +74,8 @@
 
     --surface-1: hsl(0, 0%, 100%);
     --surface-2: hsl(0, 0%, 100%);
-    --surface-3: hsl(142, 20%, 97%);
-    --surface-4: hsl(142, 25%, 94%);
+    --surface-3: hsl(252, 30%, 98%);
+    --surface-4: hsl(252, 35%, 95%);
 
     --info: 214 80% 55%;
 
@@ -89,12 +89,12 @@
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 20% 10%;
-    --sidebar-primary: 146 63% 25%;
+    --sidebar-primary: 252 100% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 142 40% 94%;
-    --sidebar-accent-foreground: 146 63% 20%;
-    --sidebar-border: 142 20% 88%;
-    --sidebar-ring: 146 63% 25%;
+    --sidebar-accent: 252 90% 95%;
+    --sidebar-accent-foreground: 252 60% 42%;
+    --sidebar-border: 252 20% 90%;
+    --sidebar-ring: 252 100% 65%;
   }
 
   /* Orbix look (2026-11-24): near-black, lavender primary, pink + peach

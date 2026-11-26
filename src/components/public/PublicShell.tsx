@@ -62,5 +62,5 @@ export const OperatorDetails = () => {
 
 /** Page wrapper. The app locks html/body scrolling, so a public page scrolls itself. */
 export const PublicPageScroll = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-full overflow-y-auto bg-[hsl(142,32%,96.5%)] dark:bg-background">{children}</div>
+  <div className="h-full overflow-y-auto bg-[hsl(252,40%,97.5%)] dark:bg-background">{children}</div>
 );
