@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import logo from '@/assets/logo.png';
+import BrandMark from '@/components/BrandMark';
 import { LayoutDashboard, Receipt, Target, PiggyBank, Settings, Plus, Brain, Wallet, BarChart3, CreditCard, Layers, CalendarDays } from 'lucide-react';
 import { m } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -96,7 +96,7 @@ const DesktopSidebar = ({ onAddClick, collapsed }: DesktopSidebarProps) => {
       <aside className={`${collapsed ? 'w-16' : 'w-60'} shrink-0 border-r border-border bg-card h-full flex flex-col py-4 transition-all duration-200 overflow-hidden`}>
         {/* Brand */}
         <div className={`px-4 flex items-center gap-3 mb-2 ${collapsed ? 'justify-center' : ''}`}>
-          <img src={logo} alt="SpendPal" className="w-8 h-8 object-contain shrink-0" />
+          <BrandMark title="SpendPal" className="w-8 h-8 shrink-0" />
           {!collapsed && (
             <div>
               <span className="font-heading text-base font-bold">SpendPal</span>
