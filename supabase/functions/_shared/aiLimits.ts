@@ -11,6 +11,7 @@ export const AI_REQUEST_TYPES = [
   "categorize-image-goals",
   "monthly-report",
   "budget-advisor",
+  "chat",
 ] as const;
 export type AiRequestType = typeof AI_REQUEST_TYPES[number];
 
@@ -41,6 +42,7 @@ export const MAX_TOKENS: Record<AiRequestType, number> = {
   "categorize-image": 16000,
   "categorize-image-budgets": 16000,
   "categorize-image-goals": 16000,
+  "chat": 4000,
 };
 
 /** The usage day: the UTC date, the same for every user. */

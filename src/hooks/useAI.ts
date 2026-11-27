@@ -39,7 +39,7 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 }
 
 /** Invoke a Supabase edge function with a timeout via AbortController. */
-async function invokeWithTimeout<T>(
+export async function invokeWithTimeout<T>(
   fnName: string,
   body: Record<string, unknown>,
   timeoutMs: number,

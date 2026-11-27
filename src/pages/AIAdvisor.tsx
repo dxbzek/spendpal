@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import AppIcon, { IconTile } from '@/components/AppIcon';
+import AdvisorChat from '@/components/advisor/AdvisorChat';
 
 const METHOD_DETAILS: Record<string, {
   name: string; emoji: string; desc: string;
@@ -269,6 +270,7 @@ const AIAdvisor = () => {
       </div>
 
       <div className="space-y-7">
+        <AdvisorChat />
         {/* Hero: the health score, or the start of an analysis */}
         {analysis ? (
           <HeroCard>
