@@ -8,6 +8,7 @@ import {
 } from "../_shared/aiLimits.ts";
 import { type AiFailure, AI_UNAVAILABLE_MESSAGE, mapAiError } from "../_shared/aiErrors.ts";
 import { usageStore } from "./usageStore.ts";
+import { applyMemory, loadMemory, loadSnapshot, parseTurns, readMemoryTags, saveMemory, systemPromptFor } from "./chat.ts";
 
 const MODEL = "claude-opus-5-5";
 
@@ -104,6 +105,17 @@ serve(async (req) => {
         return reply(503, { error: METER_DOWN });
       }
     }
+    // "memory" reads, or replaces, the facts the chat remembers. No model call.
+    if (type === "memory") {
+      const mem = await loadMemory(supabase, user.id);
+      const next = (data as { facts?: unknown })?.facts;
+      if (Array.isArray(next)) {
+        const facts = next.filter((f) => typeof f === "string").map((f) => (f as string).slice(0, 200)).slice(0, 40);
+        await saveMemory(supabase, user.id, mem.id, facts);
+        return reply(200, { facts });
+      }
+      return reply(200, { facts: mem.facts });
+    }
     // Sanitize the optional currency code from the client (defends the prompt
     // against injection) and fall back to neutral, region-agnostic wording.
     const userCurrency = typeof currency === "string" && /^[A-Za-z]{2,4}$/.test(currency)
@@ -134,6 +146,49 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: AI_UNAVAILABLE_MESSAGE }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (requestType === "chat") {
+      const turns = parseTurns(data);
+      if (!turns) return reply(400, { error: "The chat is empty" });
+      const [mem, snapshot] = await Promise.all([loadMemory(supabase, user.id), loadSnapshot(supabase, user.id)]);
+      let left: number;
+      try {
+        if (!meter) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+        const counted = await countCall(meter, user.id, usageDay(new Date()), userLimit, parseCeiling(Deno.env.get("AI_DAILY_CEILING")), capped);
+        if (!counted.ok) return reply(429, { error: refusalMessage(counted.reason, userLimit), remaining: 0 });
+        left = counted.remaining;
+      } catch (err) {
+        console.error("AI usage metering failed; request refused:", err);
+        return reply(503, { error: METER_DOWN });
+      }
+      const chatClient = new Anthropic({ apiKey: ANTHROPIC_API_KEY, timeout: 55_000, maxRetries: 1 });
+      let msg: Anthropic.Beta.BetaMessage;
+      try {
+        msg = await chatClient.beta.messages.create({
+          model: MODEL,
+          max_tokens: MAX_TOKENS.chat,
+          system: systemPromptFor(userCurrency, mem.facts, snapshot),
+          messages: turns,
+          output_config: { effort: "medium" },
+          betas: ["server-side-fallback-2026-07-01"],
+          fallbacks: "default",
+        } as Anthropic.Beta.MessageCreateParamsNonStreaming);
+      } catch (err) {
+        const failure = aiFailure(err);
+        if (!failure) throw err;
+        const back = meter ? await giveBackCall(meter, user.id, usageDay(new Date()), userLimit) : null;
+        return reply(failure.status, { error: failure.error, remaining: back ?? left, unavailable: failure.status === 503 });
+      }
+      if (msg.stop_reason === "refusal") return reply(422, { error: "The AI declined this request.", remaining: left });
+      const text = msg.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("");
+      const { reply: answer, remember, forget } = readMemoryTags(text);
+      let facts = mem.facts;
+      if (remember.length || forget.length) {
+        facts = applyMemory(mem.facts, remember, forget);
+        try { await saveMemory(supabase, user.id, mem.id, facts); } catch (err) { console.error("memory save failed:", err); }
+      }
+      return reply(200, { result: answer, memory: facts, remembered: remember, remaining: left });
     }
 
     let systemPrompt = "";
