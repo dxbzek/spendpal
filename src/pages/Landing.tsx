@@ -69,7 +69,7 @@ const SamplePreview = () => {
       {/* A second card peeking out behind, for depth. */}
       <motion.div
         aria-hidden
-        className="absolute -right-3 -top-6 sm:-right-8 w-[78%] rounded-xl bg-card/90 card-shadow p-3 rotate-[5deg]"
+        className="absolute -right-3 -top-12 sm:-right-8 sm:-top-14 w-[78%] rounded-xl bg-card/90 card-shadow p-3 rotate-[5deg]"
         animate={reduce ? undefined : { y: [0, -6, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
       >
