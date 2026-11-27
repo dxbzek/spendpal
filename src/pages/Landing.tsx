@@ -134,31 +134,25 @@ const SamplePreview = () => {
   );
 };
 
-/** The 16-second landscape promo (sample data only). Plays muted on a loop;
- *  with reduce motion on it waits for a tap instead of playing by itself. */
+/** The 20-second landscape promo: real app screens with sample data in phone
+ *  frames. Full bleed, edge to edge. Plays muted on a loop; with reduce
+ *  motion it shows controls and waits for a tap. */
 const PromoVideo = () => {
   const reduce = useReducedMotion();
   return (
-    <section aria-labelledby="promo" className="max-w-5xl mx-auto pt-14 md:pt-20">
-      <motion.h2 id="promo" className="text-2xl md:text-3xl font-heading tracking-tight"
-        variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
-        See it in 15 seconds
-      </motion.h2>
-      <motion.div variants={rise} custom={1} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
-        className="mt-6 overflow-hidden rounded-2xl card-shadow border border-border bg-card aspect-video">
-        <video
-          className="h-full w-full object-cover"
-          src="/promo/spendpal-promo.mp4?v=2"
-          poster="/promo/spendpal-promo-poster.jpg?v=2"
-          muted
-          loop
-          playsInline
-          autoPlay={!reduce}
-          controls={!!reduce}
-          preload="metadata"
-          aria-label="SpendPal promo video with sample data"
-        />
-      </motion.div>
+    <section aria-label="SpendPal promo video" className="w-full bg-black">
+      <video
+        className="block w-full aspect-video object-cover"
+        src="/promo/spendpal-promo.mp4?v=6"
+        poster="/promo/spendpal-promo-poster.jpg?v=6"
+        muted
+        loop
+        playsInline
+        autoPlay={!reduce}
+        controls={!!reduce}
+        preload="metadata"
+        aria-label="SpendPal promo video with sample data"
+      />
     </section>
   );
 };
@@ -201,8 +195,9 @@ const Landing = () => {
           </div>
         </header>
 
+        <PromoVideo />
+
         <main className="px-5 md:px-8">
-          <PromoVideo />
           <section aria-labelledby="features" className="max-w-5xl mx-auto pt-14 md:pt-20">
             <motion.h2 id="features" className="text-2xl md:text-3xl font-heading tracking-tight"
               variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
