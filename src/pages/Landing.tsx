@@ -203,19 +203,19 @@ const Landing = () => {
               variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
               What it does
             </motion.h2>
-            <div className="mt-4 grid gap-2.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
               {FEATURES.map(({ icon: Icon, title, body }, i) => (
                 <motion.div
                   key={title}
                   variants={rise} custom={i % 3} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
-                  className={`group bg-card rounded-2xl p-4 sm:p-5 card-shadow flex sm:block gap-4 items-start transition-transform duration-300 hover:-translate-y-1 ${i === FEATURES.length - 1 ? 'lg:col-span-2' : ''}`}
+                  className={`group bg-card rounded-2xl p-3.5 sm:p-5 card-shadow transition-transform duration-300 hover:-translate-y-1 ${i === FEATURES.length - 1 ? 'col-span-2' : ''}`}
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
-                    <Icon size={19} />
+                  <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
+                    <Icon size={17} />
                   </span>
                   <div className="min-w-0">
-                    <h3 className="sm:mt-3 text-[15px] sm:text-base font-semibold">{title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{body}</p>
+                    <h3 className="mt-2.5 sm:mt-3 text-[13.5px] sm:text-base font-semibold leading-snug">{title}</h3>
+                    <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">{body}</p>
                   </div>
                 </motion.div>
               ))}
