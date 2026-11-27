@@ -64,7 +64,7 @@ const AdvisorChat = () => {
   const [showMemory, setShowMemory] = useState(false);
   const [trial, setTrial] = useState<Trial | null>(null);
   const [joined, setJoined] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -76,7 +76,10 @@ const AdvisorChat = () => {
 
   useEffect(() => {
     if (user) localStorage.setItem(storeKey(user.id), JSON.stringify(turns.slice(-40)));
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Scroll only the message list. scrollIntoView also scrolled the whole page until the last
+    // reply touched the bottom edge, which left the input box behind the floating nav bar.
+    const el = listRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [turns, user]);
 
   const send = async (text: string) => {
@@ -144,7 +147,7 @@ const AdvisorChat = () => {
         </div>
       )}
 
-      <div className="px-4 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+      <div ref={listRef} className="px-4 py-4 space-y-3 max-h-[50dvh] overflow-y-auto overscroll-contain">
         {turns.length === 0 && !busy && (
           <div className="flex flex-wrap gap-2">
             {STARTERS.map(s => (
@@ -160,7 +163,6 @@ const AdvisorChat = () => {
           </div>
         ))}
         {busy && <Thinking />}
-        <div ref={endRef} />
       </div>
 
       {trial && !trial.active ? (
