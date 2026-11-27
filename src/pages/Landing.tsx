@@ -143,8 +143,8 @@ const PromoVideo = () => {
     <section aria-label="SpendPal promo video" className="w-full bg-black">
       <video
         className="block w-full aspect-video object-cover"
-        src="/promo/spendpal-promo.mp4?v=3"
-        poster="/promo/spendpal-promo-poster.jpg?v=3"
+        src="/promo/spendpal-promo.mp4?v=4"
+        poster="/promo/spendpal-promo-poster.jpg?v=4"
         muted
         loop
         playsInline
