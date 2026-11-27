@@ -129,6 +129,11 @@ export default {
         sm: "calc(var(--radius) - 8px)",
       },
       keyframes: {
+        // Landing hero light blobs (2026-11-27).
+        drift: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "50%": { transform: "translate(40px, 24px) scale(1.12)" },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
