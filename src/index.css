@@ -310,3 +310,15 @@
    the Add Transaction sheet off screen until the app was closed. */
 html, body { overflow-x: hidden; overscroll-behavior-x: none; }
 #root { max-width: 100vw; }
+
+/* Landing headline: a light sweep that runs across "plain words." on a loop. */
+.hero-shimmer {
+  background: linear-gradient(100deg, currentColor 0%, currentColor 40%, rgba(255,255,255,.95) 50%, currentColor 60%, currentColor 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: hero-shimmer 3.6s ease-in-out infinite;
+}
+@keyframes hero-shimmer { 0% { background-position: 120% 0; } 60%, 100% { background-position: -20% 0; } }
+@media (prefers-reduced-motion: reduce) { .hero-shimmer { animation: none; -webkit-text-fill-color: currentColor; } }
