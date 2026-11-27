@@ -129,6 +129,10 @@ export default {
         sm: "calc(var(--radius) - 8px)",
       },
       keyframes: {
+        // Landing hero moving colour (2026-11-27).
+        "blob-a": { "0%, 100%": { transform: "translate(0, 0) scale(1)" }, "33%": { transform: "translate(140px, 90px) scale(1.2)" }, "66%": { transform: "translate(40px, 180px) scale(0.9)" } },
+        "blob-b": { "0%, 100%": { transform: "translate(0, 0) scale(1)" }, "50%": { transform: "translate(-160px, 120px) scale(1.25)" } },
+        "blob-c": { "0%, 100%": { transform: "translate(0, 0) scale(1)" }, "50%": { transform: "translate(120px, -140px) scale(1.15)" } },
         // Landing hero light blobs (2026-11-27).
         drift: {
           "0%, 100%": { transform: "translate(0, 0) scale(1)" },

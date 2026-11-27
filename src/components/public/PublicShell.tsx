@@ -28,18 +28,19 @@ export const PublicTopBar = () => {
 export const PublicFooter = () => {
   const email = contactEmail(OPERATOR);
   return (
-    <footer className="border-t border-border px-5 md:px-8">
-      <div className="max-w-5xl mx-auto py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-sm">
+    <footer className="border-t border-border px-5 md:px-8 pb-[calc(env(safe-area-inset-bottom,0px)+20px)]">
+      <div className="max-w-5xl mx-auto pt-6 flex items-center justify-between gap-3 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">
           <BrandMark className="w-6 h-6" />
           <span className="font-medium text-foreground">SpendPal</span>
         </div>
-        <nav aria-label="Legal" className="flex flex-wrap gap-x-6 gap-y-2">
+        <nav aria-label="Legal" className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs sm:text-sm">
           <Link to="/privacy" className="text-muted-foreground hover:text-foreground">Privacy policy</Link>
           <Link to="/terms" className="text-muted-foreground hover:text-foreground">Terms of use</Link>
           {email && <a href={`mailto:${email}`} className="text-muted-foreground hover:text-foreground">Contact</a>}
         </nav>
       </div>
+      <p className="max-w-5xl mx-auto mt-3 text-xs text-muted-foreground">© {new Date().getFullYear()} SpendPal · Your money, in plain words.</p>
     </footer>
   );
 };
