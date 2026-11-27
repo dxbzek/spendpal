@@ -134,7 +134,7 @@ const SamplePreview = () => {
   );
 };
 
-/** The 31-second landscape promo (sample data only). Plays muted on a loop;
+/** The 16-second landscape promo (sample data only). Plays muted on a loop;
  *  with reduce motion on it waits for a tap instead of playing by itself. */
 const PromoVideo = () => {
   const reduce = useReducedMotion();
@@ -142,14 +142,14 @@ const PromoVideo = () => {
     <section aria-labelledby="promo" className="max-w-5xl mx-auto pt-14 md:pt-20">
       <motion.h2 id="promo" className="text-2xl md:text-3xl font-heading tracking-tight"
         variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
-        See it in 30 seconds
+        See it in 15 seconds
       </motion.h2>
       <motion.div variants={rise} custom={1} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
         className="mt-6 overflow-hidden rounded-2xl card-shadow border border-border bg-card aspect-video">
         <video
           className="h-full w-full object-cover"
-          src="/promo/spendpal-promo.mp4"
-          poster="/promo/spendpal-promo-poster.jpg"
+          src="/promo/spendpal-promo.mp4?v=2"
+          poster="/promo/spendpal-promo-poster.jpg?v=2"
           muted
           loop
           playsInline
