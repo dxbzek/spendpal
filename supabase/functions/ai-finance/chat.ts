@@ -2,7 +2,9 @@
 // records (with the user's JWT, so row level security applies), keeps the
 // conversation the client sends back each turn, and keeps long-term facts in
 // advisor_sessions (session_type 'memory').
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+// A structural type, so this file also type-checks in the app's tests.
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = any;
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -59,7 +61,7 @@ export async function loadSnapshot(db: SupabaseClient, userId: string): Promise<
     db.from("transactions").select("merchant, amount, current_installment, total_installments, account_id, date, loan_total_amount")
       .eq("user_id", userId).not("total_installments", "is", null).order("date", { ascending: false }).limit(60),
   ]);
-  const names = new Map((acc.data ?? []).map((a) => [a.id, a.name]));
+  const names = new Map((acc.data ?? []).map((a: { id: string; name: string }) => [a.id, a.name]));
   const lines: string[] = [`Today: ${new Date().toISOString().slice(0, 10)}. Current month: ${month}.`, "", "ACCOUNTS"];
   for (const a of acc.data ?? []) {
     lines.push(`- ${a.name} (${a.type}) balance ${n(a.balance)} ${a.currency ?? ""}` +
@@ -111,4 +113,25 @@ export function applyMemory(facts: string[], remember: string[], forget: string[
   const out = facts.filter((f) => !forget.some((x) => x.toLowerCase() === f.toLowerCase()));
   for (const r of remember) if (!out.some((f) => f.toLowerCase() === r.toLowerCase())) out.push(r.slice(0, 200));
   return out.slice(-MAX_FACTS);
+}
+
+export const TRIAL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The AI Advisor trial: 24 hours from the first time the user opens it.
+ * Pro users (app_metadata.pro, set only with the service role) and the owner
+ * are never stopped. The start is kept in advisor_sessions (session_type 'trial').
+ */
+export async function trialStatus(db: SupabaseClient, user: { id: string; app_metadata?: Record<string, unknown> }, uncapped: boolean, start: boolean) {
+  if (uncapped || user.app_metadata?.pro === true) return { pro: true, active: true, endsAt: null as string | null };
+  const { data } = await db.from("advisor_sessions").select("created_at")
+    .eq("user_id", user.id).eq("session_type", "trial").order("created_at", { ascending: true }).limit(1);
+  let began = data?.[0]?.created_at as string | undefined;
+  if (!began && start) {
+    began = new Date().toISOString();
+    await db.from("advisor_sessions").insert({ user_id: user.id, session_type: "trial", result: { started: began } });
+  }
+  if (!began) return { pro: false, active: true, endsAt: null as string | null };
+  const endsAt = new Date(new Date(began).getTime() + TRIAL_MS).toISOString();
+  return { pro: false, active: Date.now() < new Date(endsAt).getTime(), endsAt };
 }

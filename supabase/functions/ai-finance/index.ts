@@ -8,9 +8,11 @@ import {
 } from "../_shared/aiLimits.ts";
 import { type AiFailure, AI_UNAVAILABLE_MESSAGE, mapAiError } from "../_shared/aiErrors.ts";
 import { usageStore } from "./usageStore.ts";
-import { applyMemory, loadMemory, loadSnapshot, parseTurns, readMemoryTags, saveMemory, systemPromptFor } from "./chat.ts";
+import { applyMemory, loadMemory, loadSnapshot, parseTurns, readMemoryTags, saveMemory, systemPromptFor, trialStatus } from "./chat.ts";
 
 const MODEL = "claude-opus-5-5";
+// The chat runs on Sonnet: many short turns, so cost matters more than depth.
+const CHAT_MODEL = "claude-sonnet-5-5";
 
 // Shown when the call counter cannot be read or written. The request is
 // refused: an uncounted call would spend the API key with no limit.
@@ -105,6 +107,15 @@ serve(async (req) => {
         return reply(503, { error: METER_DOWN });
       }
     }
+    // "waitlist" records interest in Pro after the trial. No model call.
+    if (type === "waitlist") {
+      await supabase.from("advisor_sessions").insert({ user_id: user.id, session_type: "pro-waitlist", result: { at: new Date().toISOString() } });
+      return reply(200, { ok: true });
+    }
+    // "trial" reports the AI Advisor trial (and starts it on first open). No model call.
+    if (type === "trial") {
+      return reply(200, await trialStatus(supabase, user, !capped, true));
+    }
     // "memory" reads, or replaces, the facts the chat remembers. No model call.
     if (type === "memory") {
       const mem = await loadMemory(supabase, user.id);
@@ -148,6 +159,12 @@ serve(async (req) => {
       });
     }
 
+    // The AI Advisor (chat and budget analysis) is paid after a 24-hour trial.
+    if (requestType === "chat" || requestType === "budget-advisor") {
+      const trial = await trialStatus(supabase, user, !capped, true);
+      if (!trial.active) return reply(402, { error: "Your 24-hour AI Advisor trial has ended. Get Pro to keep using it.", trialEnded: true });
+    }
+
     if (requestType === "chat") {
       const turns = parseTurns(data);
       if (!turns) return reply(400, { error: "The chat is empty" });
@@ -166,7 +183,7 @@ serve(async (req) => {
       let msg: Anthropic.Beta.BetaMessage;
       try {
         msg = await chatClient.beta.messages.create({
-          model: MODEL,
+          model: CHAT_MODEL,
           max_tokens: MAX_TOKENS.chat,
           system: systemPromptFor(userCurrency, mem.facts, snapshot),
           messages: turns,

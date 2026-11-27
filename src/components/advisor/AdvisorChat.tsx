@@ -9,6 +9,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useAuth } from '@/context/AuthContext';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
+type Trial = { pro: boolean; active: boolean; endsAt: string | null };
 
 /** Shown one after another while the assistant works, like a loading line. */
 export const THINKING_WORDS = [
@@ -61,6 +62,8 @@ const AdvisorChat = () => {
   const [busy, setBusy] = useState(false);
   const [facts, setFacts] = useState<string[]>([]);
   const [showMemory, setShowMemory] = useState(false);
+  const [trial, setTrial] = useState<Trial | null>(null);
+  const [joined, setJoined] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,6 +71,7 @@ const AdvisorChat = () => {
     try { setTurns(JSON.parse(localStorage.getItem(storeKey(user.id)) ?? '[]')); } catch { setTurns([]); }
     invokeWithTimeout<{ facts?: string[] }>('ai-finance', { type: 'memory' }, 15_000)
       .then(r => setFacts(r.facts ?? [])).catch(() => {});
+    invokeWithTimeout<Trial>('ai-finance', { type: 'trial' }, 15_000).then(setTrial).catch(() => {});
   }, [user]);
 
   useEffect(() => {
@@ -87,7 +91,9 @@ const AdvisorChat = () => {
       if (r.memory) setFacts(r.memory);
       if (r.remembered?.length) toast.success('Saved to memory', { description: r.remembered.join(' · ') });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'The assistant is unavailable right now.');
+      const msg = e instanceof Error ? e.message : 'The assistant is unavailable right now.';
+      if (/trial has ended/i.test(msg)) setTrial(t => (t ? { ...t, active: false } : { pro: false, active: false, endsAt: null }));
+      toast.error(msg);
       setTurns(next);
     } finally {
       setBusy(false);
@@ -120,6 +126,12 @@ const AdvisorChat = () => {
         </div>
       </div>
 
+      {trial && !trial.pro && trial.active && trial.endsAt && (
+        <p className="mx-4 mt-3 rounded-xl bg-accent px-3 py-2 text-xs text-accent-foreground">
+          Free trial: {Math.max(1, Math.ceil((new Date(trial.endsAt).getTime() - Date.now()) / 3_600_000))} hours left
+        </p>
+      )}
+
       {showMemory && (
         <div className="mx-4 mt-3 rounded-xl bg-muted p-3 text-sm">
           {facts.length === 0
@@ -151,6 +163,20 @@ const AdvisorChat = () => {
         <div ref={endRef} />
       </div>
 
+      {trial && !trial.active ? (
+        <div className="border-t border-border p-4 text-center">
+          <p className="text-sm font-semibold">Your 24-hour free trial has ended</p>
+          <p className="mt-1 text-xs text-muted-foreground">Pro keeps the assistant, its memory and the budget analysis.</p>
+          <button type="button" disabled={joined}
+            onClick={async () => {
+              try { await invokeWithTimeout('ai-finance', { type: 'waitlist' }, 15_000); setJoined(true); toast.success('You are on the list. We will tell you when Pro opens.'); }
+              catch { toast.error('Could not save that. Try again.'); }
+            }}
+            className="mt-3 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
+            {joined ? 'You are on the list' : 'Get Pro'}
+          </button>
+        </div>
+      ) : (
       <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex items-end gap-2 border-t border-border p-3">
         <textarea
           value={input}
@@ -165,6 +191,7 @@ const AdvisorChat = () => {
           <ArrowUp size={18} />
         </button>
       </form>
+      )}
     </section>
   );
 };
