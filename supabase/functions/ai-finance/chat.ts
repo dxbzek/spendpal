@@ -4,6 +4,7 @@
 // advisor_sessions (session_type 'memory').
 // A structural type, so this file also type-checks in the app's tests.
 // deno-lint-ignore no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
