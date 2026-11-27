@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import logo from '@/assets/logo.png';
+import BrandMark from '@/components/BrandMark';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -92,7 +92,7 @@ const AuthPage = () => {
       <div className="relative w-full max-w-[min(22rem,calc(100vw-2.5rem))] my-auto">
         {/* Logo / Brand */}
         <div className="flex flex-col items-center mb-7">
-          <img src={logo} alt="SpendPal" className="w-16 h-16 sm:w-[4.75rem] sm:h-[4.75rem] object-contain mb-4" />
+          <BrandMark title="SpendPal" className="w-16 h-16 sm:w-[4.75rem] sm:h-[4.75rem] mb-4" />
           <h1 className="text-2xl sm:text-[1.625rem] font-heading font-bold tracking-tight leading-none">
             SpendPal
           </h1>

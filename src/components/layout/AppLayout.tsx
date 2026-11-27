@@ -66,7 +66,7 @@ const AppLayout = () => {
           />
         )}
 
-        <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto bg-[hsl(142,32%,96.5%)] dark:bg-background">
+        <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto bg-[hsl(252,40%,97.5%)] dark:bg-background">
           <main id="main-content" className={isMobile
             ? 'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[calc(7rem+env(safe-area-inset-bottom))]'
             : 'pb-8'}>

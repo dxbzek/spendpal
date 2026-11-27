@@ -1,7 +1,7 @@
 // The frame of the public pages (home, privacy, terms): the top row on the
 // green band, the footer with the legal links, and the operator details block.
 import { Link } from 'react-router-dom';
-import logo from '@/assets/logo.png';
+import BrandMark from '@/components/BrandMark';
 import { useAuth } from '@/context/AuthContext';
 import { OPERATOR, OPERATOR_PENDING, contactEmail, operatorLines } from '@/lib/operator';
 
@@ -11,7 +11,7 @@ export const PublicTopBar = () => {
   return (
     <div className="flex items-center justify-between gap-4">
       <Link to="/" className="flex items-center gap-3 min-w-0 rounded-lg">
-        <img src={logo} alt="" className="w-9 h-9 rounded-full object-contain bg-primary-raised p-0.5 shrink-0" />
+        <BrandMark tone="mono" className="w-8 h-8 shrink-0 text-primary-foreground" />
         <span className="text-base font-heading font-bold text-primary-foreground">SpendPal</span>
       </Link>
       {/* Someone signed in who opens the privacy page goes back to the app, not to a sign-in form. */}
@@ -31,7 +31,7 @@ export const PublicFooter = () => {
     <footer className="border-t border-border px-5 md:px-8">
       <div className="max-w-5xl mx-auto py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <img src={logo} alt="" className="w-6 h-6 object-contain" />
+          <BrandMark className="w-6 h-6" />
           <span className="font-medium text-foreground">SpendPal</span>
         </div>
         <nav aria-label="Legal" className="flex flex-wrap gap-x-6 gap-y-2">
@@ -62,5 +62,5 @@ export const OperatorDetails = () => {
 
 /** Page wrapper. The app locks html/body scrolling, so a public page scrolls itself. */
 export const PublicPageScroll = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-full overflow-y-auto bg-[hsl(142,32%,96.5%)] dark:bg-background">{children}</div>
+  <div className="h-full overflow-y-auto bg-[hsl(252,40%,97.5%)] dark:bg-background">{children}</div>
 );

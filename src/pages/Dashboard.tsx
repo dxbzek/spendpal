@@ -21,7 +21,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { WORLD_CURRENCIES } from '@/utils/currencies';
 import { Eye, EyeOff, Plus, ChevronRight, Trash2, Search, Wallet, CheckCircle2, Coins } from 'lucide-react';
-import logo from '@/assets/logo.png';
+import BrandMark from '@/components/BrandMark';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -322,7 +322,7 @@ const Dashboard = () => {
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <img src={logo} alt="" className="w-10 h-10 rounded-full object-contain bg-card p-1 shrink-0" />
+              <BrandMark className="w-10 h-10 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground leading-tight">{greeting}</p>
                 <h1 className="sr-only">{PAGE_NAMES['/']}</h1>
