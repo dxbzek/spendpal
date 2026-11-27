@@ -93,28 +93,11 @@ const SamplePreview = () => {
   return (
     <motion.figure
       aria-label="Example of the Home screen with sample data"
-      className="relative w-full max-w-sm mx-auto md:mx-0 mt-10 md:mt-0"
+      className="relative w-full max-w-sm mx-auto md:mx-0 mt-3 md:mt-0"
       initial={{ opacity: 0, y: 30, rotate: 0 }}
       animate={{ opacity: 1, y: 0, rotate: 0 }}
       transition={{ duration: 0.8, ease, delay: 0.25 }}
     >
-      {/* A second card peeking out behind, for depth. */}
-      <motion.div
-        aria-hidden
-        className="absolute -right-2 -top-9 sm:-right-8 sm:-top-14 w-[74%] rounded-xl bg-card/90 card-shadow p-3 rotate-[5deg]"
-        animate={reduce ? undefined : { y: [0, -6, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-      >
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-medium">Sample instalment plan</span>
-          <span className="text-muted-foreground tabular-nums">2 of 4 paid</span>
-        </div>
-        <div className="mt-2 grid grid-cols-4 gap-1">
-          {[1, 1, 0, 0].map((d, i) => (
-            <span key={i} className={`h-1.5 rounded-full ${d ? 'bg-primary' : 'bg-muted'}`} />
-          ))}
-        </div>
-      </motion.div>
 
       <motion.div
         className="relative bg-card text-card-foreground rounded-xl card-shadow p-4 sm:p-5"
@@ -190,19 +173,58 @@ const PromoVideo = () => {
   );
 };
 
+/** Compact feature tiles; tapping one pops its description open below. */
+const FeaturePicker = () => {
+  const [open, setOpen] = useState(0);
+  const f = FEATURES[open];
+  const Icon = f.icon;
+  return (
+    <div className="mt-4">
+      <div className="-mx-5 px-5 md:mx-0 md:px-0 flex gap-2 overflow-x-auto snap-x pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Features">
+        {FEATURES.map(({ icon: I, title }, i) => (
+          <motion.button key={title} type="button" role="tab" aria-selected={open === i} onClick={() => setOpen(i)}
+            whileTap={{ scale: 0.96 }}
+            className={`relative shrink-0 snap-start flex items-center gap-2 rounded-full px-3.5 py-2 whitespace-nowrap transition-colors ${open === i ? 'text-primary-foreground' : 'bg-card card-shadow hover:bg-muted'}`}>
+            {open === i && <motion.span layoutId="feature-pill" className="absolute inset-0 rounded-full bg-primary" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+            <I size={16} className={`relative shrink-0 ${open === i ? '' : 'text-primary'}`} />
+            <h3 className="relative text-[13px] font-semibold leading-tight">{title}</h3>
+          </motion.button>
+        ))}
+      </div>
+      <AnimatePresence mode="wait">
+        <motion.div key={open} role="tabpanel"
+          initial={{ opacity: 0, y: 14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }}
+          transition={{ duration: 0.3, ease }}
+          className="mt-3 flex gap-3 items-start rounded-2xl bg-card card-shadow p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 text-primary"><Icon size={18} /></span>
+          <div>
+            <p className="text-sm font-semibold">{f.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{f.body}</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const Landing = () => {
   usePageHead('/');
   return (
     <MotionConfig reducedMotion="user">
       <PublicPageScroll>
-        <header className="relative overflow-hidden bg-primary px-5 md:px-8 pt-6 pb-10 md:pb-20 rounded-b-3xl md:rounded-b-none">
-          {/* Two soft light blobs drifting behind the hero. */}
+        {/* Frozen top bar: logo and Sign in stay on screen while the page scrolls. */}
+        <div className="sticky top-0 z-30 bg-primary/90 backdrop-blur-md px-5 md:px-8 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3">
+          <div className="max-w-5xl mx-auto"><PublicTopBar /></div>
+        </div>
+        <header className="relative overflow-hidden bg-primary px-5 md:px-8 pt-2 pb-10 md:pb-20 rounded-b-3xl md:rounded-b-none">
+          {/* Moving colour behind the hero: four large soft blobs on their own loops. */}
           <div aria-hidden className="pointer-events-none absolute inset-0">
-            <div className="absolute -top-24 -left-20 h-72 w-72 rounded-full bg-white/25 blur-3xl animate-[drift_14s_ease-in-out_infinite]" />
-            <div className="absolute -bottom-28 right-[-4rem] h-80 w-80 rounded-full bg-fuchsia-300/30 blur-3xl animate-[drift_18s_ease-in-out_infinite_reverse]" />
+            <div className="absolute -top-32 -left-24 h-[26rem] w-[26rem] rounded-full bg-white/45 blur-3xl motion-reduce:animate-none animate-[blob-a_11s_ease-in-out_infinite]" />
+            <div className="absolute top-10 -right-32 h-[24rem] w-[24rem] rounded-full bg-fuchsia-400/45 blur-3xl motion-reduce:animate-none animate-[blob-b_13s_ease-in-out_infinite]" />
+            <div className="absolute -bottom-40 left-1/4 h-[28rem] w-[28rem] rounded-full bg-indigo-500/40 blur-3xl motion-reduce:animate-none animate-[blob-c_15s_ease-in-out_infinite]" />
+            <div className="absolute bottom-0 -right-20 h-72 w-72 rounded-full bg-orange-200/45 blur-3xl motion-reduce:animate-none animate-[blob-b_10s_ease-in-out_infinite_reverse]" />
           </div>
           <div className="relative max-w-5xl mx-auto">
-            <PublicTopBar />
             <div className="mt-7 md:mt-16 grid gap-4 md:gap-12 md:grid-cols-[1.1fr_1fr] md:items-center">
               <motion.div initial="hidden" animate="show">
                 <motion.p variants={rise} custom={0} className="inline-flex items-center gap-2 rounded-full bg-primary-raised px-3 py-1 text-xs font-medium text-primary-foreground">
@@ -219,7 +241,7 @@ const Landing = () => {
                     transition={{ duration: 0.6, ease, delay: 0.4 }}>plain words.</motion.span>
                 </motion.h1>
                 <motion.p variants={rise} custom={2} className="mt-3 text-[14px] sm:text-base leading-relaxed text-primary-subtle max-w-lg">
-                  SpendPal is a personal finance tracker for your accounts, cards, budgets and goals. You type in or import your own records. It does not connect to your bank.
+                  SpendPal is a personal finance tracker. Private by design: it does not connect to your bank.
                 </motion.p>
                 <motion.div variants={rise} custom={3} className="mt-5 grid grid-cols-2 sm:flex gap-2.5 sm:gap-3">
                   <Button asChild className="h-11 px-5 text-[15px] font-semibold rounded-xl bg-card text-primary hover:bg-card hover:brightness-95 transition-transform active:scale-[0.98]">
@@ -243,23 +265,7 @@ const Landing = () => {
               variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
               What it does
             </motion.h2>
-            <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
-              {FEATURES.map(({ icon: Icon, title, body }, i) => (
-                <motion.div
-                  key={title}
-                  variants={rise} custom={i % 3} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
-                  className={`group bg-card rounded-2xl p-3.5 sm:p-5 card-shadow transition-transform duration-300 hover:-translate-y-1 ${i === FEATURES.length - 1 ? 'col-span-2' : ''}`}
-                >
-                  <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
-                    <Icon size={17} />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="mt-2.5 sm:mt-3 text-[13.5px] sm:text-base font-semibold leading-snug">{title}</h3>
-                    <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">{body}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            <FeaturePicker />
           </section>
 
           <section aria-labelledby="data" className="max-w-5xl mx-auto pt-10 md:pt-16">
