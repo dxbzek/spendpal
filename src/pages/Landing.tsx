@@ -61,7 +61,7 @@ const SamplePreview = () => {
   return (
     <motion.figure
       aria-label="Example of the Home screen with sample data"
-      className="relative w-full max-w-sm mx-auto md:mx-0"
+      className="relative w-full max-w-sm mx-auto md:mx-0 mt-10 md:mt-0"
       initial={{ opacity: 0, y: 30, rotate: 0 }}
       animate={{ opacity: 1, y: 0, rotate: 0 }}
       transition={{ duration: 0.8, ease, delay: 0.25 }}
@@ -69,7 +69,7 @@ const SamplePreview = () => {
       {/* A second card peeking out behind, for depth. */}
       <motion.div
         aria-hidden
-        className="absolute -right-3 -top-12 sm:-right-8 sm:-top-14 w-[78%] rounded-xl bg-card/90 card-shadow p-3 rotate-[5deg]"
+        className="absolute -right-2 -top-9 sm:-right-8 sm:-top-14 w-[74%] rounded-xl bg-card/90 card-shadow p-3 rotate-[5deg]"
         animate={reduce ? undefined : { y: [0, -6, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
       >
@@ -162,7 +162,7 @@ const Landing = () => {
   return (
     <MotionConfig reducedMotion="user">
       <PublicPageScroll>
-        <header className="relative overflow-hidden bg-primary px-5 md:px-8 pt-8 pb-14 md:pb-20 rounded-b-3xl md:rounded-b-none">
+        <header className="relative overflow-hidden bg-primary px-5 md:px-8 pt-6 pb-10 md:pb-20 rounded-b-3xl md:rounded-b-none">
           {/* Two soft light blobs drifting behind the hero. */}
           <div aria-hidden className="pointer-events-none absolute inset-0">
             <div className="absolute -top-24 -left-20 h-72 w-72 rounded-full bg-white/25 blur-3xl animate-[drift_14s_ease-in-out_infinite]" />
@@ -170,22 +170,22 @@ const Landing = () => {
           </div>
           <div className="relative max-w-5xl mx-auto">
             <PublicTopBar />
-            <div className="mt-10 md:mt-16 grid gap-12 md:grid-cols-[1.1fr_1fr] md:items-center">
+            <div className="mt-7 md:mt-16 grid gap-4 md:gap-12 md:grid-cols-[1.1fr_1fr] md:items-center">
               <motion.div initial="hidden" animate="show">
                 <motion.p variants={rise} custom={0} className="inline-flex items-center gap-2 rounded-full bg-primary-raised px-3 py-1 text-xs font-medium text-primary-foreground">
                   <BrandMark tone="mono" className="h-3.5 w-3.5" /> Personal finance tracker
                 </motion.p>
-                <motion.h1 variants={rise} custom={1} className="mt-4 text-[2.1rem] leading-[1.08] sm:text-5xl font-heading text-primary-foreground tracking-tight">
+                <motion.h1 variants={rise} custom={1} className="mt-3 text-[1.9rem] leading-[1.08] sm:text-5xl font-heading text-primary-foreground tracking-tight">
                   Your money, in plain words.
                 </motion.h1>
-                <motion.p variants={rise} custom={2} className="mt-4 text-[15px] sm:text-base leading-relaxed text-primary-subtle max-w-lg">
+                <motion.p variants={rise} custom={2} className="mt-3 text-[14px] sm:text-base leading-relaxed text-primary-subtle max-w-lg">
                   SpendPal is a personal finance tracker for your accounts, cards, budgets and goals. You type in or import your own records. It does not connect to your bank.
                 </motion.p>
-                <motion.div variants={rise} custom={3} className="mt-7 flex flex-col sm:flex-row gap-3">
-                  <Button asChild className="h-12 px-6 text-[15px] font-semibold rounded-xl bg-card text-primary hover:bg-card hover:brightness-95 transition-transform active:scale-[0.98]">
+                <motion.div variants={rise} custom={3} className="mt-5 grid grid-cols-2 sm:flex gap-2.5 sm:gap-3">
+                  <Button asChild className="h-11 px-5 text-[15px] font-semibold rounded-xl bg-card text-primary hover:bg-card hover:brightness-95 transition-transform active:scale-[0.98]">
                     <Link to="/auth" state={{ signup: true }}>Create account</Link>
                   </Button>
-                  <Button asChild className="h-12 px-6 text-[15px] font-semibold rounded-xl bg-primary-raised text-primary-foreground hover:brightness-110 transition-transform active:scale-[0.98]">
+                  <Button asChild className="h-11 px-5 text-[15px] font-semibold rounded-xl bg-primary-raised text-primary-foreground hover:brightness-110 transition-transform active:scale-[0.98]">
                     <Link to="/auth">Sign in</Link>
                   </Button>
                 </motion.div>
@@ -198,12 +198,12 @@ const Landing = () => {
         <PromoVideo />
 
         <main className="px-5 md:px-8">
-          <section aria-labelledby="features" className="max-w-5xl mx-auto pt-14 md:pt-20">
+          <section aria-labelledby="features" className="max-w-5xl mx-auto pt-10 md:pt-16">
             <motion.h2 id="features" className="text-2xl md:text-3xl font-heading tracking-tight"
               variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
               What it does
             </motion.h2>
-            <div className="mt-6 grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid gap-2.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map(({ icon: Icon, title, body }, i) => (
                 <motion.div
                   key={title}
@@ -222,12 +222,12 @@ const Landing = () => {
             </div>
           </section>
 
-          <section aria-labelledby="data" className="max-w-5xl mx-auto pt-14 md:pt-20">
+          <section aria-labelledby="data" className="max-w-5xl mx-auto pt-10 md:pt-16">
             <motion.h2 id="data" className="text-2xl md:text-3xl font-heading tracking-tight"
               variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
               How your data is kept
             </motion.h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
               {DATA_POINTS.map(({ icon: Icon, text }, i) => (
                 <motion.div key={i} variants={rise} custom={i % 2} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
                   className="bg-card rounded-2xl p-4 card-shadow flex gap-3 text-sm text-muted-foreground leading-relaxed">
@@ -242,7 +242,7 @@ const Landing = () => {
             </p>
           </section>
 
-          <section aria-labelledby="install" className="max-w-5xl mx-auto pt-14 md:pt-20 pb-16">
+          <section aria-labelledby="install" className="max-w-5xl mx-auto pt-10 md:pt-16 pb-12">
             <motion.div variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
               className="relative overflow-hidden rounded-2xl p-5 sm:p-7 bg-gradient-to-br from-primary/25 via-card to-card card-shadow flex gap-4 items-start">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
