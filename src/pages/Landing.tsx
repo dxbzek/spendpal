@@ -134,6 +134,35 @@ const SamplePreview = () => {
   );
 };
 
+/** The 31-second landscape promo (sample data only). Plays muted on a loop;
+ *  with reduce motion on it waits for a tap instead of playing by itself. */
+const PromoVideo = () => {
+  const reduce = useReducedMotion();
+  return (
+    <section aria-labelledby="promo" className="max-w-5xl mx-auto pt-14 md:pt-20">
+      <motion.h2 id="promo" className="text-2xl md:text-3xl font-heading tracking-tight"
+        variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
+        See it in 30 seconds
+      </motion.h2>
+      <motion.div variants={rise} custom={1} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
+        className="mt-6 overflow-hidden rounded-2xl card-shadow border border-border bg-card aspect-video">
+        <video
+          className="h-full w-full object-cover"
+          src="/promo/spendpal-promo.mp4"
+          poster="/promo/spendpal-promo-poster.jpg"
+          muted
+          loop
+          playsInline
+          autoPlay={!reduce}
+          controls={!!reduce}
+          preload="metadata"
+          aria-label="SpendPal promo video with sample data"
+        />
+      </motion.div>
+    </section>
+  );
+};
+
 const Landing = () => {
   usePageHead('/');
   return (
@@ -173,6 +202,7 @@ const Landing = () => {
         </header>
 
         <main className="px-5 md:px-8">
+          <PromoVideo />
           <section aria-labelledby="features" className="max-w-5xl mx-auto pt-14 md:pt-20">
             <motion.h2 id="features" className="text-2xl md:text-3xl font-heading tracking-tight"
               variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
