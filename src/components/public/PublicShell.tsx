@@ -6,18 +6,19 @@ import { useAuth } from '@/context/AuthContext';
 import { OPERATOR, OPERATOR_PENDING, contactEmail, operatorLines } from '@/lib/operator';
 
 /** Logo and name on the left, one way in on the right. Sits inside a bg-primary band. */
-export const PublicTopBar = () => {
+export const PublicTopBar = ({ onDark = false }: { onDark?: boolean }) => {
   const { user } = useAuth();
+  const ink = onDark ? 'text-foreground' : 'text-primary-foreground';
   return (
     <div className="flex items-center justify-between gap-4">
       <Link to="/" className="flex items-center gap-3 min-w-0 rounded-lg">
-        <BrandMark tone="mono" className="w-8 h-8 shrink-0 text-primary-foreground" />
-        <span className="text-base font-heading font-bold text-primary-foreground">SpendPal</span>
+        {onDark ? <BrandMark className="w-8 h-8 shrink-0" /> : <BrandMark tone="mono" className={`w-8 h-8 shrink-0 ${ink}`} />}
+        <span className={`text-base font-heading font-bold transition-colors ${ink}`}>SpendPal</span>
       </Link>
       {/* Someone signed in who opens the privacy page goes back to the app, not to a sign-in form. */}
       <Link
         to={user ? '/' : '/auth'}
-        className="bg-primary-raised rounded-full px-4 py-2 text-sm text-primary-foreground font-medium touch-manipulation"
+        className={`rounded-full px-4 py-2 text-sm font-medium touch-manipulation transition-colors ${onDark ? 'bg-primary text-primary-foreground' : 'bg-primary-raised text-primary-foreground'}`}
       >
         {user ? 'Open app' : 'Sign in'}
       </Link>

@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, animate, motion, useInView, useReducedMotion } from 'framer-motion';
 import {
   ArrowDownToLine, BarChart3, CalendarClock, CreditCard, Database, FileUp, KeyRound,
-  PiggyBank, Smartphone, Sparkles, Target, Trash2,
+  PiggyBank, ShieldCheck, Smartphone, Sparkles, Target, Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,11 +26,12 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   { icon: Sparkles, title: 'AI Advisor', body: 'Reads your own spending, cards, budgets and goals, and suggests what to do next.' },
 ];
 
-const DATA_POINTS: { icon: LucideIcon; text: React.ReactNode }[] = [
-  { icon: Database, text: 'Row level security: each account can read and change only its own rows.' },
-  { icon: KeyRound, text: 'Nothing is shown without signing in.' },
-  { icon: ArrowDownToLine, text: <><strong className="font-medium text-foreground">Export</strong> downloads all your records as a file.</> },
-  { icon: Trash2, text: <><strong className="font-medium text-foreground">Delete my account</strong> removes your sign-in and everything stored with it.</> },
+
+const DATA_TILES: { icon: LucideIcon; title: string; sub: string }[] = [
+  { icon: Database, title: 'Only your rows', sub: 'Row level security on every table' },
+  { icon: KeyRound, title: 'Sign-in first', sub: 'Nothing shows without it' },
+  { icon: ArrowDownToLine, title: 'Export anytime', sub: 'All your records as a file' },
+  { icon: Trash2, title: 'Delete anytime', sub: 'Your sign-in and every record' },
 ];
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -55,93 +56,109 @@ const CountUp = ({ to, decimals = 0 }: { to: number; decimals?: number }) => {
   return <span ref={ref} className="tabular-nums">{shown}</span>;
 };
 
-const TICKS = [
-  { label: 'Sample salary', amount: '+4,500.00', up: true },
-  { label: 'Sample groceries', amount: '−240.50', up: false },
-  { label: 'Sample coffee', amount: '−18.00', up: false },
-  { label: 'Sample card payment', amount: '−600.00', up: false },
+// Sample story the hero card plays on a loop: each step changes the card.
+const STEPS = [
+  { label: 'Sample salary', amount: '+4,500.00', up: true, cash: 8750, card: 1820, groceries: 1240 },
+  { label: 'Sample groceries', amount: '−240.50', up: false, cash: 8509.5, card: 1820, groceries: 1480.5 },
+  { label: 'Sample coffee', amount: '−18.00', up: false, cash: 8491.5, card: 1820, groceries: 1480.5 },
+  { label: 'Sample card payment', amount: '−600.00', up: false, cash: 7891.5, card: 1220, groceries: 1480.5 },
 ];
+const START = { cash: 4250, card: 1820, groceries: 1240 };
+const fmt2 = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** Sample transactions that slide in one after another under the balance. */
-const LiveTicker = () => {
+/** A number that glides to each new value. */
+const Glide = ({ value, decimals = 2 }: { value: number; decimals?: number }) => {
+  const [shown, setShown] = useState(value);
+  const prev = useRef(value);
   const reduce = useReducedMotion();
-  const [i, setI] = useState(0);
   useEffect(() => {
-    if (reduce) return;
-    const t = setInterval(() => setI(v => (v + 1) % TICKS.length), 2600);
-    return () => clearInterval(t);
-  }, [reduce]);
-  const t = TICKS[i];
-  return (
-    <div className="mt-2 h-6 overflow-hidden" aria-hidden>
-      <AnimatePresence mode="wait">
-        <motion.div key={i} className="flex items-center gap-2 text-xs"
-          initial={{ y: 18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -18, opacity: 0 }}
-          transition={{ duration: 0.35, ease }}>
-          <span className={`h-1.5 w-1.5 rounded-full ${t.up ? 'bg-income' : 'bg-expense'}`} />
-          <span className="text-muted-foreground">{t.label}</span>
-          <span className={`font-semibold tabular-nums ${t.up ? 'text-income' : 'text-foreground'}`}>{t.amount}</span>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
+    if (reduce) { setShown(value); prev.current = value; return; }
+    const c = animate(prev.current, value, { duration: 0.9, ease, onUpdate: setShown });
+    prev.current = value;
+    return () => c.stop();
+  }, [value, reduce]);
+  return <span className="tabular-nums">{decimals ? fmt2(shown) : Math.round(shown).toLocaleString('en-US')}</span>;
 };
+
+/** A soft flash behind whatever just changed. */
+const Flash = ({ k, up, className = '' }: { k: string | number; up?: boolean; className?: string }) => (
+  <motion.span key={k} aria-hidden className={`pointer-events-none absolute inset-0 rounded-xl ${up ? 'bg-income/25' : 'bg-primary/25'} ${className}`}
+    initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} transition={{ duration: 1.1, ease: 'easeOut' }} />
+);
 
 /** A Home-style card built from the app's own styles. The numbers are made up and labelled so. */
 const SamplePreview = () => {
   const reduce = useReducedMotion();
+  const [i, setI] = useState(-1);
+  useEffect(() => {
+    if (reduce) return;
+    const first = setTimeout(() => setI(0), 1600);
+    const t = setInterval(() => setI(v => (v + 1) % (STEPS.length + 1)), 2600);
+    return () => { clearTimeout(first); clearInterval(t); };
+  }, [reduce]);
+  // Index STEPS.length is the pause that resets the story to the start.
+  const step = i >= 0 && i < STEPS.length ? STEPS[i] : null;
+  const st = step ?? START;
+  const pct = Math.min(100, (st.groceries / 1500) * 100);
+  const projected = Math.round(st.groceries * 1.38);
   return (
     <motion.figure
       aria-label="Example of the Home screen with sample data"
       className="relative w-full max-w-sm mx-auto md:mx-0 mt-3 md:mt-0"
-      initial={{ opacity: 0, y: 30, rotate: 0 }}
-      animate={{ opacity: 1, y: 0, rotate: 0 }}
-      transition={{ duration: 0.8, ease, delay: 0.25 }}
+      initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 0.25 }}
     >
-
       <motion.div
         className="relative bg-card text-card-foreground rounded-xl card-shadow p-4 sm:p-5"
-        animate={reduce ? undefined : { y: [0, -8, 0] }}
+        animate={reduce ? undefined : { y: [0, -8, 0], rotate: [0, -0.6, 0] }}
         transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Spendable cash</p>
-            <p className="text-financial-large">AED <CountUp to={4250} decimals={2} /></p>
-            <LiveTicker />
+          <div className="relative min-w-0 -m-1.5 p-1.5">
+            {step && <Flash k={`c${i}`} up={step.up} />}
+            <p className="relative text-xs uppercase tracking-wider text-muted-foreground mb-1">Spendable cash</p>
+            <p className="relative text-financial-large">AED {i < 0 ? <CountUp to={4250} decimals={2} /> : <Glide value={st.cash} />}</p>
           </div>
-          <span className="shrink-0 rounded-full bg-warning-soft border border-warning-line px-2.5 py-1 text-[11px] font-semibold">
-            Sample data
-          </span>
+          <span className="shrink-0 rounded-full bg-warning-soft border border-warning-line px-2.5 py-1 text-[11px] font-semibold">Sample data</span>
         </div>
 
-        <div className="mt-4 rounded-xl bg-muted p-3 flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-card text-foreground">
+        <div className="mt-2 h-7 overflow-hidden" aria-hidden>
+          <AnimatePresence mode="wait">
+            {step && (
+              <motion.div key={i} className="flex items-center gap-2 rounded-full bg-muted px-2.5 py-1 text-xs w-fit"
+                initial={{ y: 22, opacity: 0, scale: 0.9 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: -22, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 26 }}>
+                <span className={`h-1.5 w-1.5 rounded-full ${step.up ? 'bg-income' : 'bg-expense'}`} />
+                <span className="text-muted-foreground">{step.label}</span>
+                <span className={`font-semibold tabular-nums ${step.up ? 'text-income' : 'text-foreground'}`}>{step.amount}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="relative mt-2 rounded-xl bg-muted p-3 flex items-center gap-3">
+          {step && step.card !== START.card && <Flash k={`k${i}`} />}
+          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-card text-foreground">
             <CreditCard size={18} strokeWidth={1.75} />
           </span>
-          <div className="min-w-0 flex-1">
+          <div className="relative min-w-0 flex-1">
             <p className="text-sm font-medium truncate">Sample card</p>
             <p className="text-xs text-muted-foreground">Statement due 5 Dec</p>
           </div>
-          <p className="text-sm font-semibold tabular-nums">AED 1,820.00</p>
+          <p className="relative text-sm font-semibold">AED <Glide value={st.card} /></p>
         </div>
 
-        <div className="mt-4">
+        <div className="relative mt-4">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Groceries</span>
-            <span className="tabular-nums text-muted-foreground">AED 1,240 of 1,500</span>
+            <span className="text-muted-foreground">AED <Glide value={st.groceries} decimals={0} /> of 1,500</span>
           </div>
           <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-warning"
-              initial={{ width: reduce ? '83%' : '0%' }}
-              whileInView={{ width: '83%' }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.2, ease, delay: 0.6 }}
-            />
+            <motion.div className={`h-full rounded-full ${pct > 95 ? 'bg-expense' : 'bg-warning'}`}
+              initial={{ width: reduce ? `${pct}%` : '0%' }} animate={{ width: `${pct}%` }}
+              transition={{ duration: 1.0, ease, delay: i < 0 ? 0.6 : 0 }} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Projected month-end <span className="font-semibold text-expense">AED 1,710 (114%)</span>
+            Projected month-end <span className="font-semibold text-expense">AED <Glide value={projected} decimals={0} /> ({Math.round((projected / 1500) * 100)}%)</span>
           </p>
         </div>
       </motion.div>
@@ -173,29 +190,40 @@ const PromoVideo = () => {
   );
 };
 
-/** Compact feature tiles; tapping one pops its description open below. */
+/** One row of feature icons. It cycles by itself; a tap picks one and stops the cycle. */
 const FeaturePicker = () => {
+  const reduce = useReducedMotion();
   const [open, setOpen] = useState(0);
+  const [auto, setAuto] = useState(true);
+  useEffect(() => {
+    if (!auto || reduce) return;
+    const t = setInterval(() => setOpen(v => (v + 1) % FEATURES.length), 3200);
+    return () => clearInterval(t);
+  }, [auto, reduce]);
   const f = FEATURES[open];
   const Icon = f.icon;
   return (
     <div className="mt-4">
-      <div className="-mx-5 px-5 md:mx-0 md:px-0 flex gap-2 overflow-x-auto snap-x pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Features">
+      <div className="flex justify-between gap-1.5 sm:justify-start sm:gap-3" role="tablist" aria-label="Features">
         {FEATURES.map(({ icon: I, title }, i) => (
-          <motion.button key={title} type="button" role="tab" aria-selected={open === i} onClick={() => setOpen(i)}
-            whileTap={{ scale: 0.96 }}
-            className={`relative shrink-0 snap-start flex items-center gap-2 rounded-full px-3.5 py-2 whitespace-nowrap transition-colors ${open === i ? 'text-primary-foreground' : 'bg-card card-shadow hover:bg-muted'}`}>
-            {open === i && <motion.span layoutId="feature-pill" className="absolute inset-0 rounded-full bg-primary" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
-            <I size={16} className={`relative shrink-0 ${open === i ? '' : 'text-primary'}`} />
-            <h3 className="relative text-[13px] font-semibold leading-tight">{title}</h3>
+          <motion.button key={title} type="button" role="tab" aria-selected={open === i} aria-label={title} title={title}
+            onClick={() => { setOpen(i); setAuto(false); }} whileTap={{ scale: 0.9 }}
+            className={`relative flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl transition-colors ${open === i ? 'text-primary-foreground' : 'bg-card card-shadow text-primary hover:bg-muted'}`}>
+            {open === i && <motion.span layoutId="feature-pill" className="absolute inset-0 rounded-2xl bg-primary" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />}
+            <I size={19} className="relative" />
+            <h3 className="sr-only">{title}</h3>
+            {open === i && auto && !reduce && (
+              <motion.span key={`bar${i}`} aria-hidden className="absolute -bottom-1.5 left-2 right-2 h-0.5 origin-left rounded-full bg-primary"
+                initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 3.2, ease: 'linear' }} />
+            )}
           </motion.button>
         ))}
       </div>
       <AnimatePresence mode="wait">
         <motion.div key={open} role="tabpanel"
-          initial={{ opacity: 0, y: 14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }}
+          initial={{ opacity: 0, y: 12, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.3, ease }}
-          className="mt-3 flex gap-3 items-start rounded-2xl bg-card card-shadow p-4">
+          className="mt-4 flex gap-3 items-start rounded-2xl bg-card card-shadow p-4">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 text-primary"><Icon size={18} /></span>
           <div>
             <p className="text-sm font-semibold">{f.title}</p>
@@ -209,14 +237,29 @@ const FeaturePicker = () => {
 
 const Landing = () => {
   usePageHead('/');
+  // The top bar is see-through over the hero and turns dark once the hero has scrolled away.
+  const heroRef = useRef<HTMLElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [pastHero, setPastHero] = useState(false);
+  useEffect(() => {
+    const scroller = heroRef.current?.parentElement;
+    if (!scroller) return;
+    const check = () => {
+      const hero = heroRef.current, bar = barRef.current;
+      if (hero && bar) setPastHero(hero.getBoundingClientRect().bottom <= bar.getBoundingClientRect().bottom);
+    };
+    check();
+    scroller.addEventListener('scroll', check, { passive: true });
+    return () => scroller.removeEventListener('scroll', check);
+  }, []);
   return (
     <MotionConfig reducedMotion="user">
       <PublicPageScroll>
         {/* Frozen top bar: logo and Sign in stay on screen while the page scrolls. */}
-        <div className="sticky top-0 z-30 bg-primary/90 backdrop-blur-md px-5 md:px-8 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3">
-          <div className="max-w-5xl mx-auto"><PublicTopBar /></div>
+        <div ref={barRef} className={`sticky top-0 z-30 px-5 md:px-8 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 transition-colors duration-300 ${pastHero ? 'bg-background/85 backdrop-blur-md border-b border-border' : 'bg-transparent'}`}>
+          <div className="max-w-5xl mx-auto"><PublicTopBar onDark={pastHero} /></div>
         </div>
-        <header className="relative overflow-hidden bg-primary px-5 md:px-8 pt-2 pb-10 md:pb-20 rounded-b-3xl md:rounded-b-none">
+        <header ref={heroRef} className="relative overflow-hidden bg-primary px-5 md:px-8 -mt-[calc(env(safe-area-inset-top,0px)+64px)] pt-[calc(env(safe-area-inset-top,0px)+72px)] pb-10 md:pb-20 rounded-b-3xl md:rounded-b-none">
           {/* Moving colour behind the hero: four large soft blobs on their own loops. */}
           <div aria-hidden className="pointer-events-none absolute inset-0">
             <div className="absolute -top-32 -left-24 h-[26rem] w-[26rem] rounded-full bg-white/45 blur-3xl motion-reduce:animate-none animate-[blob-a_11s_ease-in-out_infinite]" />
@@ -273,17 +316,29 @@ const Landing = () => {
               variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}>
               How your data is kept
             </motion.h2>
-            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-              {DATA_POINTS.map(({ icon: Icon, text }, i) => (
-                <motion.div key={i} variants={rise} custom={i % 2} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }}
-                  className="bg-card rounded-2xl p-4 card-shadow flex gap-3 text-sm text-muted-foreground leading-relaxed">
-                  <Icon size={18} className="text-primary shrink-0 mt-0.5" />
-                  <span>{text}</span>
-                </motion.div>
-              ))}
+            <div className="mt-4 rounded-2xl bg-card card-shadow p-4 sm:p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
+                  <ShieldCheck size={22} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold">Private by design</p>
+                  <p className="text-xs text-muted-foreground">No bank login. No ads. Not sold.</p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {DATA_TILES.map(({ icon: Icon, title, sub }, i) => (
+                  <motion.div key={title} variants={rise} custom={i} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-30px' }}
+                    className="rounded-xl bg-muted p-3">
+                    <Icon size={17} className="text-primary" />
+                    <p className="mt-2 text-[13px] font-semibold leading-tight">{title}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug">{sub}</p>
+                  </motion.div>
+                ))}
+              </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              No ads, and your data is not sold. The AI features send data to an AI provider only when you use them.{' '}
+              The AI features send data to an AI provider only when you use them.{' '}
               <Link to="/privacy" className="text-primary font-medium">Read the privacy policy</Link>
             </p>
           </section>
