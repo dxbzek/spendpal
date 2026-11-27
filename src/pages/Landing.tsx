@@ -5,7 +5,7 @@
 // follows the visitor's reduce-motion setting (MotionConfig reducedMotion="user").
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MotionConfig, animate, motion, useInView, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, MotionConfig, animate, motion, useInView, useReducedMotion } from 'framer-motion';
 import {
   ArrowDownToLine, BarChart3, CalendarClock, CreditCard, Database, FileUp, KeyRound,
   PiggyBank, Smartphone, Sparkles, Target, Trash2,
@@ -55,6 +55,38 @@ const CountUp = ({ to, decimals = 0 }: { to: number; decimals?: number }) => {
   return <span ref={ref} className="tabular-nums">{shown}</span>;
 };
 
+const TICKS = [
+  { label: 'Sample salary', amount: '+4,500.00', up: true },
+  { label: 'Sample groceries', amount: '−240.50', up: false },
+  { label: 'Sample coffee', amount: '−18.00', up: false },
+  { label: 'Sample card payment', amount: '−600.00', up: false },
+];
+
+/** Sample transactions that slide in one after another under the balance. */
+const LiveTicker = () => {
+  const reduce = useReducedMotion();
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (reduce) return;
+    const t = setInterval(() => setI(v => (v + 1) % TICKS.length), 2600);
+    return () => clearInterval(t);
+  }, [reduce]);
+  const t = TICKS[i];
+  return (
+    <div className="mt-2 h-6 overflow-hidden" aria-hidden>
+      <AnimatePresence mode="wait">
+        <motion.div key={i} className="flex items-center gap-2 text-xs"
+          initial={{ y: 18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -18, opacity: 0 }}
+          transition={{ duration: 0.35, ease }}>
+          <span className={`h-1.5 w-1.5 rounded-full ${t.up ? 'bg-income' : 'bg-expense'}`} />
+          <span className="text-muted-foreground">{t.label}</span>
+          <span className={`font-semibold tabular-nums ${t.up ? 'text-income' : 'text-foreground'}`}>{t.amount}</span>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
+
 /** A Home-style card built from the app's own styles. The numbers are made up and labelled so. */
 const SamplePreview = () => {
   const reduce = useReducedMotion();
@@ -93,6 +125,7 @@ const SamplePreview = () => {
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Spendable cash</p>
             <p className="text-financial-large">AED <CountUp to={4250} decimals={2} /></p>
+            <LiveTicker />
           </div>
           <span className="shrink-0 rounded-full bg-warning-soft border border-warning-line px-2.5 py-1 text-[11px] font-semibold">
             Sample data
@@ -176,7 +209,14 @@ const Landing = () => {
                   <BrandMark tone="mono" className="h-3.5 w-3.5" /> Personal finance tracker
                 </motion.p>
                 <motion.h1 variants={rise} custom={1} className="mt-3 text-[1.9rem] leading-[1.08] sm:text-5xl font-heading text-primary-foreground tracking-tight">
-                  Your money, in plain words.
+                  {['Your', 'money,', 'in'].map((w, k) => (
+                    <motion.span key={w} className="inline-block mr-[0.25em]"
+                      initial={{ y: '0.6em', opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.6, ease, delay: 0.15 + k * 0.08 }}>{w}</motion.span>
+                  ))}
+                  <motion.span className="inline-block hero-shimmer"
+                    initial={{ y: '0.6em', opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.6, ease, delay: 0.4 }}>plain words.</motion.span>
                 </motion.h1>
                 <motion.p variants={rise} custom={2} className="mt-3 text-[14px] sm:text-base leading-relaxed text-primary-subtle max-w-lg">
                   SpendPal is a personal finance tracker for your accounts, cards, budgets and goals. You type in or import your own records. It does not connect to your bank.
